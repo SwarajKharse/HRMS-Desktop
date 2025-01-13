@@ -78,7 +78,7 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
     >
       <motion.div
         initial={{ scale: 0.95 }}
@@ -88,12 +88,27 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
       >
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold">Apply Leave</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <FiX size={20} />
-          </button>
+          <div className='flex items-center space-x-4'>
+            <button
+              type="button"
+              onClick={() => setFormData({
+                leaveType: '',
+                startDate: '',
+                endDate: '',
+                teamEmailId: '',
+                reason: ''
+              })}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+            >
+              Clear Form
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <FiX size={20} />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">

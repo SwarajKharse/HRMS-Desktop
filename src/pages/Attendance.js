@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { attendanceService } from '../services/attendanceService';
-import AttendanceSummary from '../components/AttendanceSummary';
+import AttendanceSummary from '../components/Attendance/AttendanceSummary';
 import Shift from '../components/Shift';
 
 function Attendance() {

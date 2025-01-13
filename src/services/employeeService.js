@@ -5,7 +5,7 @@ const BASE_URL = 'http://localhost:8080/api';
 export const employeeService = {
   getAllEmployees: async () => {
     try {
-      const response = await axios.get(`${BASE_URL}/employees`);
+      const response = await axios.get(`${BASE_URL}/employee`);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
@@ -14,7 +14,7 @@ export const employeeService = {
 
   createEmployee: async (employeeData) => {
     try {
-      const response = await axios.post(`${BASE_URL}/employees`, employeeData);
+      const response = await axios.post(`${BASE_URL}/employee`, employeeData);
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;

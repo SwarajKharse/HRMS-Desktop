@@ -48,7 +48,7 @@ function Onboarding() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Employee Onboarding</h1>
         <motion.button
@@ -63,13 +63,13 @@ function Onboarding() {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-500 p-4 rounded-md">
+        <div className="bg-red-50 text-red-500 p-4 rounded-md space-y-6">
           {error}
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-lg shadow overflow-hidden mt-6">
+        <div className="">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>

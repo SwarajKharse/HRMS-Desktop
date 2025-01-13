@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { leaveService } from '../services/leaveService';
-import LeaveSummary from '../components/LeaveSummary';
-import LeaveRequests from '../components/LeaveRequests';
+import LeaveSummary from '../components/Leave/LeaveSummary';
+import LeaveRequests from '../components/Leave/LeaveRequests';
 import Shift from '../components/Shift';
-import UpcomingLeaves from '../components/UpcomingLeaves';
+import UpcomingLeaves from '../components/Leave/UpcomingLeaves';
 
 function LeaveTracker() {
   const [activeTab, setActiveTab] = useState('summary');

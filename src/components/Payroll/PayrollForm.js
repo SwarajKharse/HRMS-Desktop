@@ -48,12 +48,27 @@ function PayrollForm({ isOpen, onClose, onSubmit }) {
       >
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold">Add Payroll Entry</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <FiX size={20} />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => setFormData({
+                employeeId: '',
+                monthYear: '',
+                basicSalary: '',
+                bonuses: '',
+                deductions: '',
+              })}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+            >
+              Clear Form
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <FiX size={20} />
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -139,4 +154,3 @@ function PayrollForm({ isOpen, onClose, onSubmit }) {
 }
 
 export default PayrollForm;
-

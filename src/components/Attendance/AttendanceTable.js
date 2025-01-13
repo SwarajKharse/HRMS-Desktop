@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion';
-import format from 'date-fns/format';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval } from 'date-fns';
 import { 
   FiChevronLeft, 
   FiChevronRight, 
@@ -9,6 +10,27 @@ import {
 } from 'react-icons/fi';
 
 function AttendanceTable({ data }) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Get start (Sunday) and end (Saturday) of the week
+  const startDate = startOfWeek(currentDate, { weekStartsOn: 0 }); // 0 = Sunday
+  const endDate = endOfWeek(currentDate, { weekStartsOn: 0 });
+
+  // Get array of dates for the current week
+  const weekDates = eachDayOfInterval({
+    start: startDate,
+    end: endDate
+  });
+
+  const handlePreviousWeek = () => {
+    setCurrentDate(subWeeks(currentDate, 1));
+  };
+
+  const handleNextWeek = () => {
+    setCurrentDate(addWeeks(currentDate, 1));
+  };
+
   const formatTime = (time) => {
     return time ? format(new Date(time), 'hh:mm a') : '-';
   };
@@ -26,23 +48,81 @@ function AttendanceTable({ data }) {
     }
   };
 
+  // Filter data for the current week
+  const weekData = weekDates.map(date => {
+    const dayData = data.find(item => 
+      format(new Date(item.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+    ) || {
+      date: date,
+      firstIn: null,
+      lastOut: null,
+      totalHours: null,
+      payableHours: null,
+      status: format(date, 'iii') === 'Sun' || format(date, 'iii') === 'Sat' ? 'Weekend' : 'Absent',
+      shift: '-',
+      regularization: null
+    };
+    return dayData;
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-2">
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
+          <button 
+            className="p-2 hover:bg-gray-100 rounded-lg"
+            onClick={handlePreviousWeek}
+          >
             <FiChevronLeft className="w-5 h-5" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
+          <button 
+            className="p-2 hover:bg-gray-100 rounded-lg"
+            onClick={handleNextWeek}
+          >
             <FiChevronRight className="w-5 h-5" />
           </button>
-          <span className="text-sm font-medium">05-Jan-2025 - 11-Jan-2025</span>
+          <span className="text-sm font-medium">
+            {format(startDate, 'dd-MMM-yyyy')} - {format(endDate, 'dd-MMM-yyyy')}
+          </span>
         </div>
         
-        <div className="flex items-center space-x-4">
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
+        <div className="flex items-center space-x-4 relative">
+          <button 
+            className="p-2 hover:bg-gray-100 rounded-lg"
+            onClick={() => setShowDropdown(!showDropdown)}
+          >
             <FiMoreVertical className="w-5 h-5" />
           </button>
+
+          <AnimatePresence>
+            {showDropdown && (
+              <>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowDropdown(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute right-0 top-full mt-2 w-48 rounded-lg bg-white shadow-lg z-20"
+                >
+                  <button
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+                    onClick={() => {
+                      // Handle Edit Weekends click
+                      setShowDropdown(false);
+                    }}
+                  >
+                    Edit Weekends
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -78,7 +158,7 @@ function AttendanceTable({ data }) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {data.map((row, index) => (
+              {weekData.map((row, index) => (
                 <motion.tr
                   key={index}
                   initial={{ opacity: 0 }}

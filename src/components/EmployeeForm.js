@@ -18,7 +18,6 @@ function EmployeeForm({ onClose, onSubmit }) {
     presentAddress: '',
     permanentAddress: '',
     empType: '',
-    empStatus: '',
     sourceOfHire: '',
     dateOfJoining: '',
     workPhone: '',
@@ -43,7 +42,7 @@ function EmployeeForm({ onClose, onSubmit }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
     >
       <motion.div
         initial={{ scale: 0.95 }}
@@ -53,21 +52,52 @@ function EmployeeForm({ onClose, onSubmit }) {
       >
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold">Add New Employee</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full"
-          >
-            <FiX size={20} />
-          </button>
+          <div className="flex justify-end">
+            {/* Clear Form Button */}
+            <button
+              type="button"
+              onClick={() => setFormData({
+                email: '',
+                password: '',
+                firstName: '',
+                middleName: '',
+                lastName: '',
+                dateOfBirth: '',
+                gender: '',
+                maritalStatus: '',
+                bloodGroup: '',
+                personalPhone: '',
+                personalEmail: '',
+                presentAddress: '',
+                permanentAddress: '',
+                empType: '',
+                sourceOfHire: '',
+                dateOfJoining: '',
+                workPhone: '',
+                aboutMe: ''
+              })}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
+            >
+              Clear Form
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full"
+            >
+              <FiX size={20} />
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Basic Information */}
-            <div className="space-y-4">
-              <h3 className="font-semibold">Basic Information</h3>
+        <form onSubmit={handleSubmit} className="p-6 space-y-8">
+          {/* Basic Information Section */}
+          <div className="space-y-4 rounded-lg bg-gray-50 p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Email *</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Email <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="email"
                   name="email"
@@ -78,7 +108,9 @@ function EmployeeForm({ onClose, onSubmit }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Password *</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Password <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="password"
                   name="password"
@@ -89,7 +121,9 @@ function EmployeeForm({ onClose, onSubmit }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">First Name *</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  First Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="firstName"
@@ -100,17 +134,9 @@ function EmployeeForm({ onClose, onSubmit }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Middle Name</label>
-                <input
-                  type="text"
-                  name="middleName"
-                  value={formData.middleName}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Last Name *</label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   name="lastName"
@@ -120,11 +146,25 @@ function EmployeeForm({ onClose, onSubmit }) {
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Middle Name
+                </label>
+                <input
+                  type="text"
+                  name="middleName"
+                  value={formData.middleName}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
             </div>
+          </div>
 
-            {/* Personal Information */}
-            <div className="space-y-4">
-              <h3 className="font-semibold">Personal Information</h3>
+          {/* Personal Information Section */}
+          <div className="space-y-4 rounded-lg bg-white border p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Personal Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
                 <input
@@ -183,10 +223,12 @@ function EmployeeForm({ onClose, onSubmit }) {
                 </select>
               </div>
             </div>
+          </div>
 
-            {/* Contact Information */}
-            <div className="space-y-4">
-              <h3 className="font-semibold">Contact Information</h3>
+          {/* Contact Information Section */}
+          <div className="space-y-4 rounded-lg bg-gray-50/50 p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Contact Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Personal Phone</label>
                 <input
@@ -207,6 +249,8 @@ function EmployeeForm({ onClose, onSubmit }) {
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Present Address</label>
                 <textarea
@@ -228,10 +272,12 @@ function EmployeeForm({ onClose, onSubmit }) {
                 />
               </div>
             </div>
+          </div>
 
-            {/* Employment Information */}
-            <div className="space-y-4">
-              <h3 className="font-semibold">Employment Information</h3>
+          {/* Employment Information Section */}
+          <div className="space-y-4 rounded-lg bg-white/80 border p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Employment Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">Employee Type</label>
                 <select
@@ -241,42 +287,21 @@ function EmployeeForm({ onClose, onSubmit }) {
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 >
                   <option value="">Select Type</option>
-                  <option value="Permanent">Permanent</option>
-                  <option value="Temporary">Temporary</option>
+                  <option value="Full-time">Full-time</option>
+                  <option value="Part-time">Part-time</option>
                   <option value="Contract">Contract</option>
                   <option value="Intern">Intern</option>
-                  <option value="Trainee">Trainee</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Employee Status</label>
-                <select
-                  name="empStatus"
-                  value={formData.empStatus}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Status</option>
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                  <option value="Resigned">Resigned</option>
-                  <option value="Terminated">Terminated</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Source of Hire</label>
-                <select
-                  name="empSource"
+                <input
+                  type="text"
+                  name="sourceOfHire"
                   value={formData.sourceOfHire}
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Source</option>
-                  <option value="Direct">Direct</option>
-                  <option value="Referral">Referral</option>
-                  <option value="Web">Web</option>
-                  <option value="Newspaper">Newspaper</option>
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Date of Joining</label>
@@ -301,7 +326,9 @@ function EmployeeForm({ onClose, onSubmit }) {
             </div>
           </div>
 
-          <div className="space-y-4">
+          {/* About Section */}
+          <div className="space-y-4 rounded-lg bg-gray-50 p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Additional Information</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700">About Me</label>
               <textarea
@@ -314,7 +341,7 @@ function EmployeeForm({ onClose, onSubmit }) {
             </div>
           </div>
 
-          <div className="flex justify-end space-x-4">
+          <div className="flex justify-end space-x-4 pt-4">
             <button
               type="button"
               onClick={onClose}
@@ -336,4 +363,3 @@ function EmployeeForm({ onClose, onSubmit }) {
 }
 
 export default EmployeeForm;
-

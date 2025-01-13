@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
 import { FiPlus, FiDownload } from 'react-icons/fi';
 import { payrollService } from '../services/payrollService';
-import PayrollForm from '../components/PayrollForm';
+import PayrollForm from '../components/Payroll/PayrollForm';
 
 function Payroll() {
   const [payrolls, setPayrolls] = useState([]);
@@ -54,7 +54,7 @@ function Payroll() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Payroll</h1>
         <div className="flex space-x-4">
@@ -81,13 +81,13 @@ function Payroll() {
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-500 p-4 rounded-md">
+        <div className="bg-red-50 text-red-500 p-4 rounded-md mt-6">
           {error}
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mt-6">
+        <div className="">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
