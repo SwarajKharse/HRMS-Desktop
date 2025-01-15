@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiX } from 'react-icons/fi';
-import { employeeService } from '../services/employeeService';
+import { FiX, FiAlertCircle } from 'react-icons/fi';
+import { useAuth } from '../contexts/AuthContext';
 
-function EmployeeForm({ onClose, onSubmit }) {
+function Register() {
+  const navigate = useNavigate();
+  const { register } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -33,26 +36,28 @@ function EmployeeForm({ onClose, onSubmit }) {
       ...prev,
       [name]: value
     }));
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-  
+
     try {
+      // Convert date strings to Date objects for backend
       const processedData = {
         ...formData,
         dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
-        dateOfJoining: formData.dateOfJoining ? new Date(formData.dateOfJoining).toISOString() : null,
-        empStatus: 'PENDING' // Add default status
+        dateOfJoining: formData.dateOfJoining ? new Date(formData.dateOfJoining).toISOString() : null
       };
-  
-      const response = await employeeService.createEmployee(processedData);
-      await onSubmit(response); // Wait for parent component to handle the response
-      onClose(); // Only close after successful submission and parent handling
+
+      await register(processedData);
+      navigate('/login', { 
+        state: { message: 'Registration successful! Please login with your credentials.' }
+      });
     } catch (err) {
-      setError(err.message || 'Failed to create employee');
+      setError(err.message || 'Registration failed');
       window.scrollTo(0, 0); // Scroll to top to show error
     } finally {
       setLoading(false);
@@ -60,20 +65,19 @@ function EmployeeForm({ onClose, onSubmit }) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    >
-      <motion.div
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center p-4">
+      
+
+        {/* Rest of the form remains the same as EmployeeForm component */}
+        {/* Just update the form's onSubmit handler and add error display */}
+        <motion.div
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.95 }}
         className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
       >
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Add New Employee</h2>
+          <h2 className="text-xl font-semibold">Register Employee</h2>
           <div className="flex justify-end">
             {/* Clear Form Button */}
             <button
@@ -103,13 +107,24 @@ function EmployeeForm({ onClose, onSubmit }) {
               Clear Form
             </button>
             <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full"
+                onClick={() => navigate('/login')}
+                className="p-2 hover:bg-gray-100 rounded-full"
             >
-              <FiX size={20} />
+                <FiX size={20} />
             </button>
           </div>
         </div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="m-4 bg-red-50 text-red-500 p-4 rounded-md flex items-center"
+          >
+            <FiAlertCircle className="mr-2" />
+            {error}
+          </motion.div>
+        )}
 
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
           {/* Basic Information Section */}
@@ -365,32 +380,24 @@ function EmployeeForm({ onClose, onSubmit }) {
 
           <div className="flex justify-end space-x-4 pt-4">
             <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-              disabled={loading}
+                type="button"
+                onClick={() => navigate('/login')}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                disabled={loading}
             >
-              Cancel
+                Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              disabled={loading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
-              {loading ? (
-                <div className="flex items-center">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Saving...
-                </div>
-              ) : (
-                'Add Employee'
-              )}
+              Add Details
             </button>
           </div>
         </form>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }
 
-export default EmployeeForm;
+export default Register;

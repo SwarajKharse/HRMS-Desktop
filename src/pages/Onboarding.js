@@ -29,7 +29,8 @@ function Onboarding() {
   const handleAddEmployee = async (employeeData) => {
     try {
       setLoading(true);
-      await employeeService.createEmployee(employeeData);
+      // No need to call createEmployee here since it's already done in the form
+      // Just refresh the employee list
       await fetchEmployees();
       setShowForm(false);
     } catch (err) {

@@ -1,17 +1,29 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiMail, FiLock, FiAlertCircle } from 'react-icons/fi';
-import { authService } from '../services/authService';
+import { FiMail, FiLock, FiAlertCircle, FiUserPlus, FiCheckCircle } from 'react-icons/fi';
+import { useAuth } from '../contexts/AuthContext';
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Check for success message from registration
+    if (location.state?.message) {
+      setSuccess(location.state.message);
+      // Clear the message from location state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -19,17 +31,18 @@ function Login() {
       ...prev,
       [name]: value
     }));
-    // Clear error when user starts typing
     if (error) setError('');
+    if (success) setSuccess('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
-      await authService.login(formData.email, formData.password);
+      await login(formData.email, formData.password);
       navigate('/');
     } catch (err) {
       setError(err.message || 'Invalid credentials');
@@ -60,6 +73,17 @@ function Login() {
             >
               <FiAlertCircle className="mr-2" />
               {error}
+            </motion.div>
+          )}
+
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-green-50 text-green-500 p-4 rounded-md flex items-center"
+            >
+              <FiCheckCircle className="mr-2" />
+              {success}
             </motion.div>
           )}
 
@@ -111,6 +135,16 @@ function Login() {
               'Sign In'
             )}
           </motion.button>
+
+          <div className="mt-4 text-center">
+            <Link 
+              to="/register" 
+              className="inline-flex items-center text-blue-600 hover:text-blue-700"
+            >
+              <FiUserPlus className="mr-2" />
+              Create new account
+            </Link>
+          </div>
         </form>
       </motion.div>
     </div>
