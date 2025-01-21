@@ -17,16 +17,29 @@ const getAuthHeaders = () => {
 export const employeeService = {
   getAllEmployees: async () => {
     try {
-      const response = await axios.get(`${BASE_URL}`, getAuthHeaders());
+      const user = authService.getUser();
+      const response = await axios.get(`${BASE_URL}/org/${user.orgId}`, getAuthHeaders());
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
     }
   },
 
+  getEmployeeById: async (id) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/${id}`, getAuthHeaders());
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 403) {
+        throw new Error("You do not have permission to view this employee");
+      }
+      throw error.response?.data || error.message;
+    }
+  },
+
   createEmployee: async (employeeData) => {
     try {
-      const response = await axios.post(`${BASE_URL}`, employeeData, getAuthHeaders());
+      const response = await axios.post(`${BASE_URL}/`, employeeData, getAuthHeaders());
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
