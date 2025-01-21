@@ -23,12 +23,12 @@ function LeaveTracker() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [leavesData, holidaysData] = await Promise.all([
-          leaveService.getEmployeeLeaves(1),
-          leaveService.getHolidays()
-        ]);
-        setLeaves(leavesData);
-        setHolidays(holidaysData);
+        // const [leavesData, holidaysData] = await Promise.all([
+        //   leaveService.getEmployeeLeaves(1),
+        //   leaveService.getHolidays()
+        // ]);
+        // setLeaves(leavesData);
+        // setHolidays(holidaysData);
       } catch (err) {
         setError(err.message);
       } finally {

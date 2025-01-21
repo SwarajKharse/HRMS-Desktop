@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiSun, 
@@ -10,7 +10,8 @@ import {
   FiCalendar,
   FiList,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiInfo
 } from 'react-icons/fi';
 import { 
   format, 
@@ -25,19 +26,22 @@ import {
   isSameDay,
   addMonths,
   subMonths,
-  isToday
+  isToday,
+  isPast,
+  isFuture
 } from 'date-fns';
 import LeaveCard from './LeaveCard';
 import { leaveService } from '../../services/leaveService';
 import LeaveForm from './LeaveForm';
+import { useAuth } from '../../contexts/AuthContext';
 
-function LeaveSummary({ leaves, onLeaveApplied }) {
-  const [viewType, setViewType] = useState('list'); // 'list' or 'calendar'
+function LeaveSummary() {
+  const [viewType, setViewType] = useState('list');
   const [showLeaveForm, setShowLeaveForm] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarDate, setCalendarDate] = useState(new Date());
-
-  const leaveTypes = [
+  const [leaves, setLeaves] = useState([]);
+  const [ leaveTypes, setLeaveTypes ] = useState([
     { 
       title: 'Casual Leave', 
       icon: <FiSun className="w-6 h-6 text-blue-600" />, 
@@ -86,7 +90,42 @@ function LeaveSummary({ leaves, onLeaveApplied }) {
       booked: 0,
       calendarColor: 'bg-purple-100 text-purple-800 border-purple-200'
     }
-  ];
+  ]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    fetchLeaves();
+  }, [user]);
+
+  const fetchLeaves = async () => {
+    try {
+      if (user?.sub) {
+        const data = await leaveService.getLeavesByEmployeeId(user.sub);
+        setLeaves(data);
+        updateLeaveTypeCounts(data);
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateLeaveTypeCounts = (leaveData) => {
+    const counts = {};
+    leaveData.forEach(leave => {
+      if (leave.status === 'APPROVED') {
+        counts[leave.leaveType] = (counts[leave.leaveType] || 0) + 1;
+      }
+    });
+
+    setLeaveTypes(prev => prev.map(type => ({
+      ...type,
+      booked: counts[type.title] || 0
+    })));
+  };
 
   // Calendar calculations
   const monthStart = startOfMonth(calendarDate);
@@ -95,7 +134,7 @@ function LeaveSummary({ leaves, onLeaveApplied }) {
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const totalDays = daysInMonth.length;
   const totalCells = Math.ceil((totalDays + startingDayIndex) / 7) * 7;
-  
+
   const monthDates = Array.from({ length: totalCells }).map((_, index) => {
     const dayOffset = index - startingDayIndex;
     const date = new Date(monthStart);
@@ -107,9 +146,7 @@ function LeaveSummary({ leaves, onLeaveApplied }) {
     try {
       await leaveService.applyLeave(leaveData);
       setShowLeaveForm(false);
-      if (onLeaveApplied) {
-        onLeaveApplied();
-      }
+      fetchLeaves();
     } catch (error) {
       console.error('Error applying leave:', error);
     }
@@ -131,23 +168,64 @@ function LeaveSummary({ leaves, onLeaveApplied }) {
     setCalendarDate(addMonths(calendarDate, 1));
   };
 
-  // Mock function to get leave type for a date (replace with actual data)
-  const getLeaveForDate = (date) => {
-    // This should be replaced with actual leave data lookup
-    if (leaves && leaves.length > 0) {
-      const leave = leaves.find(l => isSameDay(new Date(l.date), date));
-      if (leave) {
-        return leaveTypes.find(lt => lt.title === leave.type);
-      }
-    }
-    return null;
+  const getLeaveTypeInfo = (leaveType) => {
+    return leaveTypes.find(type => type.title === leaveType);
   };
 
+  const getLeavesForDate = (date) => {
+    return leaves.filter(leave => {
+      const startDate = new Date(leave.startDate);
+      const endDate = new Date(leave.endDate);
+      const currentDate = new Date(date);
+    
+      // Set all times to midnight for accurate date comparison
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      currentDate.setHours(0, 0, 0, 0);
+    
+      // Check if currentDate is within range (inclusive)
+      return currentDate >= startDate && currentDate <= endDate;
+    });
+  };
+
+  const getLeaveStatus = (leave) => {
+    if (leave.status === 'APPROVED') {
+      return 'Approved';
+    } else if (leave.status === 'REJECTED') {
+      return 'Rejected';
+    } else {
+      return 'Pending';
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Approved':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'Rejected':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'Pending':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      default:
+        return '';
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-2">
-          <h2 className="text-lg font-medium text-gray-900">Leave booked this year: 0</h2>
+          <h2 className="text-lg font-medium text-gray-900">
+            Leave booked this year: {leaves.filter(leave => leave.status === 'APPROVED').length}
+          </h2>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center bg-white rounded-lg border border-gray-200 p-1">
@@ -202,13 +280,13 @@ function LeaveSummary({ leaves, onLeaveApplied }) {
       </div>
 
       {viewType === 'list' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {leaveTypes.map((leave, index) => (
             <LeaveCard key={index} {...leave} />
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mt-6">
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="grid grid-cols-7 gap-px bg-gray-200">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
               <div 
@@ -220,9 +298,9 @@ function LeaveSummary({ leaves, onLeaveApplied }) {
             ))}
 
             {monthDates.map((date, index) => {
-              const leave = getLeaveForDate(date);
               const isCurrentMonth = isSameMonth(date, calendarDate);
               const isCurrentDay = isToday(date);
+              const dateLeaves = getLeavesForDate(date);
               
               return (
                 <motion.div
@@ -235,7 +313,7 @@ function LeaveSummary({ leaves, onLeaveApplied }) {
                   <div className={`
                     h-full rounded-lg border p-2
                     ${isCurrentDay ? 'ring-2 ring-blue-500 ring-offset-2' : ''}
-                    ${!leave ? 'bg-gray-50' : leave.calendarColor}
+                    ${dateLeaves.length === 0 ? 'bg-gray-50' : ''}
                   `}>
                     <div className="flex flex-col h-full">
                       <span className={`text-sm font-medium ${
@@ -243,11 +321,23 @@ function LeaveSummary({ leaves, onLeaveApplied }) {
                       }`}>
                         {format(date, 'd')}
                       </span>
-                      {leave && (
-                        <div className="mt-2 text-xs">
-                          <div className="font-medium">{leave.title}</div>
-                        </div>
-                      )}
+                      {dateLeaves.map((leave, leaveIndex) => {
+                        const leaveType = getLeaveTypeInfo(leave.leaveType);
+                        const status = getLeaveStatus(leave);
+                        return (
+                          <div 
+                            key={leaveIndex}
+                            className={`mt-1 p-1 rounded-md text-xs ${
+                              isFuture(date) ? 
+                                (leave.status === 'APPROVED' ? leaveType?.calendarColor : getStatusColor('Pending')) :
+                                getStatusColor(status)
+                            }`}
+                          >
+                            <div className="font-medium">{leave.leaveType}</div>
+                            <div>{status}</div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </motion.div>

@@ -1,16 +1,24 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiCalendar } from 'react-icons/fi';
+import { motion } from 'framer-motion';
+import { FiX, FiAlertCircle } from 'react-icons/fi';
+import { useAuth } from '../../contexts/AuthContext';
+import { leaveService } from '../../services/leaveService';
 
 function LeaveForm({ isOpen, onClose, onSubmit }) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
+    employee: {
+      id: user?.sub
+    },
     leaveType: '',
     startDate: '',
     endDate: '',
-    teamEmailId: '',
-    reason: ''
+    reason: '',
+    status: 'PENDING'
   });
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const leaveTypes = [
     'Casual Leave',
@@ -21,21 +29,12 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
     'Sabbatical Leave'
   ];
 
-  const calculateDuration = (start, end) => {
-    if (!start || !end) return 0;
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const diffTime = Math.abs(endDate - startDate);
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
-    // Clear error when field is modified
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -62,13 +61,20 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
       return;
     }
 
-    const duration = calculateDuration(formData.startDate, formData.endDate);
-    
-    await onSubmit({
-      ...formData,
-      duration,
-      status: 'PENDING'
-    });
+    setLoading(true);
+    setError('');
+
+    try {
+      await leaveService.applyLeave(formData);
+      if (onSubmit) {
+        await onSubmit();
+      }
+      onClose();
+    } catch (err) {
+      setError(err.message || 'Failed to apply leave');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -78,7 +84,7 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
     >
       <motion.div
         initial={{ scale: 0.95 }}
@@ -88,128 +94,118 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
       >
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold">Apply Leave</h2>
-          <div className='flex items-center space-x-4'>
-            <button
-              type="button"
-              onClick={() => setFormData({
-                leaveType: '',
-                startDate: '',
-                endDate: '',
-                teamEmailId: '',
-                reason: ''
-              })}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
-            >
-              Clear Form
-            </button>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <FiX size={20} />
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <FiX size={20} />
+          </button>
         </div>
 
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="m-4 bg-red-50 text-red-500 p-4 rounded-md flex items-center"
+          >
+            <FiAlertCircle className="mr-2" />
+            {error}
+          </motion.div>
+        )}
+
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Leave type <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="leaveType"
+              value={formData.leaveType}
+              onChange={handleChange}
+              className={`mt-1 block w-full rounded-md border ${
+                errors.leaveType ? 'border-red-500' : 'border-gray-300'
+              } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+            >
+              <option value="">Select</option>
+              {leaveTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            {errors.leaveType && (
+              <p className="mt-1 text-sm text-red-500">{errors.leaveType}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Leave type <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="leaveType"
-                value={formData.leaveType}
-                onChange={handleChange}
-                className={`mt-1 block w-full rounded-md border ${
-                  errors.leaveType ? 'border-red-500' : 'border-gray-300'
-                } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-              >
-                <option value="">Select</option>
-                {leaveTypes.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-              {errors.leaveType && (
-                <p className="mt-1 text-sm text-red-500">{errors.leaveType}</p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Start Date <span className="text-red-500">*</span>
-                </label>
-                <div className="relative mt-1">
-                  <input
-                    type="date"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleChange}
-                    className={`block w-full rounded-md border ${
-                      errors.startDate ? 'border-red-500' : 'border-gray-300'
-                    } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                  />
-                  {errors.startDate && (
-                    <p className="mt-1 text-sm text-red-500">{errors.startDate}</p>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  End Date <span className="text-red-500">*</span>
-                </label>
-                <div className="relative mt-1">
-                  <input
-                    type="date"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleChange}
-                    min={formData.startDate}
-                    className={`block w-full rounded-md border ${
-                      errors.endDate ? 'border-red-500' : 'border-gray-300'
-                    } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                  />
-                  {errors.endDate && (
-                    <p className="mt-1 text-sm text-red-500">{errors.endDate}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Team Email ID
+                Start Date <span className="text-red-500">*</span>
               </label>
               <input
-                type="email"
-                name="teamEmailId"
-                value={formData.teamEmailId}
+                type="date"
+                name="startDate"
+                value={formData.startDate}
                 onChange={handleChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Enter team email ID"
+                className={`mt-1 block w-full rounded-md border ${
+                  errors.startDate ? 'border-red-500' : 'border-gray-300'
+                } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
               />
+              {errors.startDate && (
+                <p className="mt-1 text-sm text-red-500">{errors.startDate}</p>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Reason for leave <span className="text-red-500">*</span>
+                End Date <span className="text-red-500">*</span>
               </label>
-              <textarea
-                name="reason"
-                value={formData.reason}
+              <input
+                type="date"
+                name="endDate"
+                value={formData.endDate}
                 onChange={handleChange}
-                rows={4}
+                min={formData.startDate}
                 className={`mt-1 block w-full rounded-md border ${
-                  errors.reason ? 'border-red-500' : 'border-gray-300'
+                  errors.endDate ? 'border-red-500' : 'border-gray-300'
                 } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
-                placeholder="Enter reason for leave"
               />
-              {errors.reason && (
-                <p className="mt-1 text-sm text-red-500">{errors.reason}</p>
+              {errors.endDate && (
+                <p className="mt-1 text-sm text-red-500">{errors.endDate}</p>
               )}
             </div>
+          </div>
+
+          {/* <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Team Email ID
+            </label>
+            <input
+              type="email"
+              name="teamEmailId"
+              value={formData.teamEmailId}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder="Enter team email ID"
+            />
+          </div> */}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Reason for leave <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              name="reason"
+              value={formData.reason}
+              onChange={handleChange}
+              rows={4}
+              className={`mt-1 block w-full rounded-md border ${
+                errors.reason ? 'border-red-500' : 'border-gray-300'
+              } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
+              placeholder="Enter reason for leave"
+            />
+            {errors.reason && (
+              <p className="mt-1 text-sm text-red-500">{errors.reason}</p>
+            )}
           </div>
 
           <div className="flex justify-end space-x-4 pt-4">
@@ -217,14 +213,23 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
               type="button"
               onClick={onClose}
               className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              disabled={loading}
             >
-              Submit
+              {loading ? (
+                <div className="flex items-center">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Submitting...
+                </div>
+              ) : (
+                'Submit'
+              )}
             </button>
           </div>
         </form>
