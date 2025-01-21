@@ -1,0 +1,43 @@
+import axios from "axios"
+
+const BASE_URL = "http://localhost:8080/api/leave-type"
+
+export const leaveTypeService = {
+  getLeaveTypesByOrgId: async (orgId) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/org/${orgId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  createLeaveType: async (leaveTypeData) => {
+    try {
+      console.log(leaveTypeData)
+      const response = await axios.post(`${BASE_URL}/`, leaveTypeData);
+      console.log("response", response);
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  updateLeaveType: async (leaveTypeData) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/`, leaveTypeData)
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  deleteLeaveType: async (id) => {
+    try {
+      const response = await axios.delete(`${BASE_URL}/${id}`)
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+}

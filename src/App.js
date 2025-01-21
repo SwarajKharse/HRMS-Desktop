@@ -1,6 +1,9 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
+import PrivateRoute from './components/PrivateRoute';
+
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -9,7 +12,13 @@ import Onboarding from './pages/Onboarding';
 import LeaveTracker from './pages/LeaveTracker';
 import Attendance from './pages/Attendance';
 import Payroll from './pages/Payroll';
-import PrivateRoute from './components/PrivateRoute';
+
+import Settings from './pages/Settings';
+import OrganizationSettings from './pages/settings/OrganizationSettings';
+import LeaveTrackerSettings from './pages/settings/LeaveTrackerSettings';
+import ShiftSettings from './pages/settings/ShiftSettings';
+import AttendanceSettings from './pages/settings/AttendanceSettings';
+import HolidaySettings from './pages/settings/HolidaySettings';
 
 function App() {
   return (
@@ -53,6 +62,57 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <Payroll />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route path="/settings" element={
+              <PrivateRoute>
+                <Layout>
+                  <Settings />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route
+              path="/settings/organization"
+              element={
+                <PrivateRoute>
+                  <Layout>
+                    <OrganizationSettings />
+                  </Layout>
+                </PrivateRoute>
+              }
+            />
+
+            <Route path="/settings/leave-tracker" element={
+              <PrivateRoute>
+                <Layout>
+                  <LeaveTrackerSettings />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route path="/settings/attendance" element={
+              <PrivateRoute>
+                <Layout>
+                  <AttendanceSettings />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route path="/settings/shift" element={
+              <PrivateRoute>
+                <Layout>
+                  <ShiftSettings />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route path="/settings/holiday" element={
+              <PrivateRoute>
+                <Layout>
+                  <HolidaySettings />
                 </Layout>
               </PrivateRoute>
             } />

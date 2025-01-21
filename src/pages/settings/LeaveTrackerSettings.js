@@ -1,0 +1,173 @@
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { FiPlus, FiFileText } from "react-icons/fi"
+import { leaveTypeService } from "../../services/leaveTypeService"
+import LeaveTypeForm from "../../components/LeaveType/LeaveTypeForm";
+import { authService } from "../../services/authService";
+
+function LeaveSettings() {
+  const [leaveTypes, setLeaveTypes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [selectedLeaveType, setSelectedLeaveType] = useState(null)
+
+  const orgId = authService.getUser().orgId;
+
+  useEffect(() => {
+    fetchLeaveTypes()
+  }, [])
+
+  const fetchLeaveTypes = async () => {
+    try {
+      const data = await leaveTypeService.getLeaveTypesByOrgId(orgId)
+      setLeaveTypes(data)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStatusChange = async (leaveType) => {
+    try {
+      await leaveTypeService.updateLeaveType({
+        ...leaveType,
+        active: !leaveType.active,
+      })
+      await fetchLeaveTypes()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  const handleEdit = (leaveType) => {
+    setSelectedLeaveType(leaveType)
+    setShowForm(true)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+          <FiFileText className="w-6 h-6 text-gray-600" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Leave Settings</h1>
+          <p className="text-sm text-gray-500">Configure leave types and policies</p>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-4">
+        <button
+          onClick={() => {
+            setSelectedLeaveType(null)
+            setShowForm(true)
+          }}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center"
+        >
+          <FiPlus className="mr-2" />
+          Add Leave Policy
+        </button>
+      </div>
+
+      {error && <div className="bg-red-50 text-red-500 p-4 rounded-md">{error}</div>}
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Leave policy
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Policy type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {leaveTypes.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                    No leave types found
+                  </td>
+                </tr>
+              ) : (
+                leaveTypes.map((leaveType) => (
+                  <motion.tr
+                    key={leaveType.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleEdit(leaveType)}
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div
+                          className="w-4 h-4 rounded mr-3"
+                          style={{ backgroundColor: leaveType.color || "#e5e7eb" }}
+                        ></div>
+                        <div className="text-sm font-medium text-gray-900">{leaveType.name}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100">
+                        {leaveType.leaveCategory}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Experience based</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{leaveType.unit}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={leaveType.active}
+                          onChange={(e) => {
+                            e.stopPropagation()
+                            handleStatusChange(leaveType)
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </td>
+                  </motion.tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showForm && (
+          <LeaveTypeForm
+            leaveType={selectedLeaveType}
+            orgId={orgId}
+            onClose={() => {
+              setShowForm(false)
+              setSelectedLeaveType(null)
+            }}
+            onSubmit={fetchLeaveTypes}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+export default LeaveSettings;
