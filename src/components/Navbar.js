@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiSearch, FiBell, FiSettings, FiUser, FiLogOut } from 'react-icons/fi';
 import { authService } from '../services/authService';
 import { useNotifications } from '../contexts/NotificationsContext';
 import { format } from 'date-fns';
+import { useAuth } from '../contexts/AuthContext'; // Import useAuth
+import { fetchEmployee } from '../services/api'; // Import fetchEmployee
 
-function NotificationsPanel() {
+function NotificationsPanel({ setActiveDropdown }) {
   const { 
     notifications, 
     markAsRead, 
@@ -14,73 +17,83 @@ function NotificationsPanel() {
     clearAllNotifications 
   } = useNotifications();
 
-  if (notifications.length === 0) {
-    return (
-      <div className="p-4">
-        <p className="text-gray-500 text-sm">No new notifications</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-80 max-h-[70vh] overflow-y-auto">
-      <div className="p-2 border-b border-gray-200 flex justify-between items-center">
+    <div className="w-[400px] max-h-[80vh] overflow-y-auto bg-white rounded-lg shadow-lg border border-gray-200">
+      <div className="sticky top-0 z-10 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
         <h3 className="font-medium">Notifications</h3>
-        <div className="flex gap-2">
+        <div className="flex gap-4">
           <button
-            onClick={markAllAsRead}
-            className="text-xs text-blue-600 hover:text-blue-700"
+            onClick={() => {
+              markAllAsRead();
+              setActiveDropdown(null);
+            }}
+            className="text-sm text-blue-600 hover:text-blue-700"
           >
             Mark all as read
           </button>
           <button
-            onClick={clearAllNotifications}
-            className="text-xs text-red-600 hover:text-red-700"
+            onClick={() => {
+              clearAllNotifications();
+              setActiveDropdown(null);
+            }}
+            className="text-sm text-red-600 hover:text-red-700"
           >
             Clear all
           </button>
         </div>
       </div>
-      <div className="divide-y divide-gray-200">
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className={`p-4 hover:bg-gray-50 transition-colors ${
-              !notification.read ? 'bg-blue-50' : ''
-            }`}
-          >
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900">
-                  {notification.title}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  {notification.body}
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {format(new Date(notification.timestamp), 'MMM d, yyyy h:mm a')}
-                </p>
-              </div>
-              <div className="flex gap-2 ml-4">
-                {!notification.read && (
+      {notifications.length === 0 ? (
+        <div className="p-4">
+          <p className="text-gray-500 text-sm">No new notifications</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-200">
+          {notifications.map((notification) => (
+            <div
+              key={notification.id}
+              className={`p-4 hover:bg-gray-50 transition-colors ${
+                !notification.read ? 'bg-blue-50' : ''
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">
+                    {notification.title}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {notification.body}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {format(new Date(notification.timestamp), 'MMM d, yyyy h:mm a')}
+                  </p>
+                </div>
+                <div className="flex gap-3 ml-4">
+                  {!notification.read && (
+                    <button
+                      onClick={() => {
+                        markAsRead(notification.id);
+                        setActiveDropdown(null);
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-700"
+                    >
+                      Mark as read
+                    </button>
+                  )}
                   <button
-                    onClick={() => markAsRead(notification.id)}
-                    className="text-xs text-blue-600 hover:text-blue-700"
+                    onClick={() => {
+                      clearNotification(notification.id);
+                      setActiveDropdown(null);
+                    }}
+                    className="text-sm text-red-600 hover:text-red-700"
                   >
-                    Mark as read
+                    Clear
                   </button>
-                )}
-                <button
-                  onClick={() => clearNotification(notification.id)}
-                  className="text-xs text-red-600 hover:text-red-700"
-                >
-                  Clear
-                </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -98,38 +111,47 @@ function Tooltip({ children, text }) {
   );
 }
 
-function Dropdown({ isOpen, onClose, children }) {
+function Dropdown({ isOpen, onClose, children, className }) {
+  if (!isOpen) return null;
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40"
-            onClick={onClose}
-          />
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="absolute right-0 top-full mt-2 w-48 rounded-lg bg-white shadow-lg z-50 overflow-hidden"
-          >
-            {children}
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    <>
+      <div
+        className="fixed inset-0 z-40"
+        onClick={onClose}
+      />
+      <div
+        className={`absolute right-0 top-full mt-2 rounded-lg bg-white shadow-lg z-50 border border-gray-200 ${className}`}
+      >
+        {children}
+      </div>
+    </>
   );
 }
 
 function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const { notifications } = useNotifications();
+  const [userData, setUserData] = useState(null);
+  const { user } = useAuth();
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const navigate = useNavigate();
   
+  useEffect(() => {
+    const getUserData = async () => {
+      try {
+        if (user?.sub) {
+          const data = await fetchEmployee(user.sub);
+          setUserData(data);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+    getUserData();
+  }, [user]);
+
   const handleLogout = () => {
     authService.logout();
   };
@@ -177,7 +199,7 @@ function Navbar() {
             isOpen={activeDropdown === 'notifications'} 
             onClose={() => setActiveDropdown(null)}
           >
-            <NotificationsPanel />
+            <NotificationsPanel setActiveDropdown={setActiveDropdown} />
           </Dropdown>
         </div>
 
@@ -187,19 +209,13 @@ function Navbar() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              onClick={() => toggleDropdown('settings')}
+              // onClick={() => toggleDropdown('settings')}
+              onClick={() => navigate('/settings')}
             >
               <FiSettings size={20} />
             </motion.button>
           </Tooltip>
-          <Dropdown 
-            isOpen={activeDropdown === 'settings'} 
-            onClose={() => setActiveDropdown(null)}
-          >
-            <div className="p-4">
-              <p className="text-gray-500 text-sm">Settings coming soon</p>
-            </div>
-          </Dropdown>
+          
         </div>
 
         <div className="relative">
@@ -210,17 +226,30 @@ function Navbar() {
               className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
               onClick={() => toggleDropdown('profile')}
             >
-              <FiUser size={20} />
+              <div className="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center text-white text-sm">
+                {userData?.firstName?.[0]}{userData?.lastName?.[0]}
+              </div>
             </motion.button>
           </Tooltip>
           <Dropdown 
             isOpen={activeDropdown === 'profile'} 
             onClose={() => setActiveDropdown(null)}
+            className="w-80"
           >
             <div className="py-2">
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">John Doe</p>
-                <p className="text-xs text-gray-500">john.doe@example.com</p>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white">
+                    {userData?.firstName?.[0]}{userData?.lastName?.[0]}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">
+                      {userData ? `${userData.firstName} ${userData.lastName}` : 'Loading...'}
+                    </p>
+                    <p className="text-xs text-gray-500">{userData?.email}</p>
+                    <p className="text-xs text-gray-500">{userData?.designation?.name}</p>
+                  </div>
+                </div>
               </div>
               <button
                 onClick={handleLogout}

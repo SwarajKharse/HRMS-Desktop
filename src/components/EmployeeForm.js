@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiX } from 'react-icons/fi';
 import { employeeService } from '../services/employeeService';
+import { authService } from '../services/authService';
+import { departmentService } from '../services/departmentService';
+import { designationService } from '../services/designationService';
+import { roleService } from '../services/roleService';
 
-function EmployeeForm({ onClose, onSubmit }) {
+function EmployeeForm({ employee, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -22,18 +26,89 @@ function EmployeeForm({ onClose, onSubmit }) {
     sourceOfHire: '',
     dateOfJoining: '',
     workPhone: '',
-    aboutMe: ''
+    aboutMe: '',
+    designation: {
+      id: null
+    },
+    department: {
+      id: null
+    },
+    role: {
+      id: null
+    },
+    org :{
+      id: authService.getUser().orgId
+    }
   });
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  // Initialize form data when employee prop changes
+  useEffect(() => {
+    if (employee) {
+      setFormData({
+        ...employee,
+        dateOfBirth: employee.dateOfBirth ? new Date(employee.dateOfBirth).toISOString().split("T")[0] : "",
+        dateOfJoining: employee.dateOfJoining ? new Date(employee.dateOfJoining).toISOString().split("T")[0] : "",
+        department: {
+          id: employee.department?.id || null,
+        },
+        designation: {
+          id: employee.designation?.id || null,
+        },
+        role: {
+          id: employee.role?.id || 2,
+        },
+      })
+    }
+  }, [employee]);
+
+  useEffect(() => {
+    fetchDepartmentsAndDesignations()
+  }, [])
+
+  const fetchDepartmentsAndDesignations = async () => {
+    try {
+      const [deptData, desigData, roleData] = await Promise.all([
+        departmentService.getDepartmentsByOrgId(authService.getUser().orgId),
+        designationService.getDesignationsByOrgId(authService.getUser().orgId),
+        roleService.getRolesByOrgId(authService.getUser().orgId)
+      ])
+      setDepartments(deptData);
+      setDesignations(desigData);
+      setRoles(roleData);
+    } catch (err) {
+      setError("Failed to load departments and designations")
+      console.error(err)
+    } finally {
+      setDataLoading(false)
+    }
+  }
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+    const { name, value } = e.target
+
+    // Handle department and designation select changes
+    if (name === "department" || name === "designation" || name === "role") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: {
+          id: value || null,
+        },
+      }))
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }))
+    }
+
+    if (error) setError("")
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,10 +120,17 @@ function EmployeeForm({ onClose, onSubmit }) {
         ...formData,
         dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
         dateOfJoining: formData.dateOfJoining ? new Date(formData.dateOfJoining).toISOString() : null,
-        empStatus: 'PENDING' // Add default status
+        empStatus: 'Active' // Add default status
       };
   
-      const response = await employeeService.createEmployee(processedData);
+      let response
+      if (employee) {
+        // Update existing employee
+        response = await employeeService.updateEmployee(employee.id, processedData)
+      } else {
+        // Create new employee
+        response = await employeeService.createEmployee(processedData)
+      }
       await onSubmit(response); // Wait for parent component to handle the response
       onClose(); // Only close after successful submission and parent handling
     } catch (err) {
@@ -129,19 +211,21 @@ function EmployeeForm({ onClose, onSubmit }) {
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  name="password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                />
-              </div>
+              {!employee && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Password <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    name="password"
+                    required
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  />
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   First Name <span className="text-red-500">*</span>
@@ -296,16 +380,72 @@ function EmployeeForm({ onClose, onSubmit }) {
             </div>
           </div>
 
+          
+          <div className="space-y-4 rounded-lg bg-white border p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Department & Designation</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Department</label>
+                <select
+                  name="department"
+                  value={formData.department.id || ""}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Designation</label>
+                <select
+                  name="designation"
+                  value={formData.designation.id || ""}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select Designation</option>
+                  {designations.map((desig) => (
+                    <option key={desig.id} value={desig.id}>
+                      {desig.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Role</label>
+                <select
+                  name="role"
+                  value={formData.role.id || ""}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select Role</option>
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           {/* Employment Information Section */}
           <div className="space-y-4 rounded-lg bg-white/80 border p-4">
             <h3 className="font-semibold text-lg border-b pb-2">Employment Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Employee Type</label>
+                <label className="block text-sm font-medium text-gray-700">Employee Type <span className="text-red-500">*</span></label>
                 <select
                   name="empType"
                   value={formData.empType}
                   onChange={handleChange}
+                  required
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 >
                   <option value="">Select Type</option>
@@ -326,12 +466,13 @@ function EmployeeForm({ onClose, onSubmit }) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Date of Joining</label>
+                <label className="block text-sm font-medium text-gray-700">Date of Joining <span className="text-red-500">*</span></label>
                 <input
                   type="date"
                   name="dateOfJoining"
                   value={formData.dateOfJoining}
                   onChange={handleChange}
+                  required
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
               </div>
@@ -383,7 +524,7 @@ function EmployeeForm({ onClose, onSubmit }) {
                   Saving...
                 </div>
               ) : (
-                'Add Employee'
+                employee ? "Update Employee" : "Add Employee"
               )}
             </button>
           </div>
