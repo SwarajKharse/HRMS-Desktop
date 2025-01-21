@@ -17,7 +17,6 @@ import Settings from './pages/Settings';
 import OrganizationSettings from './pages/settings/OrganizationSettings';
 import LeaveTrackerSettings from './pages/settings/LeaveTrackerSettings';
 import ShiftSettings from './pages/settings/ShiftSettings';
-import AttendanceSettings from './pages/settings/AttendanceSettings';
 import HolidaySettings from './pages/settings/HolidaySettings';
 
 function App() {
@@ -89,14 +88,6 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <LeaveTrackerSettings />
-                </Layout>
-              </PrivateRoute>
-            } />
-
-            <Route path="/settings/attendance" element={
-              <PrivateRoute>
-                <Layout>
-                  <AttendanceSettings />
                 </Layout>
               </PrivateRoute>
             } />

@@ -33,13 +33,6 @@ function Settings() {
       link: '/settings/leave-tracker'
     },
     {
-      id: 'attendance',
-      name: 'Attendance',
-      icon: FiClock,
-      color: 'text-purple-500',
-      link: '/settings/attendance'
-    },
-    {
       id: 'shift',
       name: 'Shift',
       icon: FiFileText,
