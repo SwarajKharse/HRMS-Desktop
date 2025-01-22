@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:8080/api/leave';
+const BASE_URL = 'http://localhost:8080/api/leave-request';
 
 export const leaveService = {
   getLeavesByEmployeeId: async (empId) => {

@@ -1,83 +1,112 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { FiX, FiAlertCircle } from 'react-icons/fi';
-import { useAuth } from '../../contexts/AuthContext';
-import { leaveService } from '../../services/leaveService';
+import { useState, useEffect } from "react"
+import { motion } from "framer-motion"
+import { FiX, FiAlertCircle } from "react-icons/fi"
+import { differenceInDays, parseISO } from "date-fns"
+import { leaveService } from "../../services/leaveService";
+import { authService } from "../../services/authService";
 
-function LeaveForm({ isOpen, onClose, onSubmit }) {
-  const { user } = useAuth();
+function LeaveForm({ isOpen, onClose, onSubmit, leaveTypes }) {
   const [formData, setFormData] = useState({
-    employee: {
-      id: user?.sub
+    leaveType: {
+      id: "",
     },
-    leaveType: '',
-    startDate: '',
-    endDate: '',
-    reason: '',
-    status: 'PENDING'
-  });
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+    employee: {
+      id: authService.getUser().sub,
+    },
+    appliedDate: new Date().toISOString().split("T")[0],
+    startDate: "",
+    endDate: "",
+    duration: 0,
+    reason: "",
+    status: "PENDING",
+    managerComments: "",
+  })
 
-  const leaveTypes = [
-    'Casual Leave',
-    'Earned Leave',
-    'Sick Leave',
-    'Leave Without Pay',
-    'Paternity Leave',
-    'Sabbatical Leave'
-  ];
+  const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    if (formData.startDate && formData.endDate) {
+      const start = parseISO(formData.startDate)
+      const end = parseISO(formData.endDate)
+      const duration = differenceInDays(end, start) + 1 // Including both start and end dates
+      setFormData((prev) => ({
+        ...prev,
+        duration: duration > 0 ? duration : 0,
+      }))
+    }
+  }, [formData.startDate, formData.endDate])
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    if (errors[name]) {
-      setErrors(prev => ({
+    const { name, value } = e.target
+    setFormData((prev) => {
+      if (name === "leaveType") {
+        return {
+          ...prev,
+          leaveType: {
+            id: value,
+          },
+        }
+      }
+      return {
         ...prev,
-        [name]: ''
-      }));
+        [name]: value,
+      }
+    })
+
+    if (errors[name]) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }))
     }
-  };
+  }
 
   const validateForm = () => {
-    const newErrors = {};
-    if (!formData.leaveType) newErrors.leaveType = 'Leave type is required';
-    if (!formData.startDate) newErrors.startDate = 'Start date is required';
-    if (!formData.endDate) newErrors.endDate = 'End date is required';
-    if (!formData.reason) newErrors.reason = 'Reason is required';
-    return newErrors;
-  };
+    const newErrors = {}
+    if (!formData.leaveType.id) newErrors.leaveType = "Leave type is required"
+    if (!formData.startDate) newErrors.startDate = "Start date is required"
+    if (!formData.endDate) newErrors.endDate = "End date is required"
+    if (!formData.reason) newErrors.reason = "Reason is required"
+    if (formData.duration < 1) newErrors.endDate = "End date must be after or equal to start date"
+    return newErrors
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validateForm();
-    
+    e.preventDefault()
+    const newErrors = validateForm()
+
     if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
+      setErrors(newErrors)
+      return
     }
 
-    setLoading(true);
-    setError('');
+    setLoading(true)
+    setError("")
 
     try {
+      // Convert dates to proper format for backend
+      const submitData = {
+        ...formData,
+        appliedDate: new Date(formData.appliedDate).toISOString(),
+        startDate: new Date(formData.startDate).toISOString(),
+        endDate: new Date(formData.endDate).toISOString(),
+      }
+
       await leaveService.applyLeave(formData);
       if (onSubmit) {
         await onSubmit();
       }
       onClose();
     } catch (err) {
-      setError(err.message || 'Failed to apply leave');
+      setError(err.message || "Failed to apply leave")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
     <motion.div
@@ -94,10 +123,7 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
       >
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold">Apply Leave</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <FiX size={20} />
           </button>
         </div>
@@ -120,20 +146,20 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
             </label>
             <select
               name="leaveType"
-              value={formData.leaveType}
+              value={formData.leaveType.id}
               onChange={handleChange}
               className={`mt-1 block w-full rounded-md border ${
-                errors.leaveType ? 'border-red-500' : 'border-gray-300'
+                errors.leaveType ? "border-red-500" : "border-gray-300"
               } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
             >
               <option value="">Select</option>
-              {leaveTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
+              {leaveTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.name}
+                </option>
               ))}
             </select>
-            {errors.leaveType && (
-              <p className="mt-1 text-sm text-red-500">{errors.leaveType}</p>
-            )}
+            {errors.leaveType && <p className="mt-1 text-sm text-red-500">{errors.leaveType}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -146,13 +172,12 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
                 name="startDate"
                 value={formData.startDate}
                 onChange={handleChange}
+                min={new Date().toISOString().split("T")[0]}
                 className={`mt-1 block w-full rounded-md border ${
-                  errors.startDate ? 'border-red-500' : 'border-gray-300'
+                  errors.startDate ? "border-red-500" : "border-gray-300"
                 } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
               />
-              {errors.startDate && (
-                <p className="mt-1 text-sm text-red-500">{errors.startDate}</p>
-              )}
+              {errors.startDate && <p className="mt-1 text-sm text-red-500">{errors.startDate}</p>}
             </div>
 
             <div>
@@ -164,30 +189,22 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
                 name="endDate"
                 value={formData.endDate}
                 onChange={handleChange}
-                min={formData.startDate}
+                min={formData.startDate || new Date().toISOString().split("T")[0]}
                 className={`mt-1 block w-full rounded-md border ${
-                  errors.endDate ? 'border-red-500' : 'border-gray-300'
+                  errors.endDate ? "border-red-500" : "border-gray-300"
                 } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
               />
-              {errors.endDate && (
-                <p className="mt-1 text-sm text-red-500">{errors.endDate}</p>
-              )}
+              {errors.endDate && <p className="mt-1 text-sm text-red-500">{errors.endDate}</p>}
             </div>
           </div>
 
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Team Email ID
-            </label>
-            <input
-              type="email"
-              name="teamEmailId"
-              value={formData.teamEmailId}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Enter team email ID"
-            />
-          </div> */}
+          {formData.duration > 0 && (
+            <div className="bg-blue-50 p-3 rounded-md">
+              <p className="text-sm text-blue-700">
+                Duration: {formData.duration} day{formData.duration > 1 ? "s" : ""}
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -199,13 +216,11 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
               onChange={handleChange}
               rows={4}
               className={`mt-1 block w-full rounded-md border ${
-                errors.reason ? 'border-red-500' : 'border-gray-300'
+                errors.reason ? "border-red-500" : "border-gray-300"
               } px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500`}
               placeholder="Enter reason for leave"
             />
-            {errors.reason && (
-              <p className="mt-1 text-sm text-red-500">{errors.reason}</p>
-            )}
+            {errors.reason && <p className="mt-1 text-sm text-red-500">{errors.reason}</p>}
           </div>
 
           <div className="flex justify-end space-x-4 pt-4">
@@ -228,14 +243,14 @@ function LeaveForm({ isOpen, onClose, onSubmit }) {
                   Submitting...
                 </div>
               ) : (
-                'Submit'
+                "Submit"
               )}
             </button>
           </div>
         </form>
       </motion.div>
     </motion.div>
-  );
+  )
 }
 
 export default LeaveForm;
