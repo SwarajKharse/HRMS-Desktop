@@ -122,7 +122,7 @@ function ShiftSettings() {
                       {format(new Date(`2000-01-01T${shift?.endTime}`), "hh:mm a")}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {shift.graceTime > 0 ? `${shift?.graceTime} ${shift?.graceTimeUnit?.toLowerCase()}` : "-"}
+                      {shift.graceTime > 0 ? `${shift?.graceTime} minutes` : "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {shift.shiftAllowance ? `Rs. ${shift?.shiftAllowanceAmount?.toFixed(2)}` : "-"}

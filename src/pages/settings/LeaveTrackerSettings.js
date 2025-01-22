@@ -15,17 +15,17 @@ function LeaveSettings() {
   const orgId = authService.getUser().orgId;
 
   useEffect(() => {
-    fetchLeaveTypes()
+    fetchLeaveTypes();
   }, [])
 
   const fetchLeaveTypes = async () => {
     try {
-      const data = await leaveTypeService.getLeaveTypesByOrgId(orgId)
-      setLeaveTypes(data)
+      const data = await leaveTypeService.getLeaveTypesByOrgId(orgId);
+      setLeaveTypes(data);
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
@@ -42,8 +42,8 @@ function LeaveSettings() {
   }
 
   const handleEdit = (leaveType) => {
-    setSelectedLeaveType(leaveType)
-    setShowForm(true)
+    setSelectedLeaveType(leaveType);
+    setShowForm(true);
   }
 
   if (loading) {
@@ -94,9 +94,6 @@ function LeaveSettings() {
                   Policy type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -117,10 +114,6 @@ function LeaveSettings() {
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div
-                          className="w-4 h-4 rounded mr-3"
-                          style={{ backgroundColor: leaveType.color || "#e5e7eb" }}
-                        ></div>
                         <div className="text-sm font-medium text-gray-900">{leaveType.name}</div>
                       </div>
                     </td>
@@ -130,21 +123,7 @@ function LeaveSettings() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Experience based</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{leaveType.unit}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={leaveType.active}
-                          onChange={(e) => {
-                            e.stopPropagation()
-                            handleStatusChange(leaveType)
-                          }}
-                        />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{leaveType.accrualCount}</td>
                   </motion.tr>
                 ))
               )}

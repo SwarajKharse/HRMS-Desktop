@@ -62,7 +62,7 @@ function Settings() {
               <FiSettings className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">KK Industries Pvt. Ltd.</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Safety Saarthi</h1>
               <p className="text-sm text-gray-500">User License: 2/10</p>
             </div>
           </div>

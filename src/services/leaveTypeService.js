@@ -14,9 +14,7 @@ export const leaveTypeService = {
 
   createLeaveType: async (leaveTypeData) => {
     try {
-      console.log(leaveTypeData)
       const response = await axios.post(`${BASE_URL}/`, leaveTypeData);
-      console.log("response", response);
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
