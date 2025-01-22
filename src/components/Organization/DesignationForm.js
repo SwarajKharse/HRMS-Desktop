@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiX, FiAlertCircle } from "react-icons/fi";
 import { authService } from "../../services/authService";
+import { designationService } from "../../services/designationService";
 
 function DesignationForm({ designation, designations, orgId, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -38,8 +39,11 @@ function DesignationForm({ designation, designations, orgId, onClose, onSubmit }
     setError("")
 
     try {
-      await onSubmit(formData)
-      onClose()
+      const res = designationService[designation ? "updateDesignation" : "createDesignation"](formData);
+      if(res){
+        await onSubmit(formData);
+        onClose();
+      }
     } catch (err) {
       setError(err.message || "Failed to save designation")
     } finally {

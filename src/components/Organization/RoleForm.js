@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { FiX, FiAlertCircle } from "react-icons/fi"
 import { roleService } from "../../services/roleService"
-import { authService } from "../../services/authService"
+import { authService } from "../../services/authService";
 
 function RoleForm({ role, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
