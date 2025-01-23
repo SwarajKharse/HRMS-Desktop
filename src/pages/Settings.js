@@ -33,13 +33,6 @@ function Settings() {
       link: '/settings/leave-tracker'
     },
     {
-      id: 'shift',
-      name: 'Shift',
-      icon: FiFileText,
-      color: 'text-red-500',
-      link: '/settings/shift'
-    },
-    {
       id: "holiday", 
       name: 'Holiday Settings',
       icon: FiCalendar,

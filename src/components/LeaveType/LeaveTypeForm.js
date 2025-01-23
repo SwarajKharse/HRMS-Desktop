@@ -10,8 +10,6 @@ function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
     effectiveAfterCount: 0,
     effectiveAfterUnit: "months",
     accrualCount: 0,
-    accrualDate: "1st",
-    accrualMonth: "jan",
     description: "",
     org: {
       id: orgId,
@@ -47,8 +45,8 @@ function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
     try {
       const res = leaveTypeService.createLeaveType(formData);
       if(res !== null) {
-        await onSubmit();
-        await onClose();
+        onClose();
+        onSubmit();
       }
     } catch (err) {
       setError(err.message || "Failed to save leave type");
@@ -58,8 +56,6 @@ function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
     }
   }
 
-  const accrualDates = ["1st", "2nd", "3rd", "4th"]
-  const accrualMonths = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
   const leaveCategories = ["Sick Leave", "Casual Leave", "Earned Leave", "Other"]
 
   return (
@@ -166,36 +162,6 @@ function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Accrual Date</label>
-                <select
-                  name="accrualDate"
-                  value={formData.accrualDate}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  {accrualDates.map((date) => (
-                    <option key={date} value={date}>
-                      {date}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Accrual Month</label>
-                <select
-                  name="accrualMonth"
-                  value={formData.accrualMonth}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  {accrualMonths.map((month) => (
-                    <option key={month} value={month}>
-                      {month.charAt(0).toUpperCase() + month.slice(1)}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
 

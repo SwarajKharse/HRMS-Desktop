@@ -16,7 +16,6 @@ import Payroll from './pages/Payroll';
 import Settings from './pages/Settings';
 import OrganizationSettings from './pages/settings/OrganizationSettings';
 import LeaveTrackerSettings from './pages/settings/LeaveTrackerSettings';
-import ShiftSettings from './pages/settings/ShiftSettings';
 import HolidaySettings from './pages/settings/HolidaySettings';
 
 function App() {
@@ -91,15 +90,7 @@ function App() {
                 </Layout>
               </PrivateRoute>
             } />
-
-            <Route path="/settings/shift" element={
-              <PrivateRoute>
-                <Layout>
-                  <ShiftSettings />
-                </Layout>
-              </PrivateRoute>
-            } />
-
+            
             <Route path="/settings/holiday" element={
               <PrivateRoute>
                 <Layout>

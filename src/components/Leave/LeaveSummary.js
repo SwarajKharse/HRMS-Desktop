@@ -32,7 +32,7 @@ import {
 } from "date-fns"
 import LeaveCard from "./LeaveCard"
 import { leaveService } from "../../services/leaveService"
-import { leaveTypeService } from "../../services/leaveTypeService"
+import { leaveBalanceService } from "../../services/leaveBalanceService"
 import LeaveForm from "./LeaveForm"
 import { authService } from "../../services/authService"
 
@@ -79,31 +79,22 @@ function LeaveSummary() {
     try {
       if (user?.sub && user?.orgId) {
         const [leaveTypesData, leavesData] = await Promise.all([
-          leaveTypeService.getLeaveTypesByOrgId(user.orgId),
+          leaveBalanceService.getLeaveTypesByEmpId(user.sub),
           leaveService.getLeavesByEmployeeId(user.sub),
         ]);
 
         // Transform leave types data
         const transformedLeaveTypes = leaveTypesData.map((type) => {
-          const style = categoryStyles[type.leaveCategory] || categoryStyles["Other"]
+          const style = categoryStyles[type.leaveType.leaveCategory] || categoryStyles["Other"]
           return {
             id: type.id,
-            title: type.name,
-            category: type.leaveCategory,
+            title: type.leaveType.name,
+            category: type.leaveType.leaveCategory,
             icon: style.icon,
             color: style.color,
             calendarColor: style.calendarColor,
-            available: type.accrualCount || 0,
-            booked: 0, // Will be updated in updateLeaveTypeCounts
-            effectiveAfter: {
-              count: type.effectiveAfterCount,
-              unit: type.effectiveAfterUnit,
-            },
-            accrual: {
-              count: type.accrualCount,
-              date: type.accrualDate,
-              month: type.accrualMonth,
-            },
+            available: type.leaveType.accrualCount,
+            booked: type.balance, // Will be updated in updateLeaveTypeCounts
           }
         })
 

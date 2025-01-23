@@ -12,11 +12,11 @@ function LeaveSettings() {
   const [showForm, setShowForm] = useState(false)
   const [selectedLeaveType, setSelectedLeaveType] = useState(null)
 
-  const orgId = authService.getUser().orgId;
+  const [orgId] = useState(authService.getUser().orgId);
 
   useEffect(() => {
     fetchLeaveTypes();
-  }, [])
+  }, [orgId])
 
   const fetchLeaveTypes = async () => {
     try {
@@ -26,18 +26,6 @@ function LeaveSettings() {
       setError(err.message);
     } finally {
       setLoading(false);
-    }
-  }
-
-  const handleStatusChange = async (leaveType) => {
-    try {
-      await leaveTypeService.updateLeaveType({
-        ...leaveType,
-        active: !leaveType.active,
-      })
-      await fetchLeaveTypes()
-    } catch (err) {
-      setError(err.message)
     }
   }
 
