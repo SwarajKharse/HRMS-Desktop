@@ -20,7 +20,7 @@ function LeaveForm({ isOpen, onClose, onSubmit, leaveTypes }) {
     reason: "",
     status: "PENDING",
     managerComments: "",
-  })
+  });
 
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
@@ -94,7 +94,7 @@ function LeaveForm({ isOpen, onClose, onSubmit, leaveTypes }) {
         endDate: new Date(formData.endDate).toISOString(),
       }
 
-      await leaveService.applyLeave(formData);
+      await leaveService.applyLeave(submitData);
       if (onSubmit) {
         await onSubmit();
       }

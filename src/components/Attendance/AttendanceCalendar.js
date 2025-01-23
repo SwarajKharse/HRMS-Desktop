@@ -95,7 +95,7 @@ function AttendanceCalendar({ data }) {
   };
 
   return (
-    <div className="space-y-4 bg-white rounded-lg border border-gray-200 p-4">
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
       {/* Calendar Header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-2">
