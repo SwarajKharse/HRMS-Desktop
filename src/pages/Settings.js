@@ -39,6 +39,13 @@ function Settings() {
       color: 'text-blue-500',
       link: '/settings/holiday'
     },
+    {
+      id: "geoFencing", 
+      name: 'Geo Fencing Settings',
+      icon: FiCalendar,
+      color: 'text-red-500',
+      link: '/settings/geoFencing'
+    },
   ];
 
   const filteredServices = services.filter(service =>

@@ -17,6 +17,7 @@ import Settings from './pages/Settings';
 import OrganizationSettings from './pages/settings/OrganizationSettings';
 import LeaveTrackerSettings from './pages/settings/LeaveTrackerSettings';
 import HolidaySettings from './pages/settings/HolidaySettings';
+import GeoFencingSettings from './pages/settings/GeoFencingSettings';
 
 function App() {
   return (
@@ -95,6 +96,14 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <HolidaySettings />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route path="/settings/geoFencing" element={
+              <PrivateRoute>
+                <Layout>
+                  <GeoFencingSettings />
                 </Layout>
               </PrivateRoute>
             } />
