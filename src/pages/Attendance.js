@@ -21,7 +21,6 @@ function Attendance() {
             totalHours: null,
             payableHours: '08:00',
             status: 'Weekend',
-            shift: 'Kharade',
             regularization: null
           },
           {
@@ -31,7 +30,6 @@ function Attendance() {
             totalHours: null,
             payableHours: null,
             status: 'Absent',
-            shift: 'General',
             regularization: null
           },
           // Add more mock data as needed

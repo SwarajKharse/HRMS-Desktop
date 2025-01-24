@@ -48,7 +48,6 @@ function Register() {
     department: null,
     designation: null,
     role: null,
-    shift: null,
   })
 
   const [error, setError] = useState("")
