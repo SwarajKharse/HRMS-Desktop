@@ -49,12 +49,12 @@ function LeaveSummary() {
 
   // Map of leave categories to icons and colors
   const categoryStyles = {
-    "Sick Leave": {
+    "Paid": {
       icon: <FiActivity className="w-6 h-6 text-purple-600" />,
       color: "bg-purple-100",
       calendarColor: "bg-purple-100 text-purple-800 border-purple-200",
     },
-    "Casual Leave": {
+    "Unpaid": {
       icon: <FiSun className="w-6 h-6 text-blue-600" />,
       color: "bg-blue-100",
       calendarColor: "bg-blue-100 text-blue-800 border-blue-200",
@@ -87,42 +87,25 @@ function LeaveSummary() {
         const transformedLeaveTypes = leaveTypesData.map((type) => {
           const style = categoryStyles[type.leaveType.leaveCategory] || categoryStyles["Other"]
           return {
-            id: type.id,
+            id: type.leaveType.id,
             title: type.leaveType.name,
             category: type.leaveType.leaveCategory,
             icon: style.icon,
             color: style.color,
             calendarColor: style.calendarColor,
             available: type.leaveType.accrualCount,
-            booked: type.balance, // Will be updated in updateLeaveTypeCounts
+            balance: type.balance, 
           }
         })
 
-        setLeaveTypes(transformedLeaveTypes)
-        setLeaves(leavesData)
-        updateLeaveTypeCounts(leavesData, transformedLeaveTypes)
+        setLeaveTypes(transformedLeaveTypes);
+        setLeaves(leavesData);
       }
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
-  }
-
-  const updateLeaveTypeCounts = (leaveData, types) => {
-    const counts = {}
-    leaveData.forEach((leave) => {
-      if (leave.status === "APPROVED") {
-        counts[leave.leaveType] = (counts[leave.leaveType] || 0) + 1
-      }
-    })
-
-    setLeaveTypes(
-      types.map((type) => ({
-        ...type,
-        booked: counts[type.title] || 0,
-      })),
-    )
   }
 
   // Calendar calculations

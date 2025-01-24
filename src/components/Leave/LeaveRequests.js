@@ -19,7 +19,6 @@ function LeaveRequests() {
     try {
       if (user?.sub) {
         const data = await leaveService.getLeavesByEmployeeId(user.sub)
-        console.log("Leave Requests:", data)
         setLeaveRequests(data)
       }
     } catch (err) {

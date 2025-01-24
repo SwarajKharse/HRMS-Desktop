@@ -1,6 +1,6 @@
 import { motion } from "framer-motion"
 
-function LeaveCard({ title, icon, color, available, booked }) {
+function LeaveCard({ title, icon, color, available, balance }) {
   return (
     <motion.div whileHover={{ scale: 1.02 }} className={`${color} rounded-lg p-4 space-y-2`}>
       <div className="flex items-center justify-between">
@@ -12,8 +12,8 @@ function LeaveCard({ title, icon, color, available, booked }) {
         <span className="font-medium text-gray-900">{available}</span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="text-gray-600">Booked</span>
-        <span className="font-medium text-gray-900">{booked}</span>
+        <span className="text-gray-600">Balance</span>
+        <span className="font-medium text-gray-900">{balance}</span>
       </div>
     </motion.div>
   )

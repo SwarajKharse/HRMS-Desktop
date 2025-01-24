@@ -56,7 +56,7 @@ function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
     }
   }
 
-  const leaveCategories = ["Sick Leave", "Casual Leave", "Earned Leave", "Other"]
+  const leaveCategories = ["Paid", "Unpaid"];
 
   return (
     <motion.div
