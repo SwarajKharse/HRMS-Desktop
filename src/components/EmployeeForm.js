@@ -27,6 +27,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     dateOfJoining: '',
     workPhone: '',
     aboutMe: '',
+    isGeofenced: true,
     designation: {
       id: null
     },
@@ -50,6 +51,10 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
   // Initialize form data when employee prop changes
   useEffect(() => {
     if (employee) {
+      // Now we are getting the complete employee object from the parent component, 
+      // But later, we need to fetch it from the API using the ID
+      // write the code to fetch the employee object from the API using the ID
+      // and set the employee object in the state
       setFormData({
         ...employee,
         dateOfBirth: employee.dateOfBirth ? new Date(employee.dateOfBirth).toISOString().split("T")[0] : "",
@@ -61,7 +66,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
           id: employee.designation?.id || null,
         },
         role: {
-          id: employee.role?.id || 2,
+          id: employee.role?.id || null,
         },
       })
     }
@@ -118,6 +123,9 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     try {
       const processedData = {
         ...formData,
+        department: formData.department.id ? { id: formData.department.id } : null,
+        designation: formData.designation.id ? { id: formData.designation.id } : null,
+        role: formData.role.id ? { id: formData.role.id } : null,
         dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
         dateOfJoining: formData.dateOfJoining ? new Date(formData.dateOfJoining).toISOString() : null,
         empStatus: 'Active' // Add default status
@@ -178,7 +186,20 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                 sourceOfHire: '',
                 dateOfJoining: '',
                 workPhone: '',
-                aboutMe: ''
+                isGeofenced: true,
+                aboutMe: '',
+                designation: {
+                  id: null
+                },
+                department: {
+                  id: null
+                },
+                role: {
+                  id: null
+                },
+                org :{
+                  id: authService.getUser().orgId
+                }
               })}
               className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md"
             >
