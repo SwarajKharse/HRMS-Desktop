@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { FiX, FiAlertCircle } from "react-icons/fi"
 import { differenceInDays, parseISO } from "date-fns"
-import { leaveService } from "../../services/leaveService";
+import { leaveRequestService } from "../../services/leaveRequestService";
 import { authService } from "../../services/authService";
 
 function LeaveForm({ isOpen, onClose, onSubmit, leaveTypes }) {
@@ -94,7 +94,7 @@ function LeaveForm({ isOpen, onClose, onSubmit, leaveTypes }) {
         endDate: new Date(formData.endDate).toISOString(),
       }
 
-      await leaveService.applyLeave(submitData);
+      await leaveRequestService.applyLeave(submitData);
       if (onSubmit) {
         await onSubmit();
       }

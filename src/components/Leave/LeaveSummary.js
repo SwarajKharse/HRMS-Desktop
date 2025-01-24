@@ -31,7 +31,7 @@ import {
   isFuture,
 } from "date-fns"
 import LeaveCard from "./LeaveCard"
-import { leaveService } from "../../services/leaveService"
+import { leaveRequestService } from "../../services/leaveRequestService"
 import { leaveBalanceService } from "../../services/leaveBalanceService"
 import LeaveForm from "./LeaveForm"
 import { authService } from "../../services/authService"
@@ -80,7 +80,7 @@ function LeaveSummary() {
       if (user?.sub && user?.orgId) {
         const [leaveTypesData, leavesData] = await Promise.all([
           leaveBalanceService.getLeaveTypesByEmpId(user.sub),
-          leaveService.getLeavesByEmployeeId(user.sub),
+          leaveRequestService.getLeavesByEmployeeId(user.sub),
         ]);
 
         // Transform leave types data
@@ -125,7 +125,7 @@ function LeaveSummary() {
 
   const handleLeaveSubmit = async (leaveData) => {
     try {
-      await leaveService.applyLeave(leaveData)
+      await leaveRequestService.applyLeave(leaveData)
       setShowLeaveForm(false)
       fetchData() // Refresh both leaves and counts
     } catch (error) {

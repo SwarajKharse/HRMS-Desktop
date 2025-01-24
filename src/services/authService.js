@@ -7,8 +7,6 @@ export const authService = {
   login: async (email, password) => {
     try {
       const fcmToken = await requestFCMToken();
-      console.log(fcmToken);
-      console.log("current time: ", new Date().getTime());
       
       // Changed to send data in request body instead of query params
       const response = await axios.post(`${BASE_URL}/login`, {

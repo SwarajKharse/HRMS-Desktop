@@ -3,7 +3,7 @@ import { motion } from "framer-motion"
 import { format, differenceInDays } from "date-fns"
 import { FiCheck, FiX, FiClock, FiAlertCircle } from "react-icons/fi"
 import { authService } from "../../services/authService"
-import { leaveService } from "../../services/leaveService"
+import { leaveRequestService } from "../../services/leaveRequestService"
 
 function LeaveRequests() {
   const [leaveRequests, setLeaveRequests] = useState([]);
@@ -18,7 +18,7 @@ function LeaveRequests() {
   const fetchLeaveRequests = async () => {
     try {
       if (user?.sub) {
-        const data = await leaveService.getLeavesByEmployeeId(user.sub)
+        const data = await leaveRequestService.getLeavesByEmployeeId(user.sub)
         setLeaveRequests(data)
       }
     } catch (err) {
@@ -36,6 +36,8 @@ function LeaveRequests() {
         return "bg-red-100 text-red-800"
       case "pending":
         return "bg-yellow-100 text-yellow-800"
+      case "Pending HR":
+        return "bg-blue-100 text-blue-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
