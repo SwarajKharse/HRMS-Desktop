@@ -131,8 +131,11 @@ function Onboarding() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-10 w-10 rounded-full bg-blue-900 flex items-center justify-center text-white">
-                        {employee.firstName.charAt(0)}
-                        {employee.lastName.charAt(0)}
+                        {employee.profilePhotoUrl ? (
+                          <img src={employee.profilePhotoUrl} alt="Profile" className="h-10 w-10 rounded-full" />
+                        ) : (
+                          <span>{employee.firstName.charAt(0)}{employee.lastName.charAt(0)}</span>
+                        )}
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">

@@ -227,7 +227,15 @@ function Navbar() {
               onClick={() => toggleDropdown('profile')}
             >
               <div className="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center text-white text-sm">
-                {userData?.firstName?.[0]}{userData?.lastName?.[0]}
+                {userData?.profilePhotoUrl ? (
+                  <img
+                    src={userData.profilePhotoUrl}
+                    alt="Profile"
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                ) : (
+                  `${userData?.firstName?.[0]}${userData?.lastName?.[0]}`.toUpperCase()
+                )}
               </div>
             </motion.button>
           </Tooltip>
@@ -240,7 +248,15 @@ function Navbar() {
               <div className="px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-blue-900 flex items-center justify-center text-white">
-                    {userData?.firstName?.[0]}{userData?.lastName?.[0]}
+                    {userData?.profilePhotoUrl ? (
+                      <img
+                        src={userData.profilePhotoUrl}
+                        alt="Profile"
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : (
+                      `${userData?.firstName?.[0]}${userData?.lastName?.[0]}`.toUpperCase()
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">

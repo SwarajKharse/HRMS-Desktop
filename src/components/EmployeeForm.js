@@ -6,6 +6,7 @@ import { authService } from '../services/authService';
 import { departmentService } from '../services/departmentService';
 import { designationService } from '../services/designationService';
 import { roleService } from '../services/roleService';
+import ImageUploader from "./ImageUploader";
 
 function EmployeeForm({ employee, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -14,6 +15,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     firstName: '',
     middleName: '',
     lastName: '',
+    profileImage: employee?.profileImage || null,
     dateOfBirth: '',
     gender: '',
     maritalStatus: '',
@@ -283,6 +285,19 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   value={formData.middleName}
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+              {/* Add this inside the form, after the Basic Information section */}
+              <div className="space-y-4 rounded-lg bg-gray-50 p-4">
+                <h3 className="font-semibold text-lg border-b pb-2">Profile Photo</h3>
+                <ImageUploader
+                  currentImage={formData.profileImage}
+                  onImageSelect={(imageData) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      profileImage: imageData
+                    }));
+                  }}
                 />
               </div>
             </div>

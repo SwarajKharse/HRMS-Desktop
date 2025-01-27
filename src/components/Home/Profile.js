@@ -29,8 +29,9 @@ function Profile({ employee }) {
       >
         <div className="flex items-center space-x-4">
           <div className="h-20 w-20 rounded-full bg-blue-900 flex items-center justify-center text-white text-2xl">
-            {getValue(employee?.firstName, "?")?.charAt(0)}
-            {getValue(employee?.lastName, "")?.charAt(0)}
+            {employee.profilePhotoUrl ? (
+              <img src={employee.profilePhotoUrl} alt="Profile" className="w-full h-full object-cover rounded-full" />
+            ) : employee.firstName.charAt(0).toUpperCase() + employee.lastName.charAt(0).toUpperCase()}
           </div>
           <div>
             <h1 className="text-2xl font-bold">
