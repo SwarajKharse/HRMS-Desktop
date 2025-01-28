@@ -12,6 +12,7 @@ import Onboarding from './pages/Onboarding';
 import LeaveTracker from './pages/LeaveTracker';
 import Attendance from './pages/Attendance';
 import Payroll from './pages/Payroll';
+import Reports from './pages/Reports';
 
 import Settings from './pages/Settings';
 import OrganizationSettings from './pages/settings/OrganizationSettings';
@@ -104,6 +105,14 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <GeoFencingSettings />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route path="/reports" element={
+              <PrivateRoute>
+                <Layout>
+                  <Reports />
                 </Layout>
               </PrivateRoute>
             } />

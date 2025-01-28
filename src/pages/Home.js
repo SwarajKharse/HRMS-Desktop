@@ -6,6 +6,7 @@ import Activities from "../components/Home/Activities"
 import Profile from "../components/Home/Profile"
 import LeaveApprovals from "../components/Home/LeaveApprovals"
 import AttendanceKiosk from "../components/Home/AttendanceKiosk"
+import MissPunchApprovals from "../components/Home/MissPunchApprovals"
 
 function Home() {
   const [activeTab, setActiveTab] = useState("activities")
@@ -57,6 +58,7 @@ function Home() {
     { id: "profile", label: "Profile" },
     { id: "leave-approvals", label: "Leave Approvals" },
     { id: "attendance-kiosk", label: "Attendance Kiosk" },
+    { id: "miss-punch", label: "Miss Punch" },
   ]
 
   return (
@@ -94,6 +96,7 @@ function Home() {
           {activeTab === "profile" && <Profile employee={employee} />}
           {activeTab === "leave-approvals" && <LeaveApprovals />}
           {activeTab === "attendance-kiosk" && <AttendanceKiosk />}
+          {activeTab === "miss-punch" && <MissPunchApprovals />}
         </motion.div>
       </AnimatePresence>
     </div>

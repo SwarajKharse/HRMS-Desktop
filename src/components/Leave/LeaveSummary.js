@@ -49,20 +49,20 @@ function LeaveSummary() {
 
   // Map of leave categories to icons and colors
   const categoryStyles = {
-    "Paid": {
-      icon: <FiActivity className="w-6 h-6 text-purple-600" />,
-      color: "bg-purple-100",
-      calendarColor: "bg-purple-100 text-purple-800 border-purple-200",
+    Paid: {
+      icon: <FiActivity className="w-6 h-6 text-emerald-600" />,
+      color: "bg-emerald-100",
+      calendarColor: "bg-emerald-100 text-emerald-800 border-emerald-200",
     },
-    "Unpaid": {
-      icon: <FiSun className="w-6 h-6 text-blue-600" />,
-      color: "bg-blue-100",
-      calendarColor: "bg-blue-100 text-blue-800 border-blue-200",
+    Unpaid: {
+      icon: <FiSun className="w-6 h-6 text-amber-600" />,
+      color: "bg-amber-100",
+      calendarColor: "bg-amber-100 text-amber-800 border-amber-200",
     },
     "Earned Leave": {
-      icon: <FiClock className="w-6 h-6 text-green-600" />,
-      color: "bg-green-100",
-      calendarColor: "bg-green-100 text-green-800 border-green-200",
+      icon: <FiClock className="w-6 h-6 text-blue-600" />,
+      color: "bg-blue-100",
+      calendarColor: "bg-blue-100 text-blue-800 border-blue-200",
     },
     Other: {
       icon: <FiInfo className="w-6 h-6 text-gray-600" />,
@@ -83,6 +83,7 @@ function LeaveSummary() {
           leaveRequestService.getLeavesByEmployeeId(user.sub),
         ]);
 
+        console.log(leavesData)
         // Transform leave types data
         const transformedLeaveTypes = leaveTypesData.map((type) => {
           const style = categoryStyles[type.leaveType.leaveCategory] || categoryStyles["Other"]
@@ -95,6 +96,7 @@ function LeaveSummary() {
             calendarColor: style.calendarColor,
             available: type.leaveType.accrualCount,
             balance: type.balance, 
+            status: type.status
           }
         })
 
@@ -168,25 +170,19 @@ function LeaveSummary() {
   }
 
   const getLeaveStatus = (leave) => {
-    if (leave.status === "APPROVED") {
-      return "Approved"
-    } else if (leave.status === "REJECTED") {
-      return "Rejected"
-    } else {
-      return "Pending"
-    }
+    return leave.status;
   }
 
   const getStatusColor = (status) => {
     switch (status) {
       case "Approved":
-        return "bg-green-100 text-green-800 border-green-200"
+        return "bg-emerald-100 text-emerald-800 border-emerald-200"
       case "Rejected":
-        return "bg-red-100 text-red-800 border-red-200"
+        return "bg-rose-100 text-rose-800 border-rose-200"
       case "Pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+        return "bg-amber-100 text-amber-800 border-amber-200"
       default:
-        return ""
+        return "bg-gray-100 text-gray-600 border-gray-200"
     }
   }
 
@@ -301,25 +297,21 @@ function LeaveSummary() {
                       <span className={`text-sm font-medium ${!isCurrentMonth ? "text-gray-400" : "text-gray-900"}`}>
                         {format(date, "d")}
                       </span>
-                      {dateLeaves.map((leave, leaveIndex) => {
-                        const leaveType = getLeaveTypeInfo(leave.leaveType?.id)
-                        const status = getLeaveStatus(leave)
-                        return (
-                          <div
-                            key={leaveIndex}
-                            className={`mt-1 p-1 rounded-md text-xs ${
-                              isFuture(date)
-                                ? leave.status === "APPROVED"
-                                  ? leaveType?.calendarColor
-                                  : getStatusColor("Pending")
-                                : getStatusColor(status)
-                            }`}
-                          >
-                            <div className="font-medium">{leave.leaveType?.name || "Unknown"}</div>
-                            <div>{status}</div>
-                          </div>
-                        )
-                      })}
+                      {dateLeaves.map((leave, leaveIndex) => (
+                        <div
+                          key={leaveIndex}
+                          className={`mt-1 p-1 rounded-md text-xs font-medium ${
+                            isFuture(date)
+                              ? leave.status === "Approved"
+                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                : "bg-amber-100 text-amber-800 border border-amber-200"
+                              : getStatusColor(leave.status)
+                          } hover:opacity-90 transition-opacity`}
+                        >
+                          <div className="font-medium truncate">{leave.leaveType?.name || "Unknown"}</div>
+                          <div className="text-[10px] opacity-90">{leave.status}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </motion.div>

@@ -21,6 +21,7 @@ function Sidebar() {
     { icon: FiUmbrella, label: 'Leave Tracker', path: '/leave-tracker' },
     { icon: FiCalendar, label: 'Attendance', path: '/attendance' },
     { icon: FiDollarSign, label: 'Payroll', path: '/payroll' },
+    { icon: FiDollarSign, label: 'Reports', path: '/reports' },
     // { icon: FiClock, label: 'Time Tracker', path: '/time-tracker' },
     // { icon: FiMoreHorizontal, label: 'More', path: '#' },
     // { icon: FiSettings, label: 'Operations', path: '/operations' },

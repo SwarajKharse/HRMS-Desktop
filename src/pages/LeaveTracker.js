@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LeaveSummary from '../components/Leave/LeaveSummary';
 import LeaveRequests from '../components/Leave/LeaveRequests';
+import LeaveHistory from '../components/Leave/LeaveHistory';
 
 function LeaveTracker() {
   const [activeTab, setActiveTab] = useState('summary');
 
   const tabs = [
     { id: 'summary', label: 'Leave Summary' },
-    { id: 'requests', label: 'Leave Requests' }
+    { id: 'requests', label: 'Leave Requests' },
+    { id: 'history', label: 'Leave History' }
   ];
 
   return (
@@ -43,6 +45,7 @@ function LeaveTracker() {
         >
           {activeTab === 'summary' && <LeaveSummary />}
           {activeTab === 'requests' && <LeaveRequests />}
+          {activeTab === 'history' && <LeaveHistory />}
         </motion.div>
       </AnimatePresence>
     </div>
