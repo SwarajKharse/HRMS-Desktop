@@ -55,6 +55,17 @@ export const employeeService = {
     }
   },
 
+  getManagerList : async () => {
+    try {
+      const user = authService.getUser();
+      const manager = "Manager";
+      const response = await axios.get(`${BASE_URL}/manager/${user.orgId}/${manager}`, getAuthHeaders());
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   deleteEmployee: async (id) => {
     try {
       await axios.delete(`${BASE_URL}/${id}`, getAuthHeaders());

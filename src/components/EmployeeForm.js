@@ -39,6 +39,9 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     role: {
       id: null
     },
+    reportingManager: {
+      id: null
+    },
     org :{
       id: authService.getUser().orgId
     }
@@ -49,6 +52,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [managerslist, setManagerslist] = useState([]);
 
   // Initialize form data when employee prop changes
   useEffect(() => {
@@ -70,6 +74,9 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
         role: {
           id: employee.role?.id || null,
         },
+        reportingManager: {
+          id: employee.reportingManager?.id || null
+        }
       })
     }
   }, [employee]);
@@ -80,14 +87,16 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
 
   const fetchDepartmentsAndDesignations = async () => {
     try {
-      const [deptData, desigData, roleData] = await Promise.all([
+      const [deptData, desigData, roleData, managerslist] = await Promise.all([
         departmentService.getDepartmentsByOrgId(authService.getUser().orgId),
         designationService.getDesignationsByOrgId(authService.getUser().orgId),
-        roleService.getRolesByOrgId(authService.getUser().orgId)
+        roleService.getRolesByOrgId(authService.getUser().orgId),
+        employeeService.getManagerList()
       ])
       setDepartments(deptData);
       setDesignations(desigData);
       setRoles(roleData);
+      setManagerslist(managerslist);
     } catch (err) {
       setError("Failed to load departments and designations")
       console.error(err)
@@ -100,7 +109,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     const { name, value } = e.target
 
     // Handle department and designation select changes
-    if (name === "department" || name === "designation" || name === "role") {
+    if (name === "department" || name === "designation" || name === "role" || name === "reportingManager") {
       setFormData((prev) => ({
         ...prev,
         [name]: {
@@ -128,6 +137,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
         department: formData.department.id ? { id: formData.department.id } : null,
         designation: formData.designation.id ? { id: formData.designation.id } : null,
         role: formData.role.id ? { id: formData.role.id } : null,
+        reportingManager: formData.reportingManager.id ? { id: formData.reportingManager.id } : null,
         dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
         dateOfJoining: formData.dateOfJoining ? new Date(formData.dateOfJoining).toISOString() : null,
         empStatus: 'Active' // Add default status
@@ -197,6 +207,9 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   id: null
                 },
                 role: {
+                  id: null
+                },
+                reportingManager: {
                   id: null
                 },
                 org :{
@@ -468,6 +481,23 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Reporting Manager</label>
+                <select
+                  name="reportingManager"
+                  value={formData.reportingManager.id || ""}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select Reporting Manager</option>
+                  {managerslist.map((manager) => (
+                    <option key={manager.id} value={manager.id}>
+                      {manager.firstName} {manager.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
             </div>
           </div>
 
