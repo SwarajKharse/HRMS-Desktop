@@ -1,16 +1,19 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FiLayers, FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi"
+import { organizationService } from "../../services/organizationService"
 import { departmentService } from "../../services/departmentService"
 import { designationService } from "../../services/designationService"
 import { roleService } from "../../services/roleService"
 import { authService } from "../../services/authService"
 import DepartmentForm from "../../components/Organization/DepartmentForm"
 import DesignationForm from "../../components/Organization/DesignationForm"
-import RoleForm from "../../components/Organization/RoleForm"
+import RoleForm from "../../components/Organization/RoleForm";
+import OrganizationDetailsForm from "../../components/Organization/OrganizationDetailsForm";
 
 function OrganizationSettings() {
-  const [activeTab, setActiveTab] = useState("departments")
+  const [activeTab, setActiveTab] = useState("details")
+  const [organization, setOrganization] = useState(null)
   const [departments, setDepartments] = useState([])
   const [designations, setDesignations] = useState([])
   const [roles, setRoles] = useState([])
@@ -31,11 +34,13 @@ function OrganizationSettings() {
 
   const fetchData = async () => {
     try {
-      const [deptData, desigData, roleData] = await Promise.all([
+      const [orgData, deptData, desigData, roleData] = await Promise.all([
+        organizationService.getOrganization(orgId),
         departmentService.getDepartmentsByOrgId(orgId),
         designationService.getDesignationsByOrgId(orgId),
         roleService.getRolesByOrgId(orgId),
       ])
+      setOrganization(orgData)
       setDepartments(deptData)
       setDesignations(desigData)
       setRoles(roleData)
@@ -117,6 +122,17 @@ function OrganizationSettings() {
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
+        <button
+            onClick={() => setActiveTab("details")}
+            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+              ${
+                activeTab === "details"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+          >
+            Details
+          </button>
           <button
             onClick={() => setActiveTab("departments")}
             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
@@ -181,7 +197,10 @@ function OrganizationSettings() {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          {activeTab === "details" ? (
+            <OrganizationDetailsForm organization={organization} onSubmit={fetchData} />
+          ) : (
+            <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
@@ -287,6 +306,7 @@ function OrganizationSettings() {
               )}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 

@@ -5,8 +5,8 @@ import { leaveReportService } from "../../services/leaveReportService"
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi"
 
 function ResourceAvailability() {
-  const [startDate, setStartDate] = useState(new Date())
-  const [endDate, setEndDate] = useState(new Date(new Date().setDate(new Date().getDate() + 30)))
+  const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)))
+  const [endDate, setEndDate] = useState(new Date(new Date()))
   const [resourceData, setResourceData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -21,8 +21,6 @@ function ResourceAvailability() {
     "Annual Leave": "bg-purple-100 text-purple-800",
     "Sick Leave": "bg-orange-100 text-orange-800",
     "Casual Leave": "bg-indigo-100 text-indigo-800",
-    "Bereavement Leave": "bg-pink-100 text-pink-800",
-    "Compensatory Off": "bg-teal-100 text-teal-800",
     "Maternity Leave": "bg-rose-100 text-rose-800",
   }
 
@@ -36,8 +34,6 @@ function ResourceAvailability() {
     "Annual Leave": "AL",
     "Sick Leave": "SL",
     "Casual Leave": "CL",
-    "Bereavement Leave": "BL",
-    "Compensatory Off": "CO",
     "Maternity Leave": "ML",
   }
 

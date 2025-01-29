@@ -7,6 +7,9 @@ import Profile from "../components/Home/Profile"
 import LeaveApprovals from "../components/Home/LeaveApprovals"
 import AttendanceKiosk from "../components/Home/AttendanceKiosk"
 import MissPunchApprovals from "../components/Home/MissPunchApprovals"
+import Warnings from "../components/Home/Warnings"
+import Terminations from "../components/Home/Terminations"
+import Resignations from "../components/Home/Resignations"
 
 function Home() {
   const [activeTab, setActiveTab] = useState("activities")
@@ -59,6 +62,9 @@ function Home() {
     { id: "leave-approvals", label: "Leave Approvals" },
     { id: "attendance-kiosk", label: "Attendance Kiosk" },
     { id: "miss-punch", label: "Miss Punch" },
+    { id: "warnings", label: "Warnings" },
+    { id: "terminations", label: "Terminations" },
+    { id: "resignations", label: "Resignations" },
   ]
 
   return (
@@ -97,6 +103,9 @@ function Home() {
           {activeTab === "leave-approvals" && <LeaveApprovals />}
           {activeTab === "attendance-kiosk" && <AttendanceKiosk />}
           {activeTab === "miss-punch" && <MissPunchApprovals />}
+          {activeTab === "warnings" && <Warnings />}
+          {activeTab === "terminations" && <Terminations />}
+          {activeTab === "resignations" && <Resignations />}
         </motion.div>
       </AnimatePresence>
     </div>

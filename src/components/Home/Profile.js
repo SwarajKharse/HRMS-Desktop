@@ -1,7 +1,11 @@
-import { motion } from "framer-motion"
-import { FiUser, FiBriefcase, FiPhone, FiMapPin } from "react-icons/fi"
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { FiUser, FiBriefcase, FiPhone, FiMapPin, FiLogOut } from "react-icons/fi"
+import ResignationForm from "../Forms/ResignationForm"
 
 function Profile({ employee }) {
+  const [showResignationForm, setShowResignationForm] = useState(false)
+
   const formatDate = (dateString) => {
     if (!dateString) return "NA"
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -18,6 +22,11 @@ function Profile({ employee }) {
     return value
   }
 
+  const handleResignationSubmit = () => {
+    // Optionally handle any updates needed after resignation submission
+    setShowResignationForm(false)
+  }
+
   return (
     <div className="space-y-6">
       {/* Profile Overview */}
@@ -27,18 +36,35 @@ function Profile({ employee }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
-        <div className="flex items-center space-x-4">
-          <div className="h-20 w-20 rounded-full bg-blue-900 flex items-center justify-center text-white text-2xl">
-            {employee.profilePhotoUrl ? (
-              <img src={employee.profilePhotoUrl} alt="Profile" className="w-full h-full object-cover rounded-full" />
-            ) : employee.firstName.charAt(0).toUpperCase() + employee.lastName.charAt(0).toUpperCase()}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="h-20 w-20 rounded-full bg-blue-900 flex items-center justify-center text-white text-2xl">
+              {employee.profilePhotoUrl ? (
+                <img
+                  src={employee.profilePhotoUrl || "/placeholder.svg"}
+                  alt="Profile"
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                employee.firstName.charAt(0).toUpperCase() + employee.lastName.charAt(0).toUpperCase()
+              )}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">
+                {`${getValue(employee?.firstName)} ${getValue(employee?.middleName, "")} ${getValue(employee?.lastName)}`}
+              </h1>
+              <p className="text-gray-600">{getValue(employee?.designation?.name)}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">
-              {`${getValue(employee?.firstName)} ${getValue(employee?.middleName, "")} ${getValue(employee?.lastName)}`}
-            </h1>
-            <p className="text-gray-600">{getValue(employee?.designation?.name)}</p>
-          </div>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setShowResignationForm(true)}
+            className="flex items-center px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+          >
+            <FiLogOut className="mr-2" />
+            Apply Resignation
+          </motion.button>
         </div>
       </motion.div>
 
@@ -163,6 +189,16 @@ function Profile({ employee }) {
           </div>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {showResignationForm && (
+          <ResignationForm
+            employee={employee}
+            onClose={() => setShowResignationForm(false)}
+            onSubmit={handleResignationSubmit}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

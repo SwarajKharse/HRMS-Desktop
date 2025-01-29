@@ -72,5 +72,17 @@ export const employeeService = {
     } catch (error) {
       throw error.response?.data || error.message;
     }
-  }
+  },
+
+  getPastEmployeesByOrgId: async (orgId) => {
+    try {
+      const response = await fetch(`${BASE_URL}/pastEmployees/org/${orgId}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch past employees")
+      }
+      return await response.json()
+    } catch (error) {
+      throw new Error(error.message)
+    }
+  },
 };

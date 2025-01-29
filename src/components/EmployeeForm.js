@@ -140,7 +140,6 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
         reportingManager: formData.reportingManager.id ? { id: formData.reportingManager.id } : null,
         dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
         dateOfJoining: formData.dateOfJoining ? new Date(formData.dateOfJoining).toISOString() : null,
-        empStatus: 'Active' // Add default status
       };
   
       let response
@@ -497,7 +496,6 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   ))}
                 </select>
               </div>
-
             </div>
           </div>
 
