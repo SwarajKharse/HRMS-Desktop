@@ -20,6 +20,8 @@ import LeaveTrackerSettings from './pages/settings/LeaveTrackerSettings';
 import AttendanceSettings from './pages/settings/AttendanceSettings';
 import HolidaySettings from './pages/settings/HolidaySettings';
 import GeoFencingSettings from './pages/settings/GeoFencingSettings';
+import PayrollSettings from './pages/settings/PayrollSettings';
+import EmployeePayrollSettings from './pages/settings/EmployeePayrollSettings';
 
 function App() {
   return (
@@ -114,6 +116,22 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <GeoFencingSettings />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route path="/settings/payroll-settings" element={
+              <PrivateRoute>
+                <Layout>
+                  <PayrollSettings />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route path="/settings/employee-payroll-settings" element={
+              <PrivateRoute>
+                <Layout>
+                  <EmployeePayrollSettings />
                 </Layout>
               </PrivateRoute>
             } />

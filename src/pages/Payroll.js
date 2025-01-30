@@ -1,154 +1,172 @@
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
-import { FiPlus, FiDownload } from 'react-icons/fi';
-import { payrollService } from '../services/payrollService';
-import PayrollForm from '../components/Payroll/PayrollForm';
+import { useState, useEffect } from "react"
+import { motion } from "framer-motion"
+import { format } from "date-fns"
+import { FiDownload, FiAlertCircle } from "react-icons/fi"
+import { payslipService } from "../services/payslipService"
+import { useAuth } from "../contexts/AuthContext"
 
 function Payroll() {
-  const [payrolls, setPayrolls] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [isAdmin] = useState(true); // Replace with actual admin check
+  const [payslips, setPayslips] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const { user } = useAuth()
 
   useEffect(() => {
-    fetchPayrolls();
-  }, []);
+    fetchPayslips()
+  }, [])
 
-  const fetchPayrolls = async () => {
+  const fetchPayslips = async () => {
     try {
-      // For demo purposes using ID 1, in real app get from auth context
-      const data = await payrollService.getPayrolls(1);
-      setPayrolls(data);
+      const data = await payslipService.getPayslipsByEmployeeId(user.sub)
+      setPayslips(data)
+      setError(null)
     } catch (err) {
-      setError(err.message);
+      setError("Failed to load payslips")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const handleAddPayroll = async (payrollData) => {
+  const handleDownloadPdf = async (payslipId) => {
     try {
-      await payrollService.addPayroll(payrollData);
-      await fetchPayrolls();
-      setShowForm(false);
+      const blob = await payslipService.downloadPayslipPdf(payslipId)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `payslip-${payslipId}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
     } catch (err) {
-      setError(err.message);
+      setError("Failed to download payslip")
     }
-  };
+  }
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
-  };
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(amount)
+  }
+
+  const formatDate = (date) => {
+    return format(new Date(date), "dd MMM yyyy")
+  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Payroll</h1>
-        <div className="flex space-x-4">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center"
-          >
-            <FiDownload className="mr-2" />
-            Export
-          </motion.button>
-          {isAdmin && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowForm(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-            >
-              <FiPlus className="mr-2" />
-              Add Payroll
-            </motion.button>
-          )}
-        </div>
+        <h1 className="text-2xl font-bold">My Payslips</h1>
       </div>
 
       {error && (
-        <div className="bg-red-50 text-red-500 p-4 rounded-md mt-6">
+        <div className="bg-red-50 text-red-500 p-4 rounded-md flex items-center">
+          <FiAlertCircle className="mr-2" />
           {error}
         </div>
       )}
 
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mt-6">
-        <div className="">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Month & Year
+                  Pay Period
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Basic Salary
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Bonuses
+                  Allowances
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Gross Salary
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Deductions
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Net Salary
+                  Net Pay
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {payrolls.map((payroll, index) => (
-                <motion.tr
-                  key={payroll.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {format(new Date(payroll.monthYear), 'MMMM yyyy')}
+              {payslips.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                    No payslips found
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(payroll.basicSalary)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(payroll.bonuses)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(payroll.deductions)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {formatCurrency(payroll.netSalary)}
-                  </td>
-                </motion.tr>
-              ))}
+                </tr>
+              ) : (
+                payslips.map((payslip, index) => (
+                  <motion.tr
+                    key={payslip.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="hover:bg-gray-50"
+                  >
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <div className="font-medium">{formatDate(payslip.startDate)}</div>
+                      <div className="text-gray-500">to</div>
+                      <div className="font-medium">{formatDate(payslip.endDate)}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="font-medium text-gray-900">{formatCurrency(payslip.basicSalary)}</div>
+                      <div className="text-xs text-gray-500">
+                        HRA: {formatCurrency(payslip.hra)}
+                        <br />
+                        DA: {formatCurrency(payslip.da)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatCurrency(payslip.allowances)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="font-medium text-gray-900">{formatCurrency(payslip.grossSalary)}</div>
+                      <div className="text-xs text-gray-500">
+                        Total Earnings: {formatCurrency(payslip.totalEarnings)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="font-medium text-gray-900">{formatCurrency(payslip.totalDeductions)}</div>
+                      <div className="text-xs text-gray-500">Tax: {formatCurrency(payslip.incomeTax)}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <div className="font-medium text-green-600">{formatCurrency(payslip.netPay)}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <button
+                        onClick={() => handleDownloadPdf(payslip.id)}
+                        className="text-blue-600 hover:text-blue-900 transition-colors flex items-center"
+                        title="Download Payslip"
+                      >
+                        <FiDownload className="w-5 h-5" />
+                      </button>
+                    </td>
+                  </motion.tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
-
-      <AnimatePresence>
-        {showForm && (
-          <PayrollForm
-            isOpen={showForm}
-            onClose={() => setShowForm(false)}
-            onSubmit={handleAddPayroll}
-          />
-        )}
-      </AnimatePresence>
     </div>
-  );
+  )
 }
 
 export default Payroll;

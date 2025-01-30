@@ -53,6 +53,20 @@ function Settings() {
       color: 'text-red-500',
       link: '/settings/geoFencing'
     },
+    {
+      id: "payroll-settings", 
+      name: 'Payroll Settings',
+      icon: FiCalendar,
+      color: 'text-red-500',
+      link: '/settings/payroll-settings'
+    },
+    {
+      id: "employee-payroll-settings", 
+      name: 'Employee Payroll Settings',
+      icon: FiCalendar,
+      color: 'text-red-500',
+      link: '/settings/employee-payroll-settings'
+    },
   ];
 
   const filteredServices = services.filter(service =>
@@ -70,13 +84,13 @@ function Settings() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Safety Saarthi</h1>
-              <p className="text-sm text-gray-500">User License: 2/10</p>
+              <p className="text-sm text-gray-500">Settings</p>
             </div>
           </div>
-          <div className="text-right">
+          {/* <div className="text-right">
             <p className="text-sm font-medium text-gray-900">{user?.email}</p>
             <p className="text-sm text-gray-500">Super Administrator</p>
-          </div>
+          </div> */}
         </div>
       </div>
 
