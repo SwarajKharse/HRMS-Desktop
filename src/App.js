@@ -17,6 +17,7 @@ import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import OrganizationSettings from './pages/settings/OrganizationSettings';
 import LeaveTrackerSettings from './pages/settings/LeaveTrackerSettings';
+import AttendanceSettings from './pages/settings/AttendanceSettings';
 import HolidaySettings from './pages/settings/HolidaySettings';
 import GeoFencingSettings from './pages/settings/GeoFencingSettings';
 
@@ -89,6 +90,14 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <LeaveTrackerSettings />
+                </Layout>
+              </PrivateRoute>
+            } />
+
+            <Route path="/settings/attendance-settings" element={
+              <PrivateRoute>
+                <Layout>
+                  <AttendanceSettings />
                 </Layout>
               </PrivateRoute>
             } />

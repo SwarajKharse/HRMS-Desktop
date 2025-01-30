@@ -33,6 +33,13 @@ function Settings() {
       link: '/settings/leave-tracker'
     },
     {
+      id: 'attendance-settings',
+      name: 'Attendance Settings',
+      icon: FiCalendar,
+      color: 'text-green-500',
+      link: '/settings/attendance-settings'
+    },
+    {
       id: "holiday", 
       name: 'Holiday Settings',
       icon: FiCalendar,
