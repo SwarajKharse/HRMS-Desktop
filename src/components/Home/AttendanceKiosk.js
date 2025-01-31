@@ -13,10 +13,10 @@ const AttendanceKiosk = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedAction, setSelectedAction] = useState(null);
   const [recognizedUser, setRecognizedUser] = useState(null);
-  const [checkInTime, setCheckInTime] = useState("");
+  const [punchTime, setPunchTime] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
-  const [dialogData, setDialogData] = useState({}); // Added state for dialog data
+  const [dialogData, setDialogData] = useState({});
 
   const videoWidth = 640;
   const videoHeight = 480;
@@ -140,12 +140,12 @@ const AttendanceKiosk = () => {
 
       if (result.status === "success") {
         setRecognizedUser(result.fullName || result.empId);
-        setCheckInTime(result.message || new Date().toLocaleTimeString());
+        setPunchTime(result.message || new Date().toLocaleTimeString());
         setShowDialog(true);
-        return true;
+        setDialogData({ status: "success", message: result.message });
       } else if (["already_checked_in", "already_checked_out", "no_checkin", "no_match"].includes(result.status)) {
         setRecognizedUser(null);
-        setCheckInTime("");
+        setPunchTime("");
         setShowDialog(true);
         setDialogData({ status: result.status, message: result.message });
       }
@@ -189,7 +189,7 @@ const AttendanceKiosk = () => {
     setIsProcessing(false);
     setSelectedAction(null);
     setFaceDetected(false);
-    setDialogData({}); // Clear dialog data on stop
+    setDialogData({});
   };
 
   const handleCheckIn = () => {
@@ -206,7 +206,7 @@ const AttendanceKiosk = () => {
     setIsCameraOn(false);
     setShowDialog(false);
     setRecognizedUser(null);
-    setDialogData({}); // Clear dialog data on end session
+    setDialogData({});
   };
 
   const handleDialogConfirm = () => {
@@ -214,7 +214,7 @@ const AttendanceKiosk = () => {
     setRecognizedUser(null);
     setIsProcessing(false);
     setFaceDetected(false);
-    setDialogData({}); // Clear dialog data after confirmation
+    setDialogData({});
   };
 
   const getDialogContent = () => {
@@ -271,7 +271,7 @@ const AttendanceKiosk = () => {
             <p className="text-gray-600 mb-4">
               <span className="font-semibold">{recognizedUser}</span>
               <br />
-              {checkInTime}
+              {punchTime}
             </p>
           </>
         ) : (

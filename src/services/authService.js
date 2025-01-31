@@ -54,6 +54,8 @@ export const authService = {
       localStorage.removeItem('jwtToken');
       localStorage.removeItem('deviceId');
       localStorage.removeItem('user');
+
+      window.location.reload();
     } catch (error) {
       throw new Error(error.response?.data || 'Logout failed');
     }

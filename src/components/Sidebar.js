@@ -1,31 +1,28 @@
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { 
-  FiHome, 
-  FiUsers, 
-  FiUmbrella, 
-  FiCalendar, 
-  FiClock,
-  FiMoreHorizontal,
-  FiSettings,
-  FiPieChart,
-  FiDollarSign
-} from 'react-icons/fi';
+  HiHome, 
+  HiUsers, 
+  HiCalendar, 
+  HiClock, 
+  HiCog, 
+  HiChartPie, 
+  HiCash, 
+  HiArchive 
+} from 'react-icons/hi';
+
+import { FaUsers } from "react-icons/fa";
 
 function Sidebar() {
   const location = useLocation();
   
   const navItems = [
-    { icon: FiHome, label: 'Home', path: '/' },
-    { icon: FiUsers, label: 'Onboarding', path: '/onboarding' },
-    { icon: FiUmbrella, label: 'Leave Tracker', path: '/leave-tracker' },
-    { icon: FiCalendar, label: 'Attendance', path: '/attendance' },
-    { icon: FiDollarSign, label: 'Payroll', path: '/payroll' },
-    { icon: FiDollarSign, label: 'Reports', path: '/reports' },
-    // { icon: FiClock, label: 'Time Tracker', path: '/time-tracker' },
-    // { icon: FiMoreHorizontal, label: 'More', path: '#' },
-    // { icon: FiSettings, label: 'Operations', path: '/operations' },
-    // { icon: FiPieChart, label: 'Reports', path: '/reports' },
+    { icon: HiHome, label: 'Home', path: '/' },
+    { icon: HiChartPie, label: 'Reports', path: '/reports' },
+    { icon: FaUsers, label: 'Onboarding', path: '/onboarding' },
+    { icon: HiArchive, label: 'Leave Tracker', path: '/leave-tracker' },
+    { icon: HiCalendar, label: 'Attendance', path: '/attendance' },
+    { icon: HiCash, label: 'Payroll', path: '/payroll' },
   ];
 
   const sidebarVariants = {
@@ -87,17 +84,18 @@ function Sidebar() {
       variants={sidebarVariants}
       initial="initial"
       animate="initial"
-      className="flex h-screen flex-col bg-[#0F172A] shadow-lg"
+      className="flex h-screen flex-col bg-gradient-to-b from-[#1E293B] to-[#0F172A] shadow-lg"
     >
       <div className="flex flex-col flex-1">
-        <div className="relative min-h-[72px] border-b border-gray-800 flex items-center justify-center">
+        <div className="relative min-h-[64px] border-b border-gray-700 flex items-center justify-center">
           <motion.h1
             variants={labelVariants}
             initial="initial"
             animate="initial"
             className="text-gray-200 font-medium text-base tracking-wide"
           >
-            HRMS
+            <img src="/logo.png" alt="logo" className="h-16 w-16">
+            </img>
           </motion.h1>
         </div>
 
@@ -126,8 +124,8 @@ function Sidebar() {
                   className={`w-full h-[60px] flex flex-col items-center justify-center rounded-lg
                     transition-colors duration-200 overflow-hidden
                     ${isActive 
-                      ? 'bg-gray-800/50 text-white' 
-                      : 'text-gray-400 hover:bg-gray-800/30 hover:text-gray-200'}`}
+                      ? 'bg-[#334155] text-white shadow-md' 
+                      : 'text-gray-400 hover:bg-[#334155]/50 hover:text-gray-200'}`}
                 >
                   <motion.div
                     variants={iconVariants}

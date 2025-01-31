@@ -1,32 +1,69 @@
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { format } from "date-fns"
-import { FiCheckCircle, FiClock, FiCalendar } from "react-icons/fi"
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { format, differenceInHours, differenceInMinutes, parse } from "date-fns";
+import { FiCheckCircle, FiClock, FiCalendar } from "react-icons/fi";
+import { attendanceService } from "../../services/attendanceService";
 
 function getGreeting() {
-  const hour = new Date().getHours()
-  if (hour < 12) return "Good Morning"
-  if (hour < 17) return "Good Afternoon"
-  return "Good Evening"
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  return "Good Evening";
 }
 
 function Activities({ employee }) {
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [todaysAttendance, setTodaysAttendance] = useState({});
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(new Date())
-    }, 1000)
+      setCurrentTime(new Date());
+    }, 1000);
 
-    return () => clearInterval(timer)
-  }, [])
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    fetchTodaysAttendance();
+  }, [employee]);
+
+  const fetchTodaysAttendance = async () => {
+    try {
+      const response = await attendanceService.getTodayAttendance(employee.id);
+      setTodaysAttendance(response);
+    } catch (error) {
+      console.error("Failed to fetch today's attendance", error);
+    }
+  };
 
   const getValue = (value, defaultValue = "NA") => {
     if (value === null || value === undefined || value === "") {
-      return defaultValue
+      return defaultValue;
     }
-    return value
-  }
+    return value;
+  };
+
+  // Format time without seconds
+  const formatTime = (time) => {
+    if (!time) return "--:--";
+    const [hours, minutes] = time.split(":");
+    return `${hours}:${minutes}`;
+  };
+
+  // Calculate total hours worked
+  const calculateTotalHoursWorked = () => {
+    if (!todaysAttendance.checkIn) return "00:00";
+
+    const checkInTime = parse(todaysAttendance.checkIn, "HH:mm:ss.SSS", new Date());
+    const checkOutTime = todaysAttendance.checkOut
+      ? parse(todaysAttendance.checkOut, "HH:mm:ss.SSS", new Date())
+      : currentTime;
+
+    const hours = differenceInHours(checkOutTime, checkInTime);
+    const minutes = differenceInMinutes(checkOutTime, checkInTime) % 60;
+
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -52,23 +89,33 @@ function Activities({ employee }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="p-4 bg-gray-50 rounded-lg">
             <div className="text-sm text-gray-500">Check In</div>
-            <div className="text-lg font-semibold mt-1">09:00 AM</div>
-            <div className="flex items-center gap-1 text-green-600 mt-1">
+            <div className="text-lg font-semibold mt-1">
+              {formatTime(todaysAttendance.checkIn)}
+            </div>
+            <div className="flex items-center gap-1 text-gray-500 mt-1">
               <FiCheckCircle className="w-4 h-4" />
-              <span className="text-sm">On Time</span>
+              <span className="text-sm">
+                {todaysAttendance.checkIn ? "Checked In" : "Pending"}
+              </span>
             </div>
           </div>
           <div className="p-4 bg-gray-50 rounded-lg">
             <div className="text-sm text-gray-500">Check Out</div>
-            <div className="text-lg font-semibold mt-1">--:-- --</div>
+            <div className="text-lg font-semibold mt-1">
+              {formatTime(todaysAttendance.checkOut)}
+            </div>
             <div className="flex items-center gap-1 text-gray-500 mt-1">
               <FiClock className="w-4 h-4" />
-              <span className="text-sm">Pending</span>
+              <span className="text-sm">
+                {todaysAttendance.checkOut ? "Checked Out" : "Pending"}
+              </span>
             </div>
           </div>
           <div className="p-4 bg-gray-50 rounded-lg">
             <div className="text-sm text-gray-500">Total Hours</div>
-            <div className="text-lg font-semibold mt-1">07:42</div>
+            <div className="text-lg font-semibold mt-1">
+              {calculateTotalHoursWorked()}
+            </div>
             <div className="flex items-center gap-1 text-blue-600 mt-1">
               <FiCalendar className="w-4 h-4" />
               <span className="text-sm">Today</span>
@@ -77,25 +124,18 @@ function Activities({ employee }) {
         </div>
       </div>
 
-      {/* Work Schedule */}
+      {/* Attendance Status */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold mb-4">Work Schedule</h3>
+        <h3 className="text-lg font-semibold mb-4">Attendance Status</h3>
         <div className="p-4 bg-gray-50 rounded-lg">
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="text-sm text-gray-500">Current Shift</div>
-              <div className="text-lg font-semibold mt-1">General Shift</div>
-              <div className="text-sm text-gray-500 mt-1">09:00 AM - 06:00 PM</div>
-            </div>
-            <div className="text-right">
-              <div className="text-sm text-gray-500">Break Time</div>
-              <div className="text-lg font-semibold mt-1">01:00 PM - 02:00 PM</div>
-            </div>
+          <div className="text-sm text-gray-500">Status</div>
+          <div className="text-lg font-semibold mt-1">
+            {todaysAttendance.status || "No status available"}
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default Activities;

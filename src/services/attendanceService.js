@@ -1,8 +1,20 @@
 import axios from 'axios';
+import { format } from 'date-fns';
 
 const BASE_URL = 'http://localhost:8080/api/attendance';
 
 export const attendanceService = {
+
+  getTodayAttendance: async (employeeId) => {
+    try {
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const response = await axios.get(`${BASE_URL}/employee/${employeeId}/date/${today}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
   getAttendance: async (employeeId, startDate, endDate) => {
     try {
       const response = await axios.get(`${BASE_URL}/${employeeId}`, {
