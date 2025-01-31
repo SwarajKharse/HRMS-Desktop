@@ -41,8 +41,8 @@ function DepartmentForm({ department, departments, orgId, onClose, onSubmit }) {
     try {
       const res = departmentService[department ? "updateDepartment" : "createDepartment"](formData);
       if(res){
-        await onSubmit(formData);
-        onClose();
+        if (onSubmit) await onSubmit()
+        await onClose()
       }
     } catch (err) {
       setError(err.message || "Failed to save department")

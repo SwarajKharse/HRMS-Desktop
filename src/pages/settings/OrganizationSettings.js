@@ -8,7 +8,6 @@ import { roleService } from "../../services/roleService"
 import { authService } from "../../services/authService"
 import DepartmentForm from "../../components/Organization/DepartmentForm"
 import DesignationForm from "../../components/Organization/DesignationForm"
-import RoleForm from "../../components/Organization/RoleForm";
 import OrganizationDetailsForm from "../../components/Organization/OrganizationDetailsForm";
 
 function OrganizationSettings() {
@@ -16,15 +15,12 @@ function OrganizationSettings() {
   const [organization, setOrganization] = useState(null)
   const [departments, setDepartments] = useState([])
   const [designations, setDesignations] = useState([])
-  const [roles, setRoles] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [showDepartmentForm, setShowDepartmentForm] = useState(false)
   const [showDesignationForm, setShowDesignationForm] = useState(false)
-  const [showRoleForm, setShowRoleForm] = useState(false)
   const [selectedDepartment, setSelectedDepartment] = useState(null)
   const [selectedDesignation, setSelectedDesignation] = useState(null)
-  const [selectedRole, setSelectedRole] = useState(null)
 
   const orgId = authService.getUser().orgId
 
@@ -34,16 +30,14 @@ function OrganizationSettings() {
 
   const fetchData = async () => {
     try {
-      const [orgData, deptData, desigData, roleData] = await Promise.all([
+      const [orgData, deptData, desigData] = await Promise.all([
         organizationService.getOrganization(orgId),
         departmentService.getDepartmentsByOrgId(orgId),
         designationService.getDesignationsByOrgId(orgId),
-        roleService.getRolesByOrgId(orgId),
       ])
       setOrganization(orgData)
       setDepartments(deptData)
       setDesignations(desigData)
-      setRoles(roleData)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -83,22 +77,6 @@ function OrganizationSettings() {
     }
   }
 
-  const handleRoleEdit = (role) => {
-    setSelectedRole(role)
-    setShowRoleForm(true)
-  }
-
-  const handleRoleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this role?")) {
-      try {
-        await roleService.deleteRole(id)
-        await fetchData()
-      } catch (err) {
-        setError(err.message)
-      }
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -115,7 +93,7 @@ function OrganizationSettings() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Organization Settings</h1>
-          <p className="text-sm text-gray-500">Manage departments, designations, and roles</p>
+          <p className="text-sm text-gray-500">Manage departments, designations</p>
         </div>
       </div>
 
@@ -155,17 +133,6 @@ function OrganizationSettings() {
           >
             Designations
           </button>
-          <button
-            onClick={() => setActiveTab("roles")}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-              ${
-                activeTab === "roles"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-          >
-            Roles
-          </button>
         </nav>
       </div>
 
@@ -183,9 +150,6 @@ function OrganizationSettings() {
             } else if (activeTab === "designations") {
               setSelectedDesignation(null)
               setShowDesignationForm(true)
-            } else {
-              setSelectedRole(null)
-              setShowRoleForm(true)
             }
           }}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
@@ -282,28 +246,7 @@ function OrganizationSettings() {
                     </motion.tr>
                   ))
                 )
-              ) : roles.length === 0 ? (
-                <tr>
-                  <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
-                    No roles found
-                  </td>
-                </tr>
-              ) : (
-                roles.map((role) => (
-                  <motion.tr key={role.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{role.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{role.description || "-"}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button onClick={() => handleRoleEdit(role)} className="text-blue-600 hover:text-blue-900 mr-4">
-                        <FiEdit2 className="w-5 h-5" />
-                      </button>
-                      <button onClick={() => handleRoleDelete(role.id)} className="text-red-600 hover:text-red-900">
-                        <FiTrash2 className="w-5 h-5" />
-                      </button>
-                    </td>
-                  </motion.tr>
-                ))
-              )}
+              ) : ""}
             </tbody>
           </table>
           )}
@@ -334,16 +277,6 @@ function OrganizationSettings() {
             }}
             onSubmit={fetchData}
             designations={designations}
-          />
-        )}
-        {showRoleForm && (
-          <RoleForm
-            role={selectedRole}
-            onClose={() => {
-              setShowRoleForm(false)
-              setSelectedRole(null)
-            }}
-            onSubmit={fetchData}
           />
         )}
       </AnimatePresence>
