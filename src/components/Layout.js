@@ -5,7 +5,10 @@ import { motion } from 'framer-motion';
 function Layout({ children }) {
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar />
+      {/* We use Tailwind’s responsive classes (using hidden md:block) so that the <Sidebar /> is only rendered on medium/large screens. (The rest of your layout remains unchanged.) */}
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
       <div className="flex flex-col flex-1 overflow-hidden">
         <Navbar />
         <motion.main 

@@ -1,12 +1,15 @@
+// Navbar.js
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiSearch, FiBell, FiSettings, FiUser, FiLogOut } from 'react-icons/fi';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { FiBell, FiSettings, FiLogOut } from 'react-icons/fi';
+import { HiHome, HiChartPie, HiArchive, HiCalendar, HiCash } from 'react-icons/hi';
+import { FaUsers } from 'react-icons/fa';
 import { authService } from '../services/authService';
 import { useNotifications } from '../contexts/NotificationsContext';
 import { format } from 'date-fns';
-import { useAuth } from '../contexts/AuthContext'; // Import useAuth
-import { fetchEmployee } from '../services/api'; // Import fetchEmployee
+import { useAuth } from '../contexts/AuthContext';
+import { fetchEmployee } from '../services/api';
 
 function NotificationsPanel({ setActiveDropdown }) {
   const { 
@@ -134,10 +137,19 @@ function Navbar() {
   const { notifications } = useNotifications();
   const [userData, setUserData] = useState(null);
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const navigate = useNavigate();
-  
+  // Detect mobile (<768px)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => {
     const getUserData = async () => {
       try {
@@ -160,16 +172,31 @@ function Navbar() {
     setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
   };
 
+  // Define navigation items (same as Sidebar)
+  const navItems = [
+    { icon: HiHome, label: 'Home', path: '/' },
+    { icon: HiChartPie, label: 'Reports', path: '/reports' },
+    { icon: FaUsers, label: 'Onboarding', path: '/onboarding' },
+    { icon: HiArchive, label: 'Leave Tracker', path: '/leave-tracker' },
+    { icon: HiCalendar, label: 'Attendance', path: '/attendance' },
+    { icon: HiCash, label: 'Payroll', path: '/payroll' },
+  ];
+
   return (
     <motion.nav 
-      className="bg-white shadow-md h-16 flex items-center justify-between px-4"
+      className="bg-white shadow-md h-16 flex items-center justify-between px-4 relative"
       initial={{ y: -20 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex items-center"></div>
-      
-      <div className="flex items-center space-x-4">
+      {/* On mobile, show the logo on the left */}
+      {isMobile && (
+        <div className="flex items-center">
+          <img src="/logo.png" alt="logo" className="h-16" />
+        </div>
+      )}
+
+      <div className="flex items-center space-x-4 ml-auto">
         <div className="relative">
           <Tooltip text="Notifications">
             <motion.button
@@ -200,13 +227,11 @@ function Navbar() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              // onClick={() => toggleDropdown('settings')}
               onClick={() => navigate('/settings')}
             >
               <FiSettings size={20} />
             </motion.button>
           </Tooltip>
-          
         </div>
 
         <div className="relative">
@@ -225,7 +250,7 @@ function Navbar() {
                     className="w-full h-full object-cover rounded-full"
                   />
                 ) : (
-                  `${userData?.firstName?.[0]}${userData?.lastName?.[0]}`.toUpperCase()
+                  `${userData?.firstName?.[0] || ''}${userData?.lastName?.[0] || ''}`.toUpperCase()
                 )}
               </div>
             </motion.button>
@@ -235,6 +260,39 @@ function Navbar() {
             onClose={() => setActiveDropdown(null)}
             className="w-80"
           >
+            {/* For mobile, display nav links at the top of the dropdown */}
+            {isMobile && (
+              <>
+                <div className="py-2">
+                  {navItems.map((item) => {
+                    const isActive = location.pathname === item.path;
+                    return (
+                      <motion.div 
+                        key={item.path} 
+                        whileHover={{ scale: 1.02 }} 
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Link 
+                          to={item.path}
+                          onClick={() => setActiveDropdown(null)}
+                          className={`flex items-center px-4 py-2 text-sm transition-colors ${
+                            isActive 
+                              ? "bg-blue-500 text-white" 
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          <item.icon className="mr-2" />
+                          {item.label}
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+                <div className="border-t border-gray-200"></div>
+              </>
+            )}
+
+            {/* Profile details */}
             <div className="py-2">
               <div className="px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-3">
@@ -246,7 +304,7 @@ function Navbar() {
                         className="w-full h-full object-cover rounded-full"
                       />
                     ) : (
-                      `${userData?.firstName?.[0]}${userData?.lastName?.[0]}`.toUpperCase()
+                      `${userData?.firstName?.[0] || ''}${userData?.lastName?.[0] || ''}`.toUpperCase()
                     )}
                   </div>
                   <div>
@@ -258,13 +316,15 @@ function Navbar() {
                   </div>
                 </div>
               </div>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleLogout}
                 className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
               >
                 <FiLogOut size={16} />
                 Logout
-              </button>
+              </motion.button>
             </div>
           </Dropdown>
         </div>
