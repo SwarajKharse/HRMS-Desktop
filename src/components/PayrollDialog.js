@@ -47,7 +47,6 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
         ...formData,
         employee: employee
       }
-      console.log(payrollData)
       await onSubmit(payrollData)
       onClose()
     } catch (err) {

@@ -21,7 +21,6 @@ function Register() {
     state: "",
     postalCode: "",
     country: "",
-    dualReporting: false,
   })
 
   const [employeeData, setEmployeeData] = useState({
@@ -113,7 +112,7 @@ function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-white to-gray-100 px-4 sm:px-6 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -279,23 +278,6 @@ function Register() {
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                     />
                   </div>
-                </div>
-              </div>
-
-              {/* Additional Settings */}
-              <div className="space-y-4 rounded-lg bg-gray-50 p-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Additional Settings</h3>
-                <div>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      name="dualReporting"
-                      checked={orgData.dualReporting}
-                      onChange={handleOrgChange}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-700">Enable Dual Reporting</span>
-                  </label>
                 </div>
               </div>
             </>

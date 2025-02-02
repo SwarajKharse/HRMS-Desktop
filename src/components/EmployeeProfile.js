@@ -1,12 +1,45 @@
-import { motion } from "framer-motion"
-import { FiX, FiMail, FiPhone, FiCalendar, FiMapPin } from "react-icons/fi"
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiX } from "react-icons/fi";
+import EmployeeDetails from "./EmployeeProfile/EmployeeDetails";
+import EmployeeAttendance from "./EmployeeProfile/EmployeeAttendance";
+import EmployeeLeaves from "./EmployeeProfile/EmployeeLeaves";
+import EmployeePayslips from "./EmployeeProfile/EmployeePayslips";
 
 function EmployeeProfile({ employee, onClose }) {
-  if (!employee) return null
+  const [activeTab, setActiveTab] = useState("details");
 
-  // Safely access nested properties
-  const departmentName = employee.department?.name || "No Department"
-  const designationName = employee.designation?.name || "No Designation"
+  if (!employee) return null;
+
+  const tabs = [
+    { id: "details", label: "Details" },
+    { id: "attendance", label: "Attendance" },
+    { id: "leaves", label: "Leaves" },
+    { id: "payslips", label: "Payslips" },
+  ];
+
+  console.log(employee);
+
+  const formatDate = (date) => {
+    if (!date) return "-";
+    const d = new Date(date);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case "details":
+        return <EmployeeDetails employee={employee} formatDate={formatDate} />;
+      case "attendance":
+        return <EmployeeAttendance employeeId={employee.id} />;
+      case "leaves":
+        return <EmployeeLeaves employeeId={employee.id} />;
+      case "payslips":
+        return <EmployeePayslips employeeId={employee.id} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <motion.div
@@ -20,7 +53,7 @@ function EmployeeProfile({ employee, onClose }) {
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.95 }}
-        className="bg-white rounded-xl shadow-xl max-w-2xl w-full overflow-hidden"
+        className="bg-white rounded-xl shadow-xl max-w-4xl w-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with close button */}
@@ -31,111 +64,83 @@ function EmployeeProfile({ employee, onClose }) {
           </button>
         </div>
 
-        <div className="p-6">
-          {/* Profile Header */}
-          <div className="flex items-center space-x-6 mb-8">
-            <div className="h-24 w-24 rounded-full bg-blue-900 flex items-center justify-center text-white text-2xl">
-              {employee.profilePhotoUrl ? (
-                <img
-                  src={employee.profilePhotoUrl || "/placeholder.svg"}
-                  alt="Profile"
-                  className="h-24 w-24 rounded-full object-cover"
-                />
-              ) : (
-                <span>
-                  {employee.firstName?.[0] || ""}
-                  {employee.lastName?.[0] || ""}
-                </span>
-              )}
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900">
-                {employee.firstName} {employee.lastName}
-              </h3>
-              <p className="text-gray-500">{designationName}</p>
-              <span
-                className={`mt-2 px-3 py-1 inline-flex text-sm font-medium rounded-full 
-                ${employee.empStatus === "Active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
-              >
-                {employee.empStatus || "Pending"}
-              </span>
-            </div>
-          </div>
-
-          {/* Contact Information */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-gray-500 uppercase">Contact Information</h4>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3 text-gray-600">
-                  <FiMail className="w-5 h-5" />
-                  <div>
-                    <p className="text-sm">{employee.email || "No Email"}</p>
-                    <p className="text-sm text-gray-500">{employee.personalEmail || "No Personal Email"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 text-gray-600">
-                  <FiPhone className="w-5 h-5" />
-                  <div>
-                    <p className="text-sm">{employee.workPhone || "No Work Phone"}</p>
-                    <p className="text-sm text-gray-500">{employee.personalPhone || "No Personal Phone"}</p>
-                  </div>
-                </div>
+        {/* Fixed Employee Information Header */}
+        <div className="bg-gray-50 border-b">
+          <div className="px-6 py-4">
+            <div className="flex items-center space-x-6">
+              <div className="h-20 w-20 rounded-full bg-blue-900 flex items-center justify-center text-white text-xl overflow-hidden">
+                {employee.profilePhotoUrl ? (
+                  <img
+                    src={employee.profilePhotoUrl || "/placeholder.svg"}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span>
+                    {employee.firstName?.[0]}
+                    {employee.lastName?.[0]}
+                  </span>
+                )}
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-gray-500 uppercase">Work Information</h4>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3 text-gray-600">
-                  <FiMapPin className="w-5 h-5" />
-                  <div>
-                    <p className="text-sm">{departmentName}</p>
-                    <p className="text-sm text-gray-500">{employee.location || "No Location"}</p>
-                  </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {employee.firstName} {employee.lastName}
+                </h3>
+                <div className="mt-1 text-sm text-gray-500">
+                  {employee.department?.name} • {employee.designation?.name}
                 </div>
-                <div className="flex items-center space-x-3 text-gray-600">
-                  <FiCalendar className="w-5 h-5" />
-                  <div>
-                    <p className="text-sm">
-                      {employee.joiningDate ? new Date(employee.joiningDate).toLocaleDateString() : "No Joining Date"}
-                    </p>
-                  </div>
+                <div className="mt-2">
+                  <span
+                    className={`px-3 py-1 inline-flex text-sm font-medium rounded-full ${
+                      employee.empStatus === "Active"
+                        ? "bg-green-100 text-green-800"
+                        : "bg-yellow-100 text-yellow-800"
+                    }`}
+                  >
+                    {employee.empStatus || "Status Unknown"}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Additional Information */}
-          <div className="space-y-4">
-            <h4 className="text-sm font-medium text-gray-500 uppercase">Additional Information</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-500">Employee ID</p>
-                <p className="font-medium">{employee.empId || "-"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Reporting Manager</p>
-                <p className="font-medium">
-                  {typeof employee.reportingManager === "object"
-                    ? `${employee.reportingManager?.firstName || ""} ${employee.reportingManager?.lastName || ""}`
-                    : employee.reportingManager || "-"}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500">Work Type</p>
-                <p className="font-medium">{employee.workType || "-"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500">Shift</p>
-                <p className="font-medium">{employee.shift || "-"}</p>
-              </div>
-            </div>
+          {/* Navigation Tabs */}
+          <div className="px-6">
+            <nav className="flex space-x-8" aria-label="Tabs">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
           </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="p-6 max-h-[calc(100vh-350px)] overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {renderContent()}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </motion.div>
     </motion.div>
-  )
+  );
 }
 
 export default EmployeeProfile;

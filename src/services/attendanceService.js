@@ -47,4 +47,13 @@ export const attendanceService = {
       throw new Error("Failed to fetch monthly attendance")
     }
   },
+
+  updateAttendance: async (attendance) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/update`, attendance)
+      return response.data
+    } catch (error) {
+      throw new Error("Failed to update attendance")
+    }
+  }
 };
