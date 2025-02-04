@@ -5,7 +5,6 @@ const BASE_URL = "http://localhost:8080/api/miss-punch";
 export const missPunchService = {
   apply: async (missPunchData) => {
     try{
-      console.log(missPunchData)
       const response = await axios.post(`${BASE_URL}/apply`, missPunchData)
       return response.data;
     }catch(error){

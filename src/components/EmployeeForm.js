@@ -5,7 +5,6 @@ import { employeeService } from '../services/employeeService';
 import { authService } from '../services/authService';
 import { departmentService } from '../services/departmentService';
 import { designationService } from '../services/designationService';
-import { roleService } from '../services/roleService';
 import ImageUploader from "./ImageUploader";
 
 function EmployeeForm({ employee, onClose, onSubmit }) {
@@ -36,9 +35,6 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     department: {
       id: null
     },
-    role: {
-      id: null
-    },
     reportingManager: {
       id: null
     },
@@ -48,7 +44,6 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
   });
   const [departments, setDepartments] = useState([]);
   const [designations, setDesignations] = useState([]);
-  const [roles, setRoles] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -71,9 +66,6 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
         designation: {
           id: employee.designation?.id || null,
         },
-        role: {
-          id: employee.role?.id || null,
-        },
         reportingManager: {
           id: employee.reportingManager?.id || null
         }
@@ -83,19 +75,17 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
 
   useEffect(() => {
     fetchDepartmentsAndDesignations()
-  }, [])
+  }, [authService.getUser().orgId]);
 
   const fetchDepartmentsAndDesignations = async () => {
     try {
-      const [deptData, desigData, roleData, managerslist] = await Promise.all([
+      const [deptData, desigData, managerslist] = await Promise.all([
         departmentService.getDepartmentsByOrgId(authService.getUser().orgId),
         designationService.getDesignationsByOrgId(authService.getUser().orgId),
-        roleService.getRolesByOrgId(authService.getUser().orgId),
         employeeService.getManagerList()
-      ])
+      ]);
       setDepartments(deptData);
       setDesignations(desigData);
-      setRoles(roleData);
       setManagerslist(managerslist);
     } catch (err) {
       setError("Failed to load departments and designations")
@@ -109,7 +99,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     const { name, value } = e.target
 
     // Handle department and designation select changes
-    if (name === "department" || name === "designation" || name === "role" || name === "reportingManager") {
+    if (name === "department" || name === "designation" || name === "reportingManager") {
       setFormData((prev) => ({
         ...prev,
         [name]: {
@@ -136,21 +126,19 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
         ...formData,
         department: formData.department.id ? { id: formData.department.id } : null,
         designation: formData.designation.id ? { id: formData.designation.id } : null,
-        role: formData.role.id ? { id: formData.role.id } : null,
         reportingManager: formData.reportingManager.id ? { id: formData.reportingManager.id } : null,
         dateOfBirth: formData.dateOfBirth ? new Date(formData.dateOfBirth).toISOString() : null,
         dateOfJoining: formData.dateOfJoining ? new Date(formData.dateOfJoining).toISOString() : null,
       };
   
-      let response
       if (employee) {
         // Update existing employee
-        response = await employeeService.updateEmployee(employee.id, processedData)
+        await employeeService.updateEmployee(employee.id, processedData)
       } else {
         // Create new employee
-        response = await employeeService.createEmployee(processedData)
+        await employeeService.createEmployee(processedData)
       }
-      await onSubmit(response); // Wait for parent component to handle the response
+      await onSubmit(); // Wait for parent component to handle the response
       onClose(); // Only close after successful submission and parent handling
     } catch (err) {
       setError(err.message || 'Failed to create employee');
@@ -203,9 +191,6 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   id: null
                 },
                 department: {
-                  id: null
-                },
-                role: {
                   id: null
                 },
                 reportingManager: {
@@ -460,22 +445,6 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   {designations.map((desig) => (
                     <option key={desig.id} value={desig.id}>
                       {desig.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Role</label>
-                <select
-                  name="role"
-                  value={formData.role.id || ""}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Role</option>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id}>
-                      {role.name}
                     </option>
                   ))}
                 </select>

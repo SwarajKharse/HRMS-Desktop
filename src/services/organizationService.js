@@ -27,7 +27,6 @@ export const organizationService = {
 
   updateOrganization: async (orgData) => {
     try {
-      console.log(orgData)
       const response = await axios.put(`${BASE_URL}/`, orgData, {
         headers: {
           "Content-Type": "application/json",

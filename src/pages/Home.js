@@ -11,12 +11,37 @@ import Warnings from "../components/Home/Warnings"
 import Terminations from "../components/Home/Terminations"
 import Resignations from "../components/Home/Resignations"
 
+// List of valid tabs for validation
+const VALID_TABS = [
+  "activities",
+  "profile",
+  "leave-approvals",
+  "attendance-kiosk",
+  "miss-punch",
+  "warnings",
+  "terminations",
+  "resignations",
+]
+
 function Home() {
-  const [activeTab, setActiveTab] = useState("activities")
+  // Initialize activeTab from localStorage with validation
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedTab = localStorage.getItem("activeTab")
+      return VALID_TABS.includes(savedTab) ? savedTab : "activities"
+    }
+    return "activities"
+  })
+
   const [employee, setEmployee] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const { user } = useAuth()
+
+  // Update localStorage when activeTab changes
+  useEffect(() => {
+    localStorage.setItem("activeTab", activeTab)
+  }, [activeTab])
 
   useEffect(() => {
     const getEmployeeData = async () => {

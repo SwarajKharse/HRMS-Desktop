@@ -31,7 +31,6 @@ function AttendanceCalendar() {
       setLoading(true)
       const data = await attendanceService.getMonthlyAttendance(authService.getUser().sub, getMonth(date), getYear(date))
       setAttendanceData(data)
-      console.log(data)
       setError(null)
     } catch (err) {
       setError(err.message)

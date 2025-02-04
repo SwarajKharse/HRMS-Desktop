@@ -83,7 +83,6 @@ function LeaveSummary() {
           leaveRequestService.getLeavesByEmployeeId(user.sub),
         ]);
 
-        console.log(leavesData)
         // Transform leave types data
         const transformedLeaveTypes = leaveTypesData.map((type) => {
           const style = categoryStyles[type.leaveType.leaveCategory] || categoryStyles["Other"]

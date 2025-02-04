@@ -17,12 +17,16 @@ function ResourceAvailability() {
     Weekend: "bg-gray-100 text-gray-600",
     Present: "bg-green-100 text-green-800",
     Absent: "bg-red-100 text-red-800",
-    Late: "bg-yellow-100 text-yellow-800",
+    "Late Check-in": "bg-yellow-100 text-yellow-800",
+    "Early Check-out": "bg-orange-100 text-orange-800",
+    "Late Check-in and Early Check-out": "bg-amber-100 text-amber-800",
     "Annual Leave": "bg-purple-100 text-purple-800",
     "Sick Leave": "bg-orange-100 text-orange-800",
     "Casual Leave": "bg-indigo-100 text-indigo-800",
     "Maternity Leave": "bg-rose-100 text-rose-800",
-  }
+    "-": "bg-gray-100 text-gray-600",
+    // Add more leave types if needed
+  };
 
   // Status abbreviations
   const statusAbbreviations = {
@@ -30,12 +34,16 @@ function ResourceAvailability() {
     Weekend: "W",
     Present: "P",
     Absent: "A",
-    Late: "L",
+    "Late Check-in": "LC",
+    "Early Check-out": "EC",
+    "Late Check-in and Early Check-out": "LCE",
     "Annual Leave": "AL",
     "Sick Leave": "SL",
     "Casual Leave": "CL",
     "Maternity Leave": "ML",
-  }
+    "-": "-",
+    // Add more leave types if needed
+  };
 
   useEffect(() => {
     fetchResourceData()
@@ -46,6 +54,7 @@ function ResourceAvailability() {
       setLoading(true)
       const data = await leaveReportService.getResourceAvailability(1, startDate, endDate);
       setResourceData(data);
+      console.log(data)
       setError(null)
     } catch (err) {
       setError(err.message)

@@ -4,14 +4,23 @@ import { FiLayers, FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi"
 import { organizationService } from "../../services/organizationService"
 import { departmentService } from "../../services/departmentService"
 import { designationService } from "../../services/designationService"
-import { roleService } from "../../services/roleService"
 import { authService } from "../../services/authService"
 import DepartmentForm from "../../components/Organization/DepartmentForm"
 import DesignationForm from "../../components/Organization/DesignationForm"
-import OrganizationDetailsForm from "../../components/Organization/OrganizationDetailsForm";
+import OrganizationDetailsForm from "../../components/Organization/OrganizationDetailsForm"
+
+// List of valid tabs for validation
+const VALID_TABS = ["details", "departments", "designations"]
 
 function OrganizationSettings() {
-  const [activeTab, setActiveTab] = useState("details")
+  // Initialize activeTab from localStorage with validation
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedTab = localStorage.getItem("orgSettingsActiveTab")
+      return VALID_TABS.includes(savedTab) ? savedTab : "details"
+    }
+    return "details"
+  })
   const [organization, setOrganization] = useState(null)
   const [departments, setDepartments] = useState([])
   const [designations, setDesignations] = useState([])
@@ -22,14 +31,20 @@ function OrganizationSettings() {
   const [selectedDepartment, setSelectedDepartment] = useState(null)
   const [selectedDesignation, setSelectedDesignation] = useState(null)
 
+  // Update localStorage when activeTab changes
+  useEffect(() => {
+    localStorage.setItem("orgSettingsActiveTab", activeTab)
+  }, [activeTab])
+
   const orgId = authService.getUser().orgId
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [orgId]) //This line is updated
 
   const fetchData = async () => {
     try {
+      setLoading(true)
       const [orgData, deptData, desigData] = await Promise.all([
         organizationService.getOrganization(orgId),
         departmentService.getDepartmentsByOrgId(orgId),
@@ -100,7 +115,7 @@ function OrganizationSettings() {
       {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
-        <button
+          <button
             onClick={() => setActiveTab("details")}
             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
               ${
@@ -140,23 +155,25 @@ function OrganizationSettings() {
 
       {/* Content */}
       <div className="flex justify-end">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => {
-            if (activeTab === "departments") {
-              setSelectedDepartment(null)
-              setShowDepartmentForm(true)
-            } else if (activeTab === "designations") {
-              setSelectedDesignation(null)
-              setShowDesignationForm(true)
-            }
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
-        >
-          <FiPlus className="mr-2" />
-          Add {activeTab === "departments" ? "Department" : activeTab === "designations" ? "Designation" : "Role"}
-        </motion.button>
+        {(activeTab === "departments" || activeTab === "designations") && (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              if (activeTab === "departments") {
+                setSelectedDepartment(null)
+                setShowDepartmentForm(true)
+              } else if (activeTab === "designations") {
+                setSelectedDesignation(null)
+                setShowDesignationForm(true)
+              }
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+          >
+            <FiPlus className="mr-2" />
+            Add {activeTab === "departments" ? "Department" : "Designation"}
+          </motion.button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
@@ -165,90 +182,94 @@ function OrganizationSettings() {
             <OrganizationDetailsForm organization={organization} onSubmit={fetchData} />
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                {activeTab === "roles" && (
+              <thead className="bg-gray-50">
+                <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
+                    Name
                   </th>
-                )}
-                {activeTab !== "roles" && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Parent {activeTab === "departments" ? "Department" : "Designation"}
+                  {activeTab === "roles" && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Description
+                    </th>
+                  )}
+                  {activeTab !== "roles" && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Parent {activeTab === "departments" ? "Department" : "Designation"}
+                    </th>
+                  )}
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
                   </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {activeTab === "departments" ? (
+                  departments.length === 0 ? (
+                    <tr>
+                      <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
+                        No departments found
+                      </td>
+                    </tr>
+                  ) : (
+                    departments.map((dept) => (
+                      <motion.tr key={dept.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {dept.parentDepartment?.name || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => handleDepartmentEdit(dept)}
+                            className="text-blue-600 hover:text-blue-900 mr-4"
+                          >
+                            <FiEdit2 className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDepartmentDelete(dept.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <FiTrash2 className="w-5 h-5" />
+                          </button>
+                        </td>
+                      </motion.tr>
+                    ))
+                  )
+                ) : activeTab === "designations" ? (
+                  designations.length === 0 ? (
+                    <tr>
+                      <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
+                        No designations found
+                      </td>
+                    </tr>
+                  ) : (
+                    designations.map((desig) => (
+                      <motion.tr key={desig.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{desig.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {desig.parentDesignation?.name || "-"}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() => handleDesignationEdit(desig)}
+                            className="text-blue-600 hover:text-blue-900 mr-4"
+                          >
+                            <FiEdit2 className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={() => handleDesignationDelete(desig.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <FiTrash2 className="w-5 h-5" />
+                          </button>
+                        </td>
+                      </motion.tr>
+                    ))
+                  )
+                ) : (
+                  ""
                 )}
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {activeTab === "departments" ? (
-                departments.length === 0 ? (
-                  <tr>
-                    <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
-                      No departments found
-                    </td>
-                  </tr>
-                ) : (
-                  departments.map((dept) => (
-                    <motion.tr key={dept.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{dept.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {dept.parentDepartment?.name || "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleDepartmentEdit(dept)}
-                          className="text-blue-600 hover:text-blue-900 mr-4"
-                        >
-                          <FiEdit2 className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDepartmentDelete(dept.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <FiTrash2 className="w-5 h-5" />
-                        </button>
-                      </td>
-                    </motion.tr>
-                  ))
-                )
-              ) : activeTab === "designations" ? (
-                designations.length === 0 ? (
-                  <tr>
-                    <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
-                      No designations found
-                    </td>
-                  </tr>
-                ) : (
-                  designations.map((desig) => (
-                    <motion.tr key={desig.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{desig.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {desig.parentDesignation?.name || "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleDesignationEdit(desig)}
-                          className="text-blue-600 hover:text-blue-900 mr-4"
-                        >
-                          <FiEdit2 className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDesignationDelete(desig.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <FiTrash2 className="w-5 h-5" />
-                        </button>
-                      </td>
-                    </motion.tr>
-                  ))
-                )
-              ) : ""}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
           )}
         </div>
       </div>

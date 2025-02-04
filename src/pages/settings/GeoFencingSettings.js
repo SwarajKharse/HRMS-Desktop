@@ -72,7 +72,6 @@ function GeoFencingSettings() {
       const center = layer.getLatLng();
       const radius = layer.getRadius();
       geometry = circleToPolygon([center.lng, center.lat], radius);
-      console.log("Converted circle to polygon:", geometry);
     } else {
       // For rectangles and polygons, use the GeoJSON directly
       geometry = layer.toGeoJSON().geometry;

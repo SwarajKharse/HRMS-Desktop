@@ -18,8 +18,6 @@ function EmployeeProfile({ employee, onClose }) {
     { id: "payslips", label: "Payslips" },
   ];
 
-  console.log(employee);
-
   const formatDate = (date) => {
     if (!date) return "-";
     const d = new Date(date);
@@ -53,7 +51,7 @@ function EmployeeProfile({ employee, onClose }) {
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.95 }}
-        className="bg-white rounded-xl shadow-xl max-w-4xl w-full overflow-hidden"
+        className="bg-white rounded-xl shadow-xl max-w-5xl w-full overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with close button */}

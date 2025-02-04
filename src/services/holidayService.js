@@ -23,7 +23,6 @@ export const holidayService = {
 
   createHoliday: async (holidayData) => {
     try {
-      console.log(holidayData)
       const response = await axios.post(`${BASE_URL}/`, holidayData)
       return response.data
     } catch (error) {
@@ -33,7 +32,6 @@ export const holidayService = {
 
   updateHoliday: async (id, holidayData) => {
     try {
-      console.log(holidayData)
       const response = await axios.put(`${BASE_URL}/${id}`, holidayData)
       return response.data
     } catch (error) {

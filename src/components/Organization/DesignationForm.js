@@ -40,10 +40,8 @@ function DesignationForm({ designation, designations, orgId, onClose, onSubmit }
 
     try {
       const res = designationService[designation ? "updateDesignation" : "createDesignation"](formData);
-      if(res){
-        if (onSubmit) await onSubmit()
-        await onClose()
-      }
+      await onSubmit()
+      onClose()
     } catch (err) {
       setError(err.message || "Failed to save designation")
     } finally {

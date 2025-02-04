@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import DailyLeaveStatus from "../components/Reports/DailyLeaveStatus"
 import ResourceAvailability from "../components/Reports/ResourceAvailability"
@@ -6,8 +6,23 @@ import LeaveBookedAndBalance from "../components/Reports/LeaveBookedAndBalance"
 import AttendanceReport from "../components/Reports/AttendanceReport"
 import { FiCalendar, FiUsers, FiClock, FiPieChart } from "react-icons/fi"
 
+// List of valid tabs for validation
+const VALID_TABS = ["daily-leave-status", "resource-availability", "leave-booked-balance", "attendance-report"]
+
 function Reports() {
-  const [activeTab, setActiveTab] = useState("daily-leave-status")
+  // Initialize activeTab from localStorage with validation
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedTab = localStorage.getItem("reportsActiveTab")
+      return VALID_TABS.includes(savedTab) ? savedTab : "daily-leave-status"
+    }
+    return "daily-leave-status"
+  })
+
+  // Update localStorage when activeTab changes
+  useEffect(() => {
+    localStorage.setItem("reportsActiveTab", activeTab)
+  }, [activeTab])
 
   const tabs = [
     { id: "daily-leave-status", label: "Daily Leave Status", icon: FiCalendar },

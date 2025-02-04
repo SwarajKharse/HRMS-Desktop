@@ -1,4 +1,5 @@
 import { FiMail, FiCalendar, FiUser, FiInfo } from "react-icons/fi"
+import { motion } from "framer-motion"
 
 function EmployeeDetails({ employee, formatDate }) {
   if (!employee) return null
@@ -65,26 +66,30 @@ function EmployeeDetails({ employee, formatDate }) {
   ]
 
   return (
-    <div className="space-y-8">
-      {/* Information Sections */}
-      <div className="grid grid-cols-1 gap-8">
-        {sections.map((section) => (
-          <div key={section.title} className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <section.icon className="w-5 h-5 text-gray-400" />
-              <h4 className="text-lg font-medium text-gray-900">{section.title}</h4>
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      {sections.map((section) => (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          key={section.title}
+          className="bg-white rounded-xl border shadow-sm p-6 hover:shadow-md transition-shadow duration-200"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-indigo-50 rounded-lg">
+              <section.icon className="w-5 h-5 text-indigo-600" />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {section.fields.map((field) => (
-                <div key={field.label} className="space-y-1">
-                  <p className="text-sm text-gray-500">{field.label}</p>
-                  <p className="text-sm font-medium text-gray-900">{field.value}</p>
-                </div>
-              ))}
-            </div>
+            <h4 className="text-lg font-semibold text-gray-900">{section.title}</h4>
           </div>
-        ))}
-      </div>
+          <div className="grid grid-cols-1 gap-y-6">
+            {section.fields.map((field) => (
+              <div key={field.label} className="flex flex-col gap-1.5">
+                <p className="text-sm font-medium text-gray-500">{field.label}</p>
+                <p className="text-sm font-semibold text-gray-900">{field.value}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      ))}
     </div>
   )
 }

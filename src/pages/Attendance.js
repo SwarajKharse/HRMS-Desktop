@@ -1,63 +1,29 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { attendanceService } from "../services/attendanceService"
 import AttendanceCalendar from "../components/Attendance/AttendanceCalendar"
 import MissPunchForm from "../components/Attendance/MissPunchForm"
 import MissPunchList from "../components/Attendance/MissPunchList"
 import { FiCalendar, FiClock, FiPlus } from "react-icons/fi"
 
+// List of valid tabs for validation
+const VALID_TABS = ["summary", "missPunch"]
+
 function Attendance() {
-  const [attendanceData, setAttendanceData] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState("summary")
+  // Initialize activeTab from localStorage with validation
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedTab = localStorage.getItem("attendanceActiveTab")
+      return VALID_TABS.includes(savedTab) ? savedTab : "summary"
+    }
+    return "summary"
+  })
+
   const [showMissPunchForm, setShowMissPunchForm] = useState(false)
 
+  // Update localStorage when activeTab changes
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = [
-          {
-            date: "2025-01-05",
-            firstIn: null,
-            lastOut: null,
-            totalHours: null,
-            payableHours: "08:00",
-            status: "Weekend",
-            regularization: null,
-          },
-          {
-            date: "2025-01-06",
-            firstIn: null,
-            lastOut: null,
-            totalHours: null,
-            payableHours: null,
-            status: "Absent",
-            regularization: null,
-          },
-        ]
-        setAttendanceData(data)
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchData()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return <div className="flex items-center justify-center h-full text-red-500">{error}</div>
-  }
+    localStorage.setItem("attendanceActiveTab", activeTab)
+  }, [activeTab])
 
   return (
     <motion.div
@@ -102,7 +68,7 @@ function Attendance() {
       {/* Content */}
       <div className="bg-white rounded-lg shadow">
         {activeTab === "summary" ? (
-          <AttendanceCalendar data={attendanceData} />
+          <AttendanceCalendar />
         ) : (
           <div className="p-6">
             <MissPunchList />

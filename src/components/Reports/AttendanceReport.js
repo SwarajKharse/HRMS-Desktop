@@ -19,7 +19,6 @@ function AttendanceReport() {
       setLoading(true)
       const data = await attendanceService.getAttendanceReport(selectedDate)
       setAttendanceData(data)
-      console.log(data)
       setError(null)
     } catch (err) {
       setError(err.message)

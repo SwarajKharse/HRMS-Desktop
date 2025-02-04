@@ -207,6 +207,7 @@ const AttendanceKiosk = () => {
     setShowDialog(false);
     setRecognizedUser(null);
     setDialogData({});
+    window.location.reload();
   };
 
   const handleDialogConfirm = () => {
