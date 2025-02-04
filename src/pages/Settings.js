@@ -57,13 +57,13 @@ function Settings() {
       link: "/settings/geoFencing",
     },
     {
-      id: "payroll-settings",
-      name: "Payroll Settings",
-      description: "Configure salary and payment rules",
-      icon: MdPayments,
+      id: "tds-slabs",
+      name: "TDS Slab Settings",
+      description: "Configure tax deduction slabs",
+      icon: BiMoney,
       color: "bg-emerald-500",
       category: "payroll",
-      link: "/settings/payroll-settings",
+      link: "/settings/tds-slabs",
     },
     {
       id: "employee-payroll-settings",
