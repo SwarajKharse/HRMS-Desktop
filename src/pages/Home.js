@@ -24,10 +24,10 @@ const VALID_TABS = [
 ]
 
 function Home() {
-  // Initialize activeTab from localStorage with validation
+  // Initialize activeTab from sessionStorage with validation
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
-      const savedTab = localStorage.getItem("activeTab")
+      const savedTab = sessionStorage.getItem("activeTab")
       return VALID_TABS.includes(savedTab) ? savedTab : "activities"
     }
     return "activities"
@@ -38,9 +38,9 @@ function Home() {
   const [error, setError] = useState(null)
   const { user } = useAuth()
 
-  // Update localStorage when activeTab changes
+  // Update sessionStorage when activeTab changes
   useEffect(() => {
-    localStorage.setItem("activeTab", activeTab)
+    sessionStorage.setItem("activeTab", activeTab)
   }, [activeTab])
 
   useEffect(() => {

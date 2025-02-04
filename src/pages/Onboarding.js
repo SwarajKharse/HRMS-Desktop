@@ -1,102 +1,107 @@
-import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { FiPlus, FiEdit2, FiAlertCircle, FiAlertTriangle, FiUserX, FiUsers, FiSearch } from "react-icons/fi"
-import { employeeService } from "../services/employeeService"
-import { useAuth } from "../contexts/AuthContext"
-import EmployeeForm from "../components/EmployeeForm"
-import EmployeeProfile from "../components/EmployeeProfile"
-import WarningForm from "../components/Forms/WarningForm"
-import TerminationForm from "../components/Forms/TerminationForm"
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  FiPlus, 
+  FiEdit2, 
+  FiAlertCircle, 
+  FiAlertTriangle, 
+  FiUserX, 
+  FiUsers, 
+  FiSearch 
+} from "react-icons/fi";
+import { employeeService } from "../services/employeeService";
+import { useAuth } from "../contexts/AuthContext";
+import EmployeeForm from "../components/EmployeeForm";
+import EmployeeProfile from "../components/EmployeeProfile";
+import WarningForm from "../components/Forms/WarningForm";
+import TerminationForm from "../components/Forms/TerminationForm";
 
 function Onboarding() {
-  const [loading, setLoading] = useState(true) // Added loading state
-  const [error, setError] = useState(null)
-  const [employees, setEmployees] = useState([])
-  const [filteredEmployees, setFilteredEmployees] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [activeView, setActiveView] = useState("active")
-  const [selectedEmployee, setSelectedEmployee] = useState(null)
-  const [showForm, setShowForm] = useState(false)
-  const [showProfile, setShowProfile] = useState(false)
-  const [showWarningForm, setShowWarningForm] = useState(false)
-  const [showTerminationForm, setShowTerminationForm] = useState(false)
-  const { user } = useAuth()
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [employees, setEmployees] = useState([]);
+  const [filteredEmployees, setFilteredEmployees] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeView, setActiveView] = useState("active");
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showWarningForm, setShowWarningForm] = useState(false);
+  const [showTerminationForm, setShowTerminationForm] = useState(false);
+  const { user } = useAuth(); // Assume user has an "orgId" property
 
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        setLoading(true)
-        const data = await employeeService.getAllEmployees()
-        setEmployees(data)
-        setFilteredEmployees(data)
-        setLoading(false)
-      } catch (error) {
-        setError("Failed to fetch employees")
-        setLoading(false)
+  // Fetch employees based on the active view
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      let data = [];
+      if (activeView === "past") {
+        // Call the API for past employees and send orgId
+        data = await employeeService.getPastEmployeesByOrgId(user.orgId);
+      } else {
+        // Default to fetching all (active) employees
+        data = await employeeService.getAllEmployees();
       }
+      setEmployees(data);
+      setFilteredEmployees(data);
+      setLoading(false);
+    } catch (error) {
+      setError("Failed to fetch employees");
+      setLoading(false);
     }
+  };
 
-    fetchEmployees()
-  }, [])
+  // Fetch employees on mount and whenever user or activeView changes
+  useEffect(() => {
+    fetchEmployees();
+  }, [user, activeView]);
 
+  // Filter employees based on the search query
   useEffect(() => {
     const filterEmployees = () => {
       const filtered = employees.filter((employee) => {
-        const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase()
-        return fullName.includes(searchQuery.toLowerCase())
-      })
-      setFilteredEmployees(filtered)
-    }
+        const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase();
+        return fullName.includes(searchQuery.toLowerCase());
+      });
+      setFilteredEmployees(filtered);
+    };
 
-    filterEmployees()
-  }, [searchQuery, employees])
+    filterEmployees();
+  }, [searchQuery, employees]);
 
   const handleRowClick = (employee) => {
-    setSelectedEmployee(employee)
-    setShowProfile(true)
-  }
+    setSelectedEmployee(employee);
+    setShowProfile(true);
+  };
 
   const handleAddEmployee = async () => {
     try {
-      await fetchEmployees()
-      setShowForm(false)
-      setSelectedEmployee(null)
+      await fetchEmployees();
+      setShowForm(false);
+      setSelectedEmployee(null);
     } catch (error) {
-      setError("Failed to add employee")
+      setError("Failed to add employee");
     }
-  }
+  };
 
   const handleEdit = async (e, id) => {
-    e.stopPropagation()
-    const employee = employees.find((emp) => emp.id === id)
-    setSelectedEmployee(employee)
-    setShowForm(true)
-  }
+    e.stopPropagation();
+    const employee = employees.find((emp) => emp.id === id);
+    setSelectedEmployee(employee);
+    setShowForm(true);
+  };
 
   const handleIssueWarning = (e, employee) => {
-    e.stopPropagation()
-    setSelectedEmployee(employee)
-    setShowWarningForm(true)
-  }
+    e.stopPropagation();
+    setSelectedEmployee(employee);
+    setShowWarningForm(true);
+  };
 
   const handleTerminate = (e, employee) => {
-    e.stopPropagation()
-    setSelectedEmployee(employee)
-    setShowTerminationForm(true)
-  }
-
-  const fetchEmployees = async () => {
-    try {
-      setLoading(true)
-      const data = await employeeService.getAllEmployees()
-      setEmployees(data)
-      setFilteredEmployees(data)
-      setLoading(false)
-    } catch (error) {
-      setError("Failed to fetch employees")
-      setLoading(false)
-    }
-  }
+    e.stopPropagation();
+    setSelectedEmployee(employee);
+    setShowTerminationForm(true);
+  };
 
   if (loading) {
     return (
@@ -106,7 +111,7 @@ function Onboarding() {
           <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-600 rounded-full animate-spin border-t-transparent"></div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -144,8 +149,8 @@ function Onboarding() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => {
-                setSelectedEmployee(null)
-                setShowForm(true)
+                setSelectedEmployee(null);
+                setShowForm(true);
               }}
               className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:shadow-lg hover:from-indigo-700 hover:to-blue-700 transition-all duration-200 flex items-center gap-2 font-medium"
             >
@@ -270,13 +275,13 @@ function Onboarding() {
                         <td className="px-6 py-4">
                           <span
                             className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full
-                            ${
-                              employee.empStatus === "Active"
-                                ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
-                                : employee.empStatus === "Terminated"
-                                  ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
-                                  : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
-                            }`}
+                              ${
+                                employee.empStatus === "Active"
+                                  ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
+                                  : employee.empStatus === "Terminated"
+                                    ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+                                    : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
+                              }`}
                           >
                             {employee.empStatus}
                           </span>
@@ -291,20 +296,24 @@ function Onboarding() {
                               >
                                 <FiEdit2 size={18} />
                               </button>
-                              <button
-                                className="text-gray-400 hover:text-yellow-600 transition-colors"
-                                onClick={(e) => handleIssueWarning(e, employee)}
-                                title="Issue Warning"
-                              >
-                                <FiAlertTriangle size={18} />
-                              </button>
-                              <button
-                                className="text-gray-400 hover:text-red-600 transition-colors"
-                                onClick={(e) => handleTerminate(e, employee)}
-                                title="Terminate"
-                              >
-                                <FiUserX size={18} />
-                              </button>
+                              {!employee.dateOfLeaving && (
+                                <>
+                                  <button
+                                    className="text-gray-400 hover:text-yellow-600 transition-colors"
+                                    onClick={(e) => handleIssueWarning(e, employee)}
+                                    title="Issue Warning"
+                                  >
+                                    <FiAlertTriangle size={18} />
+                                  </button>
+                                  <button
+                                    className="text-gray-400 hover:text-red-600 transition-colors"
+                                    onClick={(e) => handleTerminate(e, employee)}
+                                    title="Terminate"
+                                  >
+                                    <FiUserX size={18} />
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </td>
                         )}
@@ -323,8 +332,8 @@ function Onboarding() {
           <EmployeeForm
             employee={selectedEmployee}
             onClose={() => {
-              setShowForm(false)
-              setSelectedEmployee(null)
+              setShowForm(false);
+              setSelectedEmployee(null);
             }}
             onSubmit={handleAddEmployee}
           />
@@ -333,8 +342,8 @@ function Onboarding() {
           <EmployeeProfile
             employee={selectedEmployee}
             onClose={() => {
-              setShowProfile(false)
-              setSelectedEmployee(null)
+              setShowProfile(false);
+              setSelectedEmployee(null);
             }}
           />
         )}
@@ -342,8 +351,8 @@ function Onboarding() {
           <WarningForm
             employee={selectedEmployee}
             onClose={() => {
-              setShowWarningForm(false)
-              setSelectedEmployee(null)
+              setShowWarningForm(false);
+              setSelectedEmployee(null);
             }}
             onSubmit={fetchEmployees}
           />
@@ -352,15 +361,15 @@ function Onboarding() {
           <TerminationForm
             employee={selectedEmployee}
             onClose={() => {
-              setShowTerminationForm(false)
-              setSelectedEmployee(null)
+              setShowTerminationForm(false);
+              setSelectedEmployee(null);
             }}
             onSubmit={fetchEmployees}
           />
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }
 
 export default Onboarding;

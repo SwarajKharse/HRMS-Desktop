@@ -9,10 +9,10 @@ import { FiCalendar, FiClock, FiPlus } from "react-icons/fi"
 const VALID_TABS = ["summary", "missPunch"]
 
 function Attendance() {
-  // Initialize activeTab from localStorage with validation
+  // Initialize activeTab from sessionStorage with validation
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
-      const savedTab = localStorage.getItem("attendanceActiveTab")
+      const savedTab = sessionStorage.getItem("attendanceActiveTab")
       return VALID_TABS.includes(savedTab) ? savedTab : "summary"
     }
     return "summary"
@@ -20,9 +20,9 @@ function Attendance() {
 
   const [showMissPunchForm, setShowMissPunchForm] = useState(false)
 
-  // Update localStorage when activeTab changes
+  // Update sessionStorage when activeTab changes
   useEffect(() => {
-    localStorage.setItem("attendanceActiveTab", activeTab)
+    sessionStorage.setItem("attendanceActiveTab", activeTab)
   }, [activeTab])
 
   return (

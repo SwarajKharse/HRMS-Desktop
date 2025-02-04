@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { format } from 'date-fns';
+import { authService } from './authService';
 
 const BASE_URL = 'http://localhost:8080/api/attendance';
 
@@ -31,6 +32,7 @@ export const attendanceService = {
       const response = await axios.get(`${BASE_URL}/daily`, {
         params: {
           date: date.toISOString().split("T")[0],
+          orgId: authService.getUser().orgId,
         },
       })
       return response.data

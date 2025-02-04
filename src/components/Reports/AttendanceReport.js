@@ -120,10 +120,7 @@ function AttendanceReport() {
                   Exit
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Net Hours
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Shift(s)
+                  Status
                 </th>
               </tr>
               <tr className="bg-gray-50">
@@ -183,28 +180,27 @@ function AttendanceReport() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.totalHours || "-"}</td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
                     <span className={getDurationClass(record.earlyEntry, true)}>
-                      {formatDuration(record.earlyEntry)}
+                      {record.earlyEntry}
                     </span>
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
                     <span className={getDurationClass(record.lateEntry, false)}>
-                      {formatDuration(record.lateEntry)}
+                      {record.lateEntry}
                     </span>
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
                     <span className={getDurationClass(record.earlyExit, false)}>
-                      {formatDuration(record.earlyExit)}
+                      {record.earlyExit}
                     </span>
                   </td>
                   <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
-                    <span className={getDurationClass(record.lateExit, true)}>{formatDuration(record.lateExit)}</span>
+                    <span className={getDurationClass(record.lateExit, true)}>{record.lateExit}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`font-medium ${record.status === "Present" ? "text-green-600" : "text-red-600"}`}>
                       {record.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">General</td>
                 </motion.tr>
               ))}
             </tbody>

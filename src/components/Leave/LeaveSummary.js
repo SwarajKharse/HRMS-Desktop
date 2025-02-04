@@ -15,20 +15,13 @@ import {
 } from "react-icons/fi"
 import {
   format,
-  startOfYear,
-  endOfYear,
-  addYears,
-  subYears,
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
   isSameMonth,
-  isSameDay,
-  addMonths,
-  subMonths,
   isToday,
-  isPast,
-  isFuture,
+  subMonths,
+  addMonths,
 } from "date-fns"
 import LeaveCard from "./LeaveCard"
 import { leaveRequestService } from "../../services/leaveRequestService"
@@ -39,7 +32,6 @@ import { authService } from "../../services/authService"
 function LeaveSummary() {
   const [viewType, setViewType] = useState("list")
   const [showLeaveForm, setShowLeaveForm] = useState(false)
-  const [currentDate, setCurrentDate] = useState(new Date())
   const [calendarDate, setCalendarDate] = useState(new Date())
   const [leaves, setLeaves] = useState([])
   const [leaveTypes, setLeaveTypes] = useState([])
@@ -73,6 +65,7 @@ function LeaveSummary() {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   const fetchData = async () => {
@@ -109,7 +102,7 @@ function LeaveSummary() {
     }
   }
 
-  // Calendar calculations
+  // Calendar calculations (for the calendar view)
   const monthStart = startOfMonth(calendarDate)
   const monthEnd = endOfMonth(calendarDate)
   const startingDayIndex = monthStart.getDay()
@@ -124,6 +117,12 @@ function LeaveSummary() {
     return date
   })
 
+  // Calculate the number of approved leaves booked in the current month
+  const approvedLeavesThisMonth = leaves.filter((leave) => {
+    const leaveStart = new Date(leave.startDate)
+    return leave.status === "APPROVED" && isSameMonth(leaveStart, new Date())
+  }).length
+
   const handleLeaveSubmit = async (leaveData) => {
     try {
       await leaveRequestService.applyLeave(leaveData)
@@ -132,14 +131,6 @@ function LeaveSummary() {
     } catch (error) {
       console.error("Error applying leave:", error)
     }
-  }
-
-  const handlePreviousYear = () => {
-    setCurrentDate(subYears(currentDate, 1))
-  }
-
-  const handleNextYear = () => {
-    setCurrentDate(addYears(currentDate, 1))
   }
 
   const handlePreviousMonth = () => {
@@ -166,10 +157,6 @@ function LeaveSummary() {
 
       return currentDate >= startDate && currentDate <= endDate
     })
-  }
-
-  const getLeaveStatus = (leave) => {
-    return leave.status;
   }
 
   const getStatusColor = (status) => {
@@ -203,13 +190,36 @@ function LeaveSummary() {
 
   return (
     <div className="space-y-6">
+      {/* Updated header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-2">
           <h2 className="text-lg font-medium text-gray-900">
-            Leave booked this year: {leaves.filter((leave) => leave.status === "APPROVED").length}
+            Leaves booked this month: {approvedLeavesThisMonth}
           </h2>
         </div>
         <div className="flex items-center space-x-4">
+          {viewType === "calendar" && (
+            <div className="flex items-center bg-white rounded-lg border border-gray-200 p-1">
+              {/* For calendar view, keep month navigation; list view has no date navigation */}
+                <>
+                  <button className="text-gray-600" onClick={handlePreviousMonth}>
+                    <FiChevronLeft size={20} />
+                  </button>
+                  <span className="text-sm font-medium">{format(calendarDate, "MMMM yyyy")}</span>
+                  <button className="text-gray-600" onClick={handleNextMonth}>
+                    <FiChevronRight size={20} />
+                  </button>
+                </>
+            </div>
+          )}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            onClick={() => setShowLeaveForm(true)}
+          >
+            Apply Leave
+          </motion.button>
           <div className="flex items-center bg-white rounded-lg border border-gray-200 p-1">
             <button
               onClick={() => setViewType("list")}
@@ -224,41 +234,10 @@ function LeaveSummary() {
               <FiCalendar size={20} />
             </button>
           </div>
-          {viewType === "list" && (
-            <div className="flex items-center space-x-2 bg-white rounded-lg border border-gray-200 px-4 py-2">
-              <button className="text-gray-600" onClick={handlePreviousYear}>
-                <FiChevronLeft size={20} />
-              </button>
-              <span className="text-sm font-medium">
-                01-Jan-{format(currentDate, "yyyy")} - 31-Dec-{format(currentDate, "yyyy")}
-              </span>
-              <button className="text-gray-600" onClick={handleNextYear}>
-                <FiChevronRight size={20} />
-              </button>
-            </div>
-          )}
-          {viewType === "calendar" && (
-            <div className="flex items-center space-x-2 bg-white rounded-lg border border-gray-200 px-4 py-2">
-              <button className="text-gray-600" onClick={handlePreviousMonth}>
-                <FiChevronLeft size={20} />
-              </button>
-              <span className="text-sm font-medium">{format(calendarDate, "MMMM yyyy")}</span>
-              <button className="text-gray-600" onClick={handleNextMonth}>
-                <FiChevronRight size={20} />
-              </button>
-            </div>
-          )}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            onClick={() => setShowLeaveForm(true)}
-          >
-            Apply Leave
-          </motion.button>
         </div>
       </div>
 
+      {/* List view: display leave cards */}
       {viewType === "list" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {leaveTypes.map((leave) => (
@@ -266,6 +245,7 @@ function LeaveSummary() {
           ))}
         </div>
       ) : (
+        /* Calendar view */
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <div className="grid grid-cols-7 gap-px bg-gray-200">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
@@ -287,10 +267,10 @@ function LeaveSummary() {
                 >
                   <div
                     className={`
-                    h-full rounded-lg border p-2
-                    ${isCurrentDay ? "ring-2 ring-blue-500 ring-offset-2" : ""}
-                    ${dateLeaves.length === 0 ? "bg-gray-50" : ""}
-                  `}
+                      h-full rounded-lg border p-2
+                      ${isCurrentDay ? "ring-2 ring-blue-500 ring-offset-2" : ""}
+                      ${dateLeaves.length === 0 ? "bg-gray-50" : ""}
+                    `}
                   >
                     <div className="flex flex-col h-full">
                       <span className={`text-sm font-medium ${!isCurrentMonth ? "text-gray-400" : "text-gray-900"}`}>
@@ -300,7 +280,7 @@ function LeaveSummary() {
                         <div
                           key={leaveIndex}
                           className={`mt-1 p-1 rounded-md text-xs font-medium ${
-                            isFuture(date)
+                            isCurrentMonth
                               ? leave.status === "Approved"
                                 ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
                                 : "bg-amber-100 text-amber-800 border border-amber-200"

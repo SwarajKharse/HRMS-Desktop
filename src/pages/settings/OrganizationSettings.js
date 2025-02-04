@@ -13,10 +13,10 @@ import OrganizationDetailsForm from "../../components/Organization/OrganizationD
 const VALID_TABS = ["details", "departments", "designations"]
 
 function OrganizationSettings() {
-  // Initialize activeTab from localStorage with validation
+  // Initialize activeTab from sessionStorage with validation
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
-      const savedTab = localStorage.getItem("orgSettingsActiveTab")
+      const savedTab = sessionStorage.getItem("orgSettingsActiveTab")
       return VALID_TABS.includes(savedTab) ? savedTab : "details"
     }
     return "details"
@@ -31,9 +31,9 @@ function OrganizationSettings() {
   const [selectedDepartment, setSelectedDepartment] = useState(null)
   const [selectedDesignation, setSelectedDesignation] = useState(null)
 
-  // Update localStorage when activeTab changes
+  // Update sessionStorage when activeTab changes
   useEffect(() => {
-    localStorage.setItem("orgSettingsActiveTab", activeTab)
+    sessionStorage.setItem("orgSettingsActiveTab", activeTab)
   }, [activeTab])
 
   const orgId = authService.getUser().orgId

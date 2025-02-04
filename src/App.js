@@ -1,7 +1,4 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
-
-import { clearTabStorage } from "./utils/storage-cleanup"
 
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
@@ -27,21 +24,6 @@ import PayrollSettings from './pages/settings/PayrollSettings';
 import EmployeePayrollSettings from './pages/settings/EmployeePayrollSettings';
 
 function App() {
-
-  useEffect(() => {
-    // Add event listener for when the window is about to unload (website closing)
-    const handleBeforeUnload = () => {
-      clearTabStorage()
-    }
-
-    window.addEventListener("beforeunload", handleBeforeUnload)
-
-    // Cleanup event listener
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload)
-    }
-  }, []);
-
   return (
     <AuthProvider>
       <NotificationsProvider>

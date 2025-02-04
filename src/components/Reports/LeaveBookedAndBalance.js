@@ -111,14 +111,15 @@ function LeaveBookedAndBalance() {
                     >
                       {category}
                     </th>
-                    <th
-                      colSpan={3}
-                      className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-l border-b bg-blue-50/50"
-                    >
-                      Total
-                    </th>
                   </React.Fragment>
                 ))}
+                {/* Add this after the last category mapping */}
+                <th
+                  colSpan={3}
+                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-l border-b bg-blue-50/50"
+                >
+                  Grand Total
+                </th>
               </tr>
               <tr className="bg-gray-50/70">
                 <th className="px-6 py-3 bg-gray-50 sticky left-0 z-10 border-b"></th>
@@ -138,17 +139,17 @@ function LeaveBookedAndBalance() {
                         </th>
                       </React.Fragment>
                     ))}
-                    <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-l border-b bg-blue-50/50 min-w-[80px]">
-                      Total
-                    </th>
-                    <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-b bg-blue-50/50 min-w-[80px]">
-                      Taken
-                    </th>
-                    <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-b bg-blue-50/50 min-w-[80px]">
-                      Balance
-                    </th>
                   </React.Fragment>
                 ))}
+                <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-l border-b bg-blue-50/50 min-w-[80px]">
+                  Total
+                </th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-b bg-blue-50/50 min-w-[80px]">
+                  Taken
+                </th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-b bg-blue-50/50 min-w-[80px]">
+                  Balance
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -201,17 +202,18 @@ function LeaveBookedAndBalance() {
                             </React.Fragment>
                           )
                         })}
-                        <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 border-l bg-blue-50/50">
-                          {employeeTotals.total}
-                        </td>
-                        <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 bg-blue-50/50">
-                          {employeeTotals.taken}
-                        </td>
-                        <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 bg-blue-50/50">
-                          {employeeTotals.balance}
-                        </td>
                       </React.Fragment>
                     ))}
+                    {/* Remove the category-wise total columns and add this after the category mapping */}
+                    <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 border-l bg-blue-50/50">
+                      {employeeTotals.total}
+                    </td>
+                    <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 bg-blue-50/50">
+                      {employeeTotals.taken}
+                    </td>
+                    <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 bg-blue-50/50">
+                      {employeeTotals.balance}
+                    </td>
                   </motion.tr>
                 )
               })}

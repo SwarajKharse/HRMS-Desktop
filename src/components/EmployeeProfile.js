@@ -1,43 +1,59 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { FiX } from "react-icons/fi";
-import EmployeeDetails from "./EmployeeProfile/EmployeeDetails";
-import EmployeeAttendance from "./EmployeeProfile/EmployeeAttendance";
-import EmployeeLeaves from "./EmployeeProfile/EmployeeLeaves";
-import EmployeePayslips from "./EmployeeProfile/EmployeePayslips";
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { FiX } from "react-icons/fi"
+import EmployeeDetails from "./EmployeeProfile/EmployeeDetails"
+import EmployeeAttendance from "./EmployeeProfile/EmployeeAttendance"
+import EmployeeLeaves from "./EmployeeProfile/EmployeeLeaves"
+import EmployeePayslips from "./EmployeeProfile/EmployeePayslips"
+import EmployeeMissPunch from "./EmployeeProfile/EmployeeMissPunch"
+import EmployeeWarnings from "./EmployeeProfile/EmployeeWarnings"
+import EmployeeTermination from "./EmployeeProfile/EmployeeTermination"
+import EmployeeResignation from "./EmployeeProfile/EmployeeResignation"
 
 function EmployeeProfile({ employee, onClose }) {
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState("details")
 
-  if (!employee) return null;
+  if (!employee) return null
 
   const tabs = [
     { id: "details", label: "Details" },
     { id: "attendance", label: "Attendance" },
     { id: "leaves", label: "Leaves" },
     { id: "payslips", label: "Payslips" },
-  ];
+    { id: "miss-punch", label: "Miss Punch" },
+    { id: "warnings", label: "Warnings" },
+    { id: "termination", label: "Termination" },
+    { id: "resignation", label: "Resignation" },
+  ]
 
   const formatDate = (date) => {
-    if (!date) return "-";
-    const d = new Date(date);
-    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
-  };
+    if (!date) return "-"
+    const d = new Date(date)
+    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`
+  }
 
   const renderContent = () => {
     switch (activeTab) {
       case "details":
-        return <EmployeeDetails employee={employee} formatDate={formatDate} />;
+        return <EmployeeDetails employee={employee} formatDate={formatDate} />
       case "attendance":
-        return <EmployeeAttendance employeeId={employee.id} />;
+        return <EmployeeAttendance employeeId={employee.id} />
       case "leaves":
-        return <EmployeeLeaves employeeId={employee.id} />;
+        return <EmployeeLeaves employeeId={employee.id} />
       case "payslips":
-        return <EmployeePayslips employeeId={employee.id} />;
+        return <EmployeePayslips employeeId={employee.id} />
+      case "miss-punch":
+        return <EmployeeMissPunch employeeId={employee.id} />
+      case "warnings":
+        return <EmployeeWarnings employeeId={employee.id} />
+      case "termination":
+        return <EmployeeTermination employeeId={employee.id} />
+      case "resignation":
+        return <EmployeeResignation employeeId={employee.id} />
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   return (
     <motion.div
@@ -90,9 +106,7 @@ function EmployeeProfile({ employee, onClose }) {
                 <div className="mt-2">
                   <span
                     className={`px-3 py-1 inline-flex text-sm font-medium rounded-full ${
-                      employee.empStatus === "Active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-yellow-100 text-yellow-800"
+                      employee.empStatus === "Active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
                     }`}
                   >
                     {employee.empStatus || "Status Unknown"}
@@ -103,7 +117,7 @@ function EmployeeProfile({ employee, onClose }) {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="px-6">
+          <div className="px-6 overflow-x-auto">
             <nav className="flex space-x-8" aria-label="Tabs">
               {tabs.map((tab) => (
                 <button
@@ -138,7 +152,7 @@ function EmployeeProfile({ employee, onClose }) {
         </div>
       </motion.div>
     </motion.div>
-  );
+  )
 }
 
 export default EmployeeProfile;

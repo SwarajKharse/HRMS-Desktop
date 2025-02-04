@@ -20,4 +20,13 @@ export const terminationService = {
       throw error
     }
   },
+
+  getTerminationsByEmployeeId: async (employeeId) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/terminations/employee/${employeeId}`)
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
 }

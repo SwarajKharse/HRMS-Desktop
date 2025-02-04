@@ -10,18 +10,18 @@ import { FiCalendar, FiUsers, FiClock, FiPieChart } from "react-icons/fi"
 const VALID_TABS = ["daily-leave-status", "resource-availability", "leave-booked-balance", "attendance-report"]
 
 function Reports() {
-  // Initialize activeTab from localStorage with validation
+  // Initialize activeTab from sessionStorage with validation
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
-      const savedTab = localStorage.getItem("reportsActiveTab")
+      const savedTab = sessionStorage.getItem("reportsActiveTab")
       return VALID_TABS.includes(savedTab) ? savedTab : "daily-leave-status"
     }
     return "daily-leave-status"
   })
 
-  // Update localStorage when activeTab changes
+  // Update sessionStorage when activeTab changes
   useEffect(() => {
-    localStorage.setItem("reportsActiveTab", activeTab)
+    sessionStorage.setItem("reportsActiveTab", activeTab)
   }, [activeTab])
 
   const tabs = [

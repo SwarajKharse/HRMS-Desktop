@@ -8,18 +8,18 @@ import LeaveHistory from "../components/Leave/LeaveHistory"
 const VALID_TABS = ["summary", "requests", "history"]
 
 function LeaveTracker() {
-  // Initialize activeTab from localStorage with validation
+  // Initialize activeTab from sessionStorage with validation
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
-      const savedTab = localStorage.getItem("leaveTrackerActiveTab")
+      const savedTab = sessionStorage.getItem("leaveTrackerActiveTab")
       return VALID_TABS.includes(savedTab) ? savedTab : "summary"
     }
     return "summary"
   })
 
-  // Update localStorage when activeTab changes
+  // Update sessionStorage when activeTab changes
   useEffect(() => {
-    localStorage.setItem("leaveTrackerActiveTab", activeTab)
+    sessionStorage.setItem("leaveTrackerActiveTab", activeTab)
   }, [activeTab])
 
   const tabs = [

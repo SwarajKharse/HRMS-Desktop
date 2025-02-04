@@ -56,15 +56,17 @@ function Profile({ employee }) {
               <p className="text-gray-600">{getValue(employee?.designation?.name)}</p>
             </div>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowResignationForm(true)}
-            className="flex items-center px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-          >
-            <FiLogOut className="mr-2" />
-            Apply Resignation
-          </motion.button>
+          {!employee.dateOfLeaving && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowResignationForm(true)}
+              className="flex items-center px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              <FiLogOut className="mr-2" />
+              Apply Resignation
+            </motion.button>
+          )}
         </div>
       </motion.div>
 
