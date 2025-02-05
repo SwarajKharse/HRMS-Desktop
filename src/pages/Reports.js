@@ -3,11 +3,12 @@ import { motion, AnimatePresence } from "framer-motion"
 import DailyLeaveStatus from "../components/Reports/DailyLeaveStatus"
 import ResourceAvailability from "../components/Reports/ResourceAvailability"
 import LeaveBookedAndBalance from "../components/Reports/LeaveBookedAndBalance"
-import AttendanceReport from "../components/Reports/AttendanceReport"
+import AttendanceReport from "../components/Reports/AttendanceReport";
+import PayrollReport from "../components/Reports/PayrollReport";
 import { FiCalendar, FiUsers, FiClock, FiPieChart } from "react-icons/fi"
 
 // List of valid tabs for validation
-const VALID_TABS = ["daily-leave-status", "resource-availability", "leave-booked-balance", "attendance-report"]
+const VALID_TABS = ["daily-leave-status", "resource-availability", "leave-booked-balance", "attendance-report", "payroll-report"]
 
 function Reports() {
   // Initialize activeTab from sessionStorage with validation
@@ -29,6 +30,7 @@ function Reports() {
     { id: "resource-availability", label: "Resource Availability", icon: FiUsers },
     { id: "leave-booked-balance", label: "Leave Booked & Balance", icon: FiPieChart },
     { id: "attendance-report", label: "Attendance Report", icon: FiClock },
+    { id: "payroll-report", label: "Payroll Report", icon: FiClock },
   ]
 
   return (
@@ -70,6 +72,7 @@ function Reports() {
           {activeTab === "resource-availability" && <ResourceAvailability />}
           {activeTab === "leave-booked-balance" && <LeaveBookedAndBalance />}
           {activeTab === "attendance-report" && <AttendanceReport />}
+          {activeTab === "payroll-report" && <PayrollReport />}
           {/* Add other report components as they are created */}
         </motion.div>
       </AnimatePresence>

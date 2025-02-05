@@ -23,6 +23,12 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     personalEmail: '',
     presentAddress: '',
     permanentAddress: '',
+    uan: '',
+    pf: '',
+    esic: '',
+    bankName: '',
+    bankAccountNo: '',
+    ifscCode: '',
     empType: '',
     sourceOfHire: '',
     dateOfJoining: '',
@@ -181,6 +187,12 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                 personalEmail: '',
                 presentAddress: '',
                 permanentAddress: '',
+                uan: '',
+                pf: '',
+                esic: '',
+                bankName: '',
+                bankAccountNo: '',
+                ifscCode: '',
                 empType: '',
                 sourceOfHire: '',
                 dateOfJoining: '',
@@ -407,6 +419,78 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   value={formData.permanentAddress}
                   onChange={handleChange}
                   rows="3"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Information Section */}
+          <div className="space-y-4 rounded-lg bg-white/80 border p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Payroll Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Universal Account Number (UAN)</label>
+                <input
+                  type="text"
+                  name="uan"
+                  value={formData.uan}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">PF Number</label>
+                <input
+                  type="text"
+                  name="pf"
+                  value={formData.pf}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">ESIC Number</label>
+                <input
+                  type="text"
+                  name="esic"
+                  value={formData.esic}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bank Account Name</label>
+                <input
+                  type="text"
+                  name="bankName"
+                  value={formData.bankName}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Bank Account Number</label>
+                <input
+                  type="text"
+                  name="bankAccountNo"
+                  value={formData.bankAccountNo}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">IFSC Code</label>
+                <input
+                  type="text"
+                  name="ifscCode"
+                  value={formData.ifscCode}
+                  onChange={handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
               </div>
