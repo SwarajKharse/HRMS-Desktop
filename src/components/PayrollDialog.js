@@ -16,7 +16,6 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
     gratuityPercent: 0,
     performanceBased: 0,
     overtime: 0,
-    valueForDay: 0,
     advancePaymentsRecovery: 0,
     loansOrEmiRecovery: 0,
     latePenalty: 0,
@@ -79,14 +78,6 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
       esic,
       gratuity,
     });
-  
-    // Update valueForDay
-    if (ctc > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        valueForDay: Number.parseFloat((ctc / 30).toFixed(2)),
-      }));
-    }
   };
 
   const handleChange = (e) => {
@@ -222,19 +213,6 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
                     />
                   </div>
                   {errors.costToCompany && <p className="mt-1 text-sm text-red-500">{errors.costToCompany}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Value Per Day</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                    <input
-                      type="number"
-                      name="valueForDay"
-                      value={formData.valueForDay}
-                      readOnly
-                      className="block w-full pl-8 pr-3 py-2 text-lg border border-gray-300 rounded-lg shadow-sm bg-gray-50"
-                    />
-                  </div>
                 </div>
               </div>
             </div>

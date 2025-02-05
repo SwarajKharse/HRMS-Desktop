@@ -18,10 +18,48 @@ import {
 import { FiChevronLeft, FiChevronRight, FiX } from "react-icons/fi"
 import { attendanceService } from "../../services/attendanceService"
 
+// Updated status colors and types to match the previous example
+const STATUS_CONFIG = {
+  Present: {
+    color: "bg-green-100 text-green-800 border-green-200",
+    label: "Present",
+  },
+  Absent: {
+    color: "bg-red-100 text-red-800 border-red-200",
+    label: "Absent",
+  },
+  "Late Check-in": {
+    color: "bg-orange-100 text-orange-800 border-orange-200",
+    label: "Late Check-in",
+  },
+  "Early Check-out": {
+    color: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    label: "Early Check-out",
+  },
+  "Late Check-in and Early Check-out": {
+    color: "bg-red-100 text-red-800 border-red-200",
+    label: "Late In & Early Out",
+  },
+  "Paid Leave": {
+    color: "bg-blue-100 text-blue-800 border-blue-200",
+    label: "Paid Leave",
+  },
+  "Unpaid Leave": {
+    color: "bg-purple-100 text-purple-800 border-purple-200",
+    label: "Unpaid Leave",
+  },
+  Weekend: {
+    color: "bg-gray-100 text-gray-800 border-gray-200",
+    label: "Weekend",
+  },
+}
+
 function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdate }) {
   const [checkIn, setCheckIn] = useState(attendance?.checkIn || "")
   const [checkOut, setCheckOut] = useState(attendance?.checkOut || "")
   const [updating, setUpdating] = useState(false)
+
+  const isLeaveStatus = attendance?.status === "Paid Leave" || attendance?.status === "Unpaid Leave"
 
   const handleUpdate = async () => {
     try {
@@ -57,9 +95,7 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">
-            Attendance Details - {format(date, "dd/MM/yyyy")}
-          </h3>
+          <h3 className="text-lg font-semibold">Attendance Details - {format(date, "dd/MM/yyyy")}</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <FiX className="w-5 h-5" />
           </button>
@@ -67,56 +103,42 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <div
-              className={`inline-flex px-3 py-1 rounded-full text-sm font-medium
-              ${
-                attendance?.status === "Present"
-                  ? "bg-green-100 text-green-800"
-                  : attendance?.status === "Late Check-in"
-                  ? "bg-orange-100 text-orange-800"
-                  : attendance?.status === "Early Check-out"
-                  ? "bg-purple-100 text-purple-800"
-                  : attendance?.status === "Late Check-in and Early Check-out"
-                  ? "bg-red-100 text-red-800"
-                  : attendance?.status === "Absent"
-                  ? "bg-blue-100 text-blue-800"
-                  : attendance?.status === "Weekend"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-white text-gray-800"
-              }`}
+              className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${STATUS_CONFIG[attendance?.status]?.color || "bg-gray-100 text-gray-800"}`}
             >
               {attendance?.status || "Not Available"}
             </div>
           </div>
+          {!isLeaveStatus && (
+            <>
+              <div>
+                <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
+                  Check In Time
+                </label>
+                <input
+                  type="time"
+                  id="checkIn"
+                  value={checkIn}
+                  onChange={(e) => setCheckIn(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
 
-          <div>
-            <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
-              Check In Time
-            </label>
-            <input
-              type="time"
-              id="checkIn"
-              value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
-              Check Out Time
-            </label>
-            <input
-              type="time"
-              id="checkOut"
-              value={checkOut}
-              onChange={(e) => setCheckOut(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
+              <div>
+                <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
+                  Check Out Time
+                </label>
+                <input
+                  type="time"
+                  id="checkOut"
+                  value={checkOut}
+                  onChange={(e) => setCheckOut(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </>
+          )}
 
           <div className="flex justify-end space-x-3 mt-6">
             <button
@@ -125,13 +147,15 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
             >
               Cancel
             </button>
-            <button
-              onClick={handleUpdate}
-              disabled={updating}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-            >
-              {updating ? "Updating..." : "Update"}
-            </button>
+            {!isLeaveStatus && (
+              <button
+                onClick={handleUpdate}
+                disabled={updating}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {updating ? "Updating..." : "Update"}
+              </button>
+            )}
           </div>
         </div>
       </motion.div>
@@ -146,16 +170,29 @@ function EmployeeAttendance({ employeeId }) {
   const [attendanceData, setAttendanceData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [statusSummary, setStatusSummary] = useState({})
+
+  const calculateStatusSummary = (data) => {
+    const summary = Object.keys(STATUS_CONFIG).reduce((acc, status) => {
+      acc[status] = 0
+      return acc
+    }, {})
+
+    data.forEach((item) => {
+      if (item.status) {
+        summary[item.status] = (summary[item.status] || 0) + 1
+      }
+    })
+
+    setStatusSummary(summary)
+  }
 
   const fetchMonthlyAttendance = async (date) => {
     try {
       setLoading(true)
-      const data = await attendanceService.getMonthlyAttendance(
-        employeeId,
-        getMonth(date),
-        getYear(date)
-      )
+      const data = await attendanceService.getMonthlyAttendance(employeeId, getMonth(date), getYear(date))
       setAttendanceData(data)
+      calculateStatusSummary(data)
       setError(null)
     } catch (err) {
       setError(err.message)
@@ -166,7 +203,7 @@ function EmployeeAttendance({ employeeId }) {
 
   useEffect(() => {
     fetchMonthlyAttendance(currentDate)
-  }, [currentDate]) // employeeId is assumed not to change
+  }, [currentDate, employeeId])
 
   const startDate = startOfMonth(currentDate)
   const endDate = endOfMonth(currentDate)
@@ -184,30 +221,17 @@ function EmployeeAttendance({ employeeId }) {
   })
 
   const getAttendanceStatus = (date) => {
-    if (!isPast(date) || !isSameMonth(date, currentDate)) return null
-    if (isSunday(date)) return "Weekend"
+    if (!isSameMonth(date, currentDate)) return null
+
     const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date))
+
     if (dayData) return dayData.status
-    return "Absent"
+    if (isSunday(date)) return "Weekend"
+    return isPast(date) ? "Absent" : null
   }
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case "Present":
-        return "bg-green-100 text-green-800 border-green-200"
-      case "Late Check-in":
-        return "bg-orange-100 text-orange-800 border-orange-200"
-      case "Early Check-out":
-        return "bg-purple-100 text-purple-800 border-purple-200"
-      case "Late Check-in and Early Check-out":
-        return "bg-red-100 text-red-800 border-red-200"
-      case "Absent":
-        return "bg-blue-100 text-blue-800 border-blue-200"
-      case "Weekend":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200"
-      default:
-        return "bg-white text-gray-400 border-gray-200"
-    }
+    return STATUS_CONFIG[status]?.color || "bg-gray-50 text-gray-400 border-gray-200"
   }
 
   const handleDateClick = (date) => {
@@ -237,130 +261,122 @@ function EmployeeAttendance({ employeeId }) {
   }
 
   return (
-    <div className="bg-white rounded-lg p-4 relative">
-      {/* Calendar Header */}
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center space-x-2">
-          <button
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-          >
-            <FiChevronLeft className="w-4 h-4" />
-          </button>
-          <h2 className="text-sm font-semibold">{format(currentDate, "MMMM yyyy")}</h2>
-          <button
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-          >
-            <FiChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Compact Legend */}
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-green-100 border border-green-200"></div>
-            <span>Present</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-orange-100 border border-orange-200"></div>
-            <span>Late Check-in</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-purple-100 border border-purple-200"></div>
-            <span>Early Check-out</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-red-100 border border-red-200"></div>
-            <span>Late & Early</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-gray-100 border border-gray-200"></div>
-            <span>Absent</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-yellow-100 border border-yellow-200"></div>
-            <span>Weekend</span>
-          </div>
+    <div className="flex flex-col gap-6">
+      {/* Summary Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="text-lg font-semibold mb-3">Monthly Summary</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Object.entries(statusSummary).map(
+            ([status, count]) =>
+              count > 0 && (
+                <div
+                  key={status}
+                  className={`rounded-lg p-3 flex items-center justify-between ${getStatusColor(status)}`}
+                >
+                  <span className="font-medium">{STATUS_CONFIG[status]?.label || status}</span>
+                  <span className="text-lg font-bold">{count}</span>
+                </div>
+              ),
+          )}
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
-        {/* Day Headers */}
-        {[
-          { key: "sun", label: "S" },
-          { key: "mon", label: "M" },
-          { key: "tue", label: "T" },
-          { key: "wed", label: "W" },
-          { key: "thu", label: "T" },
-          { key: "fri", label: "F" },
-          { key: "sat", label: "S" },
-        ].map((day) => (
-          <div
-            key={day.key}
-            className="bg-gray-50 p-1 text-center text-xs font-medium text-gray-500"
-          >
-            {day.label}
-          </div>
-        ))}
-
-        {/* Calendar Days */}
-        {calendarDays.map((date, index) => {
-          const status = getAttendanceStatus(date)
-          const isCurrentMonth = isSameMonth(date, currentDate)
-          const isCurrentDay = isToday(date)
-          // Find the attendance record for this date (if any)
-          const attendanceRecord = attendanceData.find((item) =>
-            isSameDay(new Date(item.date), date)
-          )
-
-          return (
-            <motion.div
-              key={index}
-              className={`relative bg-white min-h-[60px] p-1 cursor-pointer ${
-                !isCurrentMonth ? "opacity-50" : "hover:bg-gray-50"
-              }`}
-              onMouseEnter={() => setHoveredDate(date)}
-              onMouseLeave={() => setHoveredDate(null)}
-              onClick={() => handleDateClick(date)}
-              initial={false}
-              animate={{
-                scale: isSameDay(date, hoveredDate) ? 0.98 : 1,
-                transition: { duration: 0.1 },
-              }}
+      <div className="bg-white rounded-lg p-4">
+        {/* Calendar Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-12 mb-4">
+          <div className="flex items-center space-x-12">
+            <button
+              className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              onClick={() => setCurrentDate(subMonths(currentDate, 1))}
             >
-              <div
-                className={`h-full rounded-md border p-1 transition-colors ${getStatusColor(
-                  status
-                )} ${isCurrentDay ? "ring-1 ring-blue-500" : ""}`}
-              >
-                <div className="flex flex-col items-center">
-                  <span
-                    className={`text-xs font-medium ${
-                      !isCurrentMonth ? "text-gray-400" : "text-gray-900"
-                    }`}
-                  >
-                    {format(date, "d")}
-                  </span>
-                  {/* Show check-in/out times inside the same box when hovered */}
-                  {isSameDay(date, hoveredDate) && (
-                    <div className="mt-1 text-[10px] text-center">
-                      {attendanceRecord ? (
-                        <>
-                          <div>In: {attendanceRecord.checkIn || "N/A"}</div>
-                          <div>Out: {attendanceRecord.checkOut || "N/A"}</div>
-                        </>
-                      ) : (
-                        <div>No Data</div>
-                      )}
-                    </div>
-                  )}
-                </div>
+              <FiChevronLeft className="w-4 h-4" />
+            </button>
+            <h2 className="text-sm font-semibold">{format(currentDate, "MMMM yyyy")}</h2>
+            <button
+              className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+              onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+            >
+              <FiChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Legend */}
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            {Object.entries(STATUS_CONFIG).map(([status, config]) => (
+              <div key={status} className="flex items-center gap-2">
+                <div
+                  className={`w-2 h-2 rounded-full ${config.color.split(" ")[0]} border ${config.color.split(" ")[2]}`}
+                />
+                <span>{config.label}</span>
               </div>
-            </motion.div>
-          )
-        })}
+            ))}
+          </div>
+        </div>
+
+        {/* Calendar Grid */}
+        <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
+          {/* Day Headers */}
+          {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => (
+            <div key={index} className="bg-gray-50 p-1 text-center text-xs font-medium text-gray-500">
+              {day}
+            </div>
+          ))}
+
+          {/* Calendar Days */}
+          {calendarDays.map((date, index) => {
+            const status = getAttendanceStatus(date)
+            const isCurrentMonth = isSameMonth(date, currentDate)
+            const isCurrentDay = isToday(date)
+            const isFutureDate = !isPast(date)
+            const attendanceRecord = attendanceData.find((item) => isSameDay(new Date(item.date), date))
+
+            return (
+              <motion.div
+                key={index}
+                className={`relative bg-white min-h-[60px] p-1 cursor-pointer ${
+                  !isCurrentMonth ? "opacity-50" : "hover:bg-gray-50"
+                }`}
+                onMouseEnter={() => setHoveredDate(date)}
+                onMouseLeave={() => setHoveredDate(null)}
+                onClick={() => handleDateClick(date)}
+                initial={false}
+                animate={{
+                  scale: isSameDay(date, hoveredDate) ? 0.98 : 1,
+                  transition: { duration: 0.1 },
+                }}
+              >
+                <div
+                  className={`
+                    h-full rounded-md border p-1 transition-colors
+                    ${getStatusColor(status)}
+                    ${isCurrentDay ? "ring-1 ring-blue-500" : ""}
+                  `}
+                >
+                  <div className="flex flex-col items-center">
+                    <span className={`text-xs font-medium ${!isCurrentMonth ? "text-gray-400" : "text-gray-900"}`}>
+                      {format(date, "d")}
+                    </span>
+                    {/* Show check-in/out times or upcoming status */}
+                    {isSameDay(date, hoveredDate) && (
+                      <div className="mt-1 text-[10px] text-center">
+                        {isFutureDate && attendanceRecord?.status?.includes("Leave") ? (
+                          <div className="text-gray-600 font-medium">Upcoming {attendanceRecord.status}</div>
+                        ) : attendanceRecord ? (
+                          <>
+                            <div>In: {attendanceRecord.checkIn || "N/A"}</div>
+                            <div>Out: {attendanceRecord.checkOut || "N/A"}</div>
+                          </>
+                        ) : (
+                          <div>No Data</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )
+          })}
+        </div>
       </div>
 
       {/* Attendance Details Modal */}
