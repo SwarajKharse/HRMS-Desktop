@@ -10,6 +10,7 @@ import MissPunchApprovals from "../components/Home/MissPunchApprovals"
 import Warnings from "../components/Home/Warnings"
 import Terminations from "../components/Home/Terminations"
 import Resignations from "../components/Home/Resignations"
+import PaySlips from "../components/Home/PaySlips"
 
 // List of valid tabs for validation
 const VALID_TABS = [
@@ -21,6 +22,7 @@ const VALID_TABS = [
   "warnings",
   "terminations",
   "resignations",
+  "payslips",
 ]
 
 function Home() {
@@ -90,6 +92,7 @@ function Home() {
     { id: "warnings", label: "Warnings" },
     { id: "terminations", label: "Terminations" },
     { id: "resignations", label: "Resignations" },
+    { id: "payslips", label: "Payslips" },
   ]
 
   return (
@@ -131,6 +134,7 @@ function Home() {
           {activeTab === "warnings" && <Warnings />}
           {activeTab === "terminations" && <Terminations />}
           {activeTab === "resignations" && <Resignations />}
+          {activeTab === "payslips" && <PaySlips />}
         </motion.div>
       </AnimatePresence>
     </div>

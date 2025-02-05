@@ -23,15 +23,21 @@ export const payslipService = {
     }
   },
 
-  downloadPayslipPdf: async (payslipId) => {
+  getAllPayslipsByMonthAndYear: async (month, year) => {
     try {
-      const response = await axios.get(`${BASE_URL}/download/${payslipId}`, {
-        ...getAuthHeaders(),
-        responseType: 'blob'
-      });
+      const response = await axios.get(`${BASE_URL}/month/${month}/year/${year}`, getAuthHeaders());
       return response.data;
     } catch (error) {
-      throw new Error(error.response?.data?.message || 'Error downloading payslip');
+      throw new Error(error.response?.data?.message || 'Error fetching payslips');
     }
-  }
+  },
+
+  getById: async (payslipId) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/${payslipId}`, getAuthHeaders());
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || 'Error fetching payslip');
+    }
+  },
 };

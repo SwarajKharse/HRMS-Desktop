@@ -10,8 +10,10 @@ function EmployeePayslips({ employeeId }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetchPayslips()
-  }, []) // Removed employeeId from dependencies
+    if (employeeId) {
+      fetchPayslips()
+    }
+  }, [employeeId])
 
   const fetchPayslips = async () => {
     try {
@@ -19,25 +21,19 @@ function EmployeePayslips({ employeeId }) {
       setPayslips(data)
       setError(null)
     } catch (err) {
-      setError("Failed to load payslips")
+      setError(err.message || "Failed to load payslips")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleDownloadPdf = async (payslipId) => {
+  const handleViewDetails = async (payslipId) => {
     try {
-      const blob = await payslipService.downloadPayslipPdf(payslipId)
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `payslip-${payslipId}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      const payslip = await payslipService.getById(payslipId)
+      // You can implement a modal or detailed view here with the payslip data
+      console.log("Payslip details:", payslip)
     } catch (err) {
-      setError("Failed to download payslip")
+      setError(err.message || "Failed to fetch payslip details")
     }
   }
 
@@ -47,10 +43,6 @@ function EmployeePayslips({ employeeId }) {
       currency: "INR",
       maximumFractionDigits: 0,
     }).format(amount)
-  }
-
-  const formatDate = (date) => {
-    return format(new Date(date), "dd MMM yyyy")
   }
 
   if (loading) {
@@ -76,19 +68,19 @@ function EmployeePayslips({ employeeId }) {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Pay Period
+                  Period
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Basic Salary
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Allowances
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Gross Salary
+                  Total Earnings
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Deductions
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Income Tax
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Net Pay
@@ -115,39 +107,30 @@ function EmployeePayslips({ employeeId }) {
                     className="hover:bg-gray-50"
                   >
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="font-medium">{formatDate(payslip.startDate)}</div>
-                      <div className="text-gray-500">to</div>
-                      <div className="font-medium">{formatDate(payslip.endDate)}</div>
+                      <div className="font-medium">
+                        {format(new Date(payslip.year, payslip.month - 1), "MMMM yyyy")}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="font-medium text-gray-900">{formatCurrency(payslip.basicSalary)}</div>
-                      <div className="text-xs text-gray-500">
-                        HRA: {formatCurrency(payslip.hra)}
-                        <br />
-                        DA: {formatCurrency(payslip.da)}
-                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(payslip.allowances)}
+                      {formatCurrency(payslip.totalEarnings)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="font-medium text-gray-900">{formatCurrency(payslip.grossSalary)}</div>
-                      <div className="text-xs text-gray-500">
-                        Total Earnings: {formatCurrency(payslip.totalEarnings)}
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatCurrency(payslip.totalDeductions)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="font-medium text-gray-900">{formatCurrency(payslip.totalDeductions)}</div>
-                      <div className="text-xs text-gray-500">Tax: {formatCurrency(payslip.incomeTax)}</div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatCurrency(payslip.incomeTax)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="font-medium text-green-600">{formatCurrency(payslip.netPay)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <button
-                        onClick={() => handleDownloadPdf(payslip.id)}
+                        onClick={() => handleViewDetails(payslip.id)}
                         className="text-blue-600 hover:text-blue-900 transition-colors flex items-center"
-                        title="Download Payslip"
+                        title="View Details"
                       >
                         <FiDownload className="w-5 h-5" />
                       </button>

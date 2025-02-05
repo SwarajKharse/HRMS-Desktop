@@ -137,7 +137,8 @@ function EmployeeProfile({ employee, onClose }) {
         </div>
 
         {/* Content Area */}
-        <div className="p-6 max-h-[calc(100vh-350px)] overflow-y-auto">
+        {/* Both the min and max height help to have the fixed height for all different tabs */}
+        <div className="p-6 max-h-[calc(100vh-350px)] min-h-[calc(100vh-350px)] overflow-y-auto">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
