@@ -43,7 +43,12 @@ function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
     setError("");
 
     try {
-      const res = leaveTypeService.createLeaveType(formData);
+      let res;
+      if(leaveType){
+        res = leaveTypeService.updateLeaveType(formData);
+      }else{
+        res = leaveTypeService.createLeaveType(formData);
+      }
       if(res !== null) {
         onClose();
         onSubmit();
