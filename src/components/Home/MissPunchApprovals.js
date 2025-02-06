@@ -67,13 +67,13 @@ function MissPunchApprovals() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       <h2 className="text-2xl font-bold text-gray-900">Pending Miss Punch Requests</h2>
 
       {requests.length === 0 ? (
         <div className="text-center py-12 text-gray-500">No pending requests found</div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>

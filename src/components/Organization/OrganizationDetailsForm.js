@@ -41,7 +41,7 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
       <tbody>
         <tr>
           <td colSpan="3" className="px-6 py-4">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
               {error && <div className="bg-red-50 text-red-500 p-4 rounded-md">{error}</div>}
               {successMessage && (
                 <div className="bg-green-50 text-green-600 p-4 rounded-md font-medium">

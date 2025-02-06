@@ -28,7 +28,7 @@ function Profile({ employee }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Profile Overview */}
       <motion.div
         className="md:col-span-3 bg-white rounded-lg shadow-md p-6"

@@ -19,7 +19,7 @@ function ResourceAvailability() {
     Absent: "bg-red-100 text-red-800",
     "Late Check-in": "bg-yellow-100 text-yellow-800",
     "Early Check-out": "bg-orange-100 text-orange-800",
-    "Late Check-in and Early Check-out": "bg-amber-100 text-amber-800",
+    "Half Day": "bg-amber-100 text-amber-800",
     "Annual Leave": "bg-purple-100 text-purple-800",
     "Sick Leave": "bg-orange-100 text-orange-800",
     "Casual Leave": "bg-indigo-100 text-indigo-800",
@@ -36,7 +36,7 @@ function ResourceAvailability() {
     Absent: "A",
     "Late Check-in": "LC",
     "Early Check-out": "EC",
-    "Late Check-in and Early Check-out": "LCE",
+    "Half Day": "HD",
     "Annual Leave": "AL",
     "Sick Leave": "SL",
     "Casual Leave": "CL",
@@ -93,7 +93,7 @@ function ResourceAvailability() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Date Range Navigation */}
       <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
         <button

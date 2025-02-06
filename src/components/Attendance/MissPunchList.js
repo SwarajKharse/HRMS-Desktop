@@ -66,7 +66,7 @@ function MissPunchList() {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="flex flex-col gap-6">
       {requests.length === 0 ? (
         <div className="text-center text-gray-500 py-12">No miss punch requests found</div>
       ) : (

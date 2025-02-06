@@ -101,7 +101,7 @@ function OrganizationSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
           <FiLayers className="w-6 h-6 text-blue-600" />

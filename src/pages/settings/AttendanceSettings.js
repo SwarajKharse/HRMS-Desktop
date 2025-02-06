@@ -11,7 +11,8 @@ function AttendanceSettings() {
     lateGraceTime: 15,
     earlyGraceTime: 15,
     noOfLatesAllowed: 3,
-    noOfEarlysAllowed: 3,
+    noOfEarlysAllowed: 0,
+    halfDayThreshold: 4,
   })
 
   const [loading, setLoading] = useState(true)
@@ -97,7 +98,7 @@ function AttendanceSettings() {
         <h1 className="text-2xl font-bold">Attendance Settings</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6 bg-white p-6 rounded-lg shadow">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Shift Start Time</label>
@@ -170,6 +171,18 @@ function AttendanceSettings() {
               value={settings.noOfEarlysAllowed}
               onChange={handleChange}
               min="0"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Half Day Time (in hours)</label>
+            <input
+              type="number"
+              name="halfDayThreshold"
+              value={settings.halfDayThreshold}
+              onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
             />

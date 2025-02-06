@@ -62,7 +62,7 @@ function HolidaySettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
           <FiCalendar className="w-6 h-6 text-purple-600" />

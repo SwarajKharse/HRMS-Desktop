@@ -104,7 +104,7 @@ function LeaveApprovals() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="p-6 border-b">
           <h2 className="text-xl font-semibold">

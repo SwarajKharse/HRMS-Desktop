@@ -31,7 +31,7 @@ function Attendance() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.2 }}
-      className="space-y-6"
+      className="flex flex-col gap-6"
     >
       {/* Header with Tabs */}
       <div className="flex justify-between items-center">

@@ -86,7 +86,7 @@ function HolidayForm({ holiday, onClose, onSubmit }) {
           </motion.div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700">
               Holiday Name <span className="text-red-500">*</span>

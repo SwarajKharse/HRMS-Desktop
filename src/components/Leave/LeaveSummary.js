@@ -189,7 +189,7 @@ function LeaveSummary() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Updated header */}
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-2">

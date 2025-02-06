@@ -65,7 +65,7 @@ function DailyLeaveStatus() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Centered Date Navigation */}
       <div className="flex justify-center">
         <div className="inline-flex items-center gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 rounded-xl shadow-sm border border-blue-100">
@@ -88,7 +88,7 @@ function DailyLeaveStatus() {
         {/* Leave Requests Table */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>

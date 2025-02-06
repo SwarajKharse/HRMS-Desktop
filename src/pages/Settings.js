@@ -123,7 +123,7 @@ function Settings() {
       </motion.div>
 
       {/* Search and Categories */}
-      <div className="space-y-6">
+      <div className="flex flex-col gap-8">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

@@ -46,7 +46,7 @@ function MissPunchForm({ isOpen, onClose, onSubmit }) {
       >
         <h2 className="text-2xl font-bold mb-6 text-gray-800">Miss Punch Request</h2>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           {/* Date Field */}
           <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">

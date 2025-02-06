@@ -63,7 +63,7 @@ function Login() {
           <p className="mt-2 text-sm text-gray-600">Please sign in to your account</p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 flex flex-col gap-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email-address" className="sr-only">

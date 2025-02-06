@@ -66,7 +66,7 @@ function Activities({ employee }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Greeting Card */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex justify-between items-center">

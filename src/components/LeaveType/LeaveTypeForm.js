@@ -89,7 +89,7 @@ function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
           </motion.div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">

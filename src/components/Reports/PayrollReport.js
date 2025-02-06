@@ -35,6 +35,7 @@ function PayrollReport() {
     try {
       setReportLoading(true)
       const data = await payrollReportService.getPayrollReportByEmployeeId(employeeId)
+      console.log(data)
       setReport(data)
       setError(null)
     } catch (err) {
@@ -119,7 +120,7 @@ function PayrollReport() {
 
       {/* Report UI */}
       {!reportLoading && report && (
-        <div className="bg-white rounded-lg shadow p-4 space-y-6">
+        <div className="bg-white rounded-lg shadow p-4 flex flex-col gap-6">
           {/* Header (Company + Pay Slip Heading) */}
           <div className="border-b pb-4">
             <h2 className="text-xl font-semibold">Pay Slip for {report.currentMonth} {report.currentYear}</h2>
@@ -206,7 +207,7 @@ function PayrollReport() {
                     <td className="px-4 py-2 text-right">{formatCurrency(report.da || 0)}</td>
                   </tr>
 
-                  <hr />
+                  
                   {/* If you have separate bonuses or allowances, loop them below */}
                   {report.allowances?.map((allow) => (
                     <tr key={allow.id}>
@@ -214,7 +215,7 @@ function PayrollReport() {
                       <td className="px-4 py-2 text-right">{formatCurrency(allow.amount)}</td>
                     </tr>
                   ))}
-                  <hr />
+                  
                   {report.bonuses?.map((bonus) => (
                     <tr key={bonus.id}>
                       <td className="px-4 py-2">{bonus.description || "Bonus"}</td>
@@ -283,8 +284,13 @@ function PayrollReport() {
                       <td className="px-4 py-2 text-right">{formatCurrency(report.lateDeduction)}</td>
                     </tr>
                   )}
-
-                  <hr />
+                  {report.halfDayDeduction != null && (
+                    <tr>
+                      <td className="px-4 py-2">Half Day Deduction</td>
+                      <td className="px-4 py-2 text-right">{formatCurrency(report.halfDayDeduction)}</td>
+                    </tr>
+                  )}
+                  
                   {/* Additional deductions if any */}
                   {report.periodDeductionsList?.map((ded) => (
                     <tr key={ded.id}>
@@ -313,18 +319,22 @@ function PayrollReport() {
                   <th className="p-2">Working Days</th>
                   <th className="p-2">Present</th>
                   <th className="p-2">Absent</th>
-                  <th className="p-2">Leaves</th>
+                  <th className="p-2">Paid Leaves</th>
+                  <th className="p-2">Unpaid Leaves</th>
                   <th className="p-2">Late Count</th>
+                  <th className="p-2">Half Day</th>
                   <th className="p-2">Holidays</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
                   <td className="p-2">{report.workingDays || 0}</td>
-                  <td className="p-2">{report.present || 0}</td>
+                  <td className="p-2">{report.presentCount || 0}</td>
                   <td className="p-2">{report.absentCount || 0}</td>
-                  <td className="p-2">{report.leaveCount || 0}</td>
+                  <td className="p-2">{report.paidLeavesCount || 0}</td>
+                  <td className="p-2">{report.unpaidLeavesCount || 0}</td>
                   <td className="p-2">{report.lateCount || 0}</td>
+                  <td className="p-2">{report.halfDayCount || 0}</td>
                   <td className="p-2">{report.holidaysCount || 0}</td>
                 </tr>
               </tbody>
@@ -363,7 +373,7 @@ function PayrollReport() {
           {/* Net Salary and other summary amounts */}
           <div className="bg-gray-50 p-4 rounded-md flex flex-wrap justify-around gap-4 text-sm font-medium">
             <div>
-              <p className="text-gray-600">November Net Salary</p>
+              <p className="text-gray-600">Net Salary</p>
               <p className="text-lg text-green-600">{formatCurrency(report.netSalary || 0)}</p>
             </div>
           </div>

@@ -43,7 +43,7 @@ function Warnings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <FiAlertTriangle className="text-yellow-600 w-5 h-5" />
