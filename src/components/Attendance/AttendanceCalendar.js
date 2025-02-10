@@ -18,6 +18,7 @@ import {
 import { FiChevronLeft, FiChevronRight, FiClock } from "react-icons/fi"
 import { attendanceService } from "../../services/attendanceService"
 import { authService } from "../../services/authService"
+import { holidayService } from "../../services/holidayService"
 
 // Updated status colors and types
 const STATUS_CONFIG = {
@@ -53,6 +54,10 @@ const STATUS_CONFIG = {
     color: "bg-teal-100 text-teal-800 border-teal-200",
     label: "Weekend",
   },
+  Holiday: {
+    color: "bg-pink-100 text-pink-800 border-pink-200",
+    label: "Holiday",
+  },
 }
 
 function AttendanceCalendar() {
@@ -62,6 +67,7 @@ function AttendanceCalendar() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [statusSummary, setStatusSummary] = useState({})
+  const [holidays, setHolidays] = useState([])
 
   const fetchMonthlyAttendance = async (date) => {
     try {
@@ -78,6 +84,15 @@ function AttendanceCalendar() {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchHolidays = async (date) => {
+    try {
+      const data = await holidayService.getHolidaysByYear(authService.getUser().orgId, getYear(date))
+      setHolidays(data)
+    } catch (err) {
+      console.error("Error fetching holidays:", err)
     }
   }
 
@@ -98,7 +113,8 @@ function AttendanceCalendar() {
 
   useEffect(() => {
     fetchMonthlyAttendance(currentDate)
-  }, [currentDate, authService.getUser().sub]) // Fixed useEffect dependency
+    fetchHolidays(currentDate)
+  }, [currentDate, authService.getUser().sub])
 
   const startDate = startOfMonth(currentDate)
   const endDate = endOfMonth(currentDate)
@@ -118,11 +134,14 @@ function AttendanceCalendar() {
   const getAttendanceStatus = (date) => {
     if (!isSameMonth(date, currentDate)) return null
 
+    const holiday = holidays.find((h) => isSameDay(new Date(h.date), date))
+    if (holiday) return "Holiday"
+
     const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date))
 
     if (dayData) return dayData.status
     if (isSunday(date)) return "Weekend"
-    return isPast(date) ? "Absent" : null // Only mark past dates as absent
+    return isPast(date) ? "Absent" : null
   }
 
   const getStatusColor = (status) => {

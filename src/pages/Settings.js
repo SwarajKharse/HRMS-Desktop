@@ -21,13 +21,13 @@ function Settings() {
       link: `/settings/organization`,
     },
     {
-      id: "leave-tracker",
-      name: "Leave Tracker",
+      id: "leave",
+      name: "Leave Settings",
       description: "Configure leave policies and tracking",
       icon: MdSchedule,
       color: "bg-green-500",
       category: "attendance",
-      link: "/settings/leave-tracker",
+      link: "/settings/leave",
     },
     {
       id: "attendance-settings",

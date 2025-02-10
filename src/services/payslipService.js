@@ -40,4 +40,34 @@ export const payslipService = {
       throw new Error(error.response?.data?.message || 'Error fetching payslip');
     }
   },
+
+  refreshPayslip: async (empId, month, year) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/refresh/${empId}/${month}/${year}`, null, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error refreshing payslip")
+    }
+  },
+
+  refreshAllPayslips: async (month, year) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/refresh-all/${month}/${year}`, null, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error refreshing payslips")
+    }
+  },
+
+  downloadPayslipPdf: async (payslipId) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/pdf/${payslipId}`, {
+        ...getAuthHeaders(),
+        responseType: "blob",
+      })
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error downloading payslip")
+    }
+  },
 };

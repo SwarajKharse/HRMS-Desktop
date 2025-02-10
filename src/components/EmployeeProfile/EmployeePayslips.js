@@ -27,13 +27,19 @@ function EmployeePayslips({ employeeId }) {
     }
   }
 
-  const handleViewDetails = async (payslipId) => {
+  const handleDownloadPdf = async (payslipId) => {
     try {
-      const payslip = await payslipService.getById(payslipId)
-      // You can implement a modal or detailed view here with the payslip data
-      console.log("Payslip details:", payslip)
+      const blob = await payslipService.downloadPayslipPdf(payslipId)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `payslip-${payslipId}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
     } catch (err) {
-      setError(err.message || "Failed to fetch payslip details")
+      setError("Failed to download payslip")
     }
   }
 
@@ -128,7 +134,7 @@ function EmployeePayslips({ employeeId }) {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <button
-                        onClick={() => handleViewDetails(payslip.id)}
+                        onClick={() => handleDownloadPdf(payslip.id)}
                         className="text-blue-600 hover:text-blue-900 transition-colors flex items-center"
                         title="View Details"
                       >

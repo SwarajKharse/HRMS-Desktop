@@ -54,7 +54,6 @@ function ResourceAvailability() {
       setLoading(true)
       const data = await leaveReportService.getResourceAvailability(1, startDate, endDate);
       setResourceData(data);
-      console.log(data)
       setError(null)
     } catch (err) {
       setError(err.message)

@@ -17,6 +17,8 @@ import {
 } from "date-fns"
 import { FiChevronLeft, FiChevronRight, FiX } from "react-icons/fi"
 import { attendanceService } from "../../services/attendanceService"
+import { holidayService } from "../../services/holidayService" // Import holidayService
+import { authService } from "../../services/authService" //Import authService
 
 // Updated status colors and types to match the previous example
 const STATUS_CONFIG = {
@@ -52,6 +54,10 @@ const STATUS_CONFIG = {
     color: "bg-teal-100 text-teal-800 border-teal-200",
     label: "Weekend",
   },
+  Holiday: {
+    color: "bg-pink-100 text-pink-800 border-pink-200",
+    label: "Holiday",
+  },
 }
 
 function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdate }) {
@@ -59,7 +65,8 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
   const [checkOut, setCheckOut] = useState(attendance?.checkOut || "")
   const [updating, setUpdating] = useState(false)
 
-  const isLeaveStatus = attendance?.status === "Paid Leave" || attendance?.status === "Unpaid Leave"
+  const isLeaveOrHoliday =
+    attendance?.status === "Paid Leave" || attendance?.status === "Unpaid Leave" || attendance?.status === "Holiday"
 
   const handleUpdate = async () => {
     try {
@@ -110,7 +117,7 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
               {attendance?.status || "Not Available"}
             </div>
           </div>
-          {!isLeaveStatus && (
+          {!isLeaveOrHoliday && (
             <>
               <div>
                 <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
@@ -147,7 +154,7 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
             >
               Cancel
             </button>
-            {!isLeaveStatus && (
+            {!isLeaveOrHoliday && (
               <button
                 onClick={handleUpdate}
                 disabled={updating}
@@ -171,6 +178,7 @@ function EmployeeAttendance({ employeeId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [statusSummary, setStatusSummary] = useState({})
+  const [holidays, setHolidays] = useState([])
 
   const calculateStatusSummary = (data) => {
     const summary = Object.keys(STATUS_CONFIG).reduce((acc, status) => {
@@ -202,6 +210,16 @@ function EmployeeAttendance({ employeeId }) {
   }
 
   useEffect(() => {
+    const fetchHolidays = async () => {
+      try {
+        const data = await holidayService.getHolidaysByYear(authService.getUser().orgId, getYear(currentDate))
+        setHolidays(data)
+      } catch (err) {
+        console.error("Error fetching holidays:", err)
+      }
+    }
+
+    fetchHolidays()
     fetchMonthlyAttendance(currentDate)
   }, [currentDate, employeeId])
 
@@ -222,6 +240,9 @@ function EmployeeAttendance({ employeeId }) {
 
   const getAttendanceStatus = (date) => {
     if (!isSameMonth(date, currentDate)) return null
+
+    const holiday = holidays.find((h) => isSameDay(new Date(h.date), date))
+    if (holiday) return "Holiday"
 
     const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date))
 

@@ -155,10 +155,10 @@ function GeoFencingSettings() {
       </div>
 
       <div className="controls">
-        <button onClick={handleSaveFences} disabled={loading || shapes.length === 0}>
+        <button className="button" onClick={handleSaveFences} disabled={loading || shapes.length === 0}>
           {loading ? "Saving..." : "Save Fences"}
         </button>
-        <button onClick={handleClearAll} disabled={loading || shapes.length === 0}>
+        <button className="button" onClick={handleClearAll} disabled={loading || shapes.length === 0}>
           Clear All
         </button>
       </div>
@@ -190,7 +190,7 @@ function GeoFencingSettings() {
             margin-bottom: 20px;
           }
           
-          button {
+          button.button {
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
@@ -201,11 +201,11 @@ function GeoFencingSettings() {
             transition: background-color 0.3s;
           }
           
-          button:hover:not(:disabled) {
+          button.button:hover:not(:disabled) {
             background-color: #45a049;
           }
           
-          button:disabled {
+          button.button:disabled {
             background-color: #cccccc;
             cursor: not-allowed;
           }

@@ -49,10 +49,8 @@ function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
       }else{
         res = leaveTypeService.createLeaveType(formData);
       }
-      if(res !== null) {
-        onClose();
-        onSubmit();
-      }
+      if (onSubmit) await onSubmit()
+        onClose()
     } catch (err) {
       setError(err.message || "Failed to save leave type");
       window.scrollTo(0, 0);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { format, addMonths, subMonths } from "date-fns"
-import { FiChevronLeft, FiChevronRight, FiDownload, FiAlertCircle } from "react-icons/fi"
+import { FiChevronLeft, FiChevronRight, FiDownload, FiAlertCircle, FiRefreshCw } from "react-icons/fi"
 import { payslipService } from "../../services/payslipService"
 
 function Payslips() {
@@ -9,15 +9,18 @@ function Payslips() {
   const [payslips, setPayslips] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [refreshing, setRefreshing] = useState({})
+  const [refreshingAll, setRefreshingAll] = useState(false)
+  const [successMessage, setSuccessMessage] = useState(null)
 
   useEffect(() => {
     fetchPayslips()
-  }, []) // Removed currentDate from dependencies
+  }, [currentDate]) // Updated useEffect dependency array
 
   const fetchPayslips = async () => {
     try {
       setLoading(true)
-      const month = currentDate.getMonth() + 1 // JavaScript months are 0-based
+      const month = currentDate.getMonth() + 1
       const year = currentDate.getFullYear()
       const data = await payslipService.getAllPayslipsByMonthAndYear(month, year)
       setPayslips(data)
@@ -37,13 +40,51 @@ function Payslips() {
     setCurrentDate((prevDate) => addMonths(prevDate, 1))
   }
 
-  const handleViewDetails = async (payslipId) => {
+  const handleRefreshAll = async () => {
     try {
-      const payslip = await payslipService.getById(payslipId)
-      // You can implement a modal or detailed view here with the payslip data
-      console.log("Payslip details:", payslip)
+      setRefreshingAll(true)
+      const month = currentDate.getMonth() + 1
+      const year = currentDate.getFullYear()
+      await payslipService.refreshAllPayslips(month, year)
+      await fetchPayslips()
+      setSuccessMessage("All payslips refreshed successfully")
+      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
-      setError(err.message || "Failed to fetch payslip details")
+      setError(err.message || "Failed to refresh payslips")
+    } finally {
+      setRefreshingAll(false)
+    }
+  }
+
+  const handleRefreshIndividual = async (empId) => {
+    try {
+      setRefreshing((prev) => ({ ...prev, [empId]: true }))
+      const month = currentDate.getMonth() + 1
+      const year = currentDate.getFullYear()
+      await payslipService.refreshPayslip(empId, month, year)
+      await fetchPayslips()
+      setSuccessMessage(`Payslip refreshed successfully`)
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err) {
+      setError(err.message || "Failed to refresh payslip")
+    } finally {
+      setRefreshing((prev) => ({ ...prev, [empId]: false }))
+    }
+  }
+
+  const handleDownload = async (payslipId) => {
+    try {
+      const blob = await payslipService.downloadPayslipPdf(payslipId)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `payslip_${payslipId}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (err) {
+      setError(err.message || "Failed to download payslip")
     }
   }
 
@@ -57,32 +98,65 @@ function Payslips() {
 
   return (
     <div className="space-y-4">
-      {/* Month Navigation */}
+      {/* Header with Month Navigation and Refresh All */}
       <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={handlePreviousMonth}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            title="Previous Month"
+          >
+            <FiChevronLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-xl font-semibold">{format(currentDate, "MMMM yyyy")}</h2>
+          <button
+            onClick={handleNextMonth}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            title="Next Month"
+          >
+            <FiChevronRight className="w-5 h-5" />
+          </button>
+        </div>
         <button
-          onClick={handlePreviousMonth}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          title="Previous Month"
+          onClick={handleRefreshAll}
+          disabled={refreshingAll}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-white transition-colors ${
+            refreshingAll ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+          }`}
         >
-          <FiChevronLeft className="w-5 h-5" />
-        </button>
-        <h2 className="text-xl font-semibold">{format(currentDate, "MMMM yyyy")}</h2>
-        <button
-          onClick={handleNextMonth}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          title="Next Month"
-        >
-          <FiChevronRight className="w-5 h-5" />
+          <FiRefreshCw className={`w-4 h-4 ${refreshingAll ? "animate-spin" : ""}`} />
+          <span>{refreshingAll ? "Refreshing..." : "Refresh All"}</span>
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 text-red-500 p-4 rounded-md flex items-center">
-          <FiAlertCircle className="mr-2" />
-          {error}
-        </div>
-      )}
+      {/* Messages */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-red-50 text-red-500 p-4 rounded-md flex items-center"
+          >
+            <FiAlertCircle className="mr-2" />
+            {error}
+          </motion.div>
+        )}
 
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-green-50 text-green-500 p-4 rounded-md flex items-center"
+          >
+            <FiAlertCircle className="mr-2" />
+            {successMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Payslips Table */}
       {loading ? (
         <div className="flex items-center justify-center h-[300px] bg-white rounded-lg">
           <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-blue-500"></div>
@@ -177,13 +251,27 @@ function Payslips() {
                         <div className="font-medium text-green-600">{formatCurrency(payslip.netPay)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <button
-                          onClick={() => handleViewDetails(payslip.id)}
-                          className="text-blue-600 hover:text-blue-900 transition-colors flex items-center"
-                          title="View Details"
-                        >
-                          <FiDownload className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => handleRefreshIndividual(payslip.employee.id)}
+                            disabled={refreshing[payslip.employee.id]}
+                            className={`text-blue-600 hover:text-blue-900 transition-colors ${
+                              refreshing[payslip.employee.id] ? "opacity-50" : ""
+                            }`}
+                            title="Refresh Payslip"
+                          >
+                            <FiRefreshCw
+                              className={`w-5 h-5 ${refreshing[payslip.employee.id] ? "animate-spin" : ""}`}
+                            />
+                          </button>
+                          <button
+                            onClick={() => handleDownload(payslip.id)}
+                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                            title="Download Payslip"
+                          >
+                            <FiDownload className="w-5 h-5" />
+                          </button>
+                        </div>
                       </td>
                     </motion.tr>
                   ))

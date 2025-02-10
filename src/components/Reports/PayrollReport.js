@@ -35,7 +35,6 @@ function PayrollReport() {
     try {
       setReportLoading(true)
       const data = await payrollReportService.getPayrollReportByEmployeeId(employeeId)
-      console.log(data)
       setReport(data)
       setError(null)
     } catch (err) {

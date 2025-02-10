@@ -16,12 +16,14 @@ function LeaveSettings() {
 
   useEffect(() => {
     fetchLeaveTypes();
-  }, [orgId])
+  }, [])
 
   const fetchLeaveTypes = async () => {
     try {
+      setLoading(true);
       const data = await leaveTypeService.getLeaveTypesByOrgId(orgId);
       setLeaveTypes(data);
+      setError(null);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -79,7 +81,7 @@ function LeaveSettings() {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Policy type
+                  Effective After
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
               </tr>
@@ -110,7 +112,7 @@ function LeaveSettings() {
                         {leaveType.leaveCategory}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Experience based</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{leaveType.effectiveAfterCount} {leaveType.effectiveAfterUnit}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{leaveType.accrualCount}</td>
                   </motion.tr>
                 ))

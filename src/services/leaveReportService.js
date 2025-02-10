@@ -10,7 +10,7 @@ export const leaveReportService = {
       const response = await axios.get(`${BASE_URL}/daily-leave-status?date=${formattedDate}`)
       return response.data
     }catch(err){
-      console.log(err)
+      console.error(err)
     }
   },
 

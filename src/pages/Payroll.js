@@ -18,7 +18,12 @@ function Payroll() {
   const fetchPayslips = async () => {
     try {
       const data = await payslipService.getPayslipsByEmployeeId(user.sub)
-      setPayslips(data)
+      // Sort payslips by year and month in descending order
+      const sortedData = data.sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year
+        return b.month - a.month
+      })
+      setPayslips(sortedData)
       setError(null)
     } catch (err) {
       setError("Failed to load payslips")
@@ -44,15 +49,23 @@ function Payroll() {
   }
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-IN", {
+    const absAmount = Math.abs(amount)
+    const formattedAmount = new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       maximumFractionDigits: 0,
-    }).format(amount)
+    }).format(absAmount)
+
+    return amount < 0 ? `-${formattedAmount}` : formattedAmount
   }
 
-  const formatDate = (date) => {
-    return format(new Date(date), "dd MMM yyyy")
+  const formatPayPeriod = (year, month) => {
+    const date = new Date(year, month - 1)
+    return format(date, "MMMM yyyy")
+  }
+
+  const calculateAllowances = (totalEarnings, basicSalary) => {
+    return totalEarnings - basicSalary
   }
 
   if (loading) {
@@ -88,10 +101,7 @@ function Payroll() {
                   Basic Salary
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Allowances
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Gross Salary
+                  Total Earnings
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Deductions
@@ -107,7 +117,7 @@ function Payroll() {
             <tbody className="bg-white divide-y divide-gray-200">
               {payslips.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                     No payslips found
                   </td>
                 </tr>
@@ -120,34 +130,30 @@ function Payroll() {
                     transition={{ delay: index * 0.05 }}
                     className="hover:bg-gray-50"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="font-medium">{formatDate(payslip.startDate)}</div>
-                      <div className="text-gray-500">to</div>
-                      <div className="font-medium">{formatDate(payslip.endDate)}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="font-medium text-gray-900">{formatCurrency(payslip.basicSalary)}</div>
-                      <div className="text-xs text-gray-500">
-                        HRA: {formatCurrency(payslip.hra)}
-                        <br />
-                        DA: {formatCurrency(payslip.da)}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {formatPayPeriod(payslip.year, payslip.month)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(payslip.allowances)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="font-medium text-gray-900">{formatCurrency(payslip.grossSalary)}</div>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.basicSalary)}</div>
                       <div className="text-xs text-gray-500">
-                        Total Earnings: {formatCurrency(payslip.totalEarnings)}
+                        Allowances: {formatCurrency(calculateAllowances(payslip.totalEarnings, payslip.basicSalary))}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="font-medium text-gray-900">{formatCurrency(payslip.totalDeductions)}</div>
-                      <div className="text-xs text-gray-500">Tax: {formatCurrency(payslip.incomeTax)}</div>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.totalEarnings)}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="font-medium text-green-600">{formatCurrency(payslip.netPay)}</div>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.totalDeductions)}</div>
+                      {payslip.incomeTax > 0 && (
+                        <div className="text-xs text-gray-500">Tax: {formatCurrency(payslip.incomeTax)}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className={`text-sm font-medium ${payslip.netPay < 0 ? "text-red-600" : "text-green-600"}`}>
+                        {formatCurrency(payslip.netPay)}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <button
