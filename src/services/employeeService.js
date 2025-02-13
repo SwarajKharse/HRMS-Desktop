@@ -39,6 +39,7 @@ export const employeeService = {
 
   createEmployee: async (employeeData) => {
     try {
+      console.log(employeeData);
       const response = await axios.post(`${BASE_URL}/`, employeeData, getAuthHeaders());
       return response.data;
     } catch (error) {
@@ -48,6 +49,7 @@ export const employeeService = {
 
   updateEmployee: async (id, employeeData) => {
     try {
+      console.log(employeeData);
       const response = await axios.put(`${BASE_URL}/${id}`, employeeData, getAuthHeaders());
       return response.data;
     } catch (error) {

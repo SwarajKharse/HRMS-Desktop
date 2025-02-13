@@ -198,14 +198,6 @@ function LeaveForm({ isOpen, onClose, onSubmit, leaveTypes }) {
             </div>
           </div>
 
-          {formData.duration > 0 && (
-            <div className="bg-blue-50 p-3 rounded-md">
-              <p className="text-sm text-blue-700">
-                Duration: {formData.duration} day{formData.duration > 1 ? "s" : ""}
-              </p>
-            </div>
-          )}
-
           <div>
             <label className="block text-sm font-medium text-gray-700">
               Reason for leave <span className="text-red-500">*</span>

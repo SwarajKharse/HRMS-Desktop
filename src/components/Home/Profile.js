@@ -1,10 +1,60 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { FiUser, FiBriefcase, FiPhone, FiMapPin, FiLogOut } from "react-icons/fi"
+import {
+  FiUser,
+  FiBriefcase,
+  FiPhone,
+  FiMapPin,
+  FiLogOut,
+  FiAlertTriangle,
+  FiXCircle,
+  FiAlertOctagon,
+} from "react-icons/fi"
 import ResignationForm from "../Forms/ResignationForm"
+import { warningService } from "../../services/warningService"
+import { terminationService } from "../../services/terminationService"
+import { resignationService } from "../../services/resignationService"
 
 function Profile({ employee }) {
   const [showResignationForm, setShowResignationForm] = useState(false)
+  const [warnings, setWarnings] = useState([])
+  const [termination, setTermination] = useState(null)
+  const [resignation, setResignation] = useState(null)
+  const [loading, setLoading] = useState({
+    warnings: true,
+    terminations: true,
+    resignations: true,
+  })
+
+  useEffect(() => {
+    const fetchEmployeeRecords = async () => {
+      try {
+        const [warningsData, terminationData, resignationData] = await Promise.all([
+          warningService.getWarningsByEmployeeId(employee.id),
+          terminationService.getTerminationsByEmployeeId(employee.id),
+          resignationService.getResignationByEmployeeId(employee.id),
+        ])
+
+        setWarnings(Array.isArray(warningsData) ? warningsData : [])
+        setTermination(...terminationData)
+        setResignation(resignationData)
+        console.log(terminationData)
+      } catch (error) {
+        console.error("Error fetching employee records:", error)
+        setWarnings([])
+        setTermination(null)
+        setResignation(null)
+      } finally {
+        setLoading({
+          warnings: false,
+          terminations: false,
+          resignations: false,
+        })
+      }
+    }
+
+    fetchEmployeeRecords()
+  }, [employee.id])
 
   const formatDate = (dateString) => {
     if (!dateString) return "NA"
@@ -23,9 +73,52 @@ function Profile({ employee }) {
   }
 
   const handleResignationSubmit = () => {
-    // Optionally handle any updates needed after resignation submission
     setShowResignationForm(false)
   }
+
+  const RecordsList = ({ title, icon: Icon, data = [], loading, columns }) => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-lg font-semibold">
+        <Icon className="w-5 h-5" />
+        <h3>{title}</h3>
+      </div>
+      {loading ? (
+        <div className="flex justify-center py-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+        </div>
+      ) : !Array.isArray(data) || data.length === 0 ? (
+        <p className="text-gray-500 text-center py-4">No records found</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead>
+              <tr>
+                {columns.map((column, index) => (
+                  <th
+                    key={index}
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {column.header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {data.map((record, index) => (
+                <tr key={index}>
+                  {columns.map((column, colIndex) => (
+                    <td key={colIndex} className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                      {column.render(record)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
 
   return (
     <div className="flex flex-col gap-6">
@@ -188,6 +281,123 @@ function Profile({ employee }) {
               <label className="text-sm text-gray-500">About Me</label>
               <p>{getValue(employee?.aboutMe)}</p>
             </div>
+          </div>
+        </motion.div>
+
+        {/* Warning Letters */}
+        <motion.div
+          className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <RecordsList
+            title="Warning Letters"
+            icon={FiAlertTriangle}
+            data={warnings}
+            loading={loading.warnings}
+            columns={[
+              {
+                header: "Issue Date",
+                render: (record) => formatDate(record.warningDate),
+              },
+              {
+                header: "Reason",
+                render: (record) => record.reason,
+              },
+            ]}
+          />
+        </motion.div>
+
+        {/* Terminations */}
+        <motion.div
+          className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-lg font-semibold">
+              <FiXCircle className="w-5 h-5" />
+              <h3>Termination</h3>
+            </div>
+            {loading.terminations ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              </div>
+            ) : !termination ? (
+              <p className="text-gray-500 text-center py-4">No termination record found</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-500">Notice Date</label>
+                      <p className="font-medium">{formatDate(termination.terminationDate)}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-500">Last Working Day</label>
+                      <p className="font-medium">{formatDate(employee.dateOfLeaving)}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="text-sm text-gray-500">Reason</label>
+                      <p className="font-medium">{termination.reason}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Resignations */}
+        <motion.div
+          className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+        >
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-lg font-semibold">
+              <FiAlertOctagon className="w-5 h-5" />
+              <h3>Resignation</h3>
+            </div>
+            {loading.resignations ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              </div>
+            ) : !resignation ? (
+              <p className="text-gray-500 text-center py-4">No resignation record found</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-500">Application Date</label>
+                      <p className="font-medium">{formatDate(resignation.resignationDate)}</p>
+                    </div>
+                    <div className="">
+                      <label className="text-sm text-gray-500">Reason</label>
+                      <p className="font-medium">{resignation.reason}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-gray-500">Status</label>
+                      <span
+                        className={`inline-block px-2 py-1 rounded-full text-xs ${
+                          resignation.status === "Pending"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : resignation.status === "Approved"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {resignation.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

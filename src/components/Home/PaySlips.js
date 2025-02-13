@@ -12,6 +12,7 @@ function Payslips() {
   const [refreshing, setRefreshing] = useState({})
   const [refreshingAll, setRefreshingAll] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
+  const [today, setToday] = useState(new Date());
 
   useEffect(() => {
     fetchPayslips()
@@ -117,16 +118,18 @@ function Payslips() {
             <FiChevronRight className="w-5 h-5" />
           </button>
         </div>
-        <button
-          onClick={handleRefreshAll}
-          disabled={refreshingAll}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-white transition-colors ${
-            refreshingAll ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-          }`}
-        >
-          <FiRefreshCw className={`w-4 h-4 ${refreshingAll ? "animate-spin" : ""}`} />
-          <span>{refreshingAll ? "Refreshing..." : "Refresh All"}</span>
-        </button>
+        {(today.getMonth() === currentDate.getMonth() || today.getMonth() === currentDate.getMonth() + 1) && (
+          <button
+            onClick={handleRefreshAll}
+            disabled={refreshingAll}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-white transition-colors ${
+              refreshingAll ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            <FiRefreshCw className={`w-4 h-4 ${refreshingAll ? "animate-spin" : ""}`} />
+            <span>{refreshingAll ? "Refreshing..." : "Refresh All"}</span>
+          </button>
+        )}
       </div>
 
       {/* Messages */}
@@ -252,18 +255,20 @@ function Payslips() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div className="flex items-center space-x-3">
-                          <button
-                            onClick={() => handleRefreshIndividual(payslip.employee.id)}
-                            disabled={refreshing[payslip.employee.id]}
-                            className={`text-blue-600 hover:text-blue-900 transition-colors ${
-                              refreshing[payslip.employee.id] ? "opacity-50" : ""
-                            }`}
-                            title="Refresh Payslip"
-                          >
-                            <FiRefreshCw
-                              className={`w-5 h-5 ${refreshing[payslip.employee.id] ? "animate-spin" : ""}`}
-                            />
-                          </button>
+                          {(today.getMonth() === currentDate.getMonth() || today.getMonth() === currentDate.getMonth() + 1) &&(
+                            <button
+                              onClick={() => handleRefreshIndividual(payslip.employee.id)}
+                              disabled={refreshing[payslip.employee.id]}
+                              className={`text-blue-600 hover:text-blue-900 transition-colors ${
+                                refreshing[payslip.employee.id] ? "opacity-50" : ""
+                              }`}
+                              title="Refresh Payslip"
+                            >
+                              <FiRefreshCw
+                                className={`w-5 h-5 ${refreshing[payslip.employee.id] ? "animate-spin" : ""}`}
+                              />
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDownload(payslip.id)}
                             className="text-blue-600 hover:text-blue-900 transition-colors"
