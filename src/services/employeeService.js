@@ -87,4 +87,25 @@ export const employeeService = {
       throw new Error(error.message)
     }
   },
+
+  getGeofencingByOrgId: async (orgId) => {
+    try {
+      const response = await fetch(`${BASE_URL}/geofencing/org/${orgId}`)
+      if (!response.ok) {
+        throw new Error("Failed to fetch geofencing data")
+      }
+      return await response.json()
+    } catch (error) {
+      throw new Error(error.message)
+    }
+  },
+
+  updateGeofencingByEmployeeId: async (employeeId, geofencingData) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/geofencing/${employeeId}`, geofencingData, getAuthHeaders());
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };

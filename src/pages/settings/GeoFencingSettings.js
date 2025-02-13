@@ -1,216 +1,51 @@
 import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, FeatureGroup, GeoJSON, useMap } from "react-leaflet";
-import { EditControl } from "react-leaflet-draw";
-import { circleToPolygon } from "../../utils/circleToPolygon";
-import { fenceService } from "../../services/fenceService";
-import "leaflet/dist/leaflet.css";
-import "leaflet-draw/dist/leaflet.draw.css";
-import L from "leaflet";
-import icon from "leaflet/dist/images/marker-icon.png";
-import iconShadow from "leaflet/dist/images/marker-shadow.png";
-import { authService } from "../../services/authService";
+import GeoFencing from "../../components/GeoFences/GeoFencing";
+import EmployeeList from "../../components/GeoFences/EmployeeList";
 
-// Fix for default marker icons in leaflet
-const DefaultIcon = L.icon({
-  iconUrl: icon,
-  shadowUrl: iconShadow,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-L.Marker.prototype.options.icon = DefaultIcon;
-
-// Component to handle map bounds updates
-function MapBoundsUpdater({ shapes }) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (shapes && shapes.length > 0) {
-      try {
-        // Create a FeatureGroup from all shapes
-        const featureGroup = L.geoJSON(shapes);
-        // Get bounds of all shapes
-        const bounds = featureGroup.getBounds();
-        // Fit map to these bounds with some padding
-        map.fitBounds(bounds, { padding: [50, 50] });
-      } catch (error) {
-        console.error("Error fitting bounds:", error);
-      }
-    }
-  }, [shapes, map]);
-
-  return null;
-}
+const VALID_TABS = ["geoFences", "employee-list"]
 
 function GeoFencingSettings() {
-  const [shapes, setShapes] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [mapCenter] = useState([20, 0]); // Default center
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedTab = sessionStorage.getItem("geoFencingTab")
+      return VALID_TABS.includes(savedTab) ? savedTab : "geoFences"
+    }
+    return "geoFences"
+  });
 
   useEffect(() => {
-    fetchFences();
-  }, []);
+    sessionStorage.setItem("geoFencingTab", activeTab)
+  }, [activeTab]);
 
-  const fetchFences = async () => {
-    try {
-      setLoading(true);
-      const fences = await fenceService.getFences(authService.getUser().orgId);
-      setShapes(fences);
-    } catch (error) {
-      console.error("Error fetching fences:", error);
-      alert("Failed to fetch fences");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onCreated = (e) => {
-    const layer = e.layer;
-    let geometry;
-
-    if (e.layerType === "circle") {
-      // Convert circle to polygon for better compatibility
-      const center = layer.getLatLng();
-      const radius = layer.getRadius();
-      geometry = circleToPolygon([center.lng, center.lat], radius);
-    } else {
-      // For rectangles and polygons, use the GeoJSON directly
-      geometry = layer.toGeoJSON().geometry;
-    }
-
-    setShapes([...shapes, geometry]);
-  };
-
-  const onEdited = (e) => {
-    const layers = e.layers;
-    const updatedShapes = [...shapes];
-
-    layers.eachLayer((layer) => {
-      const editedGeometry = layer.toGeoJSON().geometry;
-      // Find the index of the edited shape in the shapes array
-      const index = updatedShapes.findIndex(
-        (shape) => JSON.stringify(shape) === JSON.stringify(layer.toGeoJSON().geometry)
-      );
-
-      if (index !== -1) {
-        // Update the shape with the edited geometry
-        updatedShapes[index] = editedGeometry;
-      }
-    });
-
-    setShapes(updatedShapes);
-  };
-
-  const handleSaveFences = async () => {
-    try {
-      setLoading(true);
-      await fenceService.saveFences(authService.getUser().orgId, shapes);
-      alert("Fences saved successfully!");
-    } catch (error) {
-      console.error("Error saving fences:", error);
-      alert("Failed to save fences");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleClearAll = () => {
-    // Clear all shapes from the state
-    setShapes([]);
-  };
+  const tabs = [
+    { id: "geoFences", label: "Geo Fences" },
+    { id: "employee-list", label: "Employee List" },
+  ];
 
   return (
-    <div className="container">
-      <h1>Geo-Fencing Settings</h1>
-      <div className="map-container">
-        <MapContainer center={mapCenter} zoom={2} style={{ height: "500px", width: "100%" }}>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <FeatureGroup>
-            <EditControl
-              position="topright"
-              onCreated={onCreated}
-              onEdited={onEdited} // Add onEdited handler
-              draw={{
-                rectangle: true,
-                polygon: true,
-                circle: true,
-                circlemarker: false,
-                marker: false,
-                polyline: false,
-              }}
-              edit={{
-                edit: true, // Enable editing
-                remove: true, // Enable deletion
-              }}
-            />
-          </FeatureGroup>
-          {/* Render the fetched fences on the map */}
-          {shapes.map((shape, index) => (
-            <GeoJSON key={index} data={shape} />
+    <div className="flex flex-col gap-6">
+      {/* Navigation Tabs */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+                ${
+                  activeTab === tab.id
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+            >
+              {tab.label}
+            </button>
           ))}
-          <MapBoundsUpdater shapes={shapes} />
-        </MapContainer>
+        </nav>
       </div>
-
-      <div className="controls">
-        <button className="button" onClick={handleSaveFences} disabled={loading || shapes.length === 0}>
-          {loading ? "Saving..." : "Save Fences"}
-        </button>
-        <button className="button" onClick={handleClearAll} disabled={loading || shapes.length === 0}>
-          Clear All
-        </button>
+      <div className="settings__content">
+        {activeTab === "geoFences" ? <GeoFencing /> : <EmployeeList />}
       </div>
-
-      <style>
-        {`
-          .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-          }
-          
-          h1 {
-            text-align: center;
-            margin-bottom: 20px;
-          }
-          
-          .map-container {
-            border: 2px solid #ccc;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 20px;
-          }
-          
-          .controls {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-bottom: 20px;
-          }
-          
-          button.button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            transition: background-color 0.3s;
-          }
-          
-          button.button:hover:not(:disabled) {
-            background-color: #45a049;
-          }
-          
-          button.button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-          }
-        `}
-      </style>
     </div>
   );
 }

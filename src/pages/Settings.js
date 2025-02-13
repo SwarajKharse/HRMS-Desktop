@@ -92,36 +92,6 @@ function Settings() {
 
   return (
     <div className="p-6 space-y-8">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100"
-      >
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-6">
-            <motion.div
-              whileHover={{ rotate: 180 }}
-              transition={{ duration: 0.5 }}
-              className="w-16 h-16 bg-gradient-to-tr from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg"
-            >
-              <FiSettings className="w-8 h-8 text-white" />
-            </motion.div>
-            <div>
-              <motion.h1
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent"
-              >
-                Safety Saarthi
-              </motion.h1>
-              <p className="text-gray-500 font-medium">System Settings & Configuration</p>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
       {/* Search and Categories */}
       <div className="flex flex-col gap-8">
         <motion.div
