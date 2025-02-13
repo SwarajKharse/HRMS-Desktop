@@ -73,18 +73,7 @@ function PayrollReport() {
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto p-4">
-      <div className="flex items-center space-x-2">
-        <FiDollarSign className="text-blue-600 w-6 h-6" />
-        <h1 className="text-2xl font-bold">Payroll Report</h1>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 text-red-500 p-4 rounded-md flex items-center">
-          <FiAlertCircle className="mr-2" />
-          {error}
-        </div>
-      )}
-
+      
       {/* Select Employee */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="relative">
@@ -109,6 +98,13 @@ function PayrollReport() {
           )}
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-500 p-4 rounded-md flex items-center">
+          <FiAlertCircle className="mr-2" />
+          {error}
+        </div>
+      )}
 
       {/* Report Loading */}
       {reportLoading && (
@@ -137,32 +133,8 @@ function PayrollReport() {
                 <p className="font-medium">{report.firstName} {report.lastName}</p>
               </div>
               <div>
-                <p className="text-gray-600">Phone Number</p>
-                <p className="font-medium">{report.phoneNumber || "-"}</p>
-              </div>
-              <div>
-                <p className="text-gray-600">Salary Amount</p>
-                <p className="font-medium">{formatCurrency(report.salaryAmount || 0)}/Month</p>
-              </div>
-              <div>
-                <p className="text-gray-600">Designation</p>
-                <p className="font-medium">{report.designation}</p>
-              </div>
-              <div>
-                <p className="text-gray-600">Employee ID</p>
-                <p className="font-medium">{report.employeeId}</p>
-              </div>
-              <div>
-                <p className="text-gray-600">Branch</p>
-                <p className="font-medium">{report.branch}</p>
-              </div>
-              <div>
-                <p className="text-gray-600">Date of Joining</p>
-                <p className="font-medium">
-                  {report.dateOfJoining
-                    ? format(new Date(report.dateOfJoining), "dd/MM/yyyy")
-                    : "-"}
-                </p>
+                <p className="text-gray-600">Bank Branch</p>
+                <p className="font-medium">{report.branch || "-"}</p>
               </div>
               <div>
                 <p className="text-gray-600">UAN</p>

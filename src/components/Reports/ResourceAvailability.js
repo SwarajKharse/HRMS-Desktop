@@ -14,16 +14,14 @@ function ResourceAvailability() {
   // Status color mapping
   const statusColors = {
     Holiday: "bg-blue-100 text-blue-800",
-    Weekend: "bg-gray-100 text-gray-600",
+    Weekend: "bg-teal-100 text-teal-600",
     Present: "bg-green-100 text-green-800",
     Absent: "bg-red-100 text-red-800",
     "Late Check-in": "bg-yellow-100 text-yellow-800",
     "Early Check-out": "bg-orange-100 text-orange-800",
     "Half Day": "bg-amber-100 text-amber-800",
-    "Annual Leave": "bg-purple-100 text-purple-800",
-    "Sick Leave": "bg-orange-100 text-orange-800",
-    "Casual Leave": "bg-indigo-100 text-indigo-800",
-    "Maternity Leave": "bg-rose-100 text-rose-800",
+    "Paid Leave": "bg-purple-100 text-purple-800",
+    "Unpaid Leave": "bg-orange-100 text-orange-800",
     "-": "bg-gray-100 text-gray-600",
     // Add more leave types if needed
   };
@@ -37,10 +35,8 @@ function ResourceAvailability() {
     "Late Check-in": "LC",
     "Early Check-out": "EC",
     "Half Day": "HD",
-    "Annual Leave": "AL",
-    "Sick Leave": "SL",
-    "Casual Leave": "CL",
-    "Maternity Leave": "ML",
+    "Paid Leave": "PL",
+    "Unpaid Leave": "UL",
     "-": "-",
     // Add more leave types if needed
   };
