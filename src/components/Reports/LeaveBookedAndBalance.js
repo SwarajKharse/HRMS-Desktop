@@ -4,7 +4,7 @@ import { leaveBalanceService } from "../../services/leaveBalanceService"
 import { authService } from "../../services/authService"
 
 function LeaveBookedAndBalance() {
-  const [leaveData, setLeaveData] = useState({})
+  const [leaveData, setLeaveData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -27,8 +27,8 @@ function LeaveBookedAndBalance() {
 
   const getUniqueLeaveTypes = () => {
     const leaveTypes = new Set()
-    Object.values(leaveData).forEach((employeeLeaves) => {
-      employeeLeaves.forEach((leave) => {
+    leaveData.forEach((employeeData) => {
+      employeeData.leaveBalances.forEach((leave) => {
         leaveTypes.add(JSON.stringify(leave.leaveType))
       })
     })
@@ -48,7 +48,7 @@ function LeaveBookedAndBalance() {
   }
 
   const getLeaveBalance = (employeeLeaves, leaveTypeId) => {
-    const leave = employeeLeaves?.find((l) => l.leaveType.id === leaveTypeId)
+    const leave = employeeLeaves.find((l) => l.leaveType.id === leaveTypeId)
     return leave ? leave.balance : null
   }
 
@@ -83,9 +83,8 @@ function LeaveBookedAndBalance() {
   }
 
   const groupedLeaveTypes = groupLeaveTypesByCategory()
-  const employees = Object.entries(leaveData)
 
-  if (employees.length === 0) {
+  if (leaveData.length === 0) {
     return (
       <div className="flex items-center justify-center p-6 rounded-xl bg-gray-50 border border-gray-100">
         <p className="text-gray-500 font-medium">No leave balance data available</p>
@@ -113,7 +112,6 @@ function LeaveBookedAndBalance() {
                     </th>
                   </React.Fragment>
                 ))}
-                {/* Add this after the last category mapping */}
                 <th
                   colSpan={3}
                   className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-l border-b bg-blue-50/50"
@@ -153,12 +151,12 @@ function LeaveBookedAndBalance() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {employees.map(([employeeId, employeeLeaves], index) => {
-                const employeeTotals = calculateEmployeeTotals(employeeLeaves)
+              {leaveData.map((employeeData, index) => {
+                const employeeTotals = calculateEmployeeTotals(employeeData.leaveBalances)
 
                 return (
                   <motion.tr
-                    key={employeeId}
+                    key={employeeData.employee.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
@@ -167,23 +165,33 @@ function LeaveBookedAndBalance() {
                     <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10 border-r">
                       <div className="flex items-center">
                         <span className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-medium text-sm border-2 border-white shadow-sm">
-                          {employeeId}
+                          {employeeData.employee.profilePhotoUrl ? (
+                            <img
+                              src={employeeData.employee.profilePhotoUrl || "/placeholder.svg"}
+                              alt="Profile"
+                              className="w-full h-full object-cover rounded-full"
+                            />
+                          ) : (
+                            employeeData.employee.firstName.charAt(0).toUpperCase() + employeeData.employee.lastName.charAt(0).toUpperCase()
+                          )}
                         </span>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">Employee {employeeId}</div>
-                          <div className="text-xs text-gray-500">ID: {employeeId}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {employeeData.employee.firstName} {employeeData.employee.lastName}
+                          </div>
+                          <div className="text-xs text-gray-500">ID: {employeeData.employee.employeeCode}</div>
                         </div>
                       </div>
                     </td>
                     {Object.entries(groupedLeaveTypes).map(([category, leaveTypes]) => (
-                      <React.Fragment key={`${employeeId}-${category}`}>
+                      <React.Fragment key={`${employeeData.employee.id}-${category}`}>
                         {leaveTypes.map((leaveType) => {
-                          const balance = getLeaveBalance(employeeLeaves, leaveType.id)
+                          const balance = getLeaveBalance(employeeData.leaveBalances, leaveType.id)
                           const isEligible = balance !== null
                           const taken = isEligible ? leaveType.accrualCount - balance : 0
 
                           return (
-                            <React.Fragment key={`${employeeId}-${leaveType.id}`}>
+                            <React.Fragment key={`${employeeData.employee.id}-${leaveType.id}`}>
                               <td
                                 className={`px-3 py-4 text-center text-sm border-l ${isEligible ? "text-gray-900" : "text-gray-400 bg-gray-50/50"}`}
                               >
@@ -204,7 +212,6 @@ function LeaveBookedAndBalance() {
                         })}
                       </React.Fragment>
                     ))}
-                    {/* Remove the category-wise total columns and add this after the category mapping */}
                     <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 border-l bg-blue-50/50">
                       {employeeTotals.total}
                     </td>
