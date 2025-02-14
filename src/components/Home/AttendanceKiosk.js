@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as faceapi from "face-api.js";
 import { authService } from "../../services/authService";
+import { attendanceService } from "../../services/attendanceService";
 import { FiCheck, FiX, FiLoader, FiClock, FiCamera, FiAlertCircle } from "react-icons/fi";
 
 const AttendanceKiosk = () => {
@@ -125,18 +126,10 @@ const AttendanceKiosk = () => {
         throw new Error("No base64 data found in captured image.");
       }
 
-      const endpoint = `http://localhost:8080/api/attendance/kiosk/${selectedAction}`;
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orgId: authService.getUser().orgId,
-          image: base64String,
-        }),
-      });
-
-      const result = await response.json();
+      const result = attendanceService.markKioskAttendance(selectedAction, JSON.stringify({
+        orgId: authService.getUser().orgId,
+        image: base64String,
+      }));
 
       if (result.status === "success") {
         setRecognizedUser(result.fullName || result.empId);

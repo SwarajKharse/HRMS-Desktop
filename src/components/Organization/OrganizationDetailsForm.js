@@ -1,8 +1,16 @@
-import { useState, useRef } from "react"
-import { FiSave, FiUpload, FiX } from "react-icons/fi"
-import { organizationService } from "../../services/organizationService"
+import { useState, useRef, useEffect } from "react";
+import { FiSave, FiUpload, FiX } from "react-icons/fi";
+import { organizationService } from "../../services/organizationService";
 
-function ImageUpload({ imagePreview, onImageChange, onRemoveImage, inputId, title, fileInputRef, uploadError }) {
+function ImageUpload({
+  imagePreview,
+  onImageChange,
+  onRemoveImage,
+  inputId,
+  title,
+  fileInputRef,
+  uploadError,
+}) {
   return (
     <div className="space-y-4 rounded-lg bg-gray-50 p-4">
       <h3 className="font-semibold text-lg border-b pb-2">{title}</h3>
@@ -10,7 +18,7 @@ function ImageUpload({ imagePreview, onImageChange, onRemoveImage, inputId, titl
         {imagePreview ? (
           <div className="relative">
             <img
-              src={imagePreview || "/placeholder.svg"}
+              src={imagePreview}
               alt={title}
               className="w-128 h-32 object-contain rounded-lg border border-gray-200"
             />
@@ -49,115 +57,141 @@ function ImageUpload({ imagePreview, onImageChange, onRemoveImage, inputId, titl
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function OrganizationDetailsForm({ organization, onSubmit }) {
-  const [orgData, setOrgData] = useState(organization)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [successMessage, setSuccessMessage] = useState(false)
-  const [logoPreview, setLogoPreview] = useState(organization?.logoUrl || null)
-  const [letterheadPreview, setLetterheadPreview] = useState(organization?.letterHeadUrl || null)
-  const [logoError, setLogoError] = useState(null)
-  const [letterheadError, setLetterheadError] = useState(null)
-  const logoInputRef = useRef(null)
-  const letterheadInputRef = useRef(null)
+  // Initialize state based on incoming organization data.
+  const [orgData, setOrgData] = useState(organization || {});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(false);
+
+  // Use local state for previews; if a URL exists, show it; otherwise show nothing.
+  const [logoPreview, setLogoPreview] = useState(organization?.logoUrl || null);
+  const [letterheadPreview, setLetterheadPreview] = useState(
+    organization?.letterHeadUrl || null
+  );
+  const [logoError, setLogoError] = useState(null);
+  const [letterheadError, setLetterheadError] = useState(null);
+
+  const logoInputRef = useRef(null);
+  const letterheadInputRef = useRef(null);
+
+  // Whenever the incoming organization prop changes, update our local state.
+  useEffect(() => {
+    setLogoPreview(organization?.logoUrl || null);
+    setLetterheadPreview(organization?.letterHeadUrl || null);
+    setOrgData(organization || {});
+  }, [organization]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setOrgData((prev) => ({
       ...prev,
       [name]: value,
-    }))
-  }
+    }));
+  };
 
   const handleImageChange = (file, type) => {
-    if (!file) return
+    if (!file) return;
 
     // Validate file type
     if (!file.type.startsWith("image/")) {
-      type === "logo" ? setLogoError("Please upload an image file") : setLetterheadError("Please upload an image file")
-      return
+      type === "logo"
+        ? setLogoError("Please upload an image file")
+        : setLetterheadError("Please upload an image file");
+      return;
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       type === "logo"
         ? setLogoError("Image size should be less than 5MB")
-        : setLetterheadError("Image size should be less than 5MB")
-      return
+        : setLetterheadError("Image size should be less than 5MB");
+      return;
     }
 
-    type === "logo" ? setLogoError(null) : setLetterheadError(null)
+    // Clear any previous errors
+    type === "logo" ? setLogoError(null) : setLetterheadError(null);
 
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onloadend = () => {
-      const base64Data = reader.result
+      const base64Data = reader.result;
       if (type === "logo") {
-        setLogoPreview(base64Data)
+        setLogoPreview(base64Data);
         setOrgData((prev) => ({
           ...prev,
           logoImage: base64Data,
-        }))
+          logoUrl: null, // Clear the saved URL since a new image is uploaded.
+        }));
       } else {
-        setLetterheadPreview(base64Data)
+        setLetterheadPreview(base64Data);
         setOrgData((prev) => ({
           ...prev,
           letterHeadImage: base64Data,
-        }))
+          letterHeadUrl: null, // Clear the saved URL since a new image is uploaded.
+        }));
       }
-    }
-    reader.readAsDataURL(file)
-  }
+    };
+    reader.readAsDataURL(file);
+  };
 
-  const handleLogoChange = (e) => handleImageChange(e.target.files[0], "logo")
-  const handleLetterheadChange = (e) => handleImageChange(e.target.files[0], "letterhead")
+  const handleLogoChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleImageChange(e.target.files[0], "logo");
+    }
+  };
+  const handleLetterheadChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleImageChange(e.target.files[0], "letterhead");
+    }
+  };
 
   const removeLogo = () => {
-    setLogoPreview(null)
+    setLogoPreview(null);
     setOrgData((prev) => ({
       ...prev,
       logoImage: null,
       logoUrl: null,
-    }))
+    }));
     if (logoInputRef.current) {
-      logoInputRef.current.value = ""
+      logoInputRef.current.value = "";
     }
-  }
+  };
 
   const removeLetterhead = () => {
-    setLetterheadPreview(null)
+    setLetterheadPreview(null);
     setOrgData((prev) => ({
       ...prev,
       letterHeadImage: null,
       letterHeadUrl: null,
-    }))
+    }));
     if (letterheadInputRef.current) {
-      letterheadInputRef.current.value = ""
+      letterheadInputRef.current.value = "";
     }
-  }
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
     try {
-      await organizationService.updateOrganization(orgData)
-      window.scrollTo(0, 0)
-      setSuccessMessage(true)
+      await organizationService.updateOrganization(orgData);
+      window.scrollTo(0, 0);
+      setSuccessMessage(true);
       setTimeout(() => {
-        setSuccessMessage(false)
-      }, 3000)
-      onSubmit && onSubmit()
-      window.location.reload()
+        setSuccessMessage(false);
+      }, 3000);
+      onSubmit && onSubmit();
+      window.location.reload();
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <table className="min-w-full divide-y divide-gray-200">
@@ -165,7 +199,11 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
         <tr>
           <td colSpan="3" className="px-6 py-4">
             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-              {error && <div className="bg-red-50 text-red-500 p-4 rounded-md">{error}</div>}
+              {error && (
+                <div className="bg-red-50 text-red-500 p-4 rounded-md">
+                  {error}
+                </div>
+              )}
               {successMessage && (
                 <div className="bg-green-50 text-green-600 p-4 rounded-md font-medium">
                   Organization details updated successfully!
@@ -198,7 +236,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
 
               {/* Organization Details */}
               <div className="space-y-4 rounded-lg bg-gray-50 p-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Organization Information</h3>
+                <h3 className="font-semibold text-lg border-b pb-2">
+                  Organization Information
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
@@ -214,7 +254,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Website</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Website
+                    </label>
                     <input
                       type="url"
                       name="website"
@@ -224,7 +266,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Type of Organization</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Type of Organization
+                    </label>
                     <select
                       name="typeOfOrg"
                       value={orgData.typeOfOrg || ""}
@@ -239,7 +283,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Contact Person</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Contact Person
+                    </label>
                     <input
                       type="text"
                       name="contactPerson"
@@ -249,7 +295,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Contact Number</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Contact Number
+                    </label>
                     <input
                       type="tel"
                       name="contactNumber"
@@ -276,10 +324,14 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
 
               {/* Address Information */}
               <div className="space-y-4 rounded-lg bg-white border p-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Address Information</h3>
+                <h3 className="font-semibold text-lg border-b pb-2">
+                  Address Information
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700">Street Address</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Street Address
+                    </label>
                     <input
                       type="text"
                       name="street"
@@ -289,7 +341,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">City</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      City
+                    </label>
                     <input
                       type="text"
                       name="city"
@@ -299,7 +353,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">State</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      State
+                    </label>
                     <input
                       type="text"
                       name="state"
@@ -309,7 +365,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Postal Code</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Postal Code
+                    </label>
                     <input
                       type="text"
                       name="postalCode"
@@ -319,7 +377,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Country</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Country
+                    </label>
                     <input
                       type="text"
                       name="country"
@@ -333,10 +393,14 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
 
               {/* Notice Periods */}
               <div className="space-y-4 rounded-lg bg-gray-50 p-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Notice Periods (in days)</h3>
+                <h3 className="font-semibold text-lg border-b pb-2">
+                  Notice Periods (in days)
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Warning Extended Period</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Warning Extended Period
+                    </label>
                     <input
                       type="number"
                       name="warningExtendedPeriod"
@@ -346,7 +410,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Termination Notice Period</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Termination Notice Period
+                    </label>
                     <input
                       type="number"
                       name="terminationNoticePeriod"
@@ -357,7 +423,9 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Resignation Notice Period</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Resignation Notice Period
+                    </label>
                     <input
                       type="number"
                       name="resignationNoticePeriod"
@@ -384,7 +452,7 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
         </tr>
       </tbody>
     </table>
-  )
+  );
 }
 
 export default OrganizationDetailsForm;

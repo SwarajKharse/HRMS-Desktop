@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = "http://localhost:8080/api/warning-letter"
+const BASE_URL = `${process.env.REACT_APP_API_URL}/warning-letter`;
 
 export const warningService = {
   issueWarning: async (employeeId, reason) => {

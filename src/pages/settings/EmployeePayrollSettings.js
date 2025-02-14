@@ -34,7 +34,6 @@ function EmployeePayroll() {
   const [editingItem, setEditingItem] = useState(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataType, setDataType] = useState(null);
-  const { user } = useAuth();
 
   useEffect(() => {
     fetchEmployees();

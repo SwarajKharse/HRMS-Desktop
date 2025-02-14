@@ -2,7 +2,7 @@ import axios from 'axios';
 import { format } from 'date-fns';
 import { authService } from './authService';
 
-const BASE_URL = 'http://localhost:8080/api/attendance';
+const BASE_URL = `${process.env.REACT_APP_API_URL}/attendance`;
 
 export const attendanceService = {
 
@@ -56,6 +56,17 @@ export const attendanceService = {
       return response.data
     } catch (error) {
       throw new Error("Failed to update attendance")
+    }
+  },
+
+  markKioskAttendance: async (selectedAction, body) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/kiosk/${selectedAction}`, body, {
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return await response.json();
+    } catch (error) {
+      throw new Error("Failed to mark attendance")
     }
   }
 };

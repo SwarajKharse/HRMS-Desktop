@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const BASE_URL = "http://localhost:8080/api/attendance-settings"
+const BASE_URL = `${process.env.REACT_APP_API_URL}/attendance-settings`
 
 export const attendanceSettingsService = {
   getAttendanceSettingsByOrgId: async (orgId) => {

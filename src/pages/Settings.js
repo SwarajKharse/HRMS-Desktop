@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { FiSettings, FiSearch } from "react-icons/fi"
+import { FiSearch } from "react-icons/fi"
 import { BiBuildingHouse, BiTime, BiWallet, BiGroup, BiCog, BiMoney } from "react-icons/bi"
 import { MdLocationOn, MdPayments, MdSchedule, MdAlternateEmail } from "react-icons/md"
 import Tilt from "react-parallax-tilt"
@@ -69,7 +69,7 @@ function Settings() {
       id: "employee-payroll-settings",
       name: "Employee Payroll Settings",
       description: "Manage individual employee compensation",
-      icon: BiMoney,
+      icon: MdPayments,
       color: "bg-pink-500",
       category: "payroll",
       link: "/settings/employee-payroll-settings",

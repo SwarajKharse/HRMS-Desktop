@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:8080/api/leave-request';
+const BASE_URL = `${process.env.REACT_APP_API_URL}/leave-request`;
 
 export const leaveRequestService = {
 

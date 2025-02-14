@@ -1,7 +1,7 @@
 import axios from "axios";
 import { authService } from "./authService";
 
-const BASE_URL = "http://localhost:8080/api/payroll-settings";
+const BASE_URL = `${process.env.REACT_APP_API_URL}/payroll-settings`;
 
 const getAuthHeaders = () => {
   const token = authService.getToken();

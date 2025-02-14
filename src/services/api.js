@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://localhost:8080/api/employee';
+const BASE_URL = `${process.env.REACT_APP_API_URL}/employee`
 
 export const fetchEmployee = async (id) => {
   try {

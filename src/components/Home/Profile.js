@@ -38,7 +38,6 @@ function Profile({ employee }) {
         setWarnings(Array.isArray(warningsData) ? warningsData : [])
         setTermination(...terminationData)
         setResignation(resignationData)
-        console.log(terminationData)
       } catch (error) {
         console.error("Error fetching employee records:", error)
         setWarnings([])

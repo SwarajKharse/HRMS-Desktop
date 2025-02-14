@@ -1,7 +1,7 @@
 import axios from "axios"
 import { format } from "date-fns"
 
-const BASE_URL = "http://localhost:8080/api/leave-report"
+const BASE_URL = `${process.env.REACT_APP_API_URL}/leave-report`
 
 export const leaveReportService = {
   getDailyLeaveStatus: async (date) => {

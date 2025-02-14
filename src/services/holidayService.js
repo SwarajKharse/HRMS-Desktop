@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const BASE_URL = "http://localhost:8080/api/holiday"
+const BASE_URL = `${process.env.REACT_APP_API_URL}/holiday`;
 
 export const holidayService = {
   getHolidaysByOrgId: async (orgId) => {

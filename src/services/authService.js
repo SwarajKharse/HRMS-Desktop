@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { requestFCMToken } from '../firebaseConfig';
 
-const BASE_URL = 'http://localhost:8080/api/employee';
+const BASE_URL = `${process.env.REACT_APP_API_URL}/employee`;
 
 export const authService = {
   login: async (email, password) => {

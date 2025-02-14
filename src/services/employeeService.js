@@ -1,14 +1,12 @@
 import axios from 'axios';
 import { authService } from './authService';
 
-const BASE_URL = 'http://localhost:8080/api/employee';
+const BASE_URL = `${process.env.REACT_APP_API_URL}/employee`;
 
 // Add authorization headers to all requests
 const getAuthHeaders = () => {
-  const token = authService.getToken();
   return {
     headers: {
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     }
   };
@@ -39,7 +37,6 @@ export const employeeService = {
 
   createEmployee: async (employeeData) => {
     try {
-      console.log(employeeData);
       const response = await axios.post(`${BASE_URL}/`, employeeData, getAuthHeaders());
       return response.data;
     } catch (error) {
@@ -49,7 +46,6 @@ export const employeeService = {
 
   updateEmployee: async (id, employeeData) => {
     try {
-      console.log(employeeData);
       const response = await axios.put(`${BASE_URL}/${id}`, employeeData, getAuthHeaders());
       return response.data;
     } catch (error) {
@@ -78,7 +74,7 @@ export const employeeService = {
 
   getPastEmployeesByOrgId: async (orgId) => {
     try {
-      const response = await fetch(`${BASE_URL}/pastEmployees/org/${orgId}`)
+      const response = await axios.get(`${BASE_URL}/pastEmployees/org/${orgId}`, getAuthHeaders())
       if (!response.ok) {
         throw new Error("Failed to fetch past employees")
       }
@@ -90,7 +86,7 @@ export const employeeService = {
 
   getGeofencingByOrgId: async (orgId) => {
     try {
-      const response = await fetch(`${BASE_URL}/geofencing/org/${orgId}`)
+      const response = await axios.get(`${BASE_URL}/geofencing/org/${orgId}`, getAuthHeaders())
       if (!response.ok) {
         throw new Error("Failed to fetch geofencing data")
       }

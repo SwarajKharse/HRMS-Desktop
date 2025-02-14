@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const BASE_URL = "http://localhost:8080/api/leave-type"
+const BASE_URL = `${process.env.REACT_APP_API_URL}/leave-type`;
 
 export const leaveTypeService = {
   getLeaveTypesByOrgId: async (orgId) => {

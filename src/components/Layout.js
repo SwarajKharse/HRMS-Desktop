@@ -15,7 +15,6 @@ function Layout({ children }) {
       try {
         if (user?.sub) {
           const data = await fetchEmployee(user.sub);
-          console.log('User data:', data);
           setUserData(data);
         }
       } catch (error) {

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = "http://localhost:8080/api/termination"
+const BASE_URL = `${process.env.REACT_APP_API_URL}/termination`;
 
 export const terminationService = {
   applyTermination: async (employeeId, reason) => {
