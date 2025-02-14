@@ -2,10 +2,9 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import LeaveSummary from "../components/Leave/LeaveSummary"
 import LeaveRequests from "../components/Leave/LeaveRequests"
-import LeaveHistory from "../components/Leave/LeaveHistory"
 
 // List of valid tabs for validation
-const VALID_TABS = ["summary", "requests", "history"]
+const VALID_TABS = ["summary", "requests"]
 
 function LeaveTracker() {
   // Initialize activeTab from sessionStorage with validation
@@ -24,8 +23,7 @@ function LeaveTracker() {
 
   const tabs = [
     { id: "summary", label: "Leave Summary" },
-    { id: "requests", label: "Leave Requests" },
-    { id: "history", label: "Leave History" },
+    { id: "requests", label: "Leave Requests" }
   ]
 
   return (
@@ -61,7 +59,6 @@ function LeaveTracker() {
         >
           {activeTab === "summary" && <LeaveSummary />}
           {activeTab === "requests" && <LeaveRequests />}
-          {activeTab === "history" && <LeaveHistory />}
         </motion.div>
       </AnimatePresence>
     </div>

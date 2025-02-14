@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { FiLogOut, FiCheck, FiX } from "react-icons/fi"
 import { resignationService } from "../../services/resignationService"
 import { useAuth } from "../../contexts/AuthContext"
+import { format } from "date-fns"
 
 function Resignations() {
   const [pendingResignations, setPendingResignations] = useState([])
@@ -124,7 +125,7 @@ function Resignations() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(resignation.resignationDate).toLocaleDateString()}
+                    {format(new Date(resignation.resignationDate), "d MMM yyyy")}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-md">
                     <div className="truncate">{resignation.reason}</div>
@@ -134,7 +135,7 @@ function Resignations() {
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                         resignation.status === "Pending"
                           ? "bg-yellow-100 text-yellow-800"
-                          : resignation.status === "APPROVED"
+                          : resignation.status === "Approved"
                             ? "bg-green-100 text-green-800"
                             : "bg-red-100 text-red-800"
                       }`}

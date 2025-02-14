@@ -162,8 +162,8 @@ function LeaveApprovals() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {format(new Date(request.startDate), "MMM d, yyyy")} -
-                        {format(new Date(request.endDate), "MMM d, yyyy")}
+                        {format(new Date(request.startDate), "d MMM yyyy")} -
+                        {format(new Date(request.endDate), "d MMM yyyy")}
                       </div>
                     </td>
                     <td className="px-6 py-4">

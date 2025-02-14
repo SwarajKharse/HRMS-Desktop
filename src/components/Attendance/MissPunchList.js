@@ -44,15 +44,15 @@ function MissPunchList() {
 
   const getStatusBadge = (status) => {
     const styles = {
-      PENDING: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      APPROVED: "bg-green-100 text-green-800 border-green-200",
-      REJECTED: "bg-red-100 text-red-800 border-red-200",
+      Pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      Approved: "bg-green-100 text-green-800 border-green-200",
+      Rejected: "bg-red-100 text-red-800 border-red-200",
     }
 
     const icons = {
-      PENDING: <FiClock className="w-4 h-4" />,
-      APPROVED: <FiCheck className="w-4 h-4" />,
-      REJECTED: <FiX className="w-4 h-4" />,
+      Pending: <FiClock className="w-4 h-4" />,
+      Approved: <FiCheck className="w-4 h-4" />,
+      Rejected: <FiX className="w-4 h-4" />,
     }
 
     return (
@@ -115,7 +115,7 @@ function MissPunchList() {
                 className="hover:bg-gray-50"
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {format(new Date(request.date), "MMM d, yyyy")}
+                  {format(new Date(request.date), "d MMM yyyy")}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {format(new Date(`2000-01-01T${request.checkIn}`), "hh:mm a")}

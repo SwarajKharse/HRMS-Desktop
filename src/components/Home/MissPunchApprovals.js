@@ -131,7 +131,7 @@ function MissPunchApprovals() {
                     <div className="text-sm text-gray-500">ID: {request.employee.id}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {format(new Date(request.date), "MMM d, yyyy")}
+                    {format(new Date(request.date), "d MMM yyyy")}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {format(new Date(`2000-01-01T${request.checkIn}`), "hh:mm a")}

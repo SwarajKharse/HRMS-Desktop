@@ -1,4 +1,3 @@
-// Navbar.js
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -8,8 +7,6 @@ import { FaUsers } from 'react-icons/fa';
 import { authService } from '../services/authService';
 import { useNotifications } from '../contexts/NotificationsContext';
 import { format } from 'date-fns';
-import { useAuth } from '../contexts/AuthContext';
-import { fetchEmployee } from '../services/api';
 
 function NotificationsPanel({ setActiveDropdown }) {
   const { 
@@ -132,11 +129,9 @@ function Dropdown({ isOpen, onClose, children, className }) {
   );
 }
 
-function Navbar() {
+function Navbar({userData}) {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const { notifications } = useNotifications();
-  const [userData, setUserData] = useState(null);
-  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -149,20 +144,6 @@ function Navbar() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  useEffect(() => {
-    const getUserData = async () => {
-      try {
-        if (user?.sub) {
-          const data = await fetchEmployee(user.sub);
-          setUserData(data);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
-    getUserData();
-  }, [user]);
 
   const handleLogout = () => {
     authService.logout();
@@ -192,7 +173,7 @@ function Navbar() {
       {/* On mobile, show the logo on the left */}
       {isMobile && (
         <div className="flex items-center">
-          <img src="/logo.png" alt="logo" className="h-16" />
+          <img src={userData?.org?.logoUrl} alt="logo" className="h-16" />
         </div>
       )}
 

@@ -120,7 +120,7 @@ function LeaveSummary() {
   // Calculate the number of approved leaves booked in the current month
   const approvedLeavesThisMonth = leaves.filter((leave) => {
     const leaveStart = new Date(leave.startDate)
-    return leave.status === "APPROVED" && isSameMonth(leaveStart, new Date())
+    return leave.status === "Approved" && isSameMonth(leaveStart, new Date())
   }).length
 
   const handleLeaveSubmit = async (leaveData) => {

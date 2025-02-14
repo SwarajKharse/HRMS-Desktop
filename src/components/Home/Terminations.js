@@ -3,6 +3,7 @@ import { motion } from "framer-motion"
 import { FiUserX } from "react-icons/fi"
 import { terminationService } from "../../services/terminationService"
 import { useAuth } from "../../contexts/AuthContext"
+import { format } from "date-fns"
 
 function Terminations() {
   const [terminations, setTerminations] = useState([])
@@ -65,15 +66,12 @@ function Terminations() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Reason
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created At
-                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {terminations.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                  <td colSpan="3" className="px-6 py-4 text-center text-gray-500">
                     No terminations found
                   </td>
                 </tr>
@@ -110,13 +108,10 @@ function Terminations() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(termination.terminationDate).toLocaleDateString()}
+                      {format(new Date(termination.terminationDate), "d MMM yyyy")}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 max-w-md">
                       <div className="truncate">{termination.reason}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(termination.createdAt).toLocaleDateString()}
                     </td>
                   </motion.tr>
                 ))
@@ -129,5 +124,4 @@ function Terminations() {
   )
 }
 
-export default Terminations
-
+export default Terminations;

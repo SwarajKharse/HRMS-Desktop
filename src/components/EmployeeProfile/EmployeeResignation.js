@@ -58,9 +58,9 @@ function EmployeeResignation({ employeeId }) {
           <h3 className="text-lg font-medium text-gray-900">Resignation Details</h3>
           <span
             className={`px-3 py-1 text-sm font-medium rounded-full ${
-              resignation.status === "APPROVED"
+              resignation.status === "Approved"
                 ? "bg-green-100 text-green-800"
-                : resignation.status === "REJECTED"
+                : resignation.status === "Rejected"
                   ? "bg-red-100 text-red-800"
                   : "bg-yellow-100 text-yellow-800"
             }`}

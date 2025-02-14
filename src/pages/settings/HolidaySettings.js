@@ -128,7 +128,7 @@ function HolidaySettings() {
                   <motion.tr key={holiday.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{holiday.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {format(new Date(holiday.date), "MMM dd, yyyy")}
+                      {format(new Date(holiday.date), "dd MMM yyyy")}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">{holiday.description || "-"}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

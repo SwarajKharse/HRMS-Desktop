@@ -91,7 +91,7 @@ export const leaveRequestService = {
       // Ensure we're sending the complete leave object with employee data
       const payload = {
         ...leaveData,
-        status: 'APPROVED',
+        status: 'Approved',
         // employee: {
         //   id: leaveData.employee.id
         // }
@@ -108,7 +108,7 @@ export const leaveRequestService = {
       // Ensure we're sending the complete leave object with employee data
       const payload = {
         ...leaveData,
-        status: 'REJECTED',
+        status: 'Rejected',
         // employee: {
         //   id: leaveData.employee.id
         // }

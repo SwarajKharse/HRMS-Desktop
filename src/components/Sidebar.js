@@ -13,7 +13,7 @@ import {
 
 import { FaUsers } from "react-icons/fa";
 
-function Sidebar() {
+function Sidebar({logo}) {
   const location = useLocation();
   
   const navItems = [
@@ -94,7 +94,7 @@ function Sidebar() {
             animate="initial"
             className="text-gray-200 font-medium text-base tracking-wide"
           >
-            <img src="/logo.png" alt="logo" className="h-16 w-16">
+            <img src={logo} alt="logo" className="h-16 w-16">
             </img>
           </motion.h1>
         </div>

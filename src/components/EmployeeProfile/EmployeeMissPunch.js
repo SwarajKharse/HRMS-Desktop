@@ -58,9 +58,9 @@ function EmployeeMissPunch({ employeeId }) {
             </div>
             <span
               className={`px-2 py-1 text-xs font-medium rounded-full ${
-                request.status === "APPROVED"
+                request.status === "Approved"
                   ? "bg-green-100 text-green-800"
-                  : request.status === "REJECTED"
+                  : request.status === "Rejected"
                     ? "bg-red-100 text-red-800"
                     : "bg-yellow-100 text-yellow-800"
               }`}
