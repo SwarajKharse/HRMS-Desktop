@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { format, addMonths, subMonths } from "date-fns"
 import { FiChevronLeft, FiChevronRight, FiDownload, FiAlertCircle, FiRefreshCw } from "react-icons/fi"
 import { payslipService } from "../../services/payslipService"
+import { authService } from "../../services/authService"
 
 function Payslips() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -13,6 +14,7 @@ function Payslips() {
   const [refreshingAll, setRefreshingAll] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
   const [today, setToday] = useState(new Date());
+  const [orgId] = useState(authService.getUser().orgId)
 
   useEffect(() => {
     fetchPayslips()
@@ -46,7 +48,7 @@ function Payslips() {
       setRefreshingAll(true)
       const month = currentDate.getMonth() + 1
       const year = currentDate.getFullYear()
-      await payslipService.refreshAllPayslips(month, year)
+      await payslipService.refreshAllPayslips(orgId, month, year)
       await fetchPayslips()
       setSuccessMessage("All payslips refreshed successfully")
       setTimeout(() => setSuccessMessage(null), 3000)

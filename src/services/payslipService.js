@@ -50,9 +50,9 @@ export const payslipService = {
     }
   },
 
-  refreshAllPayslips: async (month, year) => {
+  refreshAllPayslips: async (orgId, month, year) => {
     try {
-      const response = await axios.post(`${BASE_URL}/refresh-all/${month}/${year}`, null, getAuthHeaders())
+      const response = await axios.post(`${BASE_URL}/refresh-all/org/${orgId}/${month}/${year}`, null, getAuthHeaders())
       return response.data
     } catch (error) {
       throw new Error(error.response?.data?.message || "Error refreshing payslips")
