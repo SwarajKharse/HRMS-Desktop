@@ -2,8 +2,18 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { FiSearch } from "react-icons/fi"
-import { BiBuildingHouse, BiTime, BiWallet, BiGroup, BiCog, BiMoney } from "react-icons/bi"
-import { MdLocationOn, MdPayments, MdSchedule, MdAlternateEmail } from "react-icons/md"
+import { 
+  RiBuilding4Line, 
+  RiTimeLine, 
+  RiWallet3Line, 
+  RiSettings4Line, 
+  RiMoneyDollarCircleLine,
+  RiShieldUserLine,
+  RiUserSettingsLine,
+  RiCalendarEventLine,
+  RiMapPinLine,
+  RiPercentLine
+} from "react-icons/ri"
 import Tilt from "react-parallax-tilt"
 
 function Settings() {
@@ -15,16 +25,25 @@ function Settings() {
       id: "organization",
       name: "Organization Settings",
       description: "Manage your organization structure and policies",
-      icon: BiGroup,
+      icon: RiBuilding4Line,
       color: "bg-purple-500",
       category: "organization",
       link: `/settings/organization`,
     },
     {
+      id: "rbac",
+      name: "Role-Based Access Control",
+      description: "Configure user roles and permissions across the system",
+      icon: RiShieldUserLine,
+      color: "bg-indigo-500",
+      category: "organization",
+      link: "/settings/rbac",
+    },
+    {
       id: "leave",
       name: "Leave Settings",
       description: "Configure leave policies and tracking",
-      icon: MdSchedule,
+      icon: RiCalendarEventLine,
       color: "bg-green-500",
       category: "attendance",
       link: "/settings/leave",
@@ -33,7 +52,7 @@ function Settings() {
       id: "attendance-settings",
       name: "Attendance Settings",
       description: "Set up attendance rules and policies",
-      icon: BiTime,
+      icon: RiTimeLine,
       color: "bg-blue-500",
       category: "attendance",
       link: "/settings/attendance-settings",
@@ -42,7 +61,7 @@ function Settings() {
       id: "holiday",
       name: "Holiday Settings",
       description: "Manage company holidays and events",
-      icon: MdAlternateEmail,
+      icon: RiCalendarEventLine,
       color: "bg-yellow-500",
       category: "attendance",
       link: "/settings/holiday",
@@ -51,7 +70,7 @@ function Settings() {
       id: "geoFencing",
       name: "Geo Fencing Settings",
       description: "Configure location-based attendance",
-      icon: MdLocationOn,
+      icon: RiMapPinLine,
       color: "bg-red-500",
       category: "location",
       link: "/settings/geoFencing",
@@ -60,7 +79,7 @@ function Settings() {
       id: "tds-slabs",
       name: "TDS Slab Settings",
       description: "Configure tax deduction slabs",
-      icon: BiMoney,
+      icon: RiPercentLine,
       color: "bg-emerald-500",
       category: "payroll",
       link: "/settings/tds-slabs",
@@ -69,7 +88,7 @@ function Settings() {
       id: "employee-payroll-settings",
       name: "Employee Payroll Settings",
       description: "Manage individual employee compensation",
-      icon: MdPayments,
+      icon: RiMoneyDollarCircleLine,
       color: "bg-pink-500",
       category: "payroll",
       link: "/settings/employee-payroll-settings",
@@ -77,11 +96,11 @@ function Settings() {
   ]
 
   const categories = [
-    { id: "all", name: "All Settings", icon: BiCog },
-    { id: "organization", name: "Organization", icon: BiBuildingHouse },
-    { id: "attendance", name: "Attendance", icon: BiTime },
-    { id: "location", name: "Location", icon: MdLocationOn },
-    { id: "payroll", name: "Payroll", icon: BiWallet },
+    { id: "all", name: "All Settings", icon: RiSettings4Line },
+    { id: "organization", name: "Organization", icon: RiUserSettingsLine },
+    { id: "attendance", name: "Attendance", icon: RiTimeLine },
+    { id: "location", name: "Location", icon: RiMapPinLine },
+    { id: "payroll", name: "Payroll", icon: RiWallet3Line },
   ]
 
   const filteredServices = services.filter(

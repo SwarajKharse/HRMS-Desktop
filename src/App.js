@@ -16,6 +16,7 @@ import Reports from './pages/Reports';
 
 import Settings from './pages/Settings';
 import OrganizationSettings from './pages/settings/OrganizationSettings';
+import RoleBasedSettings from './pages/settings/RoleBasedSettings';
 import LeaveSettings from './pages/settings/LeaveSettings';
 import AttendanceSettings from './pages/settings/AttendanceSettings';
 import HolidaySettings from './pages/settings/HolidaySettings';
@@ -87,6 +88,14 @@ function App() {
                 </PrivateRoute>
               }
             />
+
+            <Route path="/settings/rbac" element={
+              <PrivateRoute>
+                <Layout>
+                  <RoleBasedSettings />
+                </Layout>
+              </PrivateRoute>
+            } />
 
             <Route path="/settings/leave" element={
               <PrivateRoute>

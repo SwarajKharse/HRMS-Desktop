@@ -75,10 +75,7 @@ export const employeeService = {
   getPastEmployeesByOrgId: async (orgId) => {
     try {
       const response = await axios.get(`${BASE_URL}/pastEmployees/org/${orgId}`, getAuthHeaders())
-      if (!response.ok) {
-        throw new Error("Failed to fetch past employees")
-      }
-      return await response.json()
+      return await response.data
     } catch (error) {
       throw new Error(error.message)
     }
@@ -87,10 +84,7 @@ export const employeeService = {
   getGeofencingByOrgId: async (orgId) => {
     try {
       const response = await axios.get(`${BASE_URL}/geofencing/org/${orgId}`, getAuthHeaders())
-      if (!response.ok) {
-        throw new Error("Failed to fetch geofencing data")
-      }
-      return await response.json()
+      return await response.data;
     } catch (error) {
       throw new Error(error.message)
     }

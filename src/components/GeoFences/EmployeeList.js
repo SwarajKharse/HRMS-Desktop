@@ -29,6 +29,7 @@ function EmployeeList() {
   const [successMessage, setSuccessMessage] = useState(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [orgId] = useState(authService.getUser().orgId);
 
   useEffect(() => {
     fetchEmployees()
@@ -37,7 +38,6 @@ function EmployeeList() {
   const fetchEmployees = async () => {
     try {
       setLoading(true)
-      const orgId = authService.getUser().orgId
       const data = await employeeService.getGeofencingByOrgId(orgId)
       setEmployees(data)
       setError(null)

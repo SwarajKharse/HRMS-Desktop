@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@headlessui/react": "^2.2.0",
     "@mediapipe/face_detection": "^0.4.1646425229",
     "@tensorflow-models/face-detection": "^1.0.3",
     "@tensorflow/tfjs-backend-webgl": "^4.22.0",
