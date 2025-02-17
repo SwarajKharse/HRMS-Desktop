@@ -7,6 +7,7 @@ import { FaUsers } from 'react-icons/fa';
 import { authService } from '../services/authService';
 import { useNotifications } from '../contexts/NotificationsContext';
 import { format } from 'date-fns';
+import { usePermissions } from '../contexts/PermissionsContext';
 
 function NotificationsPanel({ setActiveDropdown }) {
   const { 
@@ -134,6 +135,10 @@ function Navbar({userData}) {
   const { notifications } = useNotifications();
   const navigate = useNavigate();
   const location = useLocation();
+  const [navItems, setNavItems] = useState([
+    { icon: HiHome, label: 'Home', path: '/' }
+  ]);
+  const { permissions } = usePermissions();
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -153,15 +158,27 @@ function Navbar({userData}) {
     setActiveDropdown(activeDropdown === dropdown ? null : dropdown);
   };
 
-  // Define navigation items (same as Sidebar)
-  const navItems = [
-    { icon: HiHome, label: 'Home', path: '/' },
-    { icon: HiChartPie, label: 'Reports', path: '/reports' },
-    { icon: FaUsers, label: 'Onboarding', path: '/onboarding' },
-    { icon: HiArchive, label: 'Leave Tracker', path: '/leave-tracker' },
-    { icon: HiCalendar, label: 'Attendance', path: '/attendance' },
-    { icon: HiCash, label: 'Payroll', path: '/payroll' },
-  ];
+  useEffect(() => {
+      const updatedNavItems = [
+        { icon: HiHome, label: 'Home', path: '/' }
+      ];
+      if (permissions?.webReports) {
+        updatedNavItems.push({ icon: HiChartPie, label: 'Reports', path: '/reports' });
+      }
+      if (permissions?.webOnboarding) {
+        updatedNavItems.push({ icon: FaUsers, label: 'Onboarding', path: '/onboarding' });
+      }      
+      if (permissions?.webLeave) {
+        updatedNavItems.push({ icon: HiArchive, label: 'Leave Tracker', path: '/leave-tracker' });
+      }
+      if (permissions?.webAttendance) {
+        updatedNavItems.push({ icon: HiCalendar, label: 'Attendance', path: '/attendance' });
+      }
+      if (permissions?.webPayroll) {
+        updatedNavItems.push({ icon: HiCash, label: 'Payroll', path: '/payroll' });
+      }
+      setNavItems(updatedNavItems);
+    }, [permissions]);
 
   return (
     <motion.nav 
@@ -202,18 +219,20 @@ function Navbar({userData}) {
           </Dropdown>
         </div>
 
-        <div className="relative">
-          <Tooltip text="Settings">
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              onClick={() => navigate('/settings')}
-            >
-              <FiSettings size={20} />
-            </motion.button>
-          </Tooltip>
-        </div>
+        {permissions?.webSettings && (
+          <div className="relative">
+            <Tooltip text="Settings">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                onClick={() => navigate('/settings')}
+              >
+                <FiSettings size={20} />
+              </motion.button>
+            </Tooltip>
+          </div>
+        )}
 
         <div className="relative">
           <Tooltip text="Profile">

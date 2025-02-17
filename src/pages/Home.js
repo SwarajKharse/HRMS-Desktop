@@ -10,22 +10,17 @@ import MissPunchApprovals from "../components/Home/MissPunchApprovals"
 import Warnings from "../components/Home/Warnings"
 import Terminations from "../components/Home/Terminations"
 import Resignations from "../components/Home/Resignations"
-import PaySlips from "../components/Home/PaySlips"
-
-// List of valid tabs for validation
-const VALID_TABS = [
-  "activities",
-  "profile",
-  "leave-approvals",
-  "attendance-kiosk",
-  "miss-punch",
-  "warnings",
-  "terminations",
-  "resignations",
-  "payslips",
-]
+import PaySlips from "../components/Home/PaySlips";
+import { usePermissions } from "../contexts/PermissionsContext";
 
 function Home() {
+  const [VALID_TABS, setVALID_TABS] = useState([
+    "activities"
+  ]);
+  const [tabs, setTabs] = useState([
+    { id: "activities", label: "Activities" },
+  ]);
+
   // Initialize activeTab from sessionStorage with validation
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
@@ -38,7 +33,39 @@ function Home() {
   const [employee, setEmployee] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const { user } = useAuth()
+  const { user } = useAuth();
+  const { permissions } = usePermissions();
+
+  useEffect(() => {
+    const validTabs = ["activities"];
+    const tabs = [{ id: "activities", label: "Activities" }];
+
+    if(permissions?.webProfile) {
+      validTabs.push("profile");
+      tabs.push({ id: "profile", label: "Profile" });
+    }
+    if(permissions?.webAcceptLeave){
+      validTabs.push("leave-approvals");
+      tabs.push({ id: "leave-approvals", label: "Leave Approvals" });
+    }
+    if(permissions?.webHrOptions){
+      validTabs.push("attendance-kiosk");
+      validTabs.push("miss-punch");
+      validTabs.push("warnings");
+      validTabs.push("terminations");
+      validTabs.push("resignations");
+      validTabs.push("payslips");
+      tabs.push({ id: "attendance-kiosk", label: "Attendance Kiosk" });
+      tabs.push({ id: "miss-punch", label: "Miss Punch" });
+      tabs.push({ id: "warnings", label: "Warnings" });
+      tabs.push({ id: "terminations", label: "Terminations" });
+      tabs.push({ id: "resignations", label: "Resignations" });
+      tabs.push({ id: "payslips", label: "Payslips" });
+    }
+    
+    setVALID_TABS(validTabs);
+    setTabs(tabs);
+  }, [permissions])
 
   // Update sessionStorage when activeTab changes
   useEffect(() => {
@@ -82,18 +109,6 @@ function Home() {
       </div>
     )
   }
-
-  const tabs = [
-    { id: "activities", label: "Activities" },
-    { id: "profile", label: "Profile" },
-    { id: "leave-approvals", label: "Leave Approvals" },
-    { id: "attendance-kiosk", label: "Attendance Kiosk" },
-    { id: "miss-punch", label: "Miss Punch" },
-    { id: "warnings", label: "Warnings" },
-    { id: "terminations", label: "Terminations" },
-    { id: "resignations", label: "Resignations" },
-    { id: "payslips", label: "Payslips" },
-  ]
 
   return (
     <div className="flex flex-col gap-6">

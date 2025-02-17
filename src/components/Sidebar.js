@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -10,20 +11,40 @@ import {
   HiCash, 
   HiArchive 
 } from 'react-icons/hi';
+import { usePermissions } from "../contexts/PermissionsContext"
 
 import { FaUsers } from "react-icons/fa";
+import { useEffect } from 'react';
 
 function Sidebar({logo}) {
   const location = useLocation();
+  const { permissions } = usePermissions();
   
-  const navItems = [
-    { icon: HiHome, label: 'Home', path: '/' },
-    { icon: HiChartPie, label: 'Reports', path: '/reports' },
-    { icon: FaUsers, label: 'Onboarding', path: '/onboarding' },
-    { icon: HiArchive, label: 'Leave Tracker', path: '/leave-tracker' },
-    { icon: HiCalendar, label: 'Attendance', path: '/attendance' },
-    { icon: HiCash, label: 'Payroll', path: '/payroll' },
-  ];
+  const [navItems, setNavItems] = useState([
+    { icon: HiHome, label: 'Home', path: '/' }
+  ]);
+
+  useEffect(() => {
+    const updatedNavItems = [
+      { icon: HiHome, label: 'Home', path: '/' }
+    ];
+    if (permissions?.webReports) {
+      updatedNavItems.push({ icon: HiChartPie, label: 'Reports', path: '/reports' });
+    }
+    if (permissions?.webOnboarding) {
+      updatedNavItems.push({ icon: FaUsers, label: 'Onboarding', path: '/onboarding' });
+    }
+    if (permissions?.webLeave) {
+      updatedNavItems.push({ icon: HiArchive, label: 'Leave Tracker', path: '/leave-tracker' });
+    }
+    if (permissions?.webAttendance) {
+      updatedNavItems.push({ icon: HiCalendar, label: 'Attendance', path: '/attendance' });
+    }
+    if (permissions?.webPayroll) {
+      updatedNavItems.push({ icon: HiCash, label: 'Payroll', path: '/payroll' });
+    }
+    setNavItems(updatedNavItems);
+  }, [permissions]);
 
   const sidebarVariants = {
     initial: {

@@ -2,7 +2,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
+import { PermissionsProvider } from './contexts/PermissionsContext';
 import PrivateRoute from './components/PrivateRoute';
+
+import ProtectedPermissionRoute from './components/ProtectedPermissionRoute';
 
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -28,135 +31,136 @@ function App() {
   return (
     <AuthProvider>
       <NotificationsProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+        <PermissionsProvider>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-            {/* Protected Routes */}
-            <Route path="/" element={
-              <PrivateRoute>
-                <Layout>
-                  <Home />
-                </Layout>
-              </PrivateRoute>
-            } />
-            <Route path="/onboarding" element={
-              <PrivateRoute>
-                <Layout>
-                  <Onboarding />
-                </Layout>
-              </PrivateRoute>
-            } />
-            <Route path="/leave-tracker" element={
-              <PrivateRoute>
-                <Layout>
-                  <LeaveTracker />
-                </Layout>
-              </PrivateRoute>
-            } />
-            <Route path="/attendance" element={
-              <PrivateRoute>
-                <Layout>
-                  <Attendance />
-                </Layout>
-              </PrivateRoute>
-            } />
-            <Route path="/payroll" element={
-              <PrivateRoute>
-                <Layout>
-                  <Payroll />
-                </Layout>
-              </PrivateRoute>
-            } />
-
-            <Route path="/settings" element={
-              <PrivateRoute>
-                <Layout>
-                  <Settings />
-                </Layout>
-              </PrivateRoute>
-            } />
-
-            <Route
-              path="/settings/organization"
-              element={
+              {/* Protected Routes */}
+              <Route path="/" element={
                 <PrivateRoute>
                   <Layout>
-                    <OrganizationSettings />
+                    <Home />
                   </Layout>
                 </PrivateRoute>
-              }
-            />
+              } />
+              <Route path="/reports" element={
+                <ProtectedPermissionRoute permissionKey="webReports">
+                  <Layout>
+                    <Reports />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
+              <Route path="/onboarding" element={
+                <ProtectedPermissionRoute permissionKey='webOnboarding'>
+                  <Layout>
+                    <Onboarding />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
+              <Route path="/leave-tracker" element={
+                <ProtectedPermissionRoute permissionKey="webLeave">
+                  <Layout>
+                    <LeaveTracker />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
+              <Route path="/attendance" element={
+                <ProtectedPermissionRoute permissionKey="webAttendance">
+                  <Layout>
+                    <Attendance />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
+              <Route path="/payroll" element={
+                <ProtectedPermissionRoute permissionKey="webPayroll">
+                  <Layout>
+                    <Payroll />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
 
-            <Route path="/settings/rbac" element={
-              <PrivateRoute>
-                <Layout>
-                  <RoleBasedSettings />
-                </Layout>
-              </PrivateRoute>
-            } />
+              <Route path="/settings" element={
+                <ProtectedPermissionRoute permissionKey="webSettings">
+                  <Layout>
+                    <Settings />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
 
-            <Route path="/settings/leave" element={
-              <PrivateRoute>
-                <Layout>
-                  <LeaveSettings />
-                </Layout>
-              </PrivateRoute>
-            } />
+              <Route
+                path="/settings/organization"
+                element={
+                  <ProtectedPermissionRoute permissionKey="webSettings">
+                    <Layout>
+                      <OrganizationSettings />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                }
+              />
 
-            <Route path="/settings/attendance-settings" element={
-              <PrivateRoute>
-                <Layout>
-                  <AttendanceSettings />
-                </Layout>
-              </PrivateRoute>
-            } />
-            
-            <Route path="/settings/holiday" element={
-              <PrivateRoute>
-                <Layout>
-                  <HolidaySettings />
-                </Layout>
-              </PrivateRoute>
-            } />
+              <Route path="/settings/rbac" element={
+                <ProtectedPermissionRoute permissionKey="webSettings">
+                  <Layout>
+                    <RoleBasedSettings />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
 
-            <Route path="/settings/geoFencing" element={
-              <PrivateRoute>
-                <Layout>
-                  <GeoFencingSettings />
-                </Layout>
-              </PrivateRoute>
-            } />
+              <Route path="/settings/leave" element={
+                <ProtectedPermissionRoute permissionKey="webSettings">
+                  <Layout>
+                    <LeaveSettings />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
 
-            <Route path="/settings/tds-slabs" element={
-              <PrivateRoute>
-                <Layout>
-                  <TdsSlabSettings />
-                </Layout>
-              </PrivateRoute>
-            } />
+              <Route path="/settings/attendance-settings" element={
+                <ProtectedPermissionRoute permissionKey="webSettings">
+                  <Layout>
+                    <AttendanceSettings />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
+              
+              <Route path="/settings/holiday" element={
+                <ProtectedPermissionRoute permissionKey="webSettings">
+                  <Layout>
+                    <HolidaySettings />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
 
-            <Route path="/settings/employee-payroll-settings" element={
-              <PrivateRoute>
-                <Layout>
-                  <EmployeePayrollSettings />
-                </Layout>
-              </PrivateRoute>
-            } />
+              <Route path="/settings/geoFencing" element={
+                <ProtectedPermissionRoute permissionKey="webSettings">
+                  <Layout>
+                    <GeoFencingSettings />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
 
-            <Route path="/reports" element={
-              <PrivateRoute>
-                <Layout>
-                  <Reports />
-                </Layout>
-              </PrivateRoute>
-            } />
+              <Route path="/settings/tds-slabs" element={
+                <ProtectedPermissionRoute permissionKey="webSettings">
+                  <Layout>
+                    <TdsSlabSettings />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
 
-            {/* Redirect any unknown routes to home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
+              <Route path="/settings/employee-payroll-settings" element={
+                <ProtectedPermissionRoute permissionKey="webSettings">
+                  <Layout>
+                    <EmployeePayrollSettings />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
+
+              {/* Redirect any unknown routes to home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Router>
+        </PermissionsProvider>
       </NotificationsProvider>
     </AuthProvider>
   );

@@ -32,9 +32,14 @@ const RoleBasedSettings = () => {
     web: {
       title: "Web Portal Permissions",
       permissions: [
+        { key: "webDashboard", label: "Dashboard" },
         { key: "webSurveys", label: "Surveys" },
+        { key: "webEditSurveys", label: "Edit Surveys" },
         { key: "webAmc", label: "AMC" },
+        { key: "webFillAndEditAmc", label: "Fill & Edit AMC" },
         { key: "webDocuments", label: "Documents" },
+        { key: "webFillAndEditDocuments", label: "Fill & Edit Documents" },
+        { key: "webNbc", label: "NBC" },
         { key: "webSettings", label: "Settings" },
         { key: "webOnboarding", label: "Onboarding" },
         { key: "webReports", label: "Reports" },
@@ -57,6 +62,9 @@ const RoleBasedSettings = () => {
       setLoading(true);
       const data = await roleBasedPermissionService.getByOrgId(orgId);
       setPermissions(data);
+      if(selectedEmployee) {
+        setSelectedEmployee(data.find(p => p.employee.id === selectedEmployee.employee.id));
+      }
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -113,38 +121,6 @@ const RoleBasedSettings = () => {
             Object.values(permissionGroups).forEach((group) => {
               group.permissions.forEach(({ key }) => {
                 updated[key] = true;
-              });
-            });
-            if (
-              selectedEmployee &&
-              selectedEmployee.employee.id === employeeId
-            ) {
-              setSelectedEmployee(updated);
-            }
-            return updated;
-          }
-          return p;
-        })
-      );
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSavingEmployeeId(null);
-    }
-  };
-
-  const handleRemoveAll = async (employeeId) => {
-    try {
-      setSavingEmployeeId(employeeId);
-      await roleBasedPermissionService.removeAllPermissions(employeeId);
-      // Update local state for that employee: set all permissions to false
-      setPermissions(
-        permissions.map((p) => {
-          if (p.employee.id === employeeId) {
-            const updated = { ...p };
-            Object.values(permissionGroups).forEach((group) => {
-              group.permissions.forEach(({ key }) => {
-                updated[key] = false;
               });
             });
             if (
@@ -331,13 +307,6 @@ const RoleBasedSettings = () => {
                         Allow All
                       </button>
                       <button
-                        onClick={() => handleRemoveAll(permission.employee.id)}
-                        className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
-                        disabled={savingEmployeeId === permission.employee.id}
-                      >
-                        Remove All
-                      </button>
-                      <button
                         onClick={() => handleResetPermissions(permission.employee.id)}
                         className="px-2 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600"
                         disabled={savingEmployeeId === permission.employee.id}
@@ -408,13 +377,6 @@ const RoleBasedSettings = () => {
                     disabled={savingEmployeeId === selectedEmployee.employee.id}
                   >
                     Allow All
-                  </button>
-                  <button
-                    onClick={() => handleRemoveAll(selectedEmployee.employee.id)}
-                    className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
-                    disabled={savingEmployeeId === selectedEmployee.employee.id}
-                  >
-                    Remove All
                   </button>
                   <button
                     onClick={() => handleResetPermissions(selectedEmployee.employee.id)}
