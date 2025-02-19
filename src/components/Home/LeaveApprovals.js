@@ -39,7 +39,7 @@ function LeaveApprovals() {
       setLoading(true)
       let data = []
 
-      if (userDetails?.designation?.name === "HR") {
+      if (userDetails?.designation?.name.includes("HR")) {
         data = await leaveRequestService.getHRPendingRequests()
       } else if (userDetails?.designation?.name === "Manager") {
         data = await leaveRequestService.getManagerPendingRequests(userDetails.id)

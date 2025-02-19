@@ -6,7 +6,7 @@ import { leaveTypeService } from "../../services/leaveTypeService";
 function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     name: "",
-    leaveCategory: "",
+    leaveCategory: "Paid",
     effectiveAfterCount: 0,
     effectiveAfterUnit: "months",
     accrualCount: 0,
@@ -128,31 +128,35 @@ function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Effective After</label>
-                <input
-                  type="number"
-                  name="effectiveAfterCount"
-                  min="0"
-                  value={formData.effectiveAfterCount}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Effective Unit</label>
-                <select
-                  name="effectiveAfterUnit"
-                  value={formData.effectiveAfterUnit}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="months">Months</option>
-                  <option value="years">Years</option>
-                </select>
-              </div>
-            </div>
+            {formData.leaveCategory === "Paid" &&
+              (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Effective After</label>
+                    <input
+                      type="number"
+                      name="effectiveAfterCount"
+                      min="0"
+                      value={formData.effectiveAfterCount}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Effective Unit</label>
+                    <select
+                      name="effectiveAfterUnit"
+                      value={formData.effectiveAfterUnit}
+                      onChange={handleChange}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    >
+                      <option value="months">Months</option>
+                      <option value="years">Years</option>
+                    </select>
+                  </div>
+                </div>
+              )
+            }
 
             <div className="grid grid-cols-3 gap-4">
               <div>

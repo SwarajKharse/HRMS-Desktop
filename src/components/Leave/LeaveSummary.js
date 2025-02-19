@@ -309,6 +309,7 @@ function LeaveSummary() {
             leaveTypes={leaveTypes.map((type) => ({
               id: type.id,
               name: type.title,
+              balance: type.balance,
             }))}
           />
         )}

@@ -35,6 +35,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     workPhone: '',
     aboutMe: '',
     isGeofenced: true,
+    isOvertimeAllowed: true,
     designation: {
       id: null
     },
@@ -198,6 +199,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                 dateOfJoining: '',
                 workPhone: '',
                 isGeofenced: false,
+                isOvertimeAllowed: false,
                 aboutMe: '',
                 designation: {
                   id: null
@@ -553,7 +555,8 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
           </div>
 
           <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">Geofencing Setting</h3>
+            <h3 className="font-semibold text-lg border-b pb-2">Required Setting</h3>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="isGeofenced" className="block text-sm font-medium text-gray-700">
@@ -580,6 +583,34 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                 </div>
               </div>
               {formData.isGeofenced}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="isOvertimeAllowed" className="block text-sm font-medium text-gray-700">
+                  Over time Allowed
+                </label>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-xs text-gray-500">
+                    Enable Over time restrictions
+                  </span>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      id="isOvertimeAllowed"
+                      name="isOvertimeAllowed"
+                      checked={formData.isOvertimeAllowed}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, isOvertimeAllowed: e.target.checked }))
+                      }
+                      className="sr-only peer"
+                    />
+                    <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/25 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary">
+                    </div>
+                  </label>
+                </div>
+              </div>
+              {formData.isOvertimeAllowed}
             </div>
           </div>
 

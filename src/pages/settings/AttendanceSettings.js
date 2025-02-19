@@ -8,11 +8,15 @@ function AttendanceSettings() {
   const [settings, setSettings] = useState({
     startTime: "09:00",
     endTime: "18:00",
+    breakStartTime: "13:00",
+    breakEndTime: "14:00",
     lateGraceTime: 15,
     earlyGraceTime: 15,
     noOfLatesAllowed: 3,
     noOfEarlysAllowed: 0,
     halfDayThreshold: 4,
+    fullDayThreshold: 8,
+    minOvertime: 60,
   })
 
   const [loading, setLoading] = useState(true)
@@ -125,6 +129,30 @@ function AttendanceSettings() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Break Start Time</label>
+            <input
+              type="time"
+              name="breakStartTime"
+              value={settings.breakStartTime}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Break End Time </label>
+            <input
+              type="time"
+              name="breakEndTime"
+              value={settings.breakEndTime}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Late Grace Time (minutes)</label>
             <input
               type="number"
@@ -150,7 +178,7 @@ function AttendanceSettings() {
             />
           </div>
 
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Number of Lates Allowed</label>
             <input
               type="number"
@@ -174,7 +202,7 @@ function AttendanceSettings() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
             />
-          </div>
+          </div> */}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Half Day Time (in hours)</label>
@@ -182,6 +210,30 @@ function AttendanceSettings() {
               type="number"
               name="halfDayThreshold"
               value={settings.halfDayThreshold}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Daily working Hours (in hours)</label>
+            <input
+              type="number"
+              name="fullDayThreshold"
+              value={settings.fullDayThreshold}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Overtime required (in minutes)</label>
+            <input
+              type="number"
+              name="minOvertime"
+              value={settings.minOvertime}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
               required

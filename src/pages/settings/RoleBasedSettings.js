@@ -26,20 +26,26 @@ const RoleBasedSettings = () => {
         { key: "appAcceptLeave", label: "Accept Leave" },
         { key: "appAttendance", label: "Attendance" },
         { key: "appHolidays", label: "Holidays" },
+        { key: "appPayroll", label: "Payroll"},
         { key: "appProfile", label: "Profile" },
       ],
     },
-    web: {
-      title: "Web Portal Permissions",
+    webSurvey: {
+      title: "Web Survey Permissions",
       permissions: [
         { key: "webDashboard", label: "Dashboard" },
         { key: "webSurveys", label: "Surveys" },
         { key: "webEditSurveys", label: "Edit Surveys" },
-        { key: "webAmc", label: "AMC" },
-        { key: "webFillAndEditAmc", label: "Fill & Edit AMC" },
         { key: "webDocuments", label: "Documents" },
         { key: "webFillAndEditDocuments", label: "Fill & Edit Documents" },
+        { key: "webAmc", label: "AMC" },
+        { key: "webFillAndEditAmc", label: "Fill & Edit AMC" },
         { key: "webNbc", label: "NBC" },
+      ],
+    },
+    webHRMS:{
+      title: "Web HRMS Permissions",
+      permissions: [
         { key: "webSettings", label: "Settings" },
         { key: "webOnboarding", label: "Onboarding" },
         { key: "webReports", label: "Reports" },
@@ -50,7 +56,7 @@ const RoleBasedSettings = () => {
         { key: "webPayroll", label: "Payroll" },
         { key: "webProfile", label: "Profile" },
       ],
-    },
+    }
   };
 
   useEffect(() => {
