@@ -122,7 +122,7 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">
+          <h3 className="text-sm font-semibold">
             Attendance Details - {format(date, "dd/MM/yyyy")}
           </h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
@@ -140,30 +140,30 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
               {attendance?.status || "Not Available"}
             </div>
           </div>
-              <div>
-                <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
-                  Check In Time
-                </label>
-                <input
-                  type="time"
-                  id="checkIn"
-                  value={checkIn}
-                  onChange={(e) => setCheckIn(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
-                  Check Out Time
-                </label>
-                <input
-                  type="time"
-                  id="checkOut"
-                  value={checkOut}
-                  onChange={(e) => setCheckOut(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
+            <div>
+              <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
+                Check In Time
+              </label>
+              <input
+                type="time"
+                id="checkIn"
+                value={checkIn}
+                onChange={(e) => setCheckIn(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
+                Check Out Time
+              </label>
+              <input
+                type="time"
+                id="checkOut"
+                value={checkOut}
+                onChange={(e) => setCheckOut(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           {/* <div>
             <label htmlFor="isHalfDay" className="flex items-center space-x-2">
               <input
@@ -309,7 +309,7 @@ function EmployeeAttendance({ employeeId }) {
     <div className="flex flex-col gap-6">
       {/* Summary Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <h3 className="text-lg font-semibold mb-3">Monthly Summary</h3>
+        <h3 className="text-sm font-semibold mb-3">Monthly Summary</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Object.entries(statusSummary).map(
             ([status, count]) =>
@@ -321,7 +321,7 @@ function EmployeeAttendance({ employeeId }) {
                   )}`}
                 >
                   <span className="font-medium">{STATUS_CONFIG[status]?.label || status}</span>
-                  <span className="text-lg font-bold">{count}</span>
+                  <span className="text-sm font-bold">{count}</span>
                 </div>
               )
           )}
@@ -380,7 +380,7 @@ function EmployeeAttendance({ employeeId }) {
             return (
               <motion.div
                 key={index}
-                className={`relative bg-white min-h-[60px] p-1 cursor-pointer ${
+                className={`relative bg-white min-h-[90px] p-1 cursor-pointer ${
                   !isCurrentMonth ? "opacity-50" : "hover:bg-gray-50"
                 }`}
                 onMouseEnter={() => setHoveredDate(date)}
@@ -434,6 +434,11 @@ function EmployeeAttendance({ employeeId }) {
                   {attendanceRecord && attendanceRecord.overtimeMinutes > 0 && (
                     <div className="absolute top-1 right-1 bg-indigo-600 text-white text-xs px-1 py-0.5 rounded">
                       OT {attendanceRecord.overtimeMinutes}m
+                    </div>
+                  )}
+                  {attendanceRecord && attendanceRecord.checkIn !== null &&  attendanceRecord.checkOut === null && (
+                    <div className="absolute top-1 left-1 bg-indigo-600 text-white text-xs px-1 py-0.5 rounded">
+                     Not <br/> Checked <br/> Out
                     </div>
                   )}
                 </div>

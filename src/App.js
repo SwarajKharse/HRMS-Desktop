@@ -17,6 +17,8 @@ import Attendance from './pages/Attendance';
 import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
 
+import EmployeeProfile from './components/EmployeeProfile';
+
 import Settings from './pages/Settings';
 import OrganizationSettings from './pages/settings/OrganizationSettings';
 import RoleBasedSettings from './pages/settings/RoleBasedSettings';
@@ -56,6 +58,13 @@ function App() {
                 <ProtectedPermissionRoute permissionKey='webOnboarding'>
                   <Layout>
                     <Onboarding />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
+              <Route path="/onboarding/employee/:hash" element={
+                <ProtectedPermissionRoute permissionKey='webOnboarding'>
+                  <Layout>
+                    <EmployeeProfile />
                   </Layout>
                 </ProtectedPermissionRoute>
               } />

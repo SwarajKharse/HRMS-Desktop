@@ -68,5 +68,32 @@ export const attendanceService = {
     } catch (error) {
       throw new Error("Failed to mark attendance")
     }
-  }
+  },
+
+  markUpdateOvertime: async (attendanceId, overtime, isIncluded) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/update/overtime`, { attendanceId, overtime, isIncluded });
+      return response.data;
+    } catch (error) {
+      throw new Error("Failed to update overtime")
+    }
+  },
+
+  markUpdateLateCheckIn: async (attendanceId, isIncluded) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/update/lateCheckIn`, { attendanceId, isIncluded });
+      return response.data;
+    } catch (error) {
+      throw new Error("Failed to update leave")
+    }
+  },
+
+  markUpdateEarlyCheckOut: async (attendanceId, isIncluded) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/update/earlyCheckOut`, { attendanceId, isIncluded });
+      return response.data;
+    } catch (error) {
+      throw new Error("Failed to update leave")
+    }
+  },
 };

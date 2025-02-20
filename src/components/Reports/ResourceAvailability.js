@@ -19,6 +19,7 @@ function ResourceAvailability() {
     Absent: "bg-red-100 text-red-800",
     "Late Check-in": "bg-yellow-100 text-yellow-800",
     "Early Check-out": "bg-orange-100 text-orange-800",
+    "Late Check-in and Early Check-out": "bg-yellow-200 text-yellow-800",
     "Half Day": "bg-amber-100 text-amber-800",
     "Paid Leave": "bg-purple-100 text-purple-800",
     "Unpaid Leave": "bg-orange-100 text-orange-800",
@@ -34,6 +35,7 @@ function ResourceAvailability() {
     Absent: "A",
     "Late Check-in": "LC",
     "Early Check-out": "EC",
+    "Late Check-in and Early Check-out": "LCE",
     "Half Day": "HD",
     "Paid Leave": "PL",
     "Unpaid Leave": "UL",
@@ -50,6 +52,7 @@ function ResourceAvailability() {
       setLoading(true)
       const data = await leaveReportService.getResourceAvailability(1, startDate, endDate);
       setResourceData(data);
+      console.log(data)
       setError(null)
     } catch (err) {
       setError(err.message)

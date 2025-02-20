@@ -1,150 +1,256 @@
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { FiX, FiAlertCircle } from "react-icons/fi"
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { FiX, FiAlertCircle } from "react-icons/fi";
 
 function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
+  // Updated state includes employeePf, employerPf, and attendanceBonusValue.
   const [formData, setFormData] = useState({
     id: null,
-    employee: { id: employee.id },
+    employee: { id: employee.id || employee.employeeId },
     costToCompany: 0,
     basicSalaryPercent: 0,
+    basicSalaryFlat: 0,
     hraPercent: 0,
+    hraFlat: 0,
     daPercent: 0,
-    ptValue: 0,
-    pfPercent: 0,
+    daFlat: 0,
+    employeePfPercent: 0,
+    employeePfFlat: 0,
+    employerPfPercent: 0,
+    employerPfFlat: 0,
     esicPercent: 0,
+    esicFlat: 0,
     gratuityPercent: 0,
+    gratuityFlat: 0,
+    ptValue: 0,
     performanceBased: 0,
-    overtime: 0,
     advancePaymentsRecovery: 0,
     loansOrEmiRecovery: 0,
-    latePenalty: 0,
-  })
+    attendanceBonusValue: 0,
+  });
 
-  const [calculatedValues, setCalculatedValues] = useState({
-    basicSalary: 0,
-    hra: 0,
-    da: 0,
-    pf: 0,
-    esic: 0,
-    gratuity: 0,
-  })
+  // Track which input was last edited for each component to avoid circular updates.
+  const [editingSource, setEditingSource] = useState({
+    basicSalary: null,
+    hra: null,
+    da: null,
+    employeePf: null,
+    employerPf: null,
+    esic: null,
+    gratuity: null,
+  });
 
-  const [errors, setErrors] = useState({})
-  const [submitting, setSubmitting] = useState(false)
+  const [errors, setErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
 
+  // When payroll data is loaded, prepopulate the state.
   useEffect(() => {
     if (payroll) {
-      setFormData(payroll)
+      setFormData({
+        id: payroll.id,
+        employee: payroll.employee,
+        costToCompany: payroll.costToCompany,
+        basicSalaryFlat: payroll.basicSalary,
+        basicSalaryPercent: payroll.costToCompany
+          ? ((payroll.basicSalary * 100) / payroll.costToCompany).toFixed(2)
+          : 0,
+        hraFlat: payroll.hra,
+        hraPercent: payroll.basicSalary
+          ? ((payroll.hra * 100) / payroll.basicSalary).toFixed(2)
+          : 0,
+        daFlat: payroll.da,
+        daPercent: payroll.basicSalary
+          ? ((payroll.da * 100) / payroll.basicSalary).toFixed(2)
+          : 0,
+        employeePfFlat: payroll.employeePf,
+        employeePfPercent: payroll.basicSalary
+          ? ((payroll.employeePf * 100) / payroll.basicSalary).toFixed(2)
+          : 0,
+        employerPfFlat: payroll.employerPf,
+        employerPfPercent: payroll.basicSalary
+          ? ((payroll.employerPf * 100) / payroll.basicSalary).toFixed(2)
+          : 0,
+        esicFlat: payroll.esic,
+        esicPercent:
+          payroll.basicSalary + payroll.hra + payroll.da
+            ? (
+                (payroll.esic * 100) /
+                (payroll.basicSalary + payroll.hra + payroll.da)
+              ).toFixed(2)
+            : 0,
+        gratuityFlat: payroll.gratuity,
+        gratuityPercent: payroll.basicSalary
+          ? ((payroll.gratuity * 100) / payroll.basicSalary).toFixed(2)
+          : 0,
+        ptValue: payroll.ptValue,
+        performanceBased: payroll.performanceBased,
+        advancePaymentsRecovery: payroll.advancePaymentsRecovery,
+        loansOrEmiRecovery: payroll.loansOrEmiRecovery,
+        attendanceBonusValue: payroll.attendanceBonusValue,
+      });
     }
-  }, [payroll])
+  }, [payroll]);
 
-  useEffect(() => {
-    calculateValues()
-  }, [formData.costToCompany, formData.basicSalaryPercent, formData.hraPercent, formData.daPercent, 
-      formData.pfPercent, formData.esicPercent, formData.gratuityPercent
-  ]) // Only formData.costToCompany is needed here
+  // --- HANDLERS ---
 
-  const calculateValues = () => {
-    const ctc = Number.parseFloat(formData.costToCompany) || 0;
-    const basicSalaryPercent = Number.parseFloat(formData.basicSalaryPercent) || 0;
-    const hraPercent = Number.parseFloat(formData.hraPercent) || 0;
-    const daPercent = Number.parseFloat(formData.daPercent) || 0;
-    const pfPercent = Number.parseFloat(formData.pfPercent) || 0;
-    const esicPercent = Number.parseFloat(formData.esicPercent) || 0;
-    const gratuityPercent = Number.parseFloat(formData.gratuityPercent) || 0;
-  
-    // Calculate Basic Salary
-    const basicSalary = (ctc * basicSalaryPercent) / 100;
-  
-    // Calculate HRA and DA as a percentage of Basic Salary
-    const hra = (basicSalary * hraPercent) / 100;
-    const da = (basicSalary * daPercent) / 100;
-  
-    // Calculate PF and Gratuity as a percentage of Basic Salary
-    const pf = (basicSalary * pfPercent) / 100;
-    const gratuity = (basicSalary * gratuityPercent) / 100;
-  
-    // Calculate ESIC as a percentage of Gross Salary (Basic + HRA + DA)
-    const grossSalary = basicSalary + hra + da;
-    const esic = (grossSalary * esicPercent) / 100;
-  
-    // Update calculated values
-    setCalculatedValues({
-      basicSalary,
-      hra,
-      da,
-      pf,
-      esic,
-      gratuity,
+  // When CTC changes, update basic salary accordingly.
+  const handleCostToCompanyChange = (e) => {
+    const { value } = e.target;
+    const newCTC = parseFloat(value) || 0;
+    setFormData((prev) => {
+      let newBasicSalaryFlat = prev.basicSalaryFlat;
+      let newBasicSalaryPercent = prev.basicSalaryPercent;
+      if (editingSource.basicSalary === "percentage" || editingSource.basicSalary === null) {
+        newBasicSalaryFlat = (newCTC * parseFloat(prev.basicSalaryPercent)) / 100;
+      } else if (editingSource.basicSalary === "flat") {
+        newBasicSalaryPercent = newCTC ? ((parseFloat(prev.basicSalaryFlat) * 100) / newCTC) : 0;
+      }
+      return {
+        ...prev,
+        costToCompany: value,
+        basicSalaryFlat: newBasicSalaryFlat,
+        basicSalaryPercent: newBasicSalaryPercent,
+      };
     });
   };
 
+  // Update the counterpart when percentage input changes.
+  const handleComponentPercentageChange = (field, value) => {
+    const newPercent = parseFloat(value) || 0;
+    setEditingSource((prev) => ({ ...prev, [field]: "percentage" }));
+    setFormData((prev) => {
+      if (field === "basicSalary") {
+        const ctc = parseFloat(prev.costToCompany) || 0;
+        const newFlat = (ctc * newPercent) / 100;
+        return { ...prev, basicSalaryPercent: value, basicSalaryFlat: newFlat };
+      } else if (["hra", "da", "gratuity"].includes(field)) {
+        const base = parseFloat(prev.basicSalaryFlat) || 0;
+        const newFlat = (base * newPercent) / 100;
+        return { ...prev, [`${field}Percent`]: value, [`${field}Flat`]: newFlat };
+      } else if (["employeePf", "employerPf"].includes(field)) {
+        const base = parseFloat(prev.basicSalaryFlat) || 0;
+        const newFlat = (base * newPercent) / 100;
+        return { ...prev, [`${field}Percent`]: value, [`${field}Flat`]: newFlat };
+      } else if (field === "esic") {
+        // For ESIC, base = basicSalaryFlat + hraFlat + daFlat.
+        const base =
+          (parseFloat(prev.basicSalaryFlat) || 0) +
+          (parseFloat(prev.hraFlat) || 0) +
+          (parseFloat(prev.daFlat) || 0);
+        const newFlat = (base * newPercent) / 100;
+        return { ...prev, esicPercent: value, esicFlat: newFlat };
+      }
+      return prev;
+    });
+  };
+
+  // Update the counterpart when flat input changes.
+  const handleComponentFlatChange = (field, value) => {
+    const newFlat = parseFloat(value) || 0;
+    setEditingSource((prev) => ({ ...prev, [field]: "flat" }));
+    setFormData((prev) => {
+      if (field === "basicSalary") {
+        const ctc = parseFloat(prev.costToCompany) || 0;
+        const newPercent = ctc ? (newFlat * 100) / ctc : 0;
+        return { ...prev, basicSalaryFlat: value, basicSalaryPercent: newPercent.toFixed(2) };
+      } else if (["hra", "da", "gratuity"].includes(field)) {
+        const base = parseFloat(prev.basicSalaryFlat) || 0;
+        const newPercent = base ? (newFlat * 100) / base : 0;
+        return { ...prev, [`${field}Flat`]: value, [`${field}Percent`]: newPercent.toFixed(2) };
+      } else if (["employeePf", "employerPf"].includes(field)) {
+        const base = parseFloat(prev.basicSalaryFlat) || 0;
+        const newPercent = base ? (newFlat * 100) / base : 0;
+        return { ...prev, [`${field}Flat`]: value, [`${field}Percent`]: newPercent.toFixed(2) };
+      } else if (field === "esic") {
+        const base =
+          (parseFloat(prev.basicSalaryFlat) || 0) +
+          (parseFloat(prev.hraFlat) || 0) +
+          (parseFloat(prev.daFlat) || 0);
+        const newPercent = base ? (newFlat * 100) / base : 0;
+        return { ...prev, esicFlat: value, esicPercent: newPercent.toFixed(2) };
+      }
+      return prev;
+    });
+  };
+
+  // For inputs that do not require dual calculation.
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }))
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
-  }
+  };
 
   const validateForm = () => {
-    const newErrors = {}
-    if (!formData.costToCompany) newErrors.costToCompany = "CTC is required"
+    const newErrors = {};
+    if (!formData.costToCompany) newErrors.costToCompany = "CTC is required";
     if (formData.basicSalaryPercent < 0 || formData.basicSalaryPercent > 100) {
-      newErrors.basicSalaryPercent = "Percentage must be between 0 and 100"
+      newErrors.basicSalaryPercent = "Percentage must be between 0 and 100";
     }
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!validateForm()) return
-
+    e.preventDefault();
+    if (!validateForm()) return;
+    // Build the payload using the flat (computed) values.
+    const payload = {
+      id: formData.id,
+      employee: formData.employee,
+      costToCompany: parseFloat(formData.costToCompany) || 0,
+      basicSalary: parseFloat(formData.basicSalaryFlat) || 0,
+      hra: parseFloat(formData.hraFlat) || 0,
+      da: parseFloat(formData.daFlat) || 0,
+      ptValue: parseFloat(formData.ptValue) || 0,
+      employeePf: parseFloat(formData.employeePfFlat) || 0,
+      employerPf: parseFloat(formData.employerPfFlat) || 0,
+      esic: parseFloat(formData.esicFlat) || 0,
+      gratuity: parseFloat(formData.gratuityFlat) || 0,
+      performanceBased: parseFloat(formData.performanceBased) || 0,
+      advancePaymentsRecovery: parseFloat(formData.advancePaymentsRecovery) || 0,
+      loansOrEmiRecovery: parseFloat(formData.loansOrEmiRecovery) || 0,
+      attendanceBonusValue: parseFloat(formData.attendanceBonusValue) || 0,
+    };
     try {
-      setSubmitting(true)
-      await onSubmit(formData)
-      onClose()
+      setSubmitting(true);
+      await onSubmit(payload);
+      onClose();
     } catch (error) {
-      setErrors((prev) => ({
-        ...prev,
-        submit: error.message,
-      }))
+      setErrors((prev) => ({ ...prev, submit: error.message }));
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       maximumFractionDigits: 0,
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
-  const renderPercentageInput = (label, name, value, calculatedValue) => (
+  // Renders a dual-input field for components that use percentages and flat values.
+  const renderComponentInput = (label, field, percentageOf) => (
     <div className="bg-white p-4 rounded-lg border border-gray-200 hover:border-blue-200 transition-colors">
       <div className="flex justify-between items-start mb-2">
         <label className="text-sm font-medium text-gray-700">{label}</label>
-        <div className="text-xs font-medium text-gray-500">Amount</div>
       </div>
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
+      <div className="grid grid-cols-2 gap-4">
+        {/* Percentage Input */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500">
+            % of {percentageOf || "CTC"}
+          </label>
           <div className="relative">
             <input
               type="number"
-              name={name}
-              value={value}
-              onChange={handleChange}
-              className="block w-full pl-3 pr-8 py-2 text-lg border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              name={`${field}Percent`}
+              value={formData[`${field}Percent`]}
+              onChange={(e) => handleComponentPercentageChange(field, e.target.value)}
+              className="block w-full pl-3 pr-8 py-2 text-lg border border-gray-300 rounded-lg shadow-sm"
               min="0"
               max="100"
               step="0.01"
@@ -152,12 +258,27 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
           </div>
         </div>
-        <div className="w-32 text-right">
-          <div className="text-lg font-semibold text-gray-900">{formatCurrency(calculatedValue)}</div>
+        {/* Flat Amount Input */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500">
+            Amount
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              name={`${field}Flat`}
+              value={formData[`${field}Flat`]}
+              onChange={(e) => handleComponentFlatChange(field, e.target.value)}
+              className="block w-full pl-3 pr-8 py-2 text-lg border border-gray-300 rounded-lg shadow-sm"
+              min="0"
+              step="0.01"
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+          </div>
         </div>
       </div>
     </div>
-  )
+  );
 
   return (
     <motion.div
@@ -174,7 +295,7 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
         className="bg-gray-50 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Sticky Header */}
+        {/* Header */}
         <div className="sticky top-0 bg-white rounded-t-xl border-b border-gray-200 z-10">
           <div className="flex justify-between items-center p-6">
             <div>
@@ -188,8 +309,7 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
             </button>
           </div>
         </div>
-
-        {/* Scrollable Content */}
+        {/* Form Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
@@ -204,42 +324,33 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
                       type="number"
                       name="costToCompany"
                       value={formData.costToCompany}
-                      onChange={handleChange}
-                      className={`block w-full pl-8 pr-3 py-2 text-lg border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      onChange={handleCostToCompanyChange}
+                      className={`block w-full pl-8 pr-3 py-2 text-lg border ${
                         errors.costToCompany ? "border-red-300" : "border-gray-300"
-                      }`}
+                      } rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                       placeholder="Enter monthly CTC"
                       min="0"
                     />
                   </div>
-                  {errors.costToCompany && <p className="mt-1 text-sm text-red-500">{errors.costToCompany}</p>}
+                  {errors.costToCompany && (
+                    <p className="mt-1 text-sm text-red-500">{errors.costToCompany}</p>
+                  )}
                 </div>
               </div>
             </div>
-
             {/* Salary Components */}
             <div className="bg-white p-6 rounded-xl border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Salary Components</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {renderPercentageInput(
-                  "Basic Salary",
-                  "basicSalaryPercent",
-                  formData.basicSalaryPercent,
-                  calculatedValues.basicSalary,
-                )}
-                {renderPercentageInput("HRA", "hraPercent", formData.hraPercent, calculatedValues.hra)}
-                {renderPercentageInput("DA", "daPercent", formData.daPercent, calculatedValues.da)}
-                {renderPercentageInput("PF", "pfPercent", formData.pfPercent, calculatedValues.pf)}
-                {renderPercentageInput("ESIC", "esicPercent", formData.esicPercent, calculatedValues.esic)}
-                {renderPercentageInput(
-                  "Gratuity",
-                  "gratuityPercent",
-                  formData.gratuityPercent,
-                  calculatedValues.gratuity,
-                )}
+                {renderComponentInput("Basic Salary", "basicSalary", "CTC")}
+                {renderComponentInput("HRA", "hra", "Basic Salary")}
+                {renderComponentInput("DA", "da", "Basic Salary")}
+                {renderComponentInput("Employee PF", "employeePf", "Basic Salary")}
+                {renderComponentInput("Employer PF", "employerPf", "Basic Salary")}
+                {renderComponentInput("ESIC", "esic", "Gross Salary")}
+                {renderComponentInput("Gratuity", "gratuity", "Basic Salary")}
               </div>
             </div>
-
             {/* Additional Components */}
             <div className="bg-white p-6 rounded-xl border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Components</h3>
@@ -259,13 +370,13 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Overtime Rate</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Attendance Bonus</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
                     <input
                       type="number"
-                      name="overtime"
-                      value={formData.overtime}
+                      name="attendanceBonusValue"
+                      value={formData.attendanceBonusValue}
                       onChange={handleChange}
                       className="block w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm"
                       min="0"
@@ -274,7 +385,6 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
                 </div>
               </div>
             </div>
-
             {/* Deductions */}
             <div className="bg-white p-6 rounded-xl border border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Deductions</h3>
@@ -321,23 +431,8 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Late Penalty</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
-                    <input
-                      type="number"
-                      name="latePenalty"
-                      value={formData.latePenalty}
-                      onChange={handleChange}
-                      className="block w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm"
-                      min="0"
-                    />
-                  </div>
-                </div>
               </div>
             </div>
-
             {errors.submit && (
               <div className="p-4 bg-red-50 rounded-lg flex items-center text-red-500">
                 <FiAlertCircle className="w-5 h-5 mr-2" />
@@ -346,8 +441,7 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
             )}
           </form>
         </div>
-
-        {/* Sticky Footer */}
+        {/* Footer */}
         <div className="sticky bottom-0 bg-white rounded-b-xl border-t border-gray-200 p-4">
           <div className="flex justify-end gap-3">
             <button
@@ -368,7 +462,7 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
         </div>
       </motion.div>
     </motion.div>
-  )
+  );
 }
 
 export default PayrollDialog;

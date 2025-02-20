@@ -22,4 +22,13 @@ export const payrollReportService = {
       throw new Error(error.response?.data?.message || "Error fetching payroll report")
     }
   },
+
+  getPayrollReportByEmployeeIdAndMonthAndYear: async (empId, month, year) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/employee/${empId}/month/${month}/year/${year}`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error fetching payroll report")
+    }
+  }
 }

@@ -1,64 +1,46 @@
-import React, { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { format, addDays, subDays } from "date-fns"
-import { attendanceService } from "../../services/attendanceService"
-import { FiChevronLeft, FiChevronRight } from "react-icons/fi"
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { format, addDays, subDays } from "date-fns";
+import { attendanceService } from "../../services/attendanceService";
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 
 function AttendanceReport() {
-  const [selectedDate, setSelectedDate] = useState(new Date())
-  const [attendanceData, setAttendanceData] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchAttendanceData()
-  }, [selectedDate]) // Removed unnecessary dependency: selectedDate
+    fetchAttendanceData();
+  }, [selectedDate]);
 
   const fetchAttendanceData = async () => {
     try {
-      setLoading(true)
-      const data = await attendanceService.getAttendanceReport(selectedDate)
-      setAttendanceData(data)
-      setError(null)
+      setLoading(true);
+      const data = await attendanceService.getAttendanceReport(selectedDate);
+      setAttendanceData(data);
+      setError(null);
     } catch (err) {
-      setError(err.message)
+      setError(err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handlePreviousDay = () => {
-    setSelectedDate(subDays(selectedDate, 1))
-  }
+    setSelectedDate(subDays(selectedDate, 1));
+  };
 
   const handleNextDay = () => {
-    setSelectedDate(addDays(selectedDate, 1))
-  }
-
-  const formatDuration = (minutes) => {
-    if (!minutes) return "-"
-    const sign = minutes < 0 ? "-" : "+"
-    const absMinutes = Math.abs(minutes)
-    const hours = Math.floor(absMinutes / 60)
-    const mins = absMinutes % 60
-    return `${sign}${hours ? hours + ":" : ""}${mins.toString().padStart(2, "0")}`
-  }
-
-  const getDurationClass = (duration, isEarlyPositive = true) => {
-    if (!duration) return "text-gray-500"
-    const minutes = Number.parseInt(duration)
-    if (isEarlyPositive) {
-      return minutes >= 0 ? "text-green-600" : "text-red-600"
-    }
-    return minutes >= 0 ? "text-red-600" : "text-green-600"
-  }
+    setSelectedDate(addDays(selectedDate, 1));
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
         <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-200 border-t-blue-500"></div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -66,7 +48,7 @@ function AttendanceReport() {
       <div className="flex items-center justify-center p-6 rounded-xl bg-red-50 border border-red-100">
         <p className="text-red-600 font-medium">{error}</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -80,10 +62,13 @@ function AttendanceReport() {
           >
             <FiChevronLeft className="w-5 h-5 text-gray-600" />
           </button>
-
-          <h2 className="text-sm font-medium text-gray-900">{format(selectedDate, "dd MMM yyyy")}</h2>
-
-          <button onClick={handleNextDay} className="p-1 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+          <h2 className="text-sm font-medium text-gray-900">
+            {format(selectedDate, "dd MMM yyyy")}
+          </h2>
+          <button
+            onClick={handleNextDay}
+            className="p-1 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+          >
             <FiChevronRight className="w-5 h-5 text-gray-600" />
           </button>
         </div>
@@ -91,124 +76,121 @@ function AttendanceReport() {
 
       {/* Attendance Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employee
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  First In
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Out
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Hours
-                </th>
-                <th
-                  colSpan="2"
-                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Entry
-                </th>
-                <th
-                  colSpan="2"
-                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Exit
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-              <tr className="bg-gray-50">
-                <th></th>
-                <th></th>
-                <th></th>
-                <th></th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Early
-                </th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Late
-                </th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Early
-                </th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Late
-                </th>
-                <th></th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {attendanceData.map((record, index) => (
-                <motion.tr
-                  key={record.employeeId}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="hover:bg-gray-50/50"
-                >
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {record.profilePhotoUrl ? (
-                        <img
-                          className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm"
-                          src={record.profilePhotoUrl || "/placeholder.svg"}
-                          alt={`${record.firstName} ${record.lastName}`}
-                        />
-                      ) : (
-                        <span className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-medium text-sm border-2 border-white shadow-sm">
-                          {record.firstName[0]}
-                          {record.lastName[0]}
-                        </span>
-                      )}
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {record.firstName} {record.lastName}
-                        </div>
-                        <div className="text-sm text-gray-500">ID: {record.employeeId}</div>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Employee
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Check-In
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Check-In Location
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Check-Out
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Check-Out Location
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Late Entry
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Early exit
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Total Hours
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {attendanceData.map((record, index) => (
+              <motion.tr
+                key={record.employeeId}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="hover:bg-gray-50"
+              >
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    {record.profilePhotoUrl ? (
+                      <img
+                        className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm"
+                        src={record.profilePhotoUrl || "/placeholder.svg"}
+                        alt={`${record.firstName} ${record.lastName}`}
+                      />
+                    ) : (
+                      <span className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-medium text-sm border-2 border-white shadow-sm">
+                        {record.firstName[0]}
+                        {record.lastName[0]}
+                      </span>
+                    )}
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        {record.firstName} {record.lastName}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        ID: {record.employeeId}
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.checkIn || "-"}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.checkOut || "-"}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.totalHours || "-"}</td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
-                    <span className={getDurationClass(record.earlyEntry, true)}>
-                      {record.earlyEntry}
-                    </span>
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
-                    <span className={getDurationClass(record.lateEntry, false)}>
-                      {record.lateEntry}
-                    </span>
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
-                    <span className={getDurationClass(record.earlyExit, false)}>
-                      {record.earlyExit}
-                    </span>
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-center">
-                    <span className={getDurationClass(record.lateExit, true)}>{record.lateExit}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`font-medium ${record.status === "Present" ? "text-green-600" : "text-red-600"}`}>
-                      {record.status}
-                    </span>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {record.checkInPhotoUrl && (
+                    <img
+                      src={record.checkInPhotoUrl}
+                      alt="Check-In"
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  )} 
+                  {record.checkIn || "-"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {record.checkInLocation || "-"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {record.checkOutPhotoUrl && (
+                    <img
+                      src={record.checkOutPhotoUrl}
+                      alt="Check-Out"
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  )} {record.checkOut || "-"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {record.checkOutLocation || "-"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-700">
+                  {record.lateEntry || "-"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-700">
+                  {record.earlyExit || "-"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {record.totalHours || "-"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <span
+                    className={`font-medium ${
+                      record.status === "Present" ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {record.status}
+                  </span>
+                </td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
-  )
+  );
 }
 
 export default AttendanceReport;

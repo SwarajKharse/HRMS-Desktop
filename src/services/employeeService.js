@@ -25,7 +25,7 @@ export const employeeService = {
 
   getEmployeeById: async (id) => {
     try {
-      const response = await axios.get(`${BASE_URL}/${id}`, getAuthHeaders());
+      const response = await axios.get(`${BASE_URL}/${id}`);
       return response.data;
     } catch (error) {
       if (error.response?.status === 403) {
@@ -93,6 +93,24 @@ export const employeeService = {
   updateGeofencingByEmployeeId: async (employeeId, geofencingData) => {
     try {
       const response = await axios.put(`${BASE_URL}/geofencing/${employeeId}`, geofencingData, getAuthHeaders());
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  activateEmployee: async (id) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/activate/${id}`, getAuthHeaders());
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  deactivateEmployee: async (id) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/deactivate/${id}`, getAuthHeaders());
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
