@@ -815,8 +815,8 @@ const EmployeePayrollReport = ({ employeeId }) => {
       <AnimatePresence>
         {showPayrollDialog && (
           <PayrollDialog
-            employee={employeeId}
-            payroll={report.payrollSettings}
+            employee={{employeeId}}
+            payroll={report?.payrollSettings || null}
             onClose={() => setShowPayrollDialog(false)}
             onSubmit={async (data) => {
               try {
