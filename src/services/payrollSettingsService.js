@@ -13,7 +13,16 @@ const getAuthHeaders = () => {
   }
 };
 
-export const payrollPerEmployeeService = {
+const getAuthTokenHeader = () => {
+  const token = authService.getToken();
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+};
+
+export const payrollSettingsService = {
   getPayrollByEmployee: async (empId) => {
     try {
       const response = await axios.get(`${BASE_URL}/employee/${empId}`, getAuthHeaders());
@@ -43,6 +52,34 @@ export const payrollPerEmployeeService = {
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || "Error deleting payroll details");
+    }
+  },
+
+  exportPayroll: async (orgId) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/export/${orgId}`, {
+        ...getAuthHeaders(),
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error exporting payroll details");
+    }
+  },
+
+  importPayroll: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await axios.post(`${BASE_URL}/import`, formData, {
+        headers: {
+          ...getAuthTokenHeader().headers,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error importing payroll details");
     }
   },
 };

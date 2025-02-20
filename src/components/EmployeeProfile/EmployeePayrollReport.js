@@ -21,7 +21,7 @@ import {
 // Services
 import { payrollReportService } from "../../services/payrollReportService";
 import { attendanceService } from "../../services/attendanceService";
-import { payrollPerEmployeeService } from "../../services/payrollPerEmployeeService";
+import { payrollSettingsService } from "../../services/payrollSettingsService";
 import { allowanceService } from "../../services/allowanceService";
 import { deductionService } from "../../services/deductionService";
 import { bonusService } from "../../services/bonusService";
@@ -418,7 +418,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
           <tbody className="divide-y divide-gray-200">
             {localOvertimes.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <TableCell>{item.date}</TableCell>
+                <TableCell>{format(new Date(item.date), "d MMM yyyy")}</TableCell>
                 <TableCell>{item.overtimeMinutes}</TableCell>
                 <TableCell>
                   <span
@@ -461,7 +461,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
           <tbody className="divide-y divide-gray-200">
             {localLateCheckIns.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <TableCell>{item.date}</TableCell>
+                <TableCell>{format(new Date(item.date), "d MMM yyyy")}</TableCell>
                 <TableCell>{item.checkIn}</TableCell>
                 <TableCell>{item.checkOut}</TableCell>
                 <TableCell>
@@ -503,7 +503,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
           <tbody className="divide-y divide-gray-200">
             {localEarlyCheckOuts.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <TableCell>{item.date}</TableCell>
+                <TableCell>{format(new Date(item.date), "d MMM yyyy")}</TableCell>
                 <TableCell>{item.checkIn}</TableCell>
                 <TableCell>{item.checkOut}</TableCell>
                 <TableCell>
@@ -544,7 +544,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
           <tbody className="divide-y divide-gray-200">
             {report.allowances?.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <TableCell>{item.date}</TableCell>
+                <TableCell>{format(new Date(item.date), "d MMM yyyy")}</TableCell>
                 <TableCell>{item.description}</TableCell>
                 <TableCell className="text-green-600 font-medium">{formatCurrency(item.amount)}</TableCell>
                 <TableCell>
@@ -601,7 +601,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
           <tbody className="divide-y divide-gray-200">
             {report.bonuses?.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <TableCell>{item.date}</TableCell>
+                <TableCell>{format(new Date(item.date), "d MMM yyyy")}</TableCell>
                 <TableCell>{item.description}</TableCell>
                 <TableCell className="text-green-600 font-medium">{formatCurrency(item.amount)}</TableCell>
                 <TableCell>
@@ -658,7 +658,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
           <tbody className="divide-y divide-gray-200">
             {report.periodDeductionsList?.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
-                <TableCell>{item.date}</TableCell>
+                <TableCell>{format(new Date(item.date), "d MMM yyyy")}</TableCell>
                 <TableCell>{item.description}</TableCell>
                 <TableCell className="text-red-600 font-medium">{formatCurrency(item.amount)}</TableCell>
                 <TableCell>
@@ -731,7 +731,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
   }
 
   return (
-    <div className="flex flex-col gap-4 max-w-7xl mx-auto p-4">
+    <div className="flex flex-col gap-4 max-w mx-auto p-4">
       {/* Month Navigator and Edit Payroll Settings Button */}
       <div className="flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-4">
         <div className="flex items-center space-x-4">
@@ -820,7 +820,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
             onClose={() => setShowPayrollDialog(false)}
             onSubmit={async (data) => {
               try {
-                await payrollPerEmployeeService.createOrUpdatePayroll(data);
+                await payrollSettingsService.createOrUpdatePayroll(data);
                 setShowPayrollDialog(false);
                 fetchReport(employeeId, selectedMonth, selectedYear);
               } catch (err) {
