@@ -178,7 +178,7 @@ function EmployeeProfile() {
     return configs[status] || configs.Active
   }
 
-  const isActionable = !employee.dateOfLeaving && employee.empStatus === "Active"
+  const isActionable = !employee.dateOfLeaving && (employee.empStatus !== "Termination Notice Period" || employee.empStatus !== "Resignation Notice Period")
   const statusConfig = getStatusConfig(employee.empStatus)
 
   return (
