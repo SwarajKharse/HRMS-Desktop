@@ -116,4 +116,33 @@ export const employeeService = {
       throw error.response?.data || error.message;
     }
   },
+
+  exportEmployees: async (orgId) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/export/${orgId}`, {
+        ...getAuthHeaders(),
+        responseType: 'blob'
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },  
+
+  importEmployees: async (file, orgId) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("orgId", orgId);
+      const response = await axios.post(`${BASE_URL}/import`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
 };

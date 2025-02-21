@@ -1,13 +1,24 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
-import { FiPlus, FiEdit2, FiAlertCircle, FiAlertTriangle, FiUserX, FiUsers, FiSearch } from "react-icons/fi"
+import {
+  FiPlus,
+  FiEdit2,
+  FiAlertCircle,
+  FiAlertTriangle,
+  FiUserX,
+  FiUsers,
+  FiSearch,
+  FiUpload,
+  FiDownload,
+  FiX,
+  FiCheck,
+} from "react-icons/fi"
 import { employeeService } from "../services/employeeService"
 import { useAuth } from "../contexts/AuthContext"
 import EmployeeForm from "../components/EmployeeForm"
 import WarningForm from "../components/Forms/WarningForm"
 import TerminationForm from "../components/Forms/TerminationForm"
-import { encryptId } from "../utils/crypto";
 
 function Onboarding() {
   const navigate = useNavigate()
@@ -23,7 +34,12 @@ function Onboarding() {
   const [showTerminationForm, setShowTerminationForm] = useState(false)
   const { user } = useAuth()
 
-  const fetchEmployees = async () => {
+  const [showMigrateDialog, setShowMigrateDialog] = useState(false)
+  const [successMessage, setSuccessMessage] = useState(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+
+  const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true)
       let data = []
@@ -39,11 +55,11 @@ function Onboarding() {
       setError("Failed to fetch employees")
       setLoading(false)
     }
-  }
+  }, [activeView, user?.orgId])
 
   useEffect(() => {
     fetchEmployees()
-  }, [user, activeView])
+  }, [fetchEmployees])
 
   useEffect(() => {
     const filterEmployees = () => {
@@ -58,8 +74,7 @@ function Onboarding() {
   }, [searchQuery, employees])
 
   const handleRowClick = (employee) => {
-    const encryptedId = encryptId(employee.id);
-    navigate(`/onboarding/employee/${encodeURIComponent(encryptedId)}`);
+    navigate(`/employees/${employee.id}`)
   }
 
   const handleAddEmployee = async () => {
@@ -89,6 +104,25 @@ function Onboarding() {
     e.stopPropagation()
     setSelectedEmployee(employee)
     setShowTerminationForm(true)
+  }
+
+  const handleExportEmployees = async () => {
+    try {
+      setIsExporting(true)
+      const data = await employeeService.exportEmployees(user.orgId)
+      const blob = new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", "employees.xlsx")
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+    } catch (error) {
+      setError("Error exporting employees")
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   if (loading) {
@@ -133,6 +167,12 @@ function Onboarding() {
               Past Employees
             </button>
           </div>
+          <button
+            onClick={() => setShowMigrateDialog(true)}
+            className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg hover:shadow-lg hover:from-indigo-700 hover:to-blue-700 transition-all duration-200 flex items-center gap-2 font-medium"
+          >
+            Migrate Data
+          </button>
           {activeView === "active" && (
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -159,6 +199,18 @@ function Onboarding() {
         >
           <FiAlertCircle className="w-5 h-5" />
           <span className="font-medium">{error}</span>
+        </motion.div>
+      )}
+
+      {successMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="bg-green-50 text-green-600 p-4 rounded-lg border border-green-100 flex items-center shadow-sm"
+        >
+          <FiCheck className="w-5 h-5 mr-2" />
+          <span className="font-medium">{successMessage}</span>
         </motion.div>
       )}
 
@@ -317,6 +369,129 @@ function Onboarding() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {showMigrateDialog && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+          onClick={() => setShowMigrateDialog(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0.95 }}
+            className="bg-white rounded-xl shadow-xl p-6 w-[600px] relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowMigrateDialog(false)}
+              className="absolute right-4 top-4 p-1 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <FiX className="w-5 h-5 text-gray-500" />
+            </button>
+
+            <div className="mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Migrate Employee Data</h2>
+              <p className="text-sm text-gray-500 mt-1">Export your current data or import new data</p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-blue-100 rounded-lg">
+                    <FiDownload className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">Export Data</h3>
+                    <p className="text-sm text-gray-500 mb-3">Download your current employee data as Excel file</p>
+                    <button
+                      onClick={handleExportEmployees}
+                      disabled={isExporting}
+                      className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 ${
+                        isExporting ? "cursor-not-allowed" : ""
+                      }`}
+                    >
+                      {isExporting ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Exporting...</span>
+                        </div>
+                      ) : (
+                        <>
+                          <FiDownload className="w-4 h-4 mr-2" />
+                          Export Employees
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-green-100 rounded-lg">
+                    <FiUpload className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">Import Data</h3>
+                    <p className="text-sm text-gray-500 mb-3">Upload new employee data from Excel file</p>
+                    <label
+                      className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-green-600 text-white hover:bg-green-700 ${
+                        isImporting ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                      }`}
+                    >
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                        disabled={isImporting}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+
+                          try {
+                            setIsImporting(true)
+                            await employeeService.importEmployees(file, user.orgId)
+                            setShowMigrateDialog(false)
+                            setError(null)
+                            setSuccessMessage("Employee data imported successfully!")
+                            setTimeout(() => setSuccessMessage(null), 3000)
+                            fetchEmployees()
+                          } catch (error) {
+                            setError("Error importing employee data. Please check your file and try again.")
+                          } finally {
+                            setIsImporting(false)
+                          }
+                        }}
+                      />
+                      {isImporting ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Importing...</span>
+                        </div>
+                      ) : (
+                        "Choose File & Import"
+                      )}
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4">
+                <h4 className="font-medium text-yellow-800 mb-2">Important Notes</h4>
+                <ul className="list-disc pl-5 text-sm text-yellow-700 space-y-1">
+                  <li>Export your current data before importing new data</li>
+                  <li>Make sure your import file follows the correct format</li>
+                  <li>Only .xlsx or .xls files are supported</li>
+                  <li>Maximum file size: 5MB</li>
+                </ul>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Modals */}
       <AnimatePresence>
