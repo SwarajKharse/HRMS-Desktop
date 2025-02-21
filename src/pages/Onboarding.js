@@ -18,7 +18,8 @@ import { employeeService } from "../services/employeeService"
 import { useAuth } from "../contexts/AuthContext"
 import EmployeeForm from "../components/EmployeeForm"
 import WarningForm from "../components/Forms/WarningForm"
-import TerminationForm from "../components/Forms/TerminationForm"
+import TerminationForm from "../components/Forms/TerminationForm";
+import { encryptId } from "../utils/crypto"
 
 function Onboarding() {
   const navigate = useNavigate()
@@ -74,7 +75,7 @@ function Onboarding() {
   }, [searchQuery, employees])
 
   const handleRowClick = (employee) => {
-    navigate(`/employees/${employee.id}`)
+    navigate(`/onboarding/employee/${encryptId(employee.id)}`)
   }
 
   const handleAddEmployee = async () => {
