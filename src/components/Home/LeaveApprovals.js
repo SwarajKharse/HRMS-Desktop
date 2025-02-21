@@ -41,7 +41,7 @@ function LeaveApprovals() {
 
       if (userDetails?.designation?.name.includes("HR")) {
         data = await leaveRequestService.getHRPendingRequests()
-      } else if (userDetails?.designation?.name === "Manager") {
+      } else if (userDetails?.designation?.name.includes("Manager")) {
         data = await leaveRequestService.getManagerPendingRequests(userDetails.id)
       }
 
@@ -64,15 +64,15 @@ function LeaveApprovals() {
       setActionInProgress(true)
 
       if (actionType === "approve") {
-        if (currentUser?.designation?.name === "HR") {
+        if (currentUser?.designation?.name.includes("HR")) {
           await leaveRequestService.hrApproveLeave(selectedRequest, comments)
-        } else if (currentUser?.designation?.name === "Manager") {
+        } else if (currentUser?.designation?.name.includes("Manager")) {
           await leaveRequestService.managerApproveLeave(selectedRequest, comments)
         }
       } else if (actionType === "reject") {
-        if (currentUser?.designation?.name === "HR") {
+        if (currentUser?.designation?.name.includes("HR")) {
           await leaveRequestService.hrRejectLeave(selectedRequest, comments)
-        } else if (currentUser?.designation?.name === "Manager") {
+        } else if (currentUser?.designation?.name.includes("Manager")) {
           await leaveRequestService.managerRejectLeave(selectedRequest, comments)
         }
       }
@@ -108,7 +108,7 @@ function LeaveApprovals() {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="p-6 border-b">
           <h2 className="text-xl font-semibold">
-            {currentUser?.designation?.name === "HR" ? "HR Leave Approvals" : "Manager Leave Approvals"}
+            {currentUser?.designation?.name.includes("HR") ? "HR Leave Approvals" : "Manager Leave Approvals"}
           </h2>
         </div>
 
