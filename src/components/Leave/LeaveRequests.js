@@ -146,7 +146,7 @@ function LeaveRequests() {
                   {request.leaveType?.leaveCategory || "N/A"}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {request.duration} day{request.duration !== 1 ? "s" : ""}
+                  {request.isHalfDay ? "Half Day" : request.duration === 1 ? "1 day" : `${request.duration} days`}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {format(new Date(request.startDate), "dd MMM yyyy")}
