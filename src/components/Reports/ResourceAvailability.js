@@ -2,7 +2,8 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { format, addMonths, subMonths, eachDayOfInterval } from "date-fns"
 import { leaveReportService } from "../../services/leaveReportService"
-import { FiChevronLeft, FiChevronRight } from "react-icons/fi"
+import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { authService } from "../../services/authService";
 
 function ResourceAvailability() {
   const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)))
@@ -50,9 +51,8 @@ function ResourceAvailability() {
   const fetchResourceData = async () => {
     try {
       setLoading(true)
-      const data = await leaveReportService.getResourceAvailability(1, startDate, endDate);
+      const data = await leaveReportService.getResourceAvailability(authService.getUser().orgId, startDate, endDate);
       setResourceData(data);
-      console.log(data)
       setError(null)
     } catch (err) {
       setError(err.message)
