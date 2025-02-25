@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useParams, useNavigate } from "react-router-dom"
-import { FiArrowLeft, FiEdit2, FiAlertTriangle, FiUserX } from "react-icons/fi"
+import { FiArrowLeft, FiEdit2, FiAlertTriangle, FiUserX, FiKey } from "react-icons/fi"
 import { employeeService } from "../services/employeeService"
 import EmployeeDetails from "./EmployeeProfile/EmployeeDetails"
 import EmployeeAttendance from "./EmployeeProfile/EmployeeAttendance"
@@ -15,6 +15,7 @@ import EmployeePayrollReport from "./EmployeeProfile/EmployeePayrollReport"
 import EmployeeForm from "./EmployeeForm"
 import WarningForm from "./Forms/WarningForm"
 import TerminationForm from "./Forms/TerminationForm"
+import ResetPassword from "./Forms/ResetPassword"
 import { decryptId } from "../utils/crypto"
 
 function EmployeeProfile() {
@@ -28,6 +29,7 @@ function EmployeeProfile() {
   const [showForm, setShowForm] = useState(false)
   const [showWarningForm, setShowWarningForm] = useState(false)
   const [showTerminationForm, setShowTerminationForm] = useState(false)
+  const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false)
 
   useEffect(() => {
     fetchEmployee()
@@ -269,6 +271,14 @@ function EmployeeProfile() {
                     </button>
                   </>
                 )}
+                {/* Reset Password Button */}
+                <button
+                  onClick={() => setShowResetPasswordDialog(true)}
+                  className="inline-flex items-center px-3 py-2 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <FiKey className="w-4 h-4 mr-2" />
+                  Reset Password
+                </button>
                 {/* Activation Toggle Button */}
                 <button
                   onClick={handleToggleActivation}
@@ -344,6 +354,16 @@ function EmployeeProfile() {
             onClose={() => setShowTerminationForm(false)}
             onSubmit={() => {
               setShowTerminationForm(false)
+              window.location.reload()
+            }}
+          />
+        )}
+        {showResetPasswordDialog && (
+          <ResetPassword
+            employee={employee}
+            onClose={() => setShowResetPasswordDialog(false)}
+            onSubmit={() => {
+              setShowResetPasswordDialog(false)
               window.location.reload()
             }}
           />

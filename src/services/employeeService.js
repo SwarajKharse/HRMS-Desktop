@@ -145,4 +145,15 @@ export const employeeService = {
     }
   },
 
+  resetPassword: async (empId, newPassword) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/resetPassword`, {
+        empId,
+        newPassword
+      }, getAuthHeaders());
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
 };
