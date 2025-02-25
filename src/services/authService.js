@@ -4,13 +4,13 @@ import { requestFCMToken } from '../firebaseConfig';
 const BASE_URL = `${process.env.REACT_APP_API_URL}/employee`;
 
 export const authService = {
-  login: async (email, password) => {
+  login: async (phone, password) => {
     try {
       const fcmToken = await requestFCMToken();
       
       // Changed to send data in request body instead of query params
       const response = await axios.post(`${BASE_URL}/login`, {
-        email,
+        phone,
         password,
         fcmToken
       });

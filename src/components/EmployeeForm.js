@@ -23,11 +23,19 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     personalEmail: '',
     presentAddress: '',
     permanentAddress: '',
+    aadhar: '',
+    pan: '',
+    guardianName: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    emergencyContactRelation: '',
+    emergencyContactAddress: '',
     uan: '',
     pf: '',
     esic: '',
     bankName: '',
     bankAccountNo: '',
+    accountHolderName: '',
     ifscCode: '',
     empType: '',
     sourceOfHire: '',
@@ -180,19 +188,27 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                 firstName: '',
                 middleName: '',
                 lastName: '',
+                personalPhone: '',
                 dateOfBirth: '',
                 gender: '',
                 maritalStatus: '',
                 bloodGroup: '',
-                personalPhone: '',
                 personalEmail: '',
                 presentAddress: '',
                 permanentAddress: '',
+                aadhar: '',
+                pan: '',
+                guardianName: '',
+                emergencyContactName: '',
+                emergencyContactPhone: '',
+                emergencyContactRelation: '',
+                emergencyContactAddress: '',
                 uan: '',
                 pf: '',
                 esic: '',
                 bankName: '',
                 bankAccountNo: '',
+                accountHolderName: '',
                 ifscCode: '',
                 empType: '',
                 sourceOfHire: '',
@@ -229,17 +245,16 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
           {/* Basic Information Section */}
-          <div className="space-y-4 rounded-lg bg-gray-50 p-4">
+          <div className="space-y-4 rounded-lg p-4 bg-white border">
             <h3 className="font-semibold text-lg border-b pb-2">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Email <span className="text-red-500">*</span>
+                  Email
                 </label>
                 <input
                   type="email"
                   name="email"
-                  required
                   value={formData.email}
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
@@ -298,18 +313,142 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
               </div>
-              {/* Add this inside the form, after the Basic Information section */}
-              <div className="space-y-4 rounded-lg bg-gray-50 p-4">
-                <h3 className="font-semibold text-lg border-b pb-2">Profile Photo</h3>
-                <ImageUploader
-                  currentImage={formData.profileImage}
-                  onImageSelect={(imageData) => {
-                    setFormData(prev => ({
-                      ...prev,
-                      profileImage: imageData
-                    }));
-                  }}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Personal Phone <span className="text-red-500">*</span></label>
+                <input
+                  type="tel"
+                  name="personalPhone"
+                  value={formData.personalPhone}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Add this inside the form, after the Basic Information section */}
+          <div className="space-y-4 rounded-lg p-4 bg-white border p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Profile Photo</h3>
+            <ImageUploader
+              currentImage={formData.profileImage}
+              onImageSelect={(imageData) => {
+                setFormData(prev => ({
+                  ...prev,
+                  profileImage: imageData
+                }));
+              }}
+            />
+          </div>
+
+          {/* Employment Information Section */}
+          <div className="space-y-4 rounded-lg bg-white/80 border p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Employment Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Employee Type <span className="text-red-500">*</span></label>
+                <select
+                  name="empType"
+                  value={formData.empType}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select Type</option>
+                  <option value="Full-time">Full-time</option>
+                  <option value="Part-time">Part-time</option>
+                  <option value="Permanent">Permanent</option>
+                  <option value="Probation">Probation</option>
+                  <option value="Consultant">Consultant</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Intern">Intern</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Source of Hire</label>
+                <input
+                  type="text"
+                  name="sourceOfHire"
+                  value={formData.sourceOfHire}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Date of Joining <span className="text-red-500">*</span></label>
+                <input
+                  type="date"
+                  name="dateOfJoining"
+                  value={formData.dateOfJoining}
+                  onChange={handleChange}
+                  required
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Work Phone</label>
+                <input
+                  type="tel"
+                  name="workPhone"
+                  value={formData.workPhone}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-lg bg-white border p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Department & Designation</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Department</label>
+                <select
+                  name="department"
+                  value={formData.department.id || ""}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Designation</label>
+                <select
+                  name="designation"
+                  value={formData.designation.id || ""}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select Designation</option>
+                  {designations.map((desig) => (
+                    <option key={desig.id} value={desig.id}>
+                      {desig.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Reporting Manager</label>
+                <select
+                  name="reportingManager"
+                  value={formData.reportingManager.id || ""}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select Reporting Manager</option>
+                  {managerslist.map((manager) => (
+                    <option key={manager.id} value={manager.id}>
+                      {manager.firstName} {manager.lastName}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -379,19 +518,9 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
           </div>
 
           {/* Contact Information Section */}
-          <div className="space-y-4 rounded-lg bg-gray-50/50 p-4">
+          <div className="space-y-4 rounded-lg p-4 bg-white border">
             <h3 className="font-semibold text-lg border-b pb-2">Contact Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Personal Phone</label>
-                <input
-                  type="tel"
-                  name="personalPhone"
-                  value={formData.personalPhone}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Personal Email</label>
                 <input
@@ -421,6 +550,95 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   value={formData.permanentAddress}
                   onChange={handleChange}
                   rows="3"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Emergency Contact Information Section */}
+          <div className="space-y-4 rounded-lg bg-white border p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Emergency Contact Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Guardian Name</label>
+                <input
+                  type="text"
+                  name="guardianName"
+                  value={formData.guardianName}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Emergency Contact Name</label>
+                <input
+                  type="text"
+                  name="emergencyContactName"
+                  value={formData.emergencyContactName}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Emergency Contact Phone</label>
+                <input
+                  type="tel"
+                  name="emergencyContactPhone"
+                  value={formData.emergencyContactPhone}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Emergency Contact Relation</label>
+                <input
+                  type="text"
+                  name="emergencyContactRelation"
+                  value={formData.emergencyContactRelation}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Emergency Contact Address</label>
+                <textarea
+                  name="emergencyContactAddress"
+                  value={formData.emergencyContactAddress}
+                  onChange={handleChange}
+                  rows="3"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-lg bg-white border p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Identity Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Aadhar Card</label>
+                <input
+                  type="number"
+                  name="aadhar"
+                  value={formData.aadhar}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">PAN Card No.</label>
+                <input
+                  type="text"
+                  name="pan"
+                  value={formData.pan}
+                  onChange={handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
               </div>
@@ -465,7 +683,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Bank Account Name</label>
+                <label className="block text-sm font-medium text-gray-700">Bank Name</label>
                 <input
                   type="text"
                   name="bankName"
@@ -487,6 +705,17 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700">Bank Account Holder Name</label>
+                <input
+                  type="text"
+                  name="accountHolderName"
+                  value={formData.accountHolderName}
+                  onChange={handleChange}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700">IFSC Code</label>
                 <input
                   type="text"
@@ -495,61 +724,6 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   onChange={handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
-              </div>
-            </div>
-          </div>
-
-          
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">Department & Designation</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Department</label>
-                <select
-                  name="department"
-                  value={formData.department.id || ""}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Department</option>
-                  {departments.map((dept) => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Designation</label>
-                <select
-                  name="designation"
-                  value={formData.designation.id || ""}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Designation</option>
-                  {designations.map((desig) => (
-                    <option key={desig.id} value={desig.id}>
-                      {desig.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Reporting Manager</label>
-                <select
-                  name="reportingManager"
-                  value={formData.reportingManager.id || ""}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Reporting Manager</option>
-                  {managerslist.map((manager) => (
-                    <option key={manager.id} value={manager.id}>
-                      {manager.firstName} {manager.lastName}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
           </div>
@@ -614,62 +788,8 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
             </div>
           </div>
 
-          {/* Employment Information Section */}
-          <div className="space-y-4 rounded-lg bg-white/80 border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">Employment Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Employee Type <span className="text-red-500">*</span></label>
-                <select
-                  name="empType"
-                  value={formData.empType}
-                  onChange={handleChange}
-                  required
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Type</option>
-                  <option value="Full-time">Full-time</option>
-                  <option value="Part-time">Part-time</option>
-                  <option value="Contract">Contract</option>
-                  <option value="Intern">Intern</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Source of Hire</label>
-                <input
-                  type="text"
-                  name="sourceOfHire"
-                  value={formData.sourceOfHire}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Date of Joining <span className="text-red-500">*</span></label>
-                <input
-                  type="date"
-                  name="dateOfJoining"
-                  value={formData.dateOfJoining}
-                  onChange={handleChange}
-                  required
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Work Phone</label>
-                <input
-                  type="tel"
-                  name="workPhone"
-                  value={formData.workPhone}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                />
-              </div>
-            </div>
-          </div>
-
           {/* About Section */}
-          <div className="space-y-4 rounded-lg bg-gray-50 p-4">
+          <div className="space-y-4 rounded-lg bg-white border p-4">
             <h3 className="font-semibold text-lg border-b pb-2">Additional Information</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700">About Me</label>

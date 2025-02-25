@@ -40,6 +40,10 @@ function Onboarding() {
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const employeesPerPage = 10
+
   const fetchEmployees = useCallback(async () => {
     try {
       setLoading(true)
@@ -66,13 +70,30 @@ function Onboarding() {
     const filterEmployees = () => {
       const filtered = employees.filter((employee) => {
         const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase()
-        return fullName.includes(searchQuery.toLowerCase())
+        return (
+          fullName.includes(searchQuery.toLowerCase()) ||
+          employee.employeeCode.includes(searchQuery)
+        )
       })
       setFilteredEmployees(filtered)
+      setCurrentPage(1) // reset to first page on search change
     }
 
     filterEmployees()
   }, [searchQuery, employees])
+
+  // Calculate pagination variables
+  const indexOfLastEmployee = currentPage * employeesPerPage
+  const indexOfFirstEmployee = indexOfLastEmployee - employeesPerPage
+  const currentEmployees = filteredEmployees.slice(
+    indexOfFirstEmployee,
+    indexOfLastEmployee
+  )
+  const totalPages = Math.ceil(filteredEmployees.length / employeesPerPage)
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber)
+  }
 
   const handleRowClick = (employee) => {
     navigate(`/onboarding/employee/${encryptId(employee.id)}`)
@@ -111,7 +132,10 @@ function Onboarding() {
     try {
       setIsExporting(true)
       const data = await employeeService.exportEmployees(user.orgId)
-      const blob = new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      const blob = new Blob(
+        [data],
+        { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+      )
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = url
@@ -245,9 +269,9 @@ function Onboarding() {
                   <tr>
                     {[
                       "Employee",
-                      "Contact",
                       "Department",
                       "Designation",
+                      "Employment Type",
                       "Status",
                       activeView === "active" && "Actions",
                     ]
@@ -263,7 +287,7 @@ function Onboarding() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredEmployees.length === 0 ? (
+                  {currentEmployees.length === 0 ? (
                     <tr>
                       <td
                         colSpan={activeView === "active" ? 6 : 5}
@@ -273,7 +297,7 @@ function Onboarding() {
                       </td>
                     </tr>
                   ) : (
-                    filteredEmployees.map((employee) => (
+                    currentEmployees.map((employee) => (
                       <motion.tr
                         key={employee.id}
                         initial={{ opacity: 0 }}
@@ -302,30 +326,36 @@ function Onboarding() {
                               <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
                                 {employee.firstName} {employee.lastName}
                               </div>
-                              <div className="text-sm text-gray-500">{employee.email}</div>
+                              <div className="text-sm text-gray-500">{employee.employeeCode}</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{employee.workPhone}</div>
-                          <div className="text-sm text-gray-500">{employee.personalEmail}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {employee.department?.name || "-"}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{employee.department?.name || "-"}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{employee.designation?.name || "-"}</div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {employee.designation?.name || "-"}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <span
-                            className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full
-                              ${
-                                employee.empStatus === "Active"
-                                  ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
-                                  : employee.empStatus === "Terminated"
-                                    ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
-                                    : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
-                              }`}
+                            className="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-gray-50 text-gray-700 ring-1 ring-gray-600/20"
+                          >
+                            {employee.empType}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${
+                              employee.empStatus === "Active"
+                                ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
+                                : employee.empStatus === "Terminated"
+                                ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+                                : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
+                            }`}
                           >
                             {employee.empStatus}
                           </span>
@@ -369,6 +399,36 @@ function Onboarding() {
             </div>
           </motion.div>
         </AnimatePresence>
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-4 flex justify-center items-center gap-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 rounded-md border text-sm disabled:opacity-50"
+            >
+              Prev
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                className={`px-3 py-1 rounded-md border text-sm ${
+                  currentPage === page ? "bg-indigo-600 text-white" : "bg-white text-gray-600"
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 rounded-md border text-sm disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
       {showMigrateDialog && (
@@ -395,7 +455,9 @@ function Onboarding() {
 
             <div className="mb-6">
               <h2 className="text-xl font-bold text-gray-900">Migrate Employee Data</h2>
-              <p className="text-sm text-gray-500 mt-1">Export your current data or import new data</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Export your current data or import new data
+              </p>
             </div>
 
             <div className="space-y-6">
@@ -406,7 +468,9 @@ function Onboarding() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-900">Export Data</h3>
-                    <p className="text-sm text-gray-500 mb-3">Download your current employee data as Excel file</p>
+                    <p className="text-sm text-gray-500 mb-3">
+                      Download your current employee data as Excel file
+                    </p>
                     <button
                       onClick={handleExportEmployees}
                       disabled={isExporting}
@@ -437,7 +501,9 @@ function Onboarding() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-medium text-gray-900">Import Data</h3>
-                    <p className="text-sm text-gray-500 mb-3">Upload new employee data from Excel file</p>
+                    <p className="text-sm text-gray-500 mb-3">
+                      Upload new employee data from Excel file
+                    </p>
                     <label
                       className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-green-600 text-white hover:bg-green-700 ${
                         isImporting ? "opacity-50 cursor-not-allowed" : "cursor-pointer"

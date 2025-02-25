@@ -29,11 +29,11 @@ function Register() {
     firstName: "",
     middleName: "",
     lastName: "",
+    personalPhone: "",
     dateOfBirth: "",
     gender: "",
     maritalStatus: "",
     bloodGroup: "",
-    personalPhone: "",
     personalEmail: "",
     presentAddress: "",
     permanentAddress: "",
@@ -290,13 +290,23 @@ function Register() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Email <span className="text-red-500">*</span>
+                      Email
                     </label>
                     <input
                       type="email"
                       name="email"
-                      required
                       value={employeeData.email}
+                      onChange={handleEmployeeChange}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Personal Phone <span className="text-red-500">*</span> </label>
+                    <input
+                      type="tel"
+                      required
+                      name="personalPhone"
+                      value={employeeData.personalPhone}
                       onChange={handleEmployeeChange}
                       className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                     />
@@ -423,16 +433,6 @@ function Register() {
               <div className="space-y-4 rounded-lg bg-gray-50/50 p-4">
                 <h3 className="font-semibold text-lg border-b pb-2">Contact Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Personal Phone</label>
-                    <input
-                      type="tel"
-                      name="personalPhone"
-                      value={employeeData.personalPhone}
-                      onChange={handleEmployeeChange}
-                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                    />
-                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Personal Email</label>
                     <input

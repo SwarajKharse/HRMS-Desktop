@@ -123,7 +123,7 @@ function Profile({ employee }) {
     <div className="flex flex-col gap-6">
       {/* Profile Overview */}
       <motion.div
-        className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+        className="bg-white rounded-lg shadow-md p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
@@ -138,7 +138,7 @@ function Profile({ employee }) {
                   className="w-full h-full object-cover rounded-full"
                 />
               ) : (
-                employee.firstName.charAt(0).toUpperCase() + employee.lastName.charAt(0).toUpperCase()
+                (employee.firstName.charAt(0) + employee.lastName.charAt(0)).toUpperCase()
               )}
             </div>
             <div>
@@ -162,6 +162,7 @@ function Profile({ employee }) {
         </div>
       </motion.div>
 
+      {/* Top Section: Personal, Work & Contact Information */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Personal Information */}
         <motion.div
@@ -256,150 +257,281 @@ function Profile({ employee }) {
             </div>
           </div>
         </motion.div>
+      </div>
 
-        {/* Additional Information */}
+      {/* Additional Information */}
+      <motion.div
+        className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        <h2 className="text-lg font-semibold mb-4 flex items-center">
+          <FiMapPin className="mr-2" /> Additional Information
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="text-sm text-gray-500">Present Address</label>
+            <p>{getValue(employee?.presentAddress)}</p>
+          </div>
+          <div>
+            <label className="text-sm text-gray-500">Permanent Address</label>
+            <p>{getValue(employee?.permanentAddress)}</p>
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-sm text-gray-500">About Me</label>
+            <p>{getValue(employee?.aboutMe)}</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Additional Details: Government IDs, Bank Details, Tax & Insurance, Emergency & Guardian */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Government IDs */}
         <motion.div
-          className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+          className="bg-white rounded-lg shadow-md p-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.55 }}
         >
           <h2 className="text-lg font-semibold mb-4 flex items-center">
-            <FiMapPin className="mr-2" /> Additional Information
+            <FiAlertOctagon className="mr-2" /> Government IDs
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-3">
             <div>
-              <label className="text-sm text-gray-500">Present Address</label>
-              <p>{getValue(employee?.presentAddress)}</p>
+              <label className="text-sm text-gray-500">Aadhar</label>
+              <p>{getValue(employee?.aadhar)}</p>
             </div>
             <div>
-              <label className="text-sm text-gray-500">Permanent Address</label>
-              <p>{getValue(employee?.permanentAddress)}</p>
-            </div>
-            <div>
-              <label className="text-sm text-gray-500">About Me</label>
-              <p>{getValue(employee?.aboutMe)}</p>
+              <label className="text-sm text-gray-500">PAN</label>
+              <p>{getValue(employee?.pan)}</p>
             </div>
           </div>
         </motion.div>
 
-        {/* Warning Letters */}
+        {/* Bank Details */}
         <motion.div
-          className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+          className="bg-white rounded-lg shadow-md p-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <RecordsList
-            title="Warning Letters"
-            icon={FiAlertTriangle}
-            data={warnings}
-            loading={loading.warnings}
-            columns={[
-              {
-                header: "Issue Date",
-                render: (record) => formatDate(record.warningDate),
-              },
-              {
-                header: "Reason",
-                render: (record) => record.reason,
-              },
-            ]}
-          />
+          <h2 className="text-lg font-semibold mb-4 flex items-center">
+            <FiBriefcase className="mr-2" /> Bank Details
+          </h2>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-gray-500">Bank Name</label>
+              <p>{getValue(employee?.bankName)}</p>
+            </div>
+            <div>
+              <label className="text-sm text-gray-500">Account Number</label>
+              <p>{getValue(employee?.bankAccountNo)}</p>
+            </div>
+            <div>
+              <label className="text-sm text-gray-500">IFSC Code</label>
+              <p>{getValue(employee?.ifscCode)}</p>
+            </div>
+            <div>
+              <label className="text-sm text-gray-500">Account Holder Name</label>
+              <p>{getValue(employee?.accountHolderName)}</p>
+            </div>
+          </div>
         </motion.div>
 
-        {/* Terminations */}
+        {/* Tax & Insurance */}
         <motion.div
-          className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+          className="bg-white rounded-lg shadow-md p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65 }}
+        >
+          <h2 className="text-lg font-semibold mb-4 flex items-center">
+            <FiAlertOctagon className="mr-2" /> Tax & Insurance
+          </h2>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-gray-500">UAN</label>
+              <p>{getValue(employee?.uan)}</p>
+            </div>
+            <div>
+              <label className="text-sm text-gray-500">PF</label>
+              <p>{getValue(employee?.pf)}</p>
+            </div>
+            <div>
+              <label className="text-sm text-gray-500">ESIC</label>
+              <p>{getValue(employee?.esic)}</p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Emergency Contact */}
+        <motion.div
+          className="bg-white rounded-lg shadow-md p-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
         >
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-lg font-semibold">
-              <FiXCircle className="w-5 h-5" />
-              <h3>Termination</h3>
+          <h2 className="text-lg font-semibold mb-4 flex items-center">
+            <FiPhone className="mr-2" /> Emergency Contact
+          </h2>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-gray-500">Contact Name</label>
+              <p>{getValue(employee?.emergencyContactName)}</p>
             </div>
-            {loading.terminations ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              </div>
-            ) : !termination ? (
-              <p className="text-gray-500 text-center py-4">No termination record found</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-gray-500">Notice Date</label>
-                      <p className="font-medium">{formatDate(termination.terminationDate)}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-500">Last Working Day</label>
-                      <p className="font-medium">{formatDate(employee.dateOfLeaving)}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-sm text-gray-500">Reason</label>
-                      <p className="font-medium">{termination.reason}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            <div>
+              <label className="text-sm text-gray-500">Contact Phone</label>
+              <p>{getValue(employee?.emergencyContactPhone)}</p>
+            </div>
+            <div>
+              <label className="text-sm text-gray-500">Relation</label>
+              <p>{getValue(employee?.emergencyContactRelation)}</p>
+            </div>
+            <div>
+              <label className="text-sm text-gray-500">Address</label>
+              <p>{getValue(employee?.emergencyContactAddress)}</p>
+            </div>
           </div>
         </motion.div>
 
-        {/* Resignations */}
+        {/* Guardian Information */}
         <motion.div
-          className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+          className="bg-white rounded-lg shadow-md p-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
+          transition={{ delay: 0.75 }}
         >
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-lg font-semibold">
-              <FiAlertOctagon className="w-5 h-5" />
-              <h3>Resignation</h3>
+          <h2 className="text-lg font-semibold mb-4 flex items-center">
+            <FiUser className="mr-2" /> Guardian Information
+          </h2>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-gray-500">Guardian Name</label>
+              <p>{getValue(employee?.guardianName)}</p>
             </div>
-            {loading.resignations ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              </div>
-            ) : !resignation ? (
-              <p className="text-gray-500 text-center py-4">No resignation record found</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm text-gray-500">Application Date</label>
-                      <p className="font-medium">{formatDate(resignation.resignationDate)}</p>
-                    </div>
-                    <div className="">
-                      <label className="text-sm text-gray-500">Reason</label>
-                      <p className="font-medium">{resignation.reason}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-500">Status</label>
-                      <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs ${
-                          resignation.status === "Pending"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : resignation.status === "Approved"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {resignation.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </motion.div>
       </div>
+
+      {/* Warning Letters */}
+      <motion.div
+        className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8 }}
+      >
+        <RecordsList
+          title="Warning Letters"
+          icon={FiAlertTriangle}
+          data={warnings}
+          loading={loading.warnings}
+          columns={[
+            {
+              header: "Issue Date",
+              render: (record) => formatDate(record.warningDate),
+            },
+            {
+              header: "Reason",
+              render: (record) => record.reason,
+            },
+          ]}
+        />
+      </motion.div>
+
+      {/* Terminations */}
+      <motion.div
+        className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.85 }}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-lg font-semibold">
+            <FiXCircle className="w-5 h-5" />
+            <h3>Termination</h3>
+          </div>
+          {loading.terminations ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            </div>
+          ) : !termination ? (
+            <p className="text-gray-500 text-center py-4">No termination record found</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-gray-500">Notice Date</label>
+                    <p className="font-medium">{formatDate(termination.terminationDate)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500">Last Working Day</label>
+                    <p className="font-medium">{formatDate(employee.dateOfLeaving)}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-sm text-gray-500">Reason</label>
+                    <p className="font-medium">{termination.reason}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Resignations */}
+      <motion.div
+        className="md:col-span-3 bg-white rounded-lg shadow-md p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.9 }}
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-lg font-semibold">
+            <FiAlertOctagon className="w-5 h-5" />
+            <h3>Resignation</h3>
+          </div>
+          {loading.resignations ? (
+            <div className="flex justify-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+            </div>
+          ) : !resignation ? (
+            <p className="text-gray-500 text-center py-4">No resignation record found</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm text-gray-500">Application Date</label>
+                    <p className="font-medium">{formatDate(resignation.resignationDate)}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm text-gray-500">Reason</label>
+                    <p className="font-medium">{resignation.reason}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-500">Status</label>
+                    <span
+                      className={`inline-block px-2 py-1 rounded-full text-xs ${
+                        resignation.status === "Pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : resignation.status === "Approved"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {resignation.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </motion.div>
 
       <AnimatePresence>
         {showResignationForm && (
