@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { missPunchService } from "../../services/missPunchService"
 import { format } from "date-fns"
 import { FiCheck, FiX, FiMessageSquare, FiLoader } from "react-icons/fi"
+import { useAuth } from "../../contexts/AuthContext"
 
 function MissPunchApprovals() {
   const [requests, setRequests] = useState([])
@@ -13,6 +14,7 @@ function MissPunchApprovals() {
   const [comments, setComments] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
   const [actionType, setActionType] = useState(null) // 'approve' or 'reject'
+  const { user } = useAuth()
 
   useEffect(() => {
     fetchPendingRequests()
@@ -140,24 +142,26 @@ function MissPunchApprovals() {
                     {format(new Date(`2000-01-01T${request.checkOut}`), "hh:mm a")}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{request.comments}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleAction(request, "approve")}
-                        className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-100"
-                        title="Approve"
-                      >
-                        <FiCheck className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleAction(request, "reject")}
-                        className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100"
-                        title="Reject"
-                      >
-                        <FiX className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </td>
+                  {user?.userId !== request.employee.id && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => handleAction(request, "approve")}
+                          className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-100"
+                          title="Approve"
+                        >
+                          <FiCheck className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => handleAction(request, "reject")}
+                          className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100"
+                          title="Reject"
+                        >
+                          <FiX className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </motion.tr>
               ))}
             </tbody>

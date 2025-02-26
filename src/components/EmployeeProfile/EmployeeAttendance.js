@@ -206,6 +206,7 @@ function EmployeeAttendance({ employeeId }) {
   const [error, setError] = useState(null);
   const [statusSummary, setStatusSummary] = useState({});
   const [holidays, setHolidays] = useState([]);
+  const [user] = useState(authService.getUser());
 
   const calculateStatusSummary = (data) => {
     const summary = Object.keys(STATUS_CONFIG).reduce((acc, status) => {
@@ -242,7 +243,7 @@ function EmployeeAttendance({ employeeId }) {
     const fetchHolidays = async () => {
       try {
         const data = await holidayService.getHolidaysByYear(
-          authService.getUser().orgId,
+          user.orgId,
           getYear(currentDate)
         );
         setHolidays(data);
@@ -449,7 +450,7 @@ function EmployeeAttendance({ employeeId }) {
       </div>
       {/* Attendance Details Modal */}
       <AnimatePresence>
-        {selectedDate && (
+        {selectedDate && user.userId !== employeeId && (
           <AttendanceDetailsModal
             date={selectedDate}
             attendance={getSelectedDateAttendance()}

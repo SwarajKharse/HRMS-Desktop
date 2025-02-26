@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect, useCallback } from "react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +15,7 @@ import {
   FiTrash2,
   FiPlusCircle,
 } from "react-icons/fi";
+import { useAuth } from "../../contexts/AuthContext";
 
 // Services
 import { payrollReportService } from "../../services/payrollReportService";
@@ -66,6 +65,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
   const [reportLoading, setReportLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("summary");
+  const { user } = useAuth();
 
   // Month/Year navigator
   const currentDate = new Date();
@@ -429,14 +429,16 @@ const EmployeePayrollReport = ({ employeeId }) => {
                     {item.isIncludeOvertime ? "Included" : "Not Included"}
                   </span>
                 </TableCell>
-                <TableCell>
-                  <Toggle
-                    checked={item.isIncludeOvertime}
-                    onChange={() =>
-                      handleToggleOvertime(item.id, item.isIncludeOvertime, item.overtimeMinutes)
-                    }
-                  />
-                </TableCell>
+                {user?.userId !== employeeId && (
+                  <TableCell>
+                    <Toggle
+                      checked={item.isIncludeOvertime}
+                      onChange={() =>
+                        handleToggleOvertime(item.id, item.isIncludeOvertime, item.overtimeMinutes)
+                      }
+                    />
+                  </TableCell>
+                )}
               </tr>
             ))}
           </tbody>
@@ -473,12 +475,14 @@ const EmployeePayrollReport = ({ employeeId }) => {
                     {item.isIncludeLateCheckIn ? "Included" : "Not Included"}
                   </span>
                 </TableCell>
-                <TableCell>
-                  <Toggle
-                    checked={item.isIncludeLateCheckIn}
-                    onChange={() => handleToggleLateCheckIn(item.id, item.isIncludeLateCheckIn)}
-                  />
-                </TableCell>
+                {user?.userId !== employeeId && (
+                  <TableCell>
+                    <Toggle
+                      checked={item.isIncludeLateCheckIn}
+                      onChange={() => handleToggleLateCheckIn(item.id, item.isIncludeLateCheckIn)}
+                    />
+                  </TableCell>
+                )}
               </tr>
             ))}
           </tbody>
@@ -515,12 +519,14 @@ const EmployeePayrollReport = ({ employeeId }) => {
                     {item.isIncludeEarlyCheckOut ? "Included" : "Not Included"}
                   </span>
                 </TableCell>
-                <TableCell>
-                  <Toggle
-                    checked={item.isIncludeEarlyCheckOut}
-                    onChange={() => handleToggleEarlyCheckOut(item.id, item.isIncludeEarlyCheckOut)}
-                  />
-                </TableCell>
+                {user?.userId !== employeeId && (
+                  <TableCell>
+                    <Toggle
+                      checked={item.isIncludeEarlyCheckOut}
+                      onChange={() => handleToggleEarlyCheckOut(item.id, item.isIncludeEarlyCheckOut)}
+                    />
+                  </TableCell>
+                )}
               </tr>
             ))}
           </tbody>
@@ -570,19 +576,21 @@ const EmployeePayrollReport = ({ employeeId }) => {
           </tbody>
         </table>
       </div>
-      <div className="mt-4 flex justify-end">
-        <button
-          onClick={() => {
-            setEditingItem(null);
-            setEditingType("allowance");
-            setShowAllowanceForm(true);
-          }}
-          className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 transition-colors"
-        >
-          <FiPlusCircle className="mr-2" />
-          Add Allowance
-        </button>
-      </div>
+      {user?.userId !== employeeId && (
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={() => {
+              setEditingItem(null);
+              setEditingType("allowance");
+              setShowAllowanceForm(true);
+            }}
+            className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 transition-colors"
+          >
+            <FiPlusCircle className="mr-2" />
+            Add Allowance
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -627,19 +635,21 @@ const EmployeePayrollReport = ({ employeeId }) => {
           </tbody>
         </table>
       </div>
-      <div className="mt-4 flex justify-end">
-        <button
-          onClick={() => {
-            setEditingItem(null);
-            setEditingType("bonus");
-            setShowBonusForm(true);
-          }}
-          className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 transition-colors"
-        >
-          <FiPlusCircle className="mr-2" />
-          Add Bonus
-        </button>
-      </div>
+      {user?.userId !== employeeId && (
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={() => {
+              setEditingItem(null);
+              setEditingType("bonus");
+              setShowBonusForm(true);
+            }}
+            className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 transition-colors"
+          >
+            <FiPlusCircle className="mr-2" />
+            Add Bonus
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -684,19 +694,21 @@ const EmployeePayrollReport = ({ employeeId }) => {
           </tbody>
         </table>
       </div>
-      <div className="mt-4 flex justify-end">
-        <button
-          onClick={() => {
-            setEditingItem(null);
-            setEditingType("deduction");
-            setShowDeductionForm(true);
-          }}
-          className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 transition-colors"
-        >
-          <FiPlusCircle className="mr-2" />
-          Add Deduction
-        </button>
-      </div>
+      {user?.userId !== employeeId && (
+        <div className="mt-4 flex justify-end">
+          <button
+            onClick={() => {
+              setEditingItem(null);
+              setEditingType("deduction");
+              setShowDeductionForm(true);
+            }}
+            className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 transition-colors"
+          >
+            <FiPlusCircle className="mr-2" />
+            Add Deduction
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -745,12 +757,14 @@ const EmployeePayrollReport = ({ employeeId }) => {
             <FiChevronRight className="w-5 h-5 text-gray-600" />
           </button>
         </div>
-        <button
-          onClick={handleEditPayrollSettings}
-          className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors"
-        >
-          Edit Payroll Settings
-        </button>
+        {user?.userId !== employeeId && (
+          <button
+            onClick={handleEditPayrollSettings}
+            className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors"
+          >
+            Edit Payroll Settings
+          </button>
+        )}
       </div>
 
       {error && (

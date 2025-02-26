@@ -169,20 +169,22 @@ function LeaveApprovals() {
                     <td className="px-6 py-4">
                       <div className="text-sm text-gray-900">{request.reason}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleAction(request.id, "approve")}
-                        className="text-green-600 hover:text-green-900 mr-4"
-                      >
-                        <FiCheck className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleAction(request.id, "reject")}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <FiX className="w-5 h-5" />
-                      </button>
-                    </td>
+                    {user?.userId !== request.employee.id && (
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={() => handleAction(request.id, "approve")}
+                              className="text-green-600 hover:text-green-900 mr-4"
+                            >
+                              <FiCheck className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleAction(request.id, "reject")}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              <FiX className="w-5 h-5" />
+                            </button>
+                      </td>
+                    )}
                   </motion.tr>
                 ))
               )}

@@ -15,7 +15,6 @@ export const roleBasedPermissionService = {
 
     updatePermission: async (permission) => {
         try {
-            console.log(permission);
             const response = await axios.put(`${BASE_URL}/`, permission);
             return response.data;
         } catch (error) {

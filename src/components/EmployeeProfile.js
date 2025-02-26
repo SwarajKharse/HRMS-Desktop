@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useParams, useNavigate } from "react-router-dom"
 import { FiArrowLeft, FiEdit2, FiAlertTriangle, FiUserX, FiKey } from "react-icons/fi"
 import { employeeService } from "../services/employeeService"
+import { useAuth } from "../contexts/AuthContext"
 import EmployeeDetails from "./EmployeeProfile/EmployeeDetails"
 import EmployeeAttendance from "./EmployeeProfile/EmployeeAttendance"
 import EmployeeLeaves from "./EmployeeProfile/EmployeeLeaves"
@@ -19,6 +20,7 @@ import ResetPassword from "./Forms/ResetPassword"
 import { decryptId } from "../utils/crypto"
 
 function EmployeeProfile() {
+  const { user } = useAuth();
   const { hash } = useParams()
   const employeeId = decryptId(decodeURIComponent(hash))
   const navigate = useNavigate()
@@ -245,48 +247,50 @@ function EmployeeProfile() {
                 </div>
               </div>
               {/* Action Buttons */}
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={handleEdit}
-                  className="inline-flex items-center px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <FiEdit2 className="w-4 h-4 mr-2" />
-                  Edit Details
-                </button>
-                {isActionable && (
-                  <>
-                    <button
-                      onClick={handleIssueWarning}
-                      className="inline-flex items-center px-3 py-2 border border-yellow-200 rounded-lg text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-                    >
-                      <FiAlertTriangle className="w-4 h-4 mr-2" />
-                      Issue Warning
-                    </button>
-                    <button
-                      onClick={handleTerminate}
-                      className="inline-flex items-center px-3 py-2 border border-red-200 rounded-lg text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    >
-                      <FiUserX className="w-4 h-4 mr-2" />
-                      Terminate
-                    </button>
-                  </>
-                )}
-                {/* Reset Password Button */}
-                <button
-                  onClick={() => setShowResetPasswordDialog(true)}
-                  className="inline-flex items-center px-3 py-2 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <FiKey className="w-4 h-4 mr-2" />
-                  Reset Password
-                </button>
-                {/* Activation Toggle Button */}
-                <button
-                  onClick={handleToggleActivation}
-                  className="inline-flex items-center px-3 py-2 border border-indigo-200 rounded-lg text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  {employee.empStatus === "Deactivated" ? "Activate" : "Deactivate"}
-                </button>
-              </div>
+              {user?.userId !== employee.id && (
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleEdit}
+                    className="inline-flex items-center px-3 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <FiEdit2 className="w-4 h-4 mr-2" />
+                    Edit Details
+                  </button>
+                  {isActionable && (
+                    <>
+                      <button
+                        onClick={handleIssueWarning}
+                        className="inline-flex items-center px-3 py-2 border border-yellow-200 rounded-lg text-sm font-medium text-yellow-700 bg-yellow-50 hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                      >
+                        <FiAlertTriangle className="w-4 h-4 mr-2" />
+                        Issue Warning
+                      </button>
+                      <button
+                        onClick={handleTerminate}
+                        className="inline-flex items-center px-3 py-2 border border-red-200 rounded-lg text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                      >
+                        <FiUserX className="w-4 h-4 mr-2" />
+                        Terminate
+                      </button>
+                    </>
+                  )}
+                  {/* Reset Password Button */}
+                  <button
+                    onClick={() => setShowResetPasswordDialog(true)}
+                    className="inline-flex items-center px-3 py-2 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <FiKey className="w-4 h-4 mr-2" />
+                    Reset Password
+                  </button>
+                  {/* Activation Toggle Button */}
+                  <button
+                    onClick={handleToggleActivation}
+                    className="inline-flex items-center px-3 py-2 border border-indigo-200 rounded-lg text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    {employee.empStatus === "Deactivated" ? "Activate" : "Deactivate"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           {/* Navigation Tabs */}

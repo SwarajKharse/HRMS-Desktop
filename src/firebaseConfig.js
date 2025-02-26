@@ -33,7 +33,6 @@ export const requestFCMToken = async () => {
 
 export const listenToNotifications = (onNotification) => {
   onMessage(messaging, (payload) => {
-    console.log("Message received:", payload);
     if (onNotification) {
       onNotification(payload.notification);
     }
