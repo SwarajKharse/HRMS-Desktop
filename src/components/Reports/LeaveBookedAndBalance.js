@@ -2,9 +2,12 @@ import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { leaveBalanceService } from "../../services/leaveBalanceService"
 import { authService } from "../../services/authService"
+import { FiSearch } from "react-icons/fi"
 
 function LeaveBookedAndBalance() {
   const [leaveData, setLeaveData] = useState([])
+  const [filteredData, setFilteredData] = useState([])
+  const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -12,17 +15,37 @@ function LeaveBookedAndBalance() {
     fetchLeaveBalances()
   }, [])
 
+  // Filter data when search term or leave data changes
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredData(leaveData)
+    } else {
+      const filtered = leaveData.filter(
+        (employeeData) =>
+          `${employeeData.employee.firstName} ${employeeData.employee.lastName}`
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) || employeeData.employee.employeeCode.toString().includes(searchTerm),
+      )
+      setFilteredData(filtered)
+    }
+  }, [searchTerm, leaveData])
+
   const fetchLeaveBalances = async () => {
     try {
       setLoading(true)
       const data = await leaveBalanceService.getLeaveBalances(authService.getUser().orgId)
       setLeaveData(data)
+      setFilteredData(data) // Initialize filtered data with all data
       setError(null)
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value)
   }
 
   const getUniqueLeaveTypes = () => {
@@ -94,138 +117,168 @@ function LeaveBookedAndBalance() {
 
   return (
     <div className="flex flex-col gap-6">
+      {/* Search Bar */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div className="relative max-w-md mx-auto">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <FiSearch className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search employees..."
+            value={searchTerm}
+            onChange={handleSearch}
+            className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10 border-b">
-                  Employee
-                </th>
-                {Object.entries(groupedLeaveTypes).map(([category, leaveTypes]) => (
-                  <React.Fragment key={category}>
-                    <th
-                      colSpan={leaveTypes.length * 3}
-                      className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-l border-b bg-gray-50/80"
-                    >
-                      {category}
-                    </th>
-                  </React.Fragment>
-                ))}
-                <th
-                  colSpan={3}
-                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-l border-b bg-blue-50/50"
-                >
-                  Grand Total
-                </th>
-              </tr>
-              <tr className="bg-gray-50/70">
-                <th className="px-6 py-3 bg-gray-50 sticky left-0 z-10 border-b"></th>
-                {Object.entries(groupedLeaveTypes).map(([category, leaveTypes]) => (
-                  <React.Fragment key={`${category}-types`}>
-                    {leaveTypes.map((leaveType) => (
-                      <React.Fragment key={leaveType.id}>
-                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 tracking-wider border-l border-b min-w-[80px]">
-                          <div className="truncate">{leaveType.name}</div>
-                          <div className="text-[10px] text-gray-400 font-normal">Total</div>
-                        </th>
-                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 tracking-wider border-b min-w-[80px]">
-                          <div className="truncate">Taken</div>
-                        </th>
-                        <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 tracking-wider border-b min-w-[80px]">
-                          <div className="truncate">Balance</div>
-                        </th>
-                      </React.Fragment>
-                    ))}
-                  </React.Fragment>
-                ))}
-                <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-l border-b bg-blue-50/50 min-w-[80px]">
-                  Total
-                </th>
-                <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-b bg-blue-50/50 min-w-[80px]">
-                  Taken
-                </th>
-                <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-b bg-blue-50/50 min-w-[80px]">
-                  Balance
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {leaveData.map((employeeData, index) => {
-                const employeeTotals = calculateEmployeeTotals(employeeData.leaveBalances)
-
-                return (
-                  <motion.tr
-                    key={employeeData.employee.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    className="hover:bg-gray-50/50"
+        <div className="overflow-x-auto">
+          <div className="overflow-y-auto max-h-[calc(100vh-300px)]">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="sticky top-0 z-20">
+                <tr className="bg-gray-50">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-30 border-b shadow-sm">
+                    Employee
+                  </th>
+                  {Object.entries(groupedLeaveTypes).map(([category, leaveTypes]) => (
+                    <React.Fragment key={category}>
+                      <th
+                        colSpan={leaveTypes.length * 3}
+                        className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-l border-b bg-gray-50/80"
+                      >
+                        {category}
+                      </th>
+                    </React.Fragment>
+                  ))}
+                  <th
+                    colSpan={3}
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-l border-b bg-blue-50/50"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10 border-r">
-                      <div className="flex items-center">
-                        <span className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-medium text-sm border-2 border-white shadow-sm">
-                          {employeeData.employee.profilePhotoUrl ? (
-                            <img
-                              src={employeeData.employee.profilePhotoUrl || "/placeholder.svg"}
-                              alt="Profile"
-                              className="w-full h-full object-cover rounded-full"
-                            />
-                          ) : (
-                            employeeData.employee.firstName.charAt(0).toUpperCase() + employeeData.employee.lastName.charAt(0).toUpperCase()
-                          )}
-                        </span>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {employeeData.employee.firstName} {employeeData.employee.lastName}
-                          </div>
-                          <div className="text-xs text-gray-500">ID: {employeeData.employee.employeeCode}</div>
-                        </div>
-                      </div>
-                    </td>
-                    {Object.entries(groupedLeaveTypes).map(([category, leaveTypes]) => (
-                      <React.Fragment key={`${employeeData.employee.id}-${category}`}>
-                        {leaveTypes.map((leaveType) => {
-                          const balance = getLeaveBalance(employeeData.leaveBalances, leaveType.id)
-                          const isEligible = balance !== null
-                          const taken = isEligible ? leaveType.accrualCount - balance : 0
+                    Grand Total
+                  </th>
+                </tr>
+                <tr className="bg-gray-50">
+                  <th className="px-6 py-3 bg-gray-50 sticky left-0 z-30 border-b shadow-sm"></th>
+                  {Object.entries(groupedLeaveTypes).map(([category, leaveTypes]) => (
+                    <React.Fragment key={`${category}-types`}>
+                      {leaveTypes.map((leaveType) => (
+                        <React.Fragment key={leaveType.id}>
+                          <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 tracking-wider border-l border-b min-w-[80px] bg-gray-50/70">
+                            <div className="truncate">{leaveType.name}</div>
+                            <div className="text-[10px] text-gray-400 font-normal">Total</div>
+                          </th>
+                          <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 tracking-wider border-b min-w-[80px] bg-gray-50/70">
+                            <div className="truncate">Taken</div>
+                          </th>
+                          <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 tracking-wider border-b min-w-[80px] bg-gray-50/70">
+                            <div className="truncate">Balance</div>
+                          </th>
+                        </React.Fragment>
+                      ))}
+                    </React.Fragment>
+                  ))}
+                  <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-l border-b bg-blue-50/50 min-w-[80px]">
+                    Total
+                  </th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-b bg-blue-50/50 min-w-[80px]">
+                    Taken
+                  </th>
+                  <th className="px-2 py-3 text-center text-xs font-medium text-blue-600 tracking-wider border-b bg-blue-50/50 min-w-[80px]">
+                    Balance
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredData.length > 0 ? (
+                  filteredData.map((employeeData, index) => {
+                    const employeeTotals = calculateEmployeeTotals(employeeData.leaveBalances)
 
-                          return (
-                            <React.Fragment key={`${employeeData.employee.id}-${leaveType.id}`}>
-                              <td
-                                className={`px-3 py-4 text-center text-sm border-l ${isEligible ? "text-gray-900" : "text-gray-400 bg-gray-50/50"}`}
-                              >
-                                {isEligible ? leaveType.accrualCount : "N/A"}
-                              </td>
-                              <td
-                                className={`px-3 py-4 text-center text-sm ${isEligible ? "text-gray-900" : "text-gray-400 bg-gray-50/50"}`}
-                              >
-                                {isEligible ? taken : "-"}
-                              </td>
-                              <td
-                                className={`px-3 py-4 text-center text-sm ${isEligible ? "text-gray-900" : "text-gray-400 bg-gray-50/50"}`}
-                              >
-                                {isEligible ? balance : "-"}
-                              </td>
-                            </React.Fragment>
-                          )
-                        })}
-                      </React.Fragment>
-                    ))}
-                    <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 border-l bg-blue-50/50">
-                      {employeeTotals.total}
+                    return (
+                      <motion.tr
+                        key={employeeData.employee.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="hover:bg-gray-50/50"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10 border-r">
+                          <div className="flex items-center">
+                            <span className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-600 font-medium text-sm border-2 border-white shadow-sm">
+                              {employeeData.employee.profilePhotoUrl ? (
+                                <img
+                                  src={employeeData.employee.profilePhotoUrl || "/placeholder.svg"}
+                                  alt="Profile"
+                                  className="w-full h-full object-cover rounded-full"
+                                />
+                              ) : (
+                                employeeData.employee.firstName.charAt(0).toUpperCase() +
+                                employeeData.employee.lastName.charAt(0).toUpperCase()
+                              )}
+                            </span>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {employeeData.employee.firstName} {employeeData.employee.lastName}
+                              </div>
+                              <div className="text-xs text-gray-500">ID: {employeeData.employee.employeeCode}</div>
+                            </div>
+                          </div>
+                        </td>
+                        {Object.entries(groupedLeaveTypes).map(([category, leaveTypes]) => (
+                          <React.Fragment key={`${employeeData.employee.id}-${category}`}>
+                            {leaveTypes.map((leaveType) => {
+                              const balance = getLeaveBalance(employeeData.leaveBalances, leaveType.id)
+                              const isEligible = balance !== null
+                              const taken = isEligible ? leaveType.accrualCount - balance : 0
+
+                              return (
+                                <React.Fragment key={`${employeeData.employee.id}-${leaveType.id}`}>
+                                  <td
+                                    className={`px-3 py-4 text-center text-sm border-l ${isEligible ? "text-gray-900" : "text-gray-400 bg-gray-50/50"}`}
+                                  >
+                                    {isEligible ? leaveType.accrualCount : "N/A"}
+                                  </td>
+                                  <td
+                                    className={`px-3 py-4 text-center text-sm ${isEligible ? "text-gray-900" : "text-gray-400 bg-gray-50/50"}`}
+                                  >
+                                    {isEligible ? taken : "-"}
+                                  </td>
+                                  <td
+                                    className={`px-3 py-4 text-center text-sm ${isEligible ? "text-gray-900" : "text-gray-400 bg-gray-50/50"}`}
+                                  >
+                                    {isEligible ? balance : "-"}
+                                  </td>
+                                </React.Fragment>
+                              )
+                            })}
+                          </React.Fragment>
+                        ))}
+                        <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 border-l bg-blue-50/50">
+                          {employeeTotals.total}
+                        </td>
+                        <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 bg-blue-50/50">
+                          {employeeTotals.taken}
+                        </td>
+                        <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 bg-blue-50/50">
+                          {employeeTotals.balance}
+                        </td>
+                      </motion.tr>
+                    )
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={Object.values(groupedLeaveTypes).flat().length * 3 + 4}
+                      className="px-6 py-4 text-center text-gray-500"
+                    >
+                      No employees found matching your search.
                     </td>
-                    <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 bg-blue-50/50">
-                      {employeeTotals.taken}
-                    </td>
-                    <td className="px-3 py-4 text-center text-sm font-medium text-blue-600 bg-blue-50/50">
-                      {employeeTotals.balance}
-                    </td>
-                  </motion.tr>
-                )
-              })}
-            </tbody>
-          </table>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
