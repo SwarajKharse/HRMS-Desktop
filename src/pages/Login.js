@@ -33,11 +33,25 @@ function Login() {
     if (success) setSuccess("")
   }
 
+  // Validation function to check if input is a 10-digit phone number or a valid email address
+  const validateInput = (input) => {
+    const phoneRegex = /^\d{10}$/
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return phoneRegex.test(input) || emailRegex.test(input)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError("")
     setSuccess("")
+
+    // Validate the phone/email input before proceeding
+    if (!validateInput(formData.phone)) {
+      setError("Should be either phone number or email")
+      setLoading(false)
+      return
+    }
 
     try {
       await login(formData.phone, formData.password)
@@ -67,7 +81,7 @@ function Login() {
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="phone" className="sr-only">
-                Mobile Number
+                Email or Phone Number
               </label>
               <input
                 id="phone"
@@ -76,7 +90,7 @@ function Login() {
                 autoComplete="phone"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Mobile Number"
+                placeholder="Email or Phone Number"
                 value={formData.phone}
                 onChange={handleChange}
               />
