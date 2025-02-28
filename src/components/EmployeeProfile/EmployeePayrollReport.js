@@ -321,88 +321,135 @@ const EmployeePayrollReport = ({ employeeId }) => {
   const renderSummary = () => (
     <div className="p-6 flex flex-col gap-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Salary Components */}
-        <div className="flex flex-col gap-4">
-          <h3 className="text-lg font-semibold text-gray-900">Salary Components</h3>
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Basic Salary</span>
-              <span className="font-medium">{formatCurrency(report.basicSalary)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">HRA</span>
-              <span className="font-medium">{formatCurrency(report.hra)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">DA</span>
-              <span className="font-medium">{formatCurrency(report.da)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Employer PF</span>
-              <span className="font-medium">{formatCurrency(report.employerPfDeduction)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Employer ESIC</span>
-              <span className="font-medium">{formatCurrency(report.employerEsicDeduction)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Total Allowances</span>
-              <span className="font-medium">{formatCurrency(report.totalAllowances)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Total Bonus</span>
-              <span className="font-medium">{formatCurrency(report.totalBonuses)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Total overtime</span>
-              <span className="font-medium">{formatCurrency(report.overtime)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Total Earnings</span>
-              <span className="font-medium">{formatCurrency(report.totalEarnings)}</span>
+          <div className="flex flex-col gap-4">
+            <h3 className="text-lg font-semibold text-gray-900">Salary Components</h3>
+            <div className="flex flex-col gap-2">
+              {report.basicSalary > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Basic Salary</span>
+                  <span className="font-medium">{formatCurrency(report.basicSalary)}</span>
+                </div>
+              )}
+              {report.hra > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">HRA</span>
+                  <span className="font-medium">{formatCurrency(report.hra)}</span>
+                </div>
+              )}
+              {report.da > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">DA</span>
+                  <span className="font-medium">{formatCurrency(report.da)}</span>
+                </div>
+              )}
+              {report.employerPfDeduction > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Employer PF</span>
+                  <span className="font-medium">{formatCurrency(report.employerPfDeduction)}</span>
+                </div>
+              )}
+              {report.employerEsicDeduction > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Employer ESIC</span>
+                  <span className="font-medium">{formatCurrency(report.employerEsicDeduction)}</span>
+                </div>
+              )}
+              {report.totalAllowances > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Total Allowances</span>
+                  <span className="font-medium">{formatCurrency(report.totalAllowances)}</span>
+                </div>
+              )}
+              {report.totalBonuses > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Total Bonus</span>
+                  <span className="font-medium">{formatCurrency(report.totalBonuses)}</span>
+                </div>
+              )}
+              {report.overtime > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Total Overtime</span>
+                  <span className="font-medium">{formatCurrency(report.overtime)}</span>
+                </div>
+              )}
+              {report.attendanceBonus > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Attendance Bonus</span>
+                  <span className="font-medium">{formatCurrency(report.attendanceBonus)}</span>
+                </div>
+              )}
+              {report.totalEarnings > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Total Earnings</span>
+                  <span className="font-medium">{formatCurrency(report.totalEarnings)}</span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-        {/* Deductions */}
+          {/* Deductions */}
         <div className="flex flex-col gap-4">
           <h3 className="text-lg font-semibold text-gray-900">Deductions</h3>
           <div className="flex flex-col gap-2">
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Employer PF</span>
-              <span className="font-medium">{formatCurrency(report.employerPfDeduction)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Employee PF</span>
-              <span className="font-medium">{formatCurrency(report.employeePfDeduction)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Employer ESIC</span>
-              <span className="font-medium">{formatCurrency(report.employerEsicDeduction)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Employee ESIC</span>
-              <span className="font-medium">{formatCurrency(report.employeeEsicDeduction)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Absent Deduction</span>
-              <span className="font-medium text-red-600">{formatCurrency(report.absentDeduction)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Late Deduction</span>
-              <span className="font-medium text-red-600">{formatCurrency(report.lateDeduction)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Half Day Deduction</span>
-              <span className="font-medium text-red-600">{formatCurrency(report.halfDayDeduction)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Unpaid Leaves</span>
-              <span className="font-medium text-red-600">{formatCurrency(report.unpaidLeavesDeduction)}</span>
-            </div>
-            <div className="flex justify-between items-center py-1 border-b">
-              <span className="text-gray-600">Professional Tax</span>
-              <span className="font-medium text-red-600">{formatCurrency(report.ptDeduction)}</span>
-            </div>
+            {report.employerPfDeduction > 0 && (
+              <div className="flex justify-between items-center py-1 border-b">
+                <span className="text-gray-600">Employer PF</span>
+                <span className="font-medium">{formatCurrency(report.employerPfDeduction)}</span>
+              </div>
+            )}
+            {report.employeePfDeduction > 0 && (
+              <div className="flex justify-between items-center py-1 border-b">
+                <span className="text-gray-600">Employee PF</span>
+                <span className="font-medium">{formatCurrency(report.employeePfDeduction)}</span>
+              </div>
+            )}
+            {report.employerEsicDeduction > 0 && (
+              <div className="flex justify-between items-center py-1 border-b">
+                <span className="text-gray-600">Employer ESIC</span>
+                <span className="font-medium">{formatCurrency(report.employerEsicDeduction)}</span>
+              </div>
+            )}
+            {report.employeeEsicDeduction > 0 && (
+              <div className="flex justify-between items-center py-1 border-b">
+                <span className="text-gray-600">Employee ESIC</span>
+                <span className="font-medium">{formatCurrency(report.employeeEsicDeduction)}</span>
+              </div>
+            )}
+            {report.absentDeduction > 0 && (
+              <div className="flex justify-between items-center py-1 border-b">
+                <span className="text-gray-600">Absent Deduction</span>
+                <span className="font-medium text-red-600">{formatCurrency(report.absentDeduction)}</span>
+              </div>
+            )}
+            {report.lateDeduction > 0 && (
+              <div className="flex justify-between items-center py-1 border-b">
+                <span className="text-gray-600">Late Deduction</span>
+                <span className="font-medium text-red-600">{formatCurrency(report.lateDeduction)}</span>
+              </div>
+            )}
+            {report.halfDayDeduction > 0 && (
+              <div className="flex justify-between items-center py-1 border-b">
+                <span className="text-gray-600">Half Day Deduction</span>
+                <span className="font-medium text-red-600">{formatCurrency(report.halfDayDeduction)}</span>
+              </div>
+            )}
+            {report.unpaidLeaveDeduction > 0 && (
+              <div className="flex justify-between items-center py-1 border-b">
+                <span className="text-gray-600">Unpaid Leaves</span>
+                <span className="font-medium text-red-600">{formatCurrency(report.unpaidLeavesDeduction)}</span>
+              </div>
+            )}
+            {report.ptDeduction > 0 && (
+              <div className="flex justify-between items-center py-1 border-b">
+                <span className="text-gray-600">Professional Tax</span>
+                <span className="font-medium text-red-600">{formatCurrency(report.ptDeduction)}</span>
+              </div>
+            )}
+            {report.periodDeductions > 0 && (
+              <div className="flex justify-between items-center py-1 border-b">
+                <span className="text-gray-600">Other Deductions</span>
+                <span className="font-medium text-red-600">{formatCurrency(report.periodDeductions)}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center py-1 border-b">
               <span className="text-gray-600">Total Deductions</span>
               <span className="font-medium text-red-600">{formatCurrency(report.totalDeductions)}</span>
