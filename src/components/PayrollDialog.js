@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { FiX, FiAlertCircle } from "react-icons/fi";
 
 function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
-  // Updated state includes employeePf, employerPf, and attendanceBonusValue.
+  // Updated state includes separate employeeEsic and employerEsic.
   const [formData, setFormData] = useState({
     id: null,
     employee: { id: employee.id || employee.employeeId },
@@ -18,8 +18,11 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
     employeePfFlat: 0,
     employerPfPercent: 0,
     employerPfFlat: 0,
-    esicPercent: 0,
-    esicFlat: 0,
+    // New separate fields for ESIC:
+    employeeEsicPercent: 0,
+    employeeEsicFlat: 0,
+    employerEsicPercent: 0,
+    employerEsicFlat: 0,
     gratuityPercent: 0,
     gratuityFlat: 0,
     ptValue: 0,
@@ -36,7 +39,8 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
     da: null,
     employeePf: null,
     employerPf: null,
-    esic: null,
+    employeeEsic: null,
+    employerEsic: null,
     gratuity: null,
   });
 
@@ -70,11 +74,20 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
         employerPfPercent: payroll.basicSalary
           ? ((payroll.employerPf * 100) / payroll.basicSalary).toFixed(2)
           : 0,
-        esicFlat: payroll.esic,
-        esicPercent:
+        // For ESIC, base is (basicSalary + hra + da)
+        employeeEsicFlat: payroll.employeeEsic,
+        employeeEsicPercent:
           payroll.basicSalary + payroll.hra + payroll.da
             ? (
-                (payroll.esic * 100) /
+                (payroll.employeeEsic * 100) /
+                (payroll.basicSalary + payroll.hra + payroll.da)
+              ).toFixed(2)
+            : 0,
+        employerEsicFlat: payroll.employerEsic,
+        employerEsicPercent:
+          payroll.basicSalary + payroll.hra + payroll.da
+            ? (
+                (payroll.employerEsic * 100) /
                 (payroll.basicSalary + payroll.hra + payroll.da)
               ).toFixed(2)
             : 0,
@@ -131,14 +144,14 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
         const base = parseFloat(prev.basicSalaryFlat) || 0;
         const newFlat = (base * newPercent) / 100;
         return { ...prev, [`${field}Percent`]: value, [`${field}Flat`]: newFlat };
-      } else if (field === "esic") {
+      } else if (["employeeEsic", "employerEsic"].includes(field)) {
         // For ESIC, base = basicSalaryFlat + hraFlat + daFlat.
         const base =
           (parseFloat(prev.basicSalaryFlat) || 0) +
           (parseFloat(prev.hraFlat) || 0) +
           (parseFloat(prev.daFlat) || 0);
         const newFlat = (base * newPercent) / 100;
-        return { ...prev, esicPercent: value, esicFlat: newFlat };
+        return { ...prev, [`${field}Percent`]: value, [`${field}Flat`]: newFlat };
       }
       return prev;
     });
@@ -161,13 +174,13 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
         const base = parseFloat(prev.basicSalaryFlat) || 0;
         const newPercent = base ? (newFlat * 100) / base : 0;
         return { ...prev, [`${field}Flat`]: value, [`${field}Percent`]: newPercent.toFixed(2) };
-      } else if (field === "esic") {
+      } else if (["employeeEsic", "employerEsic"].includes(field)) {
         const base =
           (parseFloat(prev.basicSalaryFlat) || 0) +
           (parseFloat(prev.hraFlat) || 0) +
           (parseFloat(prev.daFlat) || 0);
         const newPercent = base ? (newFlat * 100) / base : 0;
-        return { ...prev, esicFlat: value, esicPercent: newPercent.toFixed(2) };
+        return { ...prev, [`${field}Flat`]: value, [`${field}Percent`]: newPercent.toFixed(2) };
       }
       return prev;
     });
@@ -206,7 +219,9 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
       ptValue: parseFloat(formData.ptValue) || 0,
       employeePf: parseFloat(formData.employeePfFlat) || 0,
       employerPf: parseFloat(formData.employerPfFlat) || 0,
-      esic: parseFloat(formData.esicFlat) || 0,
+      // Now we include separate ESIC values:
+      employeeEsic: parseFloat(formData.employeeEsicFlat) || 0,
+      employerEsic: parseFloat(formData.employerEsicFlat) || 0,
       gratuity: parseFloat(formData.gratuityFlat) || 0,
       performanceBased: parseFloat(formData.performanceBased) || 0,
       advancePaymentsRecovery: parseFloat(formData.advancePaymentsRecovery) || 0,
@@ -260,9 +275,7 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
         </div>
         {/* Flat Amount Input */}
         <div>
-          <label className="block text-xs font-medium text-gray-500">
-            Amount
-          </label>
+          <label className="block text-xs font-medium text-gray-500">Amount</label>
           <div className="relative">
             <input
               type="number"
@@ -347,7 +360,9 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
                 {renderComponentInput("DA", "da", "Basic Salary")}
                 {renderComponentInput("Employee PF", "employeePf", "Basic Salary")}
                 {renderComponentInput("Employer PF", "employerPf", "Basic Salary")}
-                {renderComponentInput("ESIC", "esic", "Gross Salary")}
+                {/* Render two separate ESIC inputs */}
+                {renderComponentInput("Employee ESIC", "employeeEsic", "Gross Salary")}
+                {renderComponentInput("Employer ESIC", "employerEsic", "Gross Salary")}
                 {renderComponentInput("Gratuity", "gratuity", "Basic Salary")}
               </div>
             </div>

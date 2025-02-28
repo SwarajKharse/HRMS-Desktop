@@ -338,6 +338,14 @@ const EmployeePayrollReport = ({ employeeId }) => {
               <span className="font-medium">{formatCurrency(report.da)}</span>
             </div>
             <div className="flex justify-between items-center py-1 border-b">
+              <span className="text-gray-600">Employer PF</span>
+              <span className="font-medium">{formatCurrency(report.employerPfDeduction)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b">
+              <span className="text-gray-600">Employer ESIC</span>
+              <span className="font-medium">{formatCurrency(report.employerEsicDeduction)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b">
               <span className="text-gray-600">Total Allowances</span>
               <span className="font-medium">{formatCurrency(report.totalAllowances)}</span>
             </div>
@@ -345,12 +353,36 @@ const EmployeePayrollReport = ({ employeeId }) => {
               <span className="text-gray-600">Total Bonus</span>
               <span className="font-medium">{formatCurrency(report.totalBonuses)}</span>
             </div>
+            <div className="flex justify-between items-center py-1 border-b">
+              <span className="text-gray-600">Total overtime</span>
+              <span className="font-medium">{formatCurrency(report.overtime)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b">
+              <span className="text-gray-600">Total Earnings</span>
+              <span className="font-medium">{formatCurrency(report.totalEarnings)}</span>
+            </div>
           </div>
         </div>
         {/* Deductions */}
         <div className="flex flex-col gap-4">
           <h3 className="text-lg font-semibold text-gray-900">Deductions</h3>
           <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-center py-1 border-b">
+              <span className="text-gray-600">Employer PF</span>
+              <span className="font-medium">{formatCurrency(report.employerPfDeduction)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b">
+              <span className="text-gray-600">Employee PF</span>
+              <span className="font-medium">{formatCurrency(report.employeePfDeduction)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b">
+              <span className="text-gray-600">Employer ESIC</span>
+              <span className="font-medium">{formatCurrency(report.employerEsicDeduction)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b">
+              <span className="text-gray-600">Employee ESIC</span>
+              <span className="font-medium">{formatCurrency(report.employeeEsicDeduction)}</span>
+            </div>
             <div className="flex justify-between items-center py-1 border-b">
               <span className="text-gray-600">Absent Deduction</span>
               <span className="font-medium text-red-600">{formatCurrency(report.absentDeduction)}</span>
@@ -368,6 +400,10 @@ const EmployeePayrollReport = ({ employeeId }) => {
               <span className="font-medium text-red-600">{formatCurrency(report.unpaidLeavesDeduction)}</span>
             </div>
             <div className="flex justify-between items-center py-1 border-b">
+              <span className="text-gray-600">Professional Tax</span>
+              <span className="font-medium text-red-600">{formatCurrency(report.ptDeduction)}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b">
               <span className="text-gray-600">Total Deductions</span>
               <span className="font-medium text-red-600">{formatCurrency(report.totalDeductions)}</span>
             </div>
@@ -383,7 +419,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
             { label: "Absent", value: report.absentCount },
             { label: "Paid Leaves", value: report.paidLeavesCount },
             { label: "Unpaid Leaves", value: report.unpaidLeavesCount },
-            { label: "Late Count", value: report.lateCount },
+            { label: "Late Count", value: report.lateCount + "/" + (report.lateCheckIn.length + report.earlyCheckOuts.length) },
             { label: "Half Days", value: report.paidHalfDayCount + report.unpaidHalfDayCount },
             { label: "Weekends", value: report.weekendsCount },
             { label: "Holidays", value: report.holidaysCount },

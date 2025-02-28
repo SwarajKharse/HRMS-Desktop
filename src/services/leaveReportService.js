@@ -14,14 +14,12 @@ export const leaveReportService = {
     }
   },
 
-  getResourceAvailability: async (orgId, startDate, endDate) => {
-    const formattedStartDate = format(startDate, "yyyy-MM-dd")
-    const formattedEndDate = format(endDate, "yyyy-MM-dd")
+  getResourceAvailability: async (orgId, month, year) => {
     const response = await axios.get(`${BASE_URL}/resource-report`, {
       params: {
         orgId,
-        startDate: formattedStartDate,
-        endDate: formattedEndDate,
+        month,
+        year,
       },
     })
     return response.data

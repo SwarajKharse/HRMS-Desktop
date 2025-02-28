@@ -96,4 +96,31 @@ export const attendanceService = {
       throw new Error("Failed to update leave")
     }
   },
+
+  exportAttendances: async (orgId) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/export/${orgId}`, {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error("Failed to export attendances")
+    }
+  },
+
+  importAttendances: async (file, orgId) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('orgId', orgId);
+      const response = await axios.post(`${BASE_URL}/import`, formData,  {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error("Failed to import attendances")
+    }
+  },
 };

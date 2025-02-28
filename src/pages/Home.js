@@ -113,7 +113,7 @@ function Home() {
   return (
     <div className="flex flex-col gap-6">
       {/* Navigation Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 overflow-x-auto overflow-y-hidden h-14">
         <nav className="-mb-px flex space-x-8">
           {tabs.map((tab) => (
             <button

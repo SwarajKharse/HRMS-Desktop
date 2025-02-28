@@ -1,18 +1,22 @@
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { format, addMonths, subMonths, eachDayOfInterval } from "date-fns"
+import { motion, AnimatePresence } from "framer-motion"
+import { format, addMonths, subMonths, eachDayOfInterval, startOfMonth, endOfMonth } from "date-fns"
 import { leaveReportService } from "../../services/leaveReportService"
-import { FiChevronLeft, FiChevronRight, FiSearch } from "react-icons/fi"
+import { attendanceService } from "../../services/attendanceService"
+import { FiChevronLeft, FiChevronRight, FiSearch, FiUpload, FiDownload, FiX } from "react-icons/fi"
 import { authService } from "../../services/authService"
 
 function ResourceAvailability() {
-  const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)))
-  const [endDate, setEndDate] = useState(new Date(new Date()))
+  const [currentDate, setCurrentDate] = useState(new Date())
   const [resourceData, setResourceData] = useState([])
   const [filteredData, setFilteredData] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [showMigrateDialog, setShowMigrateDialog] = useState(false)
+  const [successMessage, setSuccessMessage] = useState(null)
+  const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
 
   // Status color mapping
   const statusColors = {
@@ -27,8 +31,7 @@ function ResourceAvailability() {
     "Paid Leave": "bg-purple-100 text-purple-800",
     "Unpaid Leave": "bg-orange-100 text-orange-800",
     "-": "bg-gray-100 text-gray-600",
-    // Add more leave types if needed
-  };
+  }
 
   // Status abbreviations
   const statusAbbreviations = {
@@ -43,12 +46,11 @@ function ResourceAvailability() {
     "Paid Leave": "PL",
     "Unpaid Leave": "UL",
     "-": "-",
-    // Add more leave types if needed
-  };
+  }
 
   useEffect(() => {
     fetchResourceData()
-  }, [startDate, endDate]) // Updated dependency array
+  }, [currentDate])
 
   // Filter data when search term or resource data changes
   useEffect(() => {
@@ -65,9 +67,11 @@ function ResourceAvailability() {
   const fetchResourceData = async () => {
     try {
       setLoading(true)
-      const data = await leaveReportService.getResourceAvailability(authService.getUser().orgId, startDate, endDate);
-      setResourceData(data);
-      setFilteredData(data) // Initialize filtered data with all data
+      const month = currentDate.getMonth() + 1 // JavaScript months are 0-based
+      const year = currentDate.getFullYear()
+      const data = await leaveReportService.getResourceAvailability(authService.getUser().orgId, month, year)
+      setResourceData(data)
+      setFilteredData(data)
       setError(null)
     } catch (err) {
       setError(err.message)
@@ -77,21 +81,59 @@ function ResourceAvailability() {
   }
 
   const handlePreviousMonth = () => {
-    setStartDate(subMonths(startDate, 1))
-    setEndDate(subMonths(endDate, 1))
+    setCurrentDate(subMonths(currentDate, 1))
   }
 
   const handleNextMonth = () => {
-    setStartDate(addMonths(startDate, 1))
-    setEndDate(addMonths(endDate, 1))
+    setCurrentDate(addMonths(currentDate, 1))
   }
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value)
   }
 
-  // Generate array of dates between start and end date
-  const dateRange = eachDayOfInterval({ start: startDate, end: endDate })
+  const handleExportAttendances = async () => {
+    try {
+      setIsExporting(true)
+      const data = await attendanceService.exportAttendances(authService.getUser().orgId)
+      const blob = new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", `attendance-${format(currentDate, "MMM-yyyy")}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+      setShowMigrateDialog(false)
+      setSuccessMessage("Attendance data exported successfully!")
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err) {
+      setError("Failed to export attendance data")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleImportAttendances = async (file) => {
+    try {
+      setIsImporting(true)
+      await attendanceService.importAttendances(file, authService.getUser().orgId)
+      setShowMigrateDialog(false)
+      setSuccessMessage("Attendance data imported successfully!")
+      setTimeout(() => setSuccessMessage(null), 3000)
+      fetchResourceData() // Refresh the data
+    } catch (err) {
+      setError("Failed to import attendance data")
+    } finally {
+      setIsImporting(false)
+    }
+  }
+
+  // Generate array of dates for the current month
+  const dateRange = eachDayOfInterval({
+    start: startOfMonth(currentDate),
+    end: endOfMonth(currentDate),
+  })
 
   if (loading) {
     return (
@@ -111,22 +153,48 @@ function ResourceAvailability() {
 
   return (
     <div className="flex flex-col gap-6 h-[calc(100vh-200px)] relative">
-      {/* Date Range Navigation and Search */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePreviousMonth}
-            className="p-2 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+      {/* Success Message */}
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-0 left-0 right-0 z-50 mx-auto w-max"
           >
-            <FiChevronLeft className="w-5 h-5" />
-          </button>
+            <div className="bg-green-50 text-green-600 px-6 py-3 rounded-lg shadow-lg border border-green-100">
+              {successMessage}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          <h2 className="text-sm font-medium text-gray-900">
-            {format(startDate, "dd MMM yyyy")} - {format(endDate, "dd MMM yyyy")}
-          </h2>
+      {/* Date Navigation and Search */}
+      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePreviousMonth}
+              className="p-2 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+            >
+              <FiChevronLeft className="w-5 h-5" />
+            </button>
 
-          <button onClick={handleNextMonth} className="p-2 hover:bg-gray-50 rounded-lg transition-colors duration-200">
-            <FiChevronRight className="w-5 h-5" />
+            <h2 className="text-sm font-medium text-gray-900">{format(currentDate, "MMMM yyyy")}</h2>
+
+            <button
+              onClick={handleNextMonth}
+              className="p-2 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+            >
+              <FiChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowMigrateDialog(true)}
+            className="px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+          >
+            Migrate Data
           </button>
         </div>
 
@@ -233,6 +301,135 @@ function ResourceAvailability() {
           ))}
         </div>
       </div>
+
+      {/* Migration Dialog */}
+      <AnimatePresence>
+        {showMigrateDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            onClick={() => setShowMigrateDialog(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-white rounded-xl shadow-xl p-6 w-[600px] max-w-[90vw]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Migrate Attendance Data</h2>
+                  <p className="text-sm text-gray-500 mt-1">Export or import attendance data</p>
+                </div>
+                <button
+                  onClick={() => setShowMigrateDialog(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <FiX className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Export Section */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-blue-100 rounded-lg">
+                      <FiDownload className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900">Export Data</h3>
+                      <p className="text-sm text-gray-500 mb-3">Download attendance data as Excel file</p>
+                      <button
+                        onClick={handleExportAttendances}
+                        disabled={isExporting}
+                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors
+                          ${
+                            isExporting
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-blue-600 text-white hover:bg-blue-700"
+                          }
+                        `}
+                      >
+                        {isExporting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2" />
+                            Exporting...
+                          </>
+                        ) : (
+                          <>
+                            <FiDownload className="w-4 h-4 mr-2" />
+                            Export Attendance
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Import Section */}
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-green-100 rounded-lg">
+                      <FiUpload className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900">Import Data</h3>
+                      <p className="text-sm text-gray-500 mb-3">Upload attendance data from Excel file</p>
+                      <label
+                        className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors
+                          ${
+                            isImporting
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-green-600 text-white hover:bg-green-700 cursor-pointer"
+                          }
+                        `}
+                      >
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls"
+                          className="hidden"
+                          disabled={isImporting}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              handleImportAttendances(file)
+                            }
+                          }}
+                        />
+                        {isImporting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mr-2" />
+                            Importing...
+                          </>
+                        ) : (
+                          <>
+                            <FiUpload className="w-4 h-4 mr-2" />
+                            Choose File & Import
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                <div className="bg-yellow-50 border border-yellow-100 rounded-lg p-4">
+                  <h4 className="font-medium text-yellow-800 mb-2">Important Notes</h4>
+                  <ul className="list-disc pl-5 text-sm text-yellow-700 space-y-1">
+                    <li>Export your current data before importing new data</li>
+                    <li>Make sure your import file follows the correct format</li>
+                    <li>Only .xlsx or .xls files are supported</li>
+                    <li>Maximum file size: 5MB</li>
+                  </ul>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
