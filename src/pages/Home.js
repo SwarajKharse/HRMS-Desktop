@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { fetchEmployee } from "../services/api"
 import { useAuth } from "../contexts/AuthContext"
 import Activities from "../components/Home/Activities"
 import Profile from "../components/Home/Profile"
@@ -30,10 +29,7 @@ function Home() {
     return "activities"
   })
 
-  const [employee, setEmployee] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const { user } = useAuth();
+  const { employee, loading, error } = useAuth();
   const { permissions } = usePermissions();
 
   useEffect(() => {
@@ -71,25 +67,6 @@ function Home() {
   useEffect(() => {
     sessionStorage.setItem("activeTab", activeTab)
   }, [activeTab])
-
-  useEffect(() => {
-    const getEmployeeData = async () => {
-      try {
-        const employeeId = user?.sub
-        if (!employeeId) {
-          throw new Error("No employee ID found")
-        }
-        const data = await fetchEmployee(employeeId)
-        setEmployee(data)
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    getEmployeeData()
-  }, [user])
 
   if (loading) {
     return (

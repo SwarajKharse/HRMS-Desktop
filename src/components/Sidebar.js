@@ -109,15 +109,13 @@ function Sidebar({logo}) {
     >
       <div className="flex flex-col flex-1">
         <div className="relative min-h-[64px] border-b border-gray-700 flex items-center justify-center">
-          <motion.h1
-            variants={labelVariants}
-            initial="initial"
-            animate="initial"
-            className="text-gray-200 font-medium text-base tracking-wide"
-          >
-            <img src={logo} alt="logo" className="h-16 w-16">
-            </img>
-          </motion.h1>
+          {logo ? (
+            <img src={logo} alt="logo" className="h-16 w-16" />
+          ) : (
+            <div className="flex items-center justify-center rounded-full bg-gray-300 text-gray-800 h-16 w-16">
+              <span className="text-xl font-semibold">LOGO</span>
+            </div>
+          )}
         </div>
 
         <motion.nav 

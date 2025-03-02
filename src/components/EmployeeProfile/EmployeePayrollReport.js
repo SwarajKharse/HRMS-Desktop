@@ -14,6 +14,7 @@ import {
   FiEdit2,
   FiTrash2,
   FiPlusCircle,
+  FiCheck
 } from "react-icons/fi";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -68,7 +69,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
   const { user } = useAuth();
 
   // Month/Year navigator
-  const currentDate = new Date();
+  const currentDate = new Date(new Date().setDate(new Date().getDate() - 0));
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
@@ -502,7 +503,23 @@ const EmployeePayrollReport = ({ employeeId }) => {
             {localOvertimes.map((item) => (
               <tr key={item.id} className="hover:bg-gray-50">
                 <TableCell>{format(new Date(item.date), "d MMM yyyy")}</TableCell>
-                <TableCell>{item.overtimeMinutes}</TableCell>
+                <TableCell>
+                  {user?.userId !== employeeId ? (
+                    <input
+                      type="number"
+                      defaultValue={item.overtimeMinutes}
+                      className="w-20 px-2 py-1 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onChange={(e) => {
+                        const minutes = Number.parseInt(e.target.value, 10)
+                        if (!isNaN(minutes) && minutes >= 0) {
+                          item.overtimeMinutes = minutes
+                        }
+                      }}
+                    />
+                  ) : (
+                    item.overtimeMinutes
+                  )}
+                </TableCell>
                 <TableCell>
                   <span
                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -513,14 +530,22 @@ const EmployeePayrollReport = ({ employeeId }) => {
                   </span>
                 </TableCell>
                 {user?.userId !== employeeId && (
-                  <TableCell>
-                    <Toggle
-                      checked={item.isIncludeOvertime}
-                      onChange={() =>
-                        handleToggleOvertime(item.id, item.isIncludeOvertime, item.overtimeMinutes)
-                      }
-                    />
-                  </TableCell>
+                  <div className="flex items-center gap-2">
+                    <TableCell>
+                      <Toggle
+                        checked={item.isIncludeOvertime}
+                        onChange={() =>
+                          handleToggleOvertime(item.id, item.isIncludeOvertime, item.overtimeMinutes)
+                        }
+                      />
+                    </TableCell>
+                    <button
+                      onClick={() => handleToggleOvertime(item.id, !item.isIncludeOvertime, item.overtimeMinutes)}
+                      className="p-1 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
+                    >
+                      <FiCheck className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
               </tr>
             ))}

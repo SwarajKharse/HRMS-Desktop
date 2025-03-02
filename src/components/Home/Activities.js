@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { format, differenceInHours, differenceInMinutes, parse } from "date-fns";
 import { FiCheckCircle, FiClock, FiCalendar } from "react-icons/fi";
 import { attendanceService } from "../../services/attendanceService";

@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { employeeService } from "../../services/employeeService"
-import { EyeIcon, EyeOffIcon } from "react-icons/hi" // Using react-icons for the eye icons
 
 export default function ResetPassword({ employee, onClose, onSubmit }) {
   const [newPassword, setNewPassword] = useState("")

@@ -86,37 +86,4 @@ export const leaveRequestService = {
     }
   },
 
-  approveLeave: async (id, leaveData) => {
-    try {
-      // Ensure we're sending the complete leave object with employee data
-      const payload = {
-        ...leaveData,
-        status: 'Approved',
-        // employee: {
-        //   id: leaveData.employee.id
-        // }
-      };
-      const response = await axios.put(`${BASE_URL}/${id}`, payload);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  },
-
-  rejectLeave: async (id, leaveData) => {
-    try {
-      // Ensure we're sending the complete leave object with employee data
-      const payload = {
-        ...leaveData,
-        status: 'Rejected',
-        // employee: {
-        //   id: leaveData.employee.id
-        // }
-      };
-      const response = await axios.delete(`${BASE_URL}/${id}`, payload);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || error.message;
-    }
-  }
 };

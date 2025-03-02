@@ -198,7 +198,7 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
 }
 
 function EmployeeAttendance({ employeeId }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date(new Date().setDate(new Date().getDate() - 10)));
   const [hoveredDate, setHoveredDate] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [attendanceData, setAttendanceData] = useState([]);
