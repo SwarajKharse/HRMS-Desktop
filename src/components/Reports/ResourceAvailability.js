@@ -95,7 +95,9 @@ function ResourceAvailability() {
   const handleExportAttendances = async () => {
     try {
       setIsExporting(true)
-      const data = await attendanceService.exportAttendances(authService.getUser().orgId)
+      const month = currentDate.getMonth() + 1 // JavaScript months are 0-based
+      const year = currentDate.getFullYear()
+      const data = await attendanceService.exportAttendances(authService.getUser().orgId, month, year)
       const blob = new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" })
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement("a")

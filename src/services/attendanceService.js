@@ -97,10 +97,11 @@ export const attendanceService = {
     }
   },
 
-  exportAttendances: async (orgId) => {
+  exportAttendances: async (orgId, month, year) => {
     try {
       const response = await axios.get(`${BASE_URL}/export/${orgId}`, {
         responseType: 'blob',
+        params: { month, year }
       });
       return response.data;
     } catch (error) {
