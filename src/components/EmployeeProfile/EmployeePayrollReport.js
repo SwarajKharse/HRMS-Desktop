@@ -433,7 +433,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
                 <span className="font-medium text-red-600">{formatCurrency(report.halfDayDeduction)}</span>
               </div>
             )}
-            {report.unpaidLeaveDeduction > 0 && (
+            {report.unpaidLeavesDeduction > 0 && (
               <div className="flex justify-between items-center py-1 border-b">
                 <span className="text-gray-600">Unpaid Leaves</span>
                 <span className="font-medium text-red-600">{formatCurrency(report.unpaidLeavesDeduction)}</span>
