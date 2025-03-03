@@ -69,7 +69,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
   const { user } = useAuth();
 
   // Month/Year navigator
-  const currentDate = new Date(new Date().setDate(new Date().getDate() - 0));
+  const currentDate = new Date(new Date().setDate(new Date().getDate() - 10));
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
 
