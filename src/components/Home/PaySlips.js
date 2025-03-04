@@ -15,6 +15,7 @@ function Payslips() {
   const [successMessage, setSuccessMessage] = useState(null)
   const [today, setToday] = useState(new Date());
   const [orgId] = useState(authService.getUser().orgId)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     fetchPayslips()
@@ -99,6 +100,24 @@ function Payslips() {
     }).format(amount)
   }
 
+  const handleExportPayslip = async () => {
+      try {
+        setIsExporting(true)
+        const blob = await payslipService.exportPayslips(orgId, currentDate.getMonth() + 1, currentDate.getFullYear())
+        const url = window.URL.createObjectURL(new Blob([blob]))
+        const link = document.createElement("a")
+        link.href = url
+        link.setAttribute("download", "payslip.xlsx")
+        document.body.appendChild(link)
+        link.click()
+        link.parentNode.removeChild(link)
+      } catch (error) {
+        setError("Error exporting payslips details")
+      } finally {
+        setIsExporting(false)
+      }
+    }
+
   return (
     <div className="space-y-4">
       {/* Header with Month Navigation and Refresh All */}
@@ -120,18 +139,43 @@ function Payslips() {
             <FiChevronRight className="w-5 h-5" />
           </button>
         </div>
-        {(today.getMonth() === currentDate.getMonth() || today.getMonth() === currentDate.getMonth() + 1) && (
-          <button
-            onClick={handleRefreshAll}
-            disabled={refreshingAll}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-white transition-colors ${
-              refreshingAll ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          >
-            <FiRefreshCw className={`w-4 h-4 ${refreshingAll ? "animate-spin" : ""}`} />
-            <span>{refreshingAll ? "Refreshing..." : "Refresh All"}</span>
-          </button>
-        )}
+        <div className="flex items-center space-x-4">
+          <div className="flex items-start gap-4">
+            <div className="flex-1">
+              <button
+                onClick={handleExportPayslip}
+                disabled={isExporting}
+                className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 ${
+                  isExporting ? "cursor-not-allowed" : ""
+                }`}
+              >
+                {isExporting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Exporting...</span>
+                  </div>
+                ) : (
+                  <>
+                    <FiDownload className="w-4 h-4 mr-2" />
+                    Export Payslip
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          {(today.getMonth() === currentDate.getMonth() || today.getMonth() === currentDate.getMonth() + 1) && (
+            <button
+              onClick={handleRefreshAll}
+              disabled={refreshingAll}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-white transition-colors ${
+                refreshingAll ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+              }`}
+            >
+              <FiRefreshCw className={`w-4 h-4 ${refreshingAll ? "animate-spin" : ""}`} />
+              <span>{refreshingAll ? "Refreshing..." : "Refresh All"}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
