@@ -12,18 +12,18 @@ export const resignationService = {
     }
   },
 
-  approveResignation: async (employeeId) => {
+  approveResignation: async (id) => {
     try {
-      const response = await axios.put(`${BASE_URL}/${employeeId}/resignation/approve`)
+      const response = await axios.put(`${BASE_URL}/approve/${id}`)
       return response.data
     } catch (error) {
       throw error
     }
   },
 
-  rejectResignation: async (employeeId) => {
+  rejectResignation: async (id) => {
     try {
-      const response = await axios.put(`${BASE_URL}/${employeeId}/resignation/reject`)
+      const response = await axios.put(`${BASE_URL}/reject/${id}`)
       return response.data
     } catch (error) {
       throw error

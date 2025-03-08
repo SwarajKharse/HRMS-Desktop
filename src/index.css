@@ -81,51 +81,38 @@
 }
 
 /* Add this to your global CSS file (e.g., globals.css or index.css) */
-
 @layer utilities {
   .scrollbar-slim {
-    @apply scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 hover:scrollbar-thumb-gray-400;
+    scrollbar-width: thin;
   }
-  
-  /* For dark mode */
-  .dark .scrollbar-slim {
-    @apply scrollbar-track-gray-800 scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500;
-  }
-}
 
-/* Custom scrollbar styling */
-@layer utilities {
-  /* width */
-  ::-webkit-scrollbar {
+  .scrollbar-slim::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
-  /* Track */
-  ::-webkit-scrollbar-track {
+  .scrollbar-slim::-webkit-scrollbar-track {
     @apply bg-gray-100 rounded-full;
   }
-  
-  /* Handle */
-  ::-webkit-scrollbar-thumb {
+
+  .scrollbar-slim::-webkit-scrollbar-thumb {
     @apply bg-gray-300 rounded-full;
   }
 
-  /* Handle on hover */
-  ::-webkit-scrollbar-thumb:hover {
+  .scrollbar-slim::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-400;
   }
 
-  /* Dark mode */
-  .dark ::-webkit-scrollbar-track {
-    @apply bg-gray-800;
+  /* For dark mode */
+  .dark .scrollbar-slim::-webkit-scrollbar-track {
+    @apply bg-gray-800 rounded-full;
   }
 
-  .dark ::-webkit-scrollbar-thumb {
-    @apply bg-gray-600;
+  .dark .scrollbar-slim::-webkit-scrollbar-thumb {
+    @apply bg-gray-600 rounded-full;
   }
 
-  .dark ::-webkit-scrollbar-thumb:hover {
+  .dark .scrollbar-slim::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-500;
   }
 }

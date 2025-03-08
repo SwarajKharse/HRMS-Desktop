@@ -42,6 +42,7 @@ function HolidayForm({ holiday, onClose, onSubmit }) {
 
     try {
       if (holiday?.id) {
+        formData = { ...formData, id: holiday.id }
         await holidayService.updateHoliday(holiday.id, formData)
       } else {
         await holidayService.createHoliday(formData)

@@ -32,7 +32,7 @@ export const holidayService = {
 
   updateHoliday: async (id, holidayData) => {
     try {
-      const response = await axios.put(`${BASE_URL}/${id}`, holidayData)
+      const response = await axios.put(`${BASE_URL}/`, holidayData)
       return response.data
     } catch (error) {
       throw error.response?.data || error.message

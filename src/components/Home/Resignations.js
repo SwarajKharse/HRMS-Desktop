@@ -29,18 +29,18 @@ function Resignations() {
     }
   }
 
-  const handleApprove = async (employeeId) => {
+  const handleApprove = async (id) => {
     try {
-      await resignationService.approveResignation(employeeId)
+      await resignationService.approveResignation(id)
       await fetchResignations()
     } catch (err) {
       setError(err.message)
     }
   }
 
-  const handleReject = async (employeeId) => {
+  const handleReject = async (id) => {
     try {
-      await resignationService.rejectResignation(employeeId)
+      await resignationService.rejectResignation(id)
       await fetchResignations()
     } catch (err) {
       setError(err.message)
@@ -146,13 +146,13 @@ function Resignations() {
                   {showActions && user?.userId !== resignation.employee.id && (
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
-                        onClick={() => handleApprove(resignation.employee.id)}
+                        onClick={() => handleApprove(resignation.id)}
                         className="text-green-600 hover:text-green-900 mr-3"
                       >
                         <FiCheck className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={() => handleReject(resignation.employee.id)}
+                        onClick={() => handleReject(resignation.id)}
                         className="text-red-600 hover:text-red-900"
                       >
                         <FiX className="w-5 h-5" />
