@@ -20,7 +20,7 @@ import { attendanceService } from "../../services/attendanceService";
 import { authService } from "../../services/authService";
 import { holidayService } from "../../services/holidayService";
 
-// Updated status colors and types
+// Simplified status configuration with fewer categories but clear indicators
 const STATUS_CONFIG = {
   Present: {
     color: "bg-green-100 text-green-800 border-green-200",
@@ -30,28 +30,16 @@ const STATUS_CONFIG = {
     color: "bg-red-100 text-red-800 border-red-200",
     label: "Absent",
   },
-  "Late Check-in": {
-    color: "bg-orange-100 text-orange-800 border-orange-200",
-    label: "Late Check-in",
-  },
-  "Early Check-out": {
-    color: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    label: "Early Check-out",
-  },
-  "Late Check-in and Early Check-out": {
-    color: "bg-orange-200 text-orange-900 border-orange-300",
-    label: "Late Check-in & Early Check-out",
-  },
   "Half Day": {
     color: "bg-lime-100 text-lime-800 border-lime-200",
     label: "Half Day",
   },
   "Paid Leave": {
-    color: "bg-blue-100 text-blue-800 border-blue-200",
+    color: "bg-blue-300 text-blue-800 border-blue-400",
     label: "Paid Leave",
   },
   "Unpaid Leave": {
-    color: "bg-purple-100 text-purple-800 border-purple-200",
+    color: "bg-purple-300 text-purple-800 border-purple-400",
     label: "Unpaid Leave",
   },
   Weekend: {
@@ -66,16 +54,54 @@ const STATUS_CONFIG = {
     color: "bg-gray-200 text-gray-800 border-gray-300",
     label: "No Data",
   },
-};
+}
 
-// Return color classes based on status and record.
-// For half-day paid records, we return a gradient.
+// Status indicators for attendance issues
+const STATUS_INDICATORS = {
+  "Late Check-in": {
+    code: "LC",
+    color: "bg-orange-500 text-white",
+  },
+  "Early Check-out": {
+    code: "EC",
+    color: "bg-yellow-500 text-white",
+  },
+  "Late Check-in and Early Check-out": {
+    code: "LCE",
+    color: "bg-orange-600 text-white",
+  },
+}
+
+// Helper: Return color classes based on status and record data.
 const getStatusColor = (status, record) => {
-  if (status === "Half Day" && record && record.isHalfDayPaid) {
-    return "bg-gradient-to-r from-lime-100 to-blue-100 text-blue-800 border-blue-200";
+  // For attendance issues, use the Present color but add an indicator badge
+  if (status === "Late Check-in" || status === "Early Check-out" || status === "Late Check-in and Early Check-out") {
+    return STATUS_CONFIG["Present"].color
   }
-  return STATUS_CONFIG[status]?.color || "bg-gray-50 text-gray-400 border-gray-200";
-};
+
+  if (status === "Half Day" && record && record.isHalfDayPaid) {
+    return "bg-gradient-to-r from-lime-100 to-blue-100 text-blue-800 border-blue-200"
+  }
+
+  return STATUS_CONFIG[status]?.color || "bg-gray-50 text-gray-400 border-gray-200"
+}
+
+// Helper: Get the appropriate status indicator for attendance issues
+const getStatusIndicator = (status) => {
+  return STATUS_INDICATORS[status] || null
+}
+
+// Helper: Map original status to display status for summary
+const mapToDisplayStatus = (originalStatus) => {
+  if (
+    originalStatus === "Late Check-in" ||
+    originalStatus === "Early Check-out" ||
+    originalStatus === "Late Check-in and Early Check-out"
+  ) {
+    return "Present"
+  }
+  return originalStatus
+}
 
 function AttendanceCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -92,7 +118,7 @@ function AttendanceCalendar() {
       const data = await attendanceService.getMonthlyAttendance(
         authService.getUser().sub,
         getMonth(date),
-        getYear(date)
+        getYear(date),
       );
       setAttendanceData(data);
       calculateStatusSummary(data);
@@ -106,10 +132,7 @@ function AttendanceCalendar() {
 
   const fetchHolidays = async (date) => {
     try {
-      const data = await holidayService.getHolidaysByYear(
-        authService.getUser().orgId,
-        getYear(date)
-      );
+      const data = await holidayService.getHolidaysByYear(authService.getUser().orgId, getYear(date));
       setHolidays(data);
     } catch (err) {
       console.error("Error fetching holidays:", err);
@@ -117,69 +140,66 @@ function AttendanceCalendar() {
   };
 
   const calculateStatusSummary = (data) => {
+    // Initialize with the simplified status categories
     const summary = Object.keys(STATUS_CONFIG).reduce((acc, status) => {
       acc[status] = 0;
       return acc;
     }, {});
 
+    // Count statuses, mapping attendance issues to "Present" but keeping track of them
     data.forEach((item) => {
       if (item.status) {
-        summary[item.status] = (summary[item.status] || 0) + 1;
+        const displayStatus = mapToDisplayStatus(item.status)
+        summary[displayStatus] = (summary[displayStatus] || 0) + 1
       }
-    });
+    })
 
-    setStatusSummary(summary);
-  };
+    setStatusSummary(summary)
+  }
 
   useEffect(() => {
-    fetchMonthlyAttendance(currentDate);
-    fetchHolidays(currentDate);
-  }, [currentDate, authService.getUser().sub]);
+    fetchMonthlyAttendance(currentDate)
+    fetchHolidays(currentDate)
+  }, [currentDate, authService.getUser().sub])
 
-  const startDate = startOfMonth(currentDate);
-  const endDate = endOfMonth(currentDate);
-  const daysInMonth = eachDayOfInterval({ start: startDate, end: endDate });
+  const startDate = startOfMonth(currentDate)
+  const endDate = endOfMonth(currentDate)
+  const daysInMonth = eachDayOfInterval({ start: startDate, end: endDate })
 
-  const startingDayIndex = startDate.getDay();
-  const totalDays = daysInMonth.length;
-  const totalCells = Math.ceil((totalDays + startingDayIndex) / 7) * 7;
+  const startingDayIndex = startDate.getDay()
+  const totalDays = daysInMonth.length
+  const totalCells = Math.ceil((totalDays + startingDayIndex) / 7) * 7
 
   const calendarDays = Array.from({ length: totalCells }).map((_, index) => {
-    const dayOffset = index - startingDayIndex;
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() + dayOffset);
-    return date;
-  });
+    const dayOffset = index - startingDayIndex
+    const date = new Date(startDate)
+    date.setDate(startDate.getDate() + dayOffset)
+    return date
+  })
 
   const getAttendanceStatus = (date) => {
-    if (!isSameMonth(date, currentDate)) return null;
+    if (!isSameMonth(date, currentDate)) return null
 
-    const holiday = holidays.find((h) => isSameDay(new Date(h.date), date));
-    if (holiday) return "Holiday";
+    const holiday = holidays.find((h) => isSameDay(new Date(h.date), date))
+    if (holiday) return "Holiday"
 
-    const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date));
+    const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date))
     if (dayData) return dayData.status;
     if (isSunday(date)) return "Weekend";
     return isPast(date) ? "No Data" : null;
   };
 
-  const getStatusColorForDate = (date) => {
-    const status = getAttendanceStatus(date);
-    const record = attendanceData.find((item) => isSameDay(new Date(item.date), date));
-    return getStatusColor(status, record);
-  };
-
   const handlePreviousMonth = () => {
-    setCurrentDate(subMonths(currentDate, 1));
-  };
+    setCurrentDate(subMonths(currentDate, 1))
+  }
 
   const handleNextMonth = () => {
-    setCurrentDate(addMonths(currentDate, 1));
-  };
+    setCurrentDate(addMonths(currentDate, 1))
+  }
 
   const renderTimeInfo = (date) => {
-    const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date));
-    const isFutureDate = !isPast(date);
+    const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date))
+    const isFutureDate = !isPast(date)
 
     if (isFutureDate) {
       if (dayData?.status === "Paid Leave" || dayData?.status === "Unpaid Leave") {
@@ -188,12 +208,12 @@ function AttendanceCalendar() {
             <div className="text-gray-600 font-medium">Upcoming</div>
             {dayData.note && <div className="mt-1 text-gray-600 italic">{dayData.note}</div>}
           </div>
-        );
+        )
       }
-      return null;
+      return null
     }
 
-    if (!dayData) return null;
+    if (!dayData) return null
 
     return (
       <div className="text-xs space-y-1">
@@ -211,15 +231,15 @@ function AttendanceCalendar() {
         )}
         {dayData.note && <div className="mt-1 text-gray-600 italic">{dayData.note}</div>}
       </div>
-    );
-  };
+    )
+  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[400px] bg-white rounded-lg border border-gray-200">
         <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-blue-500"></div>
       </div>
-    );
+    )
   }
 
   if (error) {
@@ -227,7 +247,7 @@ function AttendanceCalendar() {
       <div className="flex items-center justify-center h-[400px] bg-white rounded-lg border border-gray-200">
         <p className="text-red-600 font-medium">{error}</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -241,12 +261,12 @@ function AttendanceCalendar() {
               count > 0 && (
                 <div
                   key={status}
-                  className={`rounded-lg p-3 flex items-center justify-between ${getStatusColor(status)}`}
+                  className={`rounded-lg p-3 flex items-center justify-between ${STATUS_CONFIG[status]?.color || "bg-gray-100 text-gray-800"}`}
                 >
                   <span className="font-medium">{STATUS_CONFIG[status]?.label || status}</span>
                   <span className="text-lg font-bold">{count}</span>
                 </div>
-              )
+              ),
           )}
         </div>
       </div>
@@ -255,31 +275,31 @@ function AttendanceCalendar() {
         {/* Calendar Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
           <div className="flex items-center space-x-2">
-            <button
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              onClick={handlePreviousMonth}
-            >
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={handlePreviousMonth}>
               <FiChevronLeft className="w-5 h-5" />
             </button>
             <h2 className="text-lg font-semibold">{format(currentDate, "MMMM yyyy")}</h2>
-            <button
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              onClick={handleNextMonth}
-            >
+            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={handleNextMonth}>
               <FiChevronRight className="w-5 h-5" />
             </button>
           </div>
 
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-3 text-sm">
+            {/* Main status legend */}
             {Object.entries(STATUS_CONFIG).map(([status, config]) => (
               <div key={status} className="flex items-center gap-2">
                 <div
-                  className={`w-3 h-3 rounded-full ${config.color.split(" ")[0]} border ${
-                    config.color.split(" ")[2]
-                  }`}
+                  className={`w-3 h-3 rounded-full ${config.color.split(" ")[0]} border ${config.color.split(" ")[2]}`}
                 />
                 <span>{config.label}</span>
+              </div>
+            ))}
+            {/* Attendance issue indicators */}
+            {Object.entries(STATUS_INDICATORS).map(([status, config]) => (
+              <div key={status} className="flex items-center gap-2">
+                <div className={`px-1 text-[10px] rounded ${config.color}`}>{config.code}</div>
+                <span>{status}</span>
               </div>
             ))}
           </div>
@@ -296,13 +316,12 @@ function AttendanceCalendar() {
 
           {/* Calendar Days */}
           {calendarDays.map((date, index) => {
-            const status = getAttendanceStatus(date);
-            const isCurrentMonth = isSameMonth(date, currentDate);
-            const isCurrentDay = isToday(date);
-            const attendanceRecord = attendanceData.find((item) =>
-              isSameDay(new Date(item.date), date)
-            );
-            const cellColor = getStatusColor(status, attendanceRecord);
+            const status = getAttendanceStatus(date)
+            const isCurrentMonth = isSameMonth(date, currentDate)
+            const isCurrentDay = isToday(date)
+            const attendanceRecord = attendanceData.find((item) => isSameDay(new Date(item.date), date))
+            const cellColor = getStatusColor(status, attendanceRecord)
+            const statusIndicator = getStatusIndicator(status)
 
             return (
               <motion.div
@@ -324,26 +343,32 @@ function AttendanceCalendar() {
                   `}
                 >
                   <div className="flex justify-between items-start">
-                    <span
-                      className={`text-sm font-medium ${
-                        !isCurrentMonth ? "text-gray-400" : "text-gray-900"
-                      }`}
-                    >
+                    <span className={`text-sm font-medium ${!isCurrentMonth ? "text-gray-400" : "text-gray-900"}`}>
                       {format(date, "d")}
                     </span>
-                    {status && (
+
+                    {/* Display simplified status label */}
+                    {/* {status && (
                       <span className="text-xs font-medium">
-                        {STATUS_CONFIG[status]?.label || status}
+                        {STATUS_INDICATORS[status] ? "Present" : STATUS_CONFIG[status]?.label || status}
                       </span>
-                    )}
+                    )} */}
+
                     {isSunday(date) && !status && (
-                      <span className="text-xs font-medium">
-                        {STATUS_CONFIG["Weekend"].label}
-                      </span>
+                      <span className="text-xs font-medium">{STATUS_CONFIG["Weekend"].label}</span>
                     )}
                   </div>
 
-                  {/* Overtime Sticker Badge */}
+                  {/* Status Indicator Badge (for LC, EC, LCE) */}
+                  {statusIndicator && (
+                    <div
+                      className={`absolute top-1 right-1 ${statusIndicator.color} text-xs px-1 py-0.5 rounded font-medium`}
+                    >
+                      {statusIndicator.code}
+                    </div>
+                  )}
+
+                  {/* Overtime Badge */}
                   {attendanceRecord && attendanceRecord.overtimeMinutes > 0 && (
                     <div className="absolute bottom-1 right-1 bg-indigo-600 text-white text-xs px-1 py-0.5 rounded">
                       OT {attendanceRecord.overtimeMinutes}m
@@ -354,12 +379,12 @@ function AttendanceCalendar() {
                   {isSameDay(date, hoveredDate) && renderTimeInfo(date)}
                 </div>
               </motion.div>
-            );
+            )
           })}
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export default AttendanceCalendar;

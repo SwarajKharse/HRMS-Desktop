@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   format,
   startOfMonth,
@@ -14,13 +14,13 @@ import {
   isSunday,
   getMonth,
   getYear,
-} from "date-fns";
-import { FiChevronLeft, FiChevronRight, FiX } from "react-icons/fi";
-import { attendanceService } from "../../services/attendanceService";
-import { holidayService } from "../../services/holidayService";
-import { authService } from "../../services/authService";
+} from "date-fns"
+import { FiChevronLeft, FiChevronRight, FiX } from "react-icons/fi"
+import { attendanceService } from "../../services/attendanceService"
+import { holidayService } from "../../services/holidayService"
+import { authService } from "../../services/authService"
 
-// Updated status colors and types (added "No Data")
+// Simplified status configuration with fewer categories but clear indicators
 const STATUS_CONFIG = {
   Present: {
     color: "bg-green-100 text-green-800 border-green-200",
@@ -30,28 +30,16 @@ const STATUS_CONFIG = {
     color: "bg-red-100 text-red-800 border-red-200",
     label: "Absent",
   },
-  "Late Check-in": {
-    color: "bg-orange-100 text-orange-800 border-orange-200",
-    label: "Late Check-in",
-  },
-  "Early Check-out": {
-    color: "bg-yellow-100 text-yellow-800 border-yellow-200",
-    label: "Early Check-out",
-  },
-  "Late Check-in and Early Check-out": {
-    color: "bg-orange-200 text-orange-900 border-orange-300",
-    label: "Late Check-in & Early Check-out",
-  },
   "Half Day": {
     color: "bg-lime-100 text-lime-800 border-lime-200",
     label: "Half Day",
   },
   "Paid Leave": {
-    color: "bg-blue-100 text-blue-800 border-blue-200",
+    color: "bg-blue-300 text-blue-800 border-blue-400",
     label: "Paid Leave",
   },
   "Unpaid Leave": {
-    color: "bg-purple-100 text-purple-800 border-purple-200",
+    color: "bg-purple-300 text-purple-800 border-purple-400",
     label: "Unpaid Leave",
   },
   Weekend: {
@@ -66,45 +54,83 @@ const STATUS_CONFIG = {
     color: "bg-gray-200 text-gray-800 border-gray-300",
     label: "No Data",
   },
-};
+}
+
+// Status indicators for attendance issues
+const STATUS_INDICATORS = {
+  "Late Check-in": {
+    code: "LC",
+    color: "bg-orange-500 text-white",
+  },
+  "Early Check-out": {
+    code: "EC",
+    color: "bg-yellow-500 text-white",
+  },
+  "Late Check-in and Early Check-out": {
+    code: "LCE",
+    color: "bg-orange-600 text-white",
+  },
+}
 
 // Helper: Return color classes based on status and record data.
-// For half-day paid records, we return a gradient.
 const getStatusColor = (status, record) => {
+  // For attendance issues, use the Present color but add an indicator badge
+  if (status === "Late Check-in" || status === "Early Check-out" || status === "Late Check-in and Early Check-out") {
+    return STATUS_CONFIG["Present"].color
+  }
+
   if (status === "Overtime") {
-    return "bg-indigo-100 text-indigo-800 border-indigo-200";
+    return "bg-indigo-100 text-indigo-800 border-indigo-200"
   }
+
   if (status === "Half Day" && record && record.isHalfDayPaid) {
-    return "bg-gradient-to-r from-lime-100 to-blue-100 text-blue-800 border-blue-200";
+    return "bg-gradient-to-r from-lime-100 to-blue-100 text-blue-800 border-blue-200"
   }
-  return STATUS_CONFIG[status]?.color || "bg-gray-50 text-gray-400 border-gray-200";
-};
+
+  return STATUS_CONFIG[status]?.color || "bg-gray-50 text-gray-400 border-gray-200"
+}
+
+// Helper: Get the appropriate status indicator for attendance issues
+const getStatusIndicator = (status) => {
+  return STATUS_INDICATORS[status] || null
+}
+
+// Helper: Map original status to display status for summary
+const mapToDisplayStatus = (originalStatus) => {
+  if (
+    originalStatus === "Late Check-in" ||
+    originalStatus === "Early Check-out" ||
+    originalStatus === "Late Check-in and Early Check-out"
+  ) {
+    return "Present"
+  }
+  return originalStatus
+}
 
 function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdate }) {
-  // (Modal code remains unchanged)
-  const [checkIn, setCheckIn] = useState(attendance?.checkIn || "");
-  const [checkOut, setCheckOut] = useState(attendance?.checkOut || "");
-  const [isHalfDay, setIsHalfDay] = useState(attendance?.isHalfDay || false);
-  const [updating, setUpdating] = useState(false);
+  const [checkIn, setCheckIn] = useState(attendance?.checkIn || "")
+  const [checkOut, setCheckOut] = useState(attendance?.checkOut || "")
+  const [isHalfDay, setIsHalfDay] = useState(attendance?.isHalfDay || false)
+  const [updating, setUpdating] = useState(false)
 
   const handleUpdate = async () => {
     try {
-      setUpdating(true);
+      setUpdating(true)
       await attendanceService.updateAttendance({
         employee: { id: employeeId },
         date: format(date, "yyyy-MM-dd"),
         checkIn,
         checkOut,
         isHalfDay,
-      });
-      onUpdate();
-      onClose();
+      })
+      onUpdate()
+      onClose()
     } catch (error) {
-      console.error("Failed to update attendance:", error);
+      console.error("Failed to update attendance:", error)
     } finally {
-      setUpdating(false);
+      setUpdating(false)
     }
-  };
+  }
 
   return (
     <motion.div
@@ -122,9 +148,7 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-sm font-semibold">
-            Attendance Details - {format(date, "dd/MM/yyyy")}
-          </h3>
+          <h3 className="text-sm font-semibold">Attendance Details - {format(date, "dd/MM/yyyy")}</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <FiX className="w-5 h-5" />
           </button>
@@ -134,48 +158,45 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
             <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
             <div
               className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                STATUS_CONFIG[attendance?.status]?.color || "bg-gray-100 text-gray-800"
+                STATUS_CONFIG[attendance?.status]?.color ||
+                (STATUS_INDICATORS[attendance?.status] ? STATUS_CONFIG["Present"].color : "bg-gray-100 text-gray-800")
               }`}
             >
-              {attendance?.status || "Not Available"}
+              {attendance?.status ? (
+                STATUS_INDICATORS[attendance?.status] ? (
+                  <>Present ({STATUS_INDICATORS[attendance?.status].code})</>
+                ) : (
+                  STATUS_CONFIG[attendance?.status]?.label || attendance?.status
+                )
+              ) : (
+                "Not Available"
+              )}
             </div>
           </div>
-            <div>
-              <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
-                Check In Time
-              </label>
-              <input
-                type="time"
-                id="checkIn"
-                value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
-                Check Out Time
-              </label>
-              <input
-                type="time"
-                id="checkOut"
-                value={checkOut}
-                onChange={(e) => setCheckOut(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              />
-            </div>
-          {/* <div>
-            <label htmlFor="isHalfDay" className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="isHalfDay"
-                checked={isHalfDay}
-                onChange={(e) => setIsHalfDay(e.target.checked)}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-              />
-              <span className="text-sm text-gray-700">Mark as Half Day</span>
+          <div>
+            <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
+              Check In Time
             </label>
-          </div> */}
+            <input
+              type="time"
+              id="checkIn"
+              value={checkIn}
+              onChange={(e) => setCheckIn(e.target.value)}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
+              Check Out Time
+            </label>
+            <input
+              type="time"
+              id="checkOut"
+              value={checkOut}
+              onChange={(e) => setCheckOut(e.target.value)}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
           <div className="flex justify-end space-x-3 mt-6">
             <button
               onClick={onClose}
@@ -183,127 +204,125 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
             >
               Cancel
             </button>
-              <button
-                onClick={handleUpdate}
-                disabled={updating}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-              >
-                {updating ? "Updating..." : "Update"}
-              </button>
+            <button
+              onClick={handleUpdate}
+              disabled={updating}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+            >
+              {updating ? "Updating..." : "Update"}
+            </button>
           </div>
         </div>
       </motion.div>
     </motion.div>
-  );
+  )
 }
 
 function EmployeeAttendance({ employeeId }) {
-  const [currentDate, setCurrentDate] = useState(new Date(new Date().setDate(new Date().getDate() - 10)));
-  const [hoveredDate, setHoveredDate] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(null);
-  const [attendanceData, setAttendanceData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [statusSummary, setStatusSummary] = useState({});
-  const [holidays, setHolidays] = useState([]);
-  const [user] = useState(authService.getUser());
+  const [currentDate, setCurrentDate] = useState(new Date(new Date().setDate(new Date().getDate() - 10)))
+  const [hoveredDate, setHoveredDate] = useState(null)
+  const [selectedDate, setSelectedDate] = useState(null)
+  const [attendanceData, setAttendanceData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [statusSummary, setStatusSummary] = useState({})
+  const [holidays, setHolidays] = useState([])
+  const [user] = useState(authService.getUser())
 
   const calculateStatusSummary = (data) => {
+    // Initialize with the simplified status categories
     const summary = Object.keys(STATUS_CONFIG).reduce((acc, status) => {
-      acc[status] = 0;
-      return acc;
-    }, {});
+      acc[status] = 0
+      return acc
+    }, {})
+
+    // Count statuses, mapping attendance issues to "Present" but keeping track of them
     data.forEach((item) => {
       if (item.status) {
-        summary[item.status] = (summary[item.status] || 0) + 1;
+        const displayStatus = mapToDisplayStatus(item.status)
+        summary[displayStatus] = (summary[displayStatus] || 0) + 1
       }
-    });
-    setStatusSummary(summary);
-  };
+    })
+
+    setStatusSummary(summary)
+  }
 
   const fetchMonthlyAttendance = async (date) => {
     try {
-      setLoading(true);
-      const data = await attendanceService.getMonthlyAttendance(
-        employeeId,
-        getMonth(date),
-        getYear(date)
-      );
-      setAttendanceData(data);
-      calculateStatusSummary(data);
-      setError(null);
+      setLoading(true)
+      const data = await attendanceService.getMonthlyAttendance(employeeId, getMonth(date), getYear(date))
+      setAttendanceData(data)
+      calculateStatusSummary(data)
+      setError(null)
     } catch (err) {
-      setError(err.message);
+      setError(err.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
     const fetchHolidays = async () => {
       try {
-        const data = await holidayService.getHolidaysByYear(
-          user.orgId,
-          getYear(currentDate)
-        );
-        setHolidays(data);
+        const data = await holidayService.getHolidaysByYear(user.orgId, getYear(currentDate))
+        setHolidays(data)
       } catch (err) {
-        console.error("Error fetching holidays:", err);
+        console.error("Error fetching holidays:", err)
       }
-    };
-    fetchHolidays();
-    fetchMonthlyAttendance(currentDate);
-  }, [currentDate, employeeId]);
+    }
+    fetchHolidays()
+    fetchMonthlyAttendance(currentDate)
+  }, [currentDate, employeeId])
 
-  const startDate = startOfMonth(currentDate);
-  const endDate = endOfMonth(currentDate);
-  const daysInMonth = eachDayOfInterval({ start: startDate, end: endDate });
+  const startDate = startOfMonth(currentDate)
+  const endDate = endOfMonth(currentDate)
+  const daysInMonth = eachDayOfInterval({ start: startDate, end: endDate })
 
-  const startingDayIndex = startDate.getDay();
-  const totalDays = daysInMonth.length;
-  const totalCells = Math.ceil((totalDays + startingDayIndex) / 7) * 7;
+  const startingDayIndex = startDate.getDay()
+  const totalDays = daysInMonth.length
+  const totalCells = Math.ceil((totalDays + startingDayIndex) / 7) * 7
 
   const calendarDays = Array.from({ length: totalCells }).map((_, index) => {
-    const dayOffset = index - startingDayIndex;
-    const date = new Date(startDate);
-    date.setDate(startDate.getDate() + dayOffset);
-    return date;
-  });
+    const dayOffset = index - startingDayIndex
+    const date = new Date(startDate)
+    date.setDate(startDate.getDate() + dayOffset)
+    return date
+  })
 
   // Modified: If no attendance record exists for a past date, return "No Data"
   const getAttendanceStatus = (date) => {
-    if (!isSameMonth(date, currentDate)) return null;
-    const holiday = holidays.find((h) => isSameDay(new Date(h.date), date));
-    if (holiday) return "Holiday";
-    const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date));
-    if (dayData) return dayData.status;
-    if (isSunday(date)) return "Weekend";
-    return isPast(date) ? "No Data" : null;
-  };
+    if (!isSameMonth(date, currentDate)) return null
+    const holiday = holidays.find((h) => isSameDay(new Date(h.date), date))
+    if (holiday) return "Holiday"
+    const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date))
+    if (dayData) return dayData.status
+    if (isSunday(date)) return "Weekend"
+    return isPast(date) ? "No Data" : null
+  }
 
   const handleDateClick = (date) => {
-    if (!isSameMonth(date, currentDate)) return;
-    setSelectedDate(date);
-  };
+    if (!isSameMonth(date, currentDate)) return
+    setSelectedDate(date)
+  }
 
   const getSelectedDateAttendance = () => {
-    if (!selectedDate) return null;
-    return attendanceData.find((item) => isSameDay(new Date(item.date), selectedDate));
-  };
+    if (!selectedDate) return null
+    return attendanceData.find((item) => isSameDay(new Date(item.date), selectedDate))
+  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[300px] bg-white rounded-lg">
         <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-blue-500"></div>
       </div>
-    );
+    )
   }
   if (error) {
     return (
       <div className="flex items-center justify-center h-[300px] bg-white rounded-lg">
         <p className="text-red-600 font-medium">{error}</p>
       </div>
-    );
+    )
   }
 
   return (
@@ -317,14 +336,12 @@ function EmployeeAttendance({ employeeId }) {
               count > 0 && (
                 <div
                   key={status}
-                  className={`rounded-lg p-3 flex items-center justify-between ${getStatusColor(
-                    status
-                  )}`}
+                  className={`rounded-lg p-3 flex items-center justify-between ${STATUS_CONFIG[status]?.color || "bg-gray-100 text-gray-800"}`}
                 >
                   <span className="font-medium">{STATUS_CONFIG[status]?.label || status}</span>
                   <span className="text-sm font-bold">{count}</span>
                 </div>
-              )
+              ),
           )}
         </div>
       </div>
@@ -349,14 +366,20 @@ function EmployeeAttendance({ employeeId }) {
           </div>
           {/* Legend */}
           <div className="flex flex-wrap items-center gap-3 text-xs">
+            {/* Main status legend */}
             {Object.entries(STATUS_CONFIG).map(([status, config]) => (
               <div key={status} className="flex items-center gap-2">
                 <div
-                  className={`w-2 h-2 rounded-full ${config.color.split(" ")[0]} border ${
-                    config.color.split(" ")[2]
-                  }`}
+                  className={`w-2 h-2 rounded-full ${config.color.split(" ")[0]} border ${config.color.split(" ")[2]}`}
                 />
                 <span>{config.label}</span>
+              </div>
+            ))}
+            {/* Attendance issue indicators */}
+            {Object.entries(STATUS_INDICATORS).map(([status, config]) => (
+              <div key={status} className="flex items-center gap-2">
+                <div className={`px-1 text-[10px] rounded ${config.color}`}>{config.code}</div>
+                <span>{status}</span>
               </div>
             ))}
           </div>
@@ -371,13 +394,13 @@ function EmployeeAttendance({ employeeId }) {
           ))}
           {/* Calendar Days */}
           {calendarDays.map((date, index) => {
-            const status = getAttendanceStatus(date);
-            const isCurrentMonth = isSameMonth(date, currentDate);
-            const isCurrentDay = isToday(date);
-            const attendanceRecord = attendanceData.find((item) =>
-              isSameDay(new Date(item.date), date)
-            );
-            const statusColor = getStatusColor(status, attendanceRecord);
+            const status = getAttendanceStatus(date)
+            const isCurrentMonth = isSameMonth(date, currentDate)
+            const isCurrentDay = isToday(date)
+            const attendanceRecord = attendanceData.find((item) => isSameDay(new Date(item.date), date))
+            const statusColor = getStatusColor(status, attendanceRecord)
+            const statusIndicator = getStatusIndicator(status)
+
             return (
               <motion.div
                 key={index}
@@ -401,28 +424,20 @@ function EmployeeAttendance({ employeeId }) {
                   `}
                 >
                   <div className="flex flex-col items-center">
-                    <span
-                      className={`text-xs font-medium ${
-                        !isCurrentMonth ? "text-gray-400" : "text-gray-900"
-                      }`}
-                    >
+                    <span className={`text-xs font-medium ${!isCurrentMonth ? "text-gray-400" : "text-gray-900"}`}>
                       {format(date, "d")}
                     </span>
                     {/* On hover, show check-in/out times */}
                     {isSameDay(date, hoveredDate) && (
                       <div className="mt-1 text-[10px] text-center">
-                        {(!isPast(date) && attendanceRecord?.status?.includes("Leave")) ? (
-                          <div className="text-gray-600 font-medium">
-                            Upcoming {attendanceRecord.status}
-                          </div>
+                        {!isPast(date) && attendanceRecord?.status?.includes("Leave") ? (
+                          <div className="text-gray-600 font-medium">Upcoming {attendanceRecord.status}</div>
                         ) : attendanceRecord ? (
                           <>
                             <div>In: {attendanceRecord.checkIn || "N/A"}</div>
                             <div>Out: {attendanceRecord.checkOut || "N/A"}</div>
                             {attendanceRecord.overtimeMinutes > 0 && (
-                              <div className="text-xs text-indigo-700">
-                                OT: {attendanceRecord.overtimeMinutes} min
-                              </div>
+                              <div className="text-xs text-indigo-700">OT: {attendanceRecord.overtimeMinutes} min</div>
                             )}
                           </>
                         ) : (
@@ -431,20 +446,32 @@ function EmployeeAttendance({ employeeId }) {
                       </div>
                     )}
                   </div>
-                  {/* Overtime Sticker Badge (placed at bottom-right) */}
+
+                  {/* Status Indicator Badge (for LC, EC, LCE) */}
+                  {statusIndicator && (
+                    <div
+                      className={`absolute top-1 right-1 ${statusIndicator.color} text-xs px-1 py-0.5 rounded font-medium`}
+                    >
+                      {statusIndicator.code}
+                    </div>
+                  )}
+
+                  {/* Overtime Badge */}
                   {attendanceRecord && attendanceRecord.overtimeMinutes > 0 && (
-                    <div className="absolute top-1 right-1 bg-indigo-600 text-white text-xs px-1 py-0.5 rounded">
+                    <div className="absolute bottom-1 right-1 bg-indigo-600 text-white text-xs px-1 py-0.5 rounded">
                       OT {attendanceRecord.overtimeMinutes}m
                     </div>
                   )}
-                  {attendanceRecord && attendanceRecord.checkIn !== null &&  attendanceRecord.checkOut === null && (
-                    <div className="absolute top-1 left-1 bg-indigo-600 text-white text-xs px-1 py-0.5 rounded">
-                     Not <br/> Checked <br/> Out
+
+                  {/* Not Checked Out Badge */}
+                  {attendanceRecord && attendanceRecord.checkIn !== null && attendanceRecord.checkOut === null && (
+                    <div className="absolute top-1 left-1 bg-red-600 text-white text-xs px-1 py-0.5 rounded">
+                      Not Checked<br/> Out
                     </div>
                   )}
                 </div>
               </motion.div>
-            );
+            )
           })}
         </div>
       </div>
@@ -461,7 +488,7 @@ function EmployeeAttendance({ employeeId }) {
         )}
       </AnimatePresence>
     </div>
-  );
+  )
 }
 
 export default EmployeeAttendance;
