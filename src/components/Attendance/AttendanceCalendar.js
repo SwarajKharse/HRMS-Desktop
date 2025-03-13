@@ -31,15 +31,15 @@ const STATUS_CONFIG = {
     label: "Absent",
   },
   "Half Day": {
-    color: "bg-lime-100 text-lime-800 border-lime-200",
+    color: "bg-amber-200 text-amber-900 border-amber-300",
     label: "Half Day",
   },
   "Paid Leave": {
-    color: "bg-blue-300 text-blue-800 border-blue-400",
+    color: "bg-purple-300 text-purple-800 border-purple-400",
     label: "Paid Leave",
   },
   "Unpaid Leave": {
-    color: "bg-purple-300 text-purple-800 border-purple-400",
+    color: "bg-blue-300 text-blue-800 border-blue-400",
     label: "Unpaid Leave",
   },
   Weekend: {

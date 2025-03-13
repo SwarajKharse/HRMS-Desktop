@@ -27,19 +27,19 @@ const STATUS_CONFIG = {
     label: "Present",
   },
   Absent: {
-    color: "bg-red-100 text-red-800 border-red-200",
+    color: "bg-red-400 text-red-800 border-red-500",
     label: "Absent",
   },
   "Half Day": {
-    color: "bg-lime-100 text-lime-800 border-lime-200",
+    color: "bg-amber-200 text-amber-900 border-amber-300",
     label: "Half Day",
   },
   "Paid Leave": {
-    color: "bg-blue-300 text-blue-800 border-blue-400",
+    color: "bg-purple-300 text-purple-800 border-purple-400",
     label: "Paid Leave",
   },
   "Unpaid Leave": {
-    color: "bg-purple-300 text-purple-800 border-purple-400",
+    color: "bg-blue-300 text-blue-800 border-blue-400",
     label: "Unpaid Leave",
   },
   Weekend: {
@@ -47,7 +47,7 @@ const STATUS_CONFIG = {
     label: "Weekend",
   },
   Holiday: {
-    color: "bg-pink-100 text-pink-800 border-pink-200",
+    color: "bg-pink-300 text-pink-900 border-pink-400",
     label: "Holiday",
   },
   "No Data": {
@@ -84,7 +84,7 @@ const getStatusColor = (status, record) => {
   }
 
   if (status === "Half Day" && record && record.isHalfDayPaid) {
-    return "bg-gradient-to-r from-lime-100 to-blue-100 text-blue-800 border-blue-200"
+    return "bg-gradient-to-r from-amber-200 to-blue-200 text-blue-900 border-blue-300"
   }
 
   return STATUS_CONFIG[status]?.color || "bg-gray-50 text-gray-400 border-gray-200"
@@ -466,7 +466,7 @@ function EmployeeAttendance({ employeeId }) {
                   {/* Not Checked Out Badge */}
                   {attendanceRecord && attendanceRecord.checkIn !== null && attendanceRecord.checkOut === null && (
                     <div className="absolute top-1 left-1 bg-red-600 text-white text-xs px-1 py-0.5 rounded">
-                      Not Checked<br/> Out
+                      NCO
                     </div>
                   )}
                 </div>
