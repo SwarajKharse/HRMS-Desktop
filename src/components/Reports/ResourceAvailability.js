@@ -270,7 +270,7 @@ function ResourceAvailability() {
                         <span
                           className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium ${statusColors[status.status] || "bg-gray-100 text-gray-600"}`}
                         >
-                          {statusAbbreviations[status.status] || status.status[0]}
+                          {statusAbbreviations[status.status] || (status.status ? status.status[0] : "-")}
                         </span>
                       </td>
                     ))}

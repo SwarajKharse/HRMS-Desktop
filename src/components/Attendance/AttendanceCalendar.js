@@ -23,11 +23,11 @@ import { holidayService } from "../../services/holidayService";
 // Simplified status configuration with fewer categories but clear indicators
 const STATUS_CONFIG = {
   Present: {
-    color: "bg-green-100 text-green-800 border-green-200",
+    color: "bg-green-200 text-green-800 border-green-300",
     label: "Present",
   },
   Absent: {
-    color: "bg-red-100 text-red-800 border-red-200",
+    color: "bg-red-400 text-red-800 border-red-500",
     label: "Absent",
   },
   "Half Day": {
@@ -43,11 +43,11 @@ const STATUS_CONFIG = {
     label: "Unpaid Leave",
   },
   Weekend: {
-    color: "bg-teal-100 text-teal-800 border-teal-200",
+    color: "bg-teal-200 text-teal-800 border-teal-300",
     label: "Weekend",
   },
   Holiday: {
-    color: "bg-pink-100 text-pink-800 border-pink-200",
+    color: "bg-pink-300 text-pink-900 border-pink-400",
     label: "Holiday",
   },
   "No Data": {
@@ -74,6 +74,11 @@ const STATUS_INDICATORS = {
 
 // Helper: Return color classes based on status and record data.
 const getStatusColor = (status, record) => {
+  // Handle holiday object
+  if (status && typeof status === "object" && status.type === "Holiday") {
+    return STATUS_CONFIG["Holiday"].color
+  }
+
   // For attendance issues, use the Present color but add an indicator badge
   if (status === "Late Check-in" || status === "Early Check-out" || status === "Late Check-in and Early Check-out") {
     return STATUS_CONFIG["Present"].color
@@ -111,6 +116,10 @@ function AttendanceCalendar() {
   const [error, setError] = useState(null);
   const [statusSummary, setStatusSummary] = useState({});
   const [holidays, setHolidays] = useState([]);
+
+  useEffect(() => {
+    calculateStatusSummary(attendanceData)
+  }, [attendanceData, holidays, currentDate]);  
 
   const fetchMonthlyAttendance = async (date) => {
     try {
@@ -154,6 +163,13 @@ function AttendanceCalendar() {
       }
     })
 
+    // Count holidays separately
+    const holidaysInMonth = holidays.filter((holiday) => isSameMonth(new Date(holiday.date), currentDate)).length
+
+    if (holidaysInMonth > 0) {
+      summary["Holiday"] = holidaysInMonth
+    }
+
     setStatusSummary(summary)
   }
 
@@ -181,7 +197,7 @@ function AttendanceCalendar() {
     if (!isSameMonth(date, currentDate)) return null
 
     const holiday = holidays.find((h) => isSameDay(new Date(h.date), date))
-    if (holiday) return "Holiday"
+    if (holiday) return { type: "Holiday", holiday }
 
     const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date))
     if (dayData) return dayData.status;
@@ -321,7 +337,8 @@ function AttendanceCalendar() {
             const isCurrentDay = isToday(date)
             const attendanceRecord = attendanceData.find((item) => isSameDay(new Date(item.date), date))
             const cellColor = getStatusColor(status, attendanceRecord)
-            const statusIndicator = getStatusIndicator(status)
+            const statusIndicator = getStatusIndicator(typeof status === "string" ? status : null)
+            const isHoliday = status && typeof status === "object" && status.type === "Holiday"
 
             return (
               <motion.div
@@ -346,14 +363,6 @@ function AttendanceCalendar() {
                     <span className={`text-sm font-medium ${!isCurrentMonth ? "text-gray-400" : "text-gray-900"}`}>
                       {format(date, "d")}
                     </span>
-
-                    {/* Display simplified status label */}
-                    {/* {status && (
-                      <span className="text-xs font-medium">
-                        {STATUS_INDICATORS[status] ? "Present" : STATUS_CONFIG[status]?.label || status}
-                      </span>
-                    )} */}
-
                     {isSunday(date) && !status && (
                       <span className="text-xs font-medium">{STATUS_CONFIG["Weekend"].label}</span>
                     )}
@@ -361,10 +370,15 @@ function AttendanceCalendar() {
 
                   {/* Status Indicator Badge (for LC, EC, LCE) */}
                   {statusIndicator && (
-                    <div
-                      className={`absolute top-1 right-1 ${statusIndicator.color} text-xs px-1 py-0.5 rounded font-medium`}
-                    >
+                    <div className={`absolute top-1 right-1 ${statusIndicator.color} text-xs px-1 py-0.5 rounded font-medium`}>
                       {statusIndicator.code}
+                    </div>
+                  )}
+
+                  {/* Display Holiday Badge with Holiday Name */}
+                  {isHoliday && (
+                    <div className="absolute bottom-1 left-1 bg-pink-500 text-white text-xs px-1 py-0.5 rounded font-medium">
+                      Holiday
                     </div>
                   )}
 
@@ -376,7 +390,15 @@ function AttendanceCalendar() {
                   )}
 
                   {/* Time Information on Hover */}
-                  {isSameDay(date, hoveredDate) && renderTimeInfo(date)}
+                  {isSameDay(date, hoveredDate) && (
+                    isHoliday ? (
+                      <div className="text-base text-pink-800 font-medium">
+                        {status.holiday.name}
+                      </div>
+                    ) : (
+                      renderTimeInfo(date)
+                    )
+                  )}
                 </div>
               </motion.div>
             )
