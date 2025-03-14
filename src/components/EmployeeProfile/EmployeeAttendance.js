@@ -15,10 +15,11 @@ import {
   getMonth,
   getYear,
 } from "date-fns"
-import { FiChevronLeft, FiChevronRight, FiX } from "react-icons/fi"
+import { FiChevronLeft, FiChevronRight, FiX, FiCheck, FiAlertCircle, FiCalendar } from "react-icons/fi"
 import { attendanceService } from "../../services/attendanceService"
 import { holidayService } from "../../services/holidayService"
 import { authService } from "../../services/authService"
+import { leaveBalanceService } from "../../services/leaveBalanceService"
 
 // Simplified status configuration with fewer categories but clear indicators
 const STATUS_CONFIG = {
@@ -115,23 +116,84 @@ const mapToDisplayStatus = (originalStatus) => {
 function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdate }) {
   const [checkIn, setCheckIn] = useState(attendance?.checkIn || "")
   const [checkOut, setCheckOut] = useState(attendance?.checkOut || "")
-  const [isHalfDay, setIsHalfDay] = useState(attendance?.isHalfDay || false)
+  const [attendanceType, setAttendanceType] = useState(
+    attendance?.isHalfDay ? "halfDay" : attendance?.isLeave ? "leave" : attendance?.isAbsent ? "absent" : "present",
+  )
+  const [leaveTypes, setLeaveTypes] = useState([])
+  const [selectedLeaveType, setSelectedLeaveType] = useState(attendance?.leaveType?.id || "")
   const [updating, setUpdating] = useState(false)
+  const [loadingLeaveTypes, setLoadingLeaveTypes] = useState(false)
+  const [error, setError] = useState(null)
+
+  // Get selected leave type details
+  const getSelectedLeaveTypeDetails = () => {
+    if (!selectedLeaveType) return null
+    return leaveTypes.find((type) => type.id === selectedLeaveType)
+  }
+
+  const selectedLeaveTypeDetails = getSelectedLeaveTypeDetails()
+  const isPaidLeave = selectedLeaveTypeDetails?.category === "Paid"
+
+  useEffect(() => {
+    const fetchLeaveTypes = async () => {
+      try {
+        setLoadingLeaveTypes(true)
+        const user = authService.getUser()
+        const data = await leaveBalanceService.getLeaveTypesByEmpId(employeeId)
+        setLeaveTypes(
+          data.map((item) => ({
+            id: item.leaveType.id,
+            name: item.leaveType.name,
+            balance: item.balance,
+            category: item.leaveType.leaveCategory,
+          })),
+        )
+      } catch (err) {
+        console.error("Failed to fetch leave types:", err)
+        setError("Failed to load leave types")
+      } finally {
+        setLoadingLeaveTypes(false)
+      }
+    }
+
+    if (attendanceType === "leave" || attendanceType === "halfDay") {
+      fetchLeaveTypes()
+    }
+  }, [attendanceType, employeeId])
 
   const handleUpdate = async () => {
     try {
       setUpdating(true)
-      await attendanceService.updateAttendance({
+      setError(null)
+
+      // Get leave type details
+      const leaveTypeDetails = getSelectedLeaveTypeDetails()
+      const isPaid = leaveTypeDetails?.category === "Paid"
+
+      // Prepare the attendance data based on the selected type
+      const attendanceData = {
         employee: { id: employeeId },
         date: format(date, "yyyy-MM-dd"),
-        checkIn,
-        checkOut,
-        isHalfDay,
-      })
+        checkIn: attendanceType === "present" || attendanceType === "halfDay" ? checkIn : null,
+        checkOut: attendanceType === "present" || attendanceType === "halfDay" ? checkOut : null,
+        isHalfDay: attendanceType === "halfDay",
+        isLeave: attendanceType === "leave",
+        isPaid: attendanceType === "leave" && isPaid,
+        isAbsent: attendanceType === "absent",
+        isPresent: attendanceType === "present" || attendanceType === "halfDay",
+      }
+
+      // Add leave type if applicable
+      if ((attendanceType === "leave" || attendanceType === "halfDay") && selectedLeaveType) {
+        attendanceData.leaveType = { id: parseInt(selectedLeaveType) }
+      }
+
+      await attendanceService.updateAttendance(attendanceData)
       onUpdate()
       onClose()
     } catch (error) {
       console.error("Failed to update attendance:", error)
+      setError("Failed to update attendance. Please try again.")
     } finally {
       setUpdating(false)
     }
@@ -142,83 +204,229 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <motion.div
-        initial={{ scale: 0.95 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0.95 }}
-        className="bg-white rounded-lg p-6 w-full max-w-md"
+        initial={{ scale: 0.95, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-sm font-semibold">Attendance Details - {format(date, "dd/MM/yyyy")}</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-lg font-semibold text-gray-800">Attendance for {format(date, "dd MMMM yyyy")}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
+          >
             <FiX className="w-5 h-5" />
           </button>
         </div>
-        <div className="space-y-4">
+
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center">
+            <FiAlertCircle className="w-5 h-5 mr-2 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <div className="space-y-6">
+          {/* Attendance Type Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-            <div
-              className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                STATUS_CONFIG[attendance?.status]?.color ||
-                (STATUS_INDICATORS[attendance?.status] ? STATUS_CONFIG["Present"].color : "bg-gray-100 text-gray-800")
-              }`}
-            >
-              {attendance?.status ? (
-                STATUS_INDICATORS[attendance?.status] ? (
-                  <>Present ({STATUS_INDICATORS[attendance?.status].code})</>
-                ) : (
-                  STATUS_CONFIG[attendance?.status]?.label || attendance?.status
-                )
-              ) : (
-                "Not Available"
-              )}
+            <label className="block text-sm font-medium text-gray-700 mb-3">Attendance Type</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setAttendanceType("present")}
+                className={`px-4 py-3 text-sm font-medium rounded-lg border transition-all ${
+                  attendanceType === "present"
+                    ? "bg-green-50 border-green-300 text-green-700 shadow-sm"
+                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mb-1">
+                    <FiCheck
+                      className={`w-5 h-5 ${attendanceType === "present" ? "text-green-600" : "text-gray-400"}`}
+                    />
+                  </div>
+                  <span>Present</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceType("absent")}
+                className={`px-4 py-3 text-sm font-medium rounded-lg border transition-all ${
+                  attendanceType === "absent"
+                    ? "bg-red-50 border-red-300 text-red-700 shadow-sm"
+                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center mb-1">
+                    <FiX className={`w-5 h-5 ${attendanceType === "absent" ? "text-red-600" : "text-gray-400"}`} />
+                  </div>
+                  <span>Absent</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceType("halfDay")}
+                className={`px-4 py-3 text-sm font-medium rounded-lg border transition-all ${
+                  attendanceType === "halfDay"
+                    ? "bg-amber-50 border-amber-300 text-amber-700 shadow-sm"
+                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center mb-1">
+                    <div className="w-4 h-4 bg-amber-500 rounded-r-full"></div>
+                  </div>
+                  <span>Half Day</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAttendanceType("leave")}
+                className={`px-4 py-3 text-sm font-medium rounded-lg border transition-all ${
+                  attendanceType === "leave"
+                    ? "bg-blue-50 border-blue-300 text-blue-700 shadow-sm"
+                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mb-1">
+                    <FiCalendar
+                      className={`w-5 h-5 ${attendanceType === "leave" ? "text-blue-600" : "text-gray-400"}`}
+                    />
+                  </div>
+                  <span>Leave</span>
+                </div>
+              </button>
             </div>
           </div>
-          <div>
-            <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
-              Check In Time
-            </label>
-            <input
-              type="time"
-              id="checkIn"
-              value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
-              step="60" // Only allow minute increments (hh:mm)
-              pattern="[0-9]{2}:[0-9]{2}" // Optional: enforce hh:mm format
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
-              Check Out Time
-            </label>
-            <input
-              type="time"
-              id="checkOut"
-              value={checkOut}
-              onChange={(e) => setCheckOut(e.target.value)}
-              step="60"
-              pattern="[0-9]{2}:[0-9]{2}"
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          <div className="flex justify-end space-x-3 mt-6">
+
+          {/* Check-in/Check-out times (only for Present and Half Day) */}
+          {(attendanceType === "present" || attendanceType === "halfDay") && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="checkIn" className="block text-sm font-medium text-gray-700 mb-1">
+                  Check In
+                </label>
+                <input
+                  type="time"
+                  id="checkIn"
+                  value={checkIn}
+                  onChange={(e) => setCheckIn(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="checkOut" className="block text-sm font-medium text-gray-700 mb-1">
+                  Check Out
+                </label>
+                <input
+                  type="time"
+                  id="checkOut"
+                  value={checkOut}
+                  onChange={(e) => setCheckOut(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Leave Type Selection */}
+          {(attendanceType === "leave" || attendanceType === "halfDay") && (
+            <div>
+              <label htmlFor="leaveType" className="block text-sm font-medium text-gray-700 mb-1">
+                Leave Type
+              </label>
+              {loadingLeaveTypes ? (
+                <div className="flex items-center justify-center h-12 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent"></div>
+                  <span className="ml-2 text-sm text-gray-500">Loading leave types...</span>
+                </div>
+              ) : leaveTypes.length === 0 ? (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700 text-sm">
+                  No leave types available
+                </div>
+              ) : (
+                <div className="relative">
+                  <select
+                    id="leaveType"
+                    value={selectedLeaveType}
+                    onChange={(e) => setSelectedLeaveType(e.target.value)}
+                    className="block w-full px-3 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none bg-white"
+                  >
+                    <option value="">Select Leave Type</option>
+                    {leaveTypes.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name} ({type.category}) - Balance: {type.balance}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+
+              {selectedLeaveTypeDetails && (
+                <div className="mt-2 p-3 rounded-lg bg-gray-50 border border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">{selectedLeaveTypeDetails.name}</span>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        selectedLeaveTypeDetails.category === "Paid"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-purple-100 text-purple-800"
+                      }`}
+                    >
+                      {selectedLeaveTypeDetails.category}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Available Balance</span>
+                    <span className="text-sm font-semibold">{selectedLeaveTypeDetails.balance}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-3 pt-4 border-t">
             <button
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleUpdate}
-              disabled={updating}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              disabled={
+                updating || ((attendanceType === "leave" || attendanceType === "halfDay") && !selectedLeaveType)
+              }
+              className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-colors ${
+                updating || ((attendanceType === "leave" || attendanceType === "halfDay") && !selectedLeaveType)
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              }`}
             >
-              {updating ? "Updating..." : "Update"}
+              {updating ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <FiCheck className="w-4 h-4 mr-2" />
+                  Update
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -237,10 +445,6 @@ function EmployeeAttendance({ employeeId }) {
   const [statusSummary, setStatusSummary] = useState({})
   const [holidays, setHolidays] = useState([])
   const [user] = useState(authService.getUser())
-
-  useEffect(() => {
-    calculateStatusSummary(attendanceData)
-  }, [attendanceData, holidays, currentDate]);  
 
   const calculateStatusSummary = (data) => {
     // Initialize with the simplified status categories
@@ -452,7 +656,7 @@ function EmployeeAttendance({ employeeId }) {
                     {isSameDay(date, hoveredDate) && (
                       <div className="mt-1 text-[10px] text-center">
                         {isHoliday ? (
-                          <div className="text-pink-800 font-medium text-base">{status.holiday.name}</div>
+                          <div className="text-pink-800 font-medium">{status.holiday.name}</div>
                         ) : !isPast(date) && attendanceRecord?.status?.includes("Leave") ? (
                           <div className="text-gray-600 font-medium">Upcoming {attendanceRecord.status}</div>
                         ) : attendanceRecord ? (
@@ -472,7 +676,7 @@ function EmployeeAttendance({ employeeId }) {
 
                   {/* Display Holiday label */}
                   {isHoliday && (
-                    <div className="absolute bottom-1 left-1 bg-pink-500 text-white text-xs px-1 py-0.5 rounded font-medium">
+                    <div className="absolute top-1 right-1 bg-pink-500 text-white text-xs px-1 py-0.5 rounded font-medium">
                       Holiday
                     </div>
                   )}
@@ -495,9 +699,7 @@ function EmployeeAttendance({ employeeId }) {
 
                   {/* Not Checked Out Badge */}
                   {attendanceRecord && attendanceRecord.checkIn !== null && attendanceRecord.checkOut === null && (
-                    <div className="absolute top-1 left-1 bg-red-600 text-white text-xs px-1 py-0.5 rounded">
-                      NCO
-                    </div>
+                    <div className="absolute top-1 left-1 bg-red-600 text-white text-xs px-1 py-0.5 rounded">NCO</div>
                   )}
                 </div>
               </motion.div>
