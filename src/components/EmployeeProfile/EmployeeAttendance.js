@@ -658,7 +658,7 @@ function EmployeeAttendance({ employeeId }) {
                     {isSameDay(date, hoveredDate) && (
                       <div className="mt-1 text-[10px] text-center">
                         {isHoliday ? (
-                          <div className="text-pink-800 font-medium">{status.holiday.name}</div>
+                          <div className="text-pink-800 font-medium text-base">{status.holiday.name}</div>
                         ) : !isPast(date) && attendanceRecord?.status?.includes("Leave") ? (
                           <div className="text-gray-600 font-medium">Upcoming {attendanceRecord.status}</div>
                         ) : attendanceRecord ? (
@@ -678,7 +678,7 @@ function EmployeeAttendance({ employeeId }) {
 
                   {/* Display Holiday label */}
                   {isHoliday && (
-                    <div className="absolute top-1 right-1 bg-pink-500 text-white text-xs px-1 py-0.5 rounded font-medium">
+                    <div className="absolute bottom-1 left-1 bg-pink-500 text-white text-xs px-1 py-0.5 rounded font-medium">
                       Holiday
                     </div>
                   )}
