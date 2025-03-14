@@ -625,6 +625,8 @@ function EmployeeAttendance({ employeeId }) {
             const statusColor = getStatusColor(status, attendanceRecord)
             const statusIndicator = getStatusIndicator(typeof status === "string" ? status : null)
             const isHoliday = status && typeof status === "object" && status.type === "Holiday"
+            const isLeave = attendanceRecord?.isLeave
+            const isHalfDay = attendanceRecord?.isHalfDay
 
             return (
               <motion.div
@@ -678,6 +680,20 @@ function EmployeeAttendance({ employeeId }) {
                   {isHoliday && (
                     <div className="absolute top-1 right-1 bg-pink-500 text-white text-xs px-1 py-0.5 rounded font-medium">
                       Holiday
+                    </div>
+                  )}
+
+                  {/* Paid or Unpaid label for Leave */}
+                  {isLeave && (
+                    <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-1 py-0.5 rounded font-medium">
+                      {attendanceRecord.isPaid ? "Paid" : "Unpaid"}
+                    </div>
+                  )}
+
+                  {/* Paid or Unpaid label for Halfday */}
+                  {isHalfDay && (
+                    <div className="absolute bottom-1 left-1 bg-blue-500 text-white text-xs px-1 py-0.5 rounded font-medium">
+                      {attendanceRecord.isHalfDayPaid ? "Paid" : "Unpaid"}
                     </div>
                   )}
 

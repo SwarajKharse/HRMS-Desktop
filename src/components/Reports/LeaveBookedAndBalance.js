@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { leaveBalanceService } from "../../services/leaveBalanceService"
 import { authService } from "../../services/authService"
-import { FiSearch } from "react-icons/fi"
+import { FiSearch, FiChevronLeft, FiChevronRight } from "react-icons/fi"
 
 function LeaveBookedAndBalance() {
   const [leaveData, setLeaveData] = useState([])
@@ -11,9 +11,19 @@ function LeaveBookedAndBalance() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  // Add state for current month and year
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const currentMonth = currentDate.getMonth() + 1 // JavaScript months are 0-based
+  const currentYear = currentDate.getFullYear()
+
   useEffect(() => {
     fetchLeaveBalances()
   }, [])
+
+  // Add useEffect to refetch data when month or year changes
+  useEffect(() => {
+    fetchLeaveBalances()
+  }, [currentMonth, currentYear])
 
   // Filter data when search term or leave data changes
   useEffect(() => {
@@ -30,10 +40,11 @@ function LeaveBookedAndBalance() {
     }
   }, [searchTerm, leaveData])
 
+  // Update the service function to include month and year parameters
   const fetchLeaveBalances = async () => {
     try {
       setLoading(true)
-      const data = await leaveBalanceService.getLeaveBalances(authService.getUser().orgId)
+      const data = await leaveBalanceService.getLeaveBalances(authService.getUser().orgId, currentMonth, currentYear)
       setLeaveData(data)
       setFilteredData(data) // Initialize filtered data with all data
       setError(null)
@@ -46,6 +57,23 @@ function LeaveBookedAndBalance() {
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value)
+  }
+
+  // Add functions to handle month navigation
+  const handlePreviousMonth = () => {
+    setCurrentDate((prevDate) => {
+      const newDate = new Date(prevDate)
+      newDate.setMonth(newDate.getMonth() - 1)
+      return newDate
+    })
+  }
+
+  const handleNextMonth = () => {
+    setCurrentDate((prevDate) => {
+      const newDate = new Date(prevDate)
+      newDate.setMonth(newDate.getMonth() + 1)
+      return newDate
+    })
   }
 
   const getUniqueLeaveTypes = () => {
@@ -119,17 +147,39 @@ function LeaveBookedAndBalance() {
     <div className="flex flex-col gap-6">
       {/* Search Bar */}
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-        <div className="relative max-w-md mx-auto">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FiSearch className="h-5 w-5 text-gray-400" />
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handlePreviousMonth}
+              className="p-2 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+            >
+              <FiChevronLeft className="w-5 h-5" />
+            </button>
+
+            <h2 className="text-sm font-medium text-gray-900">
+              {new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(currentDate)}
+            </h2>
+
+            <button
+              onClick={handleNextMonth}
+              className="p-2 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+            >
+              <FiChevronRight className="w-5 h-5" />
+            </button>
           </div>
-          <input
-            type="text"
-            placeholder="Search employees..."
-            value={searchTerm}
-            onChange={handleSearch}
-            className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+
+          <div className="relative max-w-md w-full">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiSearch className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search employees..."
+              value={searchTerm}
+              onChange={handleSearch}
+              className="pl-10 pr-4 py-2 w-full border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
         </div>
       </div>
 

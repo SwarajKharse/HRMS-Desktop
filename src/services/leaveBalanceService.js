@@ -12,9 +12,11 @@ export const leaveBalanceService = {
         }
     },
 
-    getLeaveBalances: async (orgId) => {
+    getLeaveBalances: async (orgId, month, year) => {
         try {
-            const response = await axios.get(`${BASE_URL}/org/${orgId}`)
+            const response = await axios.get(`${BASE_URL}/org/${orgId}`, {
+                params: { month, year }
+            })
             return response.data
         } catch (error) {
             throw new Error("Failed to fetch leave balances")

@@ -253,6 +253,9 @@ function AttendanceReport() {
                     Total Hours
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Notes
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
                 </tr>
@@ -322,6 +325,7 @@ function AttendanceReport() {
                         {formatTime(record.earlyExit)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.totalHours || "-"}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.note || "-"}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${
