@@ -117,7 +117,17 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
   const [checkIn, setCheckIn] = useState(attendance?.checkIn || "")
   const [checkOut, setCheckOut] = useState(attendance?.checkOut || "")
   const [attendanceType, setAttendanceType] = useState(
-    attendance?.isHalfDay ? "halfDay" : attendance?.isLeave ? "leave" : attendance?.isAbsent ? "absent" : "present",
+    attendance?.isHalfDay
+      ? "halfDay"
+      : attendance?.isLeave
+        ? "leave"
+        : attendance?.isAbsent
+          ? "absent"
+          : attendance?.isHoliday
+            ? "holiday"
+            : attendance?.isWeekend
+              ? "weekend"
+              : "present",
   )
   const [leaveTypes, setLeaveTypes] = useState([])
   const [selectedLeaveType, setSelectedLeaveType] = useState(attendance?.leaveType?.id || "")
@@ -181,11 +191,13 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
         isPaid: attendanceType === "leave" && isPaid,
         isAbsent: attendanceType === "absent",
         isPresent: attendanceType === "present" || attendanceType === "halfDay",
+        isHoliday: attendanceType === "holiday",
+        isWeekend: attendanceType === "weekend",
       }
 
       // Add leave type if applicable
       if ((attendanceType === "leave" || attendanceType === "halfDay") && selectedLeaveType) {
-        attendanceData.leaveType = { id: parseInt(selectedLeaveType) }
+        attendanceData.leaveType = { id: Number.parseInt(selectedLeaveType) }
       }
 
       await attendanceService.updateAttendance(attendanceData)
@@ -302,6 +314,44 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
                     />
                   </div>
                   <span>Leave</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAttendanceType("holiday")}
+                className={`px-4 py-3 text-sm font-medium rounded-lg border transition-all ${
+                  attendanceType === "holiday"
+                    ? "bg-pink-50 border-pink-300 text-pink-700 shadow-sm"
+                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center mb-1">
+                    <FiCalendar
+                      className={`w-5 h-5 ${attendanceType === "holiday" ? "text-pink-600" : "text-gray-400"}`}
+                    />
+                  </div>
+                  <span>Holiday</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAttendanceType("weekend")}
+                className={`px-4 py-3 text-sm font-medium rounded-lg border transition-all ${
+                  attendanceType === "weekend"
+                    ? "bg-teal-50 border-teal-300 text-teal-700 shadow-sm"
+                    : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <div className="flex flex-col items-center">
+                  <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center mb-1">
+                    <FiCalendar
+                      className={`w-5 h-5 ${attendanceType === "weekend" ? "text-teal-600" : "text-gray-400"}`}
+                    />
+                  </div>
+                  <span>Weekend</span>
                 </div>
               </button>
             </div>
@@ -515,14 +565,24 @@ function EmployeeAttendance({ employeeId }) {
 
   // Modified: If no attendance record exists for a past date, return "No Data"
   const getAttendanceStatus = (date) => {
-    if (!isSameMonth(date, currentDate)) return null
-    const holiday = holidays.find((h) => isSameDay(new Date(h.date), date))
-    if (holiday) return { type: "Holiday", holiday }
-    const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date))
-    if (dayData) return dayData.status
-    if (isSunday(date)) return "Weekend"
-    return isPast(date) ? "No Data" : null
+    if (!isSameMonth(date, currentDate)) return null;
+  
+    const holiday = holidays.find((h) => isSameDay(new Date(h.date), date));
+    const dayData = attendanceData.find((item) => isSameDay(new Date(item.date), date));
+  
+    if (holiday) {
+      // If a holiday exists but there's an attendance record with Absent, prioritize Absent.
+      if (dayData && dayData.status === "Absent") {
+        return "Absent";
+      }
+      return { type: "Holiday", holiday };
+    }
+  
+    if (dayData) return dayData.status;
+    if (isSunday(date)) return "Weekend";
+    return isPast(date) ? "No Data" : null;
   }
+  
 
   const handleDateClick = (date) => {
     if (!isSameMonth(date, currentDate)) return
