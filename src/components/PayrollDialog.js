@@ -486,12 +486,12 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
                               <span className="text-sm font-medium">{formatCurrency(allowance.amount)}</span>
                             </div>
                           ))}
-                          <div className="flex justify-between items-center col-span-2 pt-2 mt-2 border-t border-gray-300">
+                          {/* <div className="flex justify-between items-center col-span-2 pt-2 mt-2 border-t border-gray-300">
                             <span className="text-sm font-medium text-gray-700">Total Fixed Allowances</span>
                             <span className="text-sm font-medium">
                               {formatCurrency(calculateTotalFixedAllowances())}
                             </span>
-                          </div>
+                          </div> */}
                         </div>
                       </div>
                     </div>
