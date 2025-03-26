@@ -357,6 +357,13 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
             </div>
           </div>
 
+          {attendance?.note && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-100 rounded-lg">
+              <p className="text-sm font-medium text-yellow-800">Note:</p>
+              <p className="text-sm text-yellow-700">{attendance.note}</p>
+            </div>
+          )}
+
           {/* Check-in/Check-out times (only for Present and Half Day) */}
           {(attendanceType === "present" || attendanceType === "halfDay") && (
             <div className="grid grid-cols-2 gap-4">
@@ -723,6 +730,11 @@ function EmployeeAttendance({ employeeId }) {
                           <div className="text-gray-600 font-medium">Upcoming {attendanceRecord.status}</div>
                         ) : attendanceRecord ? (
                           <>
+                            {attendanceRecord.note && (
+                              <div className="mb-1 text-yellow-700 font-medium border-b border-yellow-200 pb-1">
+                                Note: {attendanceRecord.note}
+                              </div>
+                            )}
                             <div>In: {attendanceRecord.checkIn || "N/A"}</div>
                             <div>Out: {attendanceRecord.checkOut || "N/A"}</div>
                             {attendanceRecord.overtimeMinutes > 0 && (
@@ -776,6 +788,12 @@ function EmployeeAttendance({ employeeId }) {
                   {/* Not Checked Out Badge */}
                   {attendanceRecord && attendanceRecord.checkIn !== null && attendanceRecord.checkOut === null && (
                     <div className="absolute top-1 left-1 bg-red-600 text-white text-xs px-1 py-0.5 rounded">NCO</div>
+                  )}
+
+                  {attendanceRecord?.note && (
+                    <div className="absolute left-1 top-1/2 -translate-y-1/2 bg-yellow-400 text-yellow-800 text-xs px-1 py-0.5 rounded-full">
+                      <span className="sr-only">Has note</span>!
+                    </div>
                   )}
                 </div>
               </motion.div>
