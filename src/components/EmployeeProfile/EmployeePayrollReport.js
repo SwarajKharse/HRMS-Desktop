@@ -325,34 +325,29 @@ const EmployeePayrollReport = ({ employeeId }) => {
           <div className="flex flex-col gap-4">
             <h3 className="text-lg font-semibold text-gray-900">Salary Components</h3>
             <div className="flex flex-col gap-2">
-              {report.basicSalary > 0 && (
+              {report.basicDaEarning > 0 && (
                 <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Basic Salary</span>
-                  <span className="font-medium">{formatCurrency(report.basicSalary)}</span>
+                  <span className="text-gray-600">Basic Salary + DA</span>
+                  <span className="font-medium">{formatCurrency(report.basicDaEarning)}</span>
                 </div>
               )}
-              {report.hra > 0 && (
+              {report.hraEarning > 0 && (
                 <div className="flex justify-between items-center py-1 border-b">
                   <span className="text-gray-600">HRA</span>
-                  <span className="font-medium">{formatCurrency(report.hra)}</span>
+                  <span className="font-medium">{formatCurrency(report.hraEarning)}</span>
                 </div>
               )}
-              {report.da > 0 && (
+              {/* fixedAllowances.map and then render the getAllowanceName and getAmount and use Id as key*/}
+              {report.fixedAllowances.map((item) => (
+                  <div key={item.id} className="flex justify-between items-center py-1 border-b">
+                    <span className="text-gray-600">{item.allowanceName}</span>
+                    <span className="font-medium">{formatCurrency(item.amount)}</span>
+                  </div>
+              ))}
+              {report.otherAllowances > 0 && (
                 <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">DA</span>
-                  <span className="font-medium">{formatCurrency(report.da)}</span>
-                </div>
-              )}
-              {report.employerPfDeduction > 0 && (
-                <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Employer PF</span>
-                  <span className="font-medium">{formatCurrency(report.employerPfDeduction)}</span>
-                </div>
-              )}
-              {report.employerEsicDeduction > 0 && (
-                <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Employer ESIC</span>
-                  <span className="font-medium">{formatCurrency(report.employerEsicDeduction)}</span>
+                  <span className="text-gray-600">Other Allowances</span>
+                  <span className="font-medium">{formatCurrency(report.otherAllowances)}</span>
                 </div>
               )}
               {report.totalAllowances > 0 && (
@@ -367,22 +362,16 @@ const EmployeePayrollReport = ({ employeeId }) => {
                   <span className="font-medium">{formatCurrency(report.totalBonuses)}</span>
                 </div>
               )}
-              {report.overtime > 0 && (
+              {report.incentives > 0 && (
                 <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Total Overtime</span>
-                  <span className="font-medium">{formatCurrency(report.overtime)}</span>
+                  <span className="text-gray-600">Incentives</span>
+                  <span className="font-medium">{formatCurrency(report.incentives)}</span>
                 </div>
               )}
-              {report.attendanceBonus > 0 && (
+              {report.grossSalary > 0 && (
                 <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Attendance Bonus</span>
-                  <span className="font-medium">{formatCurrency(report.attendanceBonus)}</span>
-                </div>
-              )}
-              {report.totalEarnings > 0 && (
-                <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Total Earnings</span>
-                  <span className="font-medium">{formatCurrency(report.totalEarnings)}</span>
+                  <span className="text-gray-600">Gross Salary</span>
+                  <span className="font-medium">{formatCurrency(report.grossSalary)}</span>
                 </div>
               )}
             </div>
@@ -391,58 +380,22 @@ const EmployeePayrollReport = ({ employeeId }) => {
         <div className="flex flex-col gap-4">
           <h3 className="text-lg font-semibold text-gray-900">Deductions</h3>
           <div className="flex flex-col gap-2">
-            {report.employerPfDeduction > 0 && (
-              <div className="flex justify-between items-center py-1 border-b">
-                <span className="text-gray-600">Employer PF</span>
-                <span className="font-medium">{formatCurrency(report.employerPfDeduction)}</span>
-              </div>
-            )}
-            {report.employeePfDeduction > 0 && (
+            {report.employeePf > 0 && (
               <div className="flex justify-between items-center py-1 border-b">
                 <span className="text-gray-600">Employee PF</span>
-                <span className="font-medium">{formatCurrency(report.employeePfDeduction)}</span>
+                <span className="font-medium">{formatCurrency(report.employeePf)}</span>
               </div>
             )}
-            {report.employerEsicDeduction > 0 && (
-              <div className="flex justify-between items-center py-1 border-b">
-                <span className="text-gray-600">Employer ESIC</span>
-                <span className="font-medium">{formatCurrency(report.employerEsicDeduction)}</span>
-              </div>
-            )}
-            {report.employeeEsicDeduction > 0 && (
+            {report.employeeEsic > 0 && (
               <div className="flex justify-between items-center py-1 border-b">
                 <span className="text-gray-600">Employee ESIC</span>
-                <span className="font-medium">{formatCurrency(report.employeeEsicDeduction)}</span>
+                <span className="font-medium">{formatCurrency(report.employeeEsic)}</span>
               </div>
             )}
-            {report.absentDeduction > 0 && (
-              <div className="flex justify-between items-center py-1 border-b">
-                <span className="text-gray-600">Absent Deduction</span>
-                <span className="font-medium text-red-600">{formatCurrency(report.absentDeduction)}</span>
-              </div>
-            )}
-            {report.lateDeduction > 0 && (
-              <div className="flex justify-between items-center py-1 border-b">
-                <span className="text-gray-600">Late Deduction</span>
-                <span className="font-medium text-red-600">{formatCurrency(report.lateDeduction)}</span>
-              </div>
-            )}
-            {report.halfDayDeduction > 0 && (
-              <div className="flex justify-between items-center py-1 border-b">
-                <span className="text-gray-600">Half Day Deduction</span>
-                <span className="font-medium text-red-600">{formatCurrency(report.halfDayDeduction)}</span>
-              </div>
-            )}
-            {report.unpaidLeavesDeduction > 0 && (
-              <div className="flex justify-between items-center py-1 border-b">
-                <span className="text-gray-600">Unpaid Leaves</span>
-                <span className="font-medium text-red-600">{formatCurrency(report.unpaidLeavesDeduction)}</span>
-              </div>
-            )}
-            {report.ptDeduction > 0 && (
+            {report.professionalTax > 0 && (
               <div className="flex justify-between items-center py-1 border-b">
                 <span className="text-gray-600">Professional Tax</span>
-                <span className="font-medium text-red-600">{formatCurrency(report.ptDeduction)}</span>
+                <span className="font-medium text-red-600">{formatCurrency(report.professionalTax)}</span>
               </div>
             )}
             {report.periodDeductions > 0 && (
@@ -469,8 +422,8 @@ const EmployeePayrollReport = ({ employeeId }) => {
             { label: "Unpaid Leaves", value: report.unpaidLeavesCount },
             { label: "Late Count", value: report.lateCount + "/" + (report.lateCheckIn.length + report.earlyCheckOuts.length) },
             { label: "Half Days", value: report.paidHalfDayCount + report.unpaidHalfDayCount },
-            { label: "Weekends", value: report.weekendsCount },
-            { label: "Holidays", value: report.holidaysCount },
+            { label: "Weekends + Holidays", value: report.weekendsCount + report.holidaysCount },
+            { label: "Effective Days", value: report.effectiveWorkingDays },
           ].map((item, index) => (
             <div key={index} className="bg-gray-50 rounded-lg p-3 flex flex-col justify-between border border-gray-200">
               <div className="text-sm text-gray-500">{item.label}</div>

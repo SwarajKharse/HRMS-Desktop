@@ -28,6 +28,7 @@ import HolidaySettings from './pages/settings/HolidaySettings';
 import GeoFencingSettings from './pages/settings/GeoFencingSettings';
 import TdsSlabSettings from './pages/settings/TdsSlabSettings';
 import EmployeePayrollSettings from './pages/settings/EmployeePayrollSettings';
+import OrganizationPayrollSettings from './pages/settings/OrganizationPayrollSettings';
 
 function App() {
   return (
@@ -161,6 +162,14 @@ function App() {
                 <ProtectedPermissionRoute permissionKey="webSettings">
                   <Layout>
                     <EmployeePayrollSettings />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
+
+              <Route path="/settings/organization-payroll-settings" element={
+                <ProtectedPermissionRoute permissionKey="webSettings">
+                  <Layout>
+                    <OrganizationPayrollSettings />
                   </Layout>
                 </ProtectedPermissionRoute>
               } />

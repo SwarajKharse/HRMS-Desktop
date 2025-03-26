@@ -82,4 +82,17 @@ export const payrollSettingsService = {
       throw new Error(error.response?.data?.message || "Error importing payroll details");
     }
   },
+
+  calculateOnGross: async (orgId, empId, grossSalary) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/calc-on-gross`, {
+        orgId,
+        empId,
+        grossSalary,
+      }, getAuthHeaders());
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error calculating payroll details");
+    }
+  },
 };

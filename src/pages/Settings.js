@@ -2,17 +2,18 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import { FiSearch } from "react-icons/fi"
-import { 
-  RiBuilding4Line, 
-  RiTimeLine, 
-  RiWallet3Line, 
-  RiSettings4Line, 
+import {
+  RiBuilding4Line,
+  RiTimeLine,
+  RiWallet3Line,
+  RiSettings4Line,
   RiMoneyDollarCircleLine,
   RiShieldUserLine,
   RiUserSettingsLine,
   RiCalendarEventLine,
   RiMapPinLine,
-  RiPercentLine
+  RiPercentLine,
+  RiBankLine,
 } from "react-icons/ri"
 import Tilt from "react-parallax-tilt"
 
@@ -74,6 +75,15 @@ function Settings() {
       color: "bg-red-500",
       category: "location",
       link: "/settings/geoFencing",
+    },
+    {
+      id: "organization-payroll-settings",
+      name: "Organization Payroll Settings",
+      description: "Configure company-wide payroll policies and rules",
+      icon: RiBankLine,
+      color: "bg-teal-500",
+      category: "payroll",
+      link: "/settings/organization-payroll-settings",
     },
     {
       id: "tds-slabs",
