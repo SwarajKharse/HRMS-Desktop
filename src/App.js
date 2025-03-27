@@ -3,8 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { PermissionsProvider } from './contexts/PermissionsContext';
-import PrivateRoute from './components/PrivateRoute';
 
+import PrivateRoute from './components/PrivateRoute';
+import PublicRoute from './components/PublicRoute';
 import ProtectedPermissionRoute from './components/ProtectedPermissionRoute';
 
 import Layout from './components/Layout';
@@ -37,8 +38,8 @@ function App() {
         <PermissionsProvider>
           <Router>
             <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              <Route path="/login" element={<PublicRoute> <Login /> </PublicRoute>} />
+              <Route path="/register" element={<PublicRoute> <Register /> </PublicRoute>} />
 
               {/* Protected Routes */}
               <Route path="/" element={
@@ -49,129 +50,161 @@ function App() {
                 </PrivateRoute>
               } />
               <Route path="/reports" element={
-                <ProtectedPermissionRoute permissionKey="webReports">
-                  <Layout>
-                    <Reports />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webReports">
+                    <Layout>
+                      <Reports />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
               <Route path="/onboarding" element={
-                <ProtectedPermissionRoute permissionKey='webOnboarding'>
-                  <Layout>
-                    <Onboarding />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey='webOnboarding'>
+                    <Layout>
+                      <Onboarding />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
               <Route path="/onboarding/employee/:hash" element={
-                <ProtectedPermissionRoute permissionKey='webOnboarding'>
-                  <Layout>
-                    <EmployeeProfile />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey='webOnboarding'>
+                    <Layout>
+                      <EmployeeProfile />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
               <Route path="/leave-tracker" element={
-                <ProtectedPermissionRoute permissionKey="webLeave">
-                  <Layout>
-                    <LeaveTracker />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webLeave">
+                    <Layout>
+                      <LeaveTracker />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
               <Route path="/attendance" element={
-                <ProtectedPermissionRoute permissionKey="webAttendance">
-                  <Layout>
-                    <Attendance />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webAttendance">
+                    <Layout>
+                      <Attendance />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
               <Route path="/payroll" element={
-                <ProtectedPermissionRoute permissionKey="webPayroll">
-                  <Layout>
-                    <Payroll />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webPayroll">
+                    <Layout>
+                      <Payroll />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
 
               <Route path="/settings" element={
-                <ProtectedPermissionRoute permissionKey="webSettings">
-                  <Layout>
-                    <Settings />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webSettings">
+                    <Layout>
+                      <Settings />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
 
               <Route
                 path="/settings/organization"
                 element={
-                  <ProtectedPermissionRoute permissionKey="webSettings">
-                    <Layout>
-                      <OrganizationSettings />
-                    </Layout>
-                  </ProtectedPermissionRoute>
+                  <PrivateRoute>
+                    <ProtectedPermissionRoute permissionKey="webSettings">
+                      <Layout>
+                        <OrganizationSettings />
+                      </Layout>
+                    </ProtectedPermissionRoute>
+                  </PrivateRoute>
                 }
               />
 
               <Route path="/settings/rbac" element={
-                <ProtectedPermissionRoute permissionKey="webSettings">
-                  <Layout>
-                    <RoleBasedSettings />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webSettings">
+                    <Layout>
+                      <RoleBasedSettings />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
 
               <Route path="/settings/leave" element={
-                <ProtectedPermissionRoute permissionKey="webSettings">
-                  <Layout>
-                    <LeaveSettings />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webSettings">
+                    <Layout>
+                      <LeaveSettings />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
 
               <Route path="/settings/attendance-settings" element={
-                <ProtectedPermissionRoute permissionKey="webSettings">
-                  <Layout>
-                    <AttendanceSettings />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webSettings">
+                    <Layout>
+                      <AttendanceSettings />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
               
               <Route path="/settings/holiday" element={
-                <ProtectedPermissionRoute permissionKey="webSettings">
-                  <Layout>
-                    <HolidaySettings />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webSettings">
+                    <Layout>
+                      <HolidaySettings />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
 
               <Route path="/settings/geoFencing" element={
-                <ProtectedPermissionRoute permissionKey="webSettings">
-                  <Layout>
-                    <GeoFencingSettings />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webSettings">
+                    <Layout>
+                      <GeoFencingSettings />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
 
               <Route path="/settings/tds-slabs" element={
-                <ProtectedPermissionRoute permissionKey="webSettings">
-                  <Layout>
-                    <TdsSlabSettings />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webSettings">
+                    <Layout>
+                      <TdsSlabSettings />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
 
               <Route path="/settings/employee-payroll-settings" element={
-                <ProtectedPermissionRoute permissionKey="webSettings">
-                  <Layout>
-                    <EmployeePayrollSettings />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webSettings">
+                    <Layout>
+                      <EmployeePayrollSettings />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
 
               <Route path="/settings/organization-payroll-settings" element={
-                <ProtectedPermissionRoute permissionKey="webSettings">
-                  <Layout>
-                    <OrganizationPayrollSettings />
-                  </Layout>
-                </ProtectedPermissionRoute>
+                <PrivateRoute>
+                  <ProtectedPermissionRoute permissionKey="webSettings">
+                    <Layout>
+                      <OrganizationPayrollSettings />
+                    </Layout>
+                  </ProtectedPermissionRoute>
+                </PrivateRoute>
               } />
 
               {/* Redirect any unknown routes to home */}

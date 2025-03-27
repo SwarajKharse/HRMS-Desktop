@@ -1,20 +1,18 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 
-function PrivateRoute({ children }) {
-  const { user, loading } = useAuth();
+function PublicRoute({ children }) {
+  const token = localStorage.getItem('token');
   const location = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token && !!user);
+    setIsAuthenticated(!!token);
     setAuthChecked(true);
-  }, [user]);
+  }, [token]);
 
-  if (loading || !authChecked) {
+  if (!authChecked) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
@@ -22,11 +20,12 @@ function PrivateRoute({ children }) {
     );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  if (isAuthenticated) {
+    const destination = location.state?.from || '/';
+    return <Navigate to={destination} replace />;
   }
 
   return children;
 }
 
-export default PrivateRoute;
+export default PublicRoute;
