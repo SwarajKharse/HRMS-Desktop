@@ -53,11 +53,10 @@ export const employeeService = {
     }
   },
 
-  getManagerList : async () => {
+  getManagerList : async (designation) => {
     try {
       const user = authService.getUser();
-      const manager = "Manager";
-      const response = await axios.get(`${BASE_URL}/manager/${user.orgId}/${manager}`, getAuthHeaders());
+      const response = await axios.get(`${BASE_URL}/manager/${user.orgId}/${designation}`, getAuthHeaders());
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
