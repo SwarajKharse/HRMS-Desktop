@@ -52,13 +52,13 @@ function Home() {
       validTabs.push("terminations");
       validTabs.push("resignations");
       validTabs.push("payslips");
+      validTabs.push("reports");
       tabs.push({ id: "attendance-kiosk", label: "Attendance Kiosk" });
       tabs.push({ id: "miss-punch", label: "Miss Punch" });
       tabs.push({ id: "warnings", label: "Warnings" });
       tabs.push({ id: "terminations", label: "Terminations" });
       tabs.push({ id: "resignations", label: "Resignations" });
       tabs.push({ id: "payslips", label: "Payslips" });
-      tabs.push({ id: "reports", label: "Reports" });
       tabs.push({ id: "reports", label: "Reports" });
     }
     
