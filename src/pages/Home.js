@@ -10,6 +10,7 @@ import Warnings from "../components/Home/Warnings"
 import Terminations from "../components/Home/Terminations"
 import Resignations from "../components/Home/Resignations"
 import PaySlips from "../components/Home/PaySlips";
+import Reports from "../components/Home/Reports";
 import { usePermissions } from "../contexts/PermissionsContext";
 
 function Home() {
@@ -57,6 +58,8 @@ function Home() {
       tabs.push({ id: "terminations", label: "Terminations" });
       tabs.push({ id: "resignations", label: "Resignations" });
       tabs.push({ id: "payslips", label: "Payslips" });
+      tabs.push({ id: "reports", label: "Reports" });
+      tabs.push({ id: "reports", label: "Reports" });
     }
     
     setVALID_TABS(validTabs);
@@ -127,6 +130,7 @@ function Home() {
           {activeTab === "terminations" && <Terminations />}
           {activeTab === "resignations" && <Resignations />}
           {activeTab === "payslips" && <PaySlips />}
+          {activeTab === "reports" && <Reports />}
         </motion.div>
       </AnimatePresence>
     </div>

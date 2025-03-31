@@ -82,4 +82,21 @@ export const payslipService = {
       throw new Error(error.response?.data?.message || "Error exporting payslips");
     }
   },
+
+  exportMonthlySalary: async (orgId, month, year) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/monthly-salary`, {
+        ...getAuthHeaders(),
+        responseType: "blob",
+        params: {
+          orgId,
+          month,
+          year
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error exporting monthly salary");
+    }
+  },
 };
