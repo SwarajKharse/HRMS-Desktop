@@ -223,6 +223,79 @@ const EmployeePayrollReport = ({ employeeId }) => {
     }
   };
 
+  // Bulk update handlers for overtime entries
+  const [bulkOperationLoading, setBulkOperationLoading] = useState(false)
+
+  const handleIncludeAllOvertimes = async () => {
+    if (localOvertimes.length === 0) return
+
+    try {
+      setBulkOperationLoading(true)
+      setError(null)
+
+      // Update local state immediately for better UX
+      setLocalOvertimes((prev) =>
+        prev.map((item) => ({
+          ...item,
+          isIncludeOvertime: true,
+        })),
+      )
+
+      // Process all overtime entries in sequence
+      for (const item of localOvertimes) {
+        if (!item.isIncludeOvertime) {
+          // Only update entries that need changing
+          await attendanceService.markUpdateOvertime(item.id, item.overtimeMinutes, true)
+        }
+      }
+
+      // Refresh data after all updates
+      fetchReport(employeeId, selectedMonth, selectedYear)
+    } catch (error) {
+      console.error("Failed to include all overtimes:", error)
+      setError("Failed to update all overtime entries. Please try again.")
+      // Revert local state on error
+      fetchReport(employeeId, selectedMonth, selectedYear)
+    } finally {
+      setBulkOperationLoading(false)
+    }
+  }
+
+  const handleRemoveAllOvertimes = async () => {
+    if (localOvertimes.length === 0) return
+
+    try {
+      setBulkOperationLoading(true)
+      setError(null)
+
+      // Update local state immediately for better UX
+      setLocalOvertimes((prev) =>
+        prev.map((item) => ({
+          ...item,
+          isIncludeOvertime: false,
+        })),
+      )
+
+      // Process all overtime entries in sequence
+      for (const item of localOvertimes) {
+        if (item.isIncludeOvertime) {
+          // Only update entries that need changing
+          await attendanceService.markUpdateOvertime(item.id, item.overtimeMinutes, false)
+        }
+      }
+
+      // Refresh data after all updates
+      fetchReport(employeeId, selectedMonth, selectedYear)
+    } catch (error) {
+      console.error("Failed to remove all overtimes:", error)
+      setError("Failed to update all overtime entries. Please try again.")
+      // Revert local state on error
+      fetchReport(employeeId, selectedMonth, selectedYear)
+    } finally {
+      setBulkOperationLoading(false)
+    }
+  }
+
   // Format currency helper
   const formatCurrency = (amount) =>
     new Intl.NumberFormat("en-IN", {
@@ -442,6 +515,34 @@ const EmployeePayrollReport = ({ employeeId }) => {
 
   const renderOvertimes = () => (
     <div className="p-6">
+      {user?.userId !== employeeId && (
+        <div className="mb-4 flex items-center justify-end gap-3">
+          <button
+            onClick={handleIncludeAllOvertimes}
+            disabled={bulkOperationLoading || localOvertimes.length === 0}
+            className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {bulkOperationLoading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-700 border-t-transparent mr-2"></div>
+            ) : (
+              <FiCheck className="mr-2" />
+            )}
+            Include All
+          </button>
+          <button
+            onClick={handleRemoveAllOvertimes}
+            disabled={bulkOperationLoading || localOvertimes.length === 0}
+            className="inline-flex items-center px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {bulkOperationLoading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-700 border-t-transparent mr-2"></div>
+            ) : (
+              <FiTrash2 className="mr-2" />
+            )}
+            Remove All
+          </button>
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead>
@@ -483,22 +584,22 @@ const EmployeePayrollReport = ({ employeeId }) => {
                   </span>
                 </TableCell>
                 {user?.userId !== employeeId && (
-                  <div className="flex items-center gap-2">
-                    <TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
                       <Toggle
                         checked={item.isIncludeOvertime}
                         onChange={() =>
                           handleToggleOvertime(item.id, item.isIncludeOvertime, item.overtimeMinutes)
                         }
                       />
-                    </TableCell>
-                    <button
-                      onClick={() => handleToggleOvertime(item.id, !item.isIncludeOvertime, item.overtimeMinutes)}
-                      className="p-1 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
-                    >
-                      <FiCheck className="w-4 h-4" />
-                    </button>
-                  </div>
+                      <button
+                        onClick={() => handleToggleOvertime(item.id, !item.isIncludeOvertime, item.overtimeMinutes)}
+                        className="p-1 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-full transition-colors"
+                      >
+                        <FiCheck className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </TableCell>
                 )}
               </tr>
             ))}

@@ -10,6 +10,7 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiCalendar,
+  FiTrash2,
 } from "react-icons/fi"
 import { payrollSettingsService } from "../services/payrollSettingsService"
 import { useAuth } from "../contexts/AuthContext"
@@ -359,6 +360,45 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
     setIsEdited(true)
   }
 
+  // New: Clear all employee deductions
+  const clearEmployeeDeductions = () => {
+    setFormData((prev) => {
+      const newData = { ...prev }
+      newData.employeePf = 0
+      newData.employeeEsic = 0
+      newData.professionalTax = 0
+
+      // Recalculate total deductions
+      newData.totalDeductions = 0
+
+      // Recalculate net salary
+      newData.netSalary = newData.grossSalary - newData.totalDeductions
+
+      return newData
+    })
+    setIsEdited(true)
+  }
+
+  // New: Clear all employer contributions
+  const clearEmployerContributions = () => {
+    setFormData((prev) => {
+      const newData = { ...prev }
+      newData.employerPf = 0
+      newData.employerEsic = 0
+      newData.gratuity = 0
+      newData.bonus = 0
+
+      // Recalculate total employer contribution
+      newData.totalEmployerContribution = 0
+
+      // Recalculate CTC
+      newData.costToCompany = newData.grossSalary
+
+      return newData
+    })
+    setIsEdited(true)
+  }
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -700,7 +740,17 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
 
                   {/* Deductions */}
                   <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Deductions</h3>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Deductions</h3>
+                      <button
+                        type="button"
+                        onClick={clearEmployeeDeductions}
+                        className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+                      >
+                        <FiTrash2 className="w-3 h-3" />
+                        Clear Deductions
+                      </button>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Employee PF */}
@@ -767,7 +817,17 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
 
                   {/* Employer Contributions */}
                   <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Employer Contributions</h3>
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Employer Contributions</h3>
+                      <button
+                        type="button"
+                        onClick={clearEmployerContributions}
+                        className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+                      >
+                        <FiTrash2 className="w-3 h-3" />
+                        Clear Contributions
+                      </button>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {/* Employer PF */}
@@ -1057,39 +1117,38 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
 
         {/* Footer */}
         <div className="sticky bottom-0 bg-white rounded-b-xl border-t border-gray-200 p-4">
-        {showSaveButton && (
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || loading || (!isEdited && !formData.grossSalary)}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-            >
-              {submitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <FiCheck className="w-4 h-4" />
-                  <span>Save Changes</span>
-                </>
-              )}
-            </button>
-          </div>
-        )}
+          {showSaveButton && (
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || loading || (!isEdited && !formData.grossSalary)}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiCheck className="w-4 h-4" />
+                    <span>Save Changes</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
     </motion.div>
   )
 }
 
-export default PayrollDialog
-
+export default PayrollDialog;
