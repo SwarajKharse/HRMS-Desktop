@@ -188,12 +188,22 @@ function Navbar({userData}) {
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      {/* On mobile, show the logo on the left */}
       {isMobile && (
-        <div className="flex items-center">
-          <img src={userData?.org?.logoUrl} alt="logo" className="h-16" />
+        <div className="relative min-h-[52px] border-gray-700 flex items-center justify-center mr-2">
+          {userData.org.logoUrl ? (
+            <img src={userData?.org?.logoUrl} alt="logo" className="h-16" />
+          ) : (
+            <div className="flex items-center justify-center rounded-full bg-gray-300 text-gray-800 h-14 w-14">
+              <span className="text-xl font-semibold">LOGO</span>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Show the org name on the leftmost side */}
+      <div className="flex items-center space-x-2">
+        <span className="text-lg font-semibold">{userData?.org?.name}</span>
+      </div>
 
       <div className="flex items-center space-x-4 ml-auto">
         <div className="relative">

@@ -22,6 +22,8 @@ import {
   isToday,
   subMonths,
   addMonths,
+  getMonth,
+  getYear
 } from "date-fns"
 import LeaveCard from "./LeaveCard"
 import { leaveRequestService } from "../../services/leaveRequestService"
@@ -72,7 +74,7 @@ function LeaveSummary() {
     try {
       if (user?.sub && user?.orgId) {
         const [leaveTypesData, leavesData] = await Promise.all([
-          leaveBalanceService.getLeaveTypesByEmpId(user.sub),
+          leaveBalanceService.getLeaveTypesByEmpId(user.sub, getMonth(calendarDate) + 1, getYear(calendarDate)),
           leaveRequestService.getLeavesByEmployeeId(user.sub),
         ]);
 

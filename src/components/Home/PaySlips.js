@@ -232,9 +232,6 @@ function Payslips() {
                     Deductions
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Income Tax
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Net Pay
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -285,16 +282,13 @@ function Payslips() {
                         {payslip.employee.employeeCode}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(payslip.basicSalary)}
+                        {formatCurrency(payslip.basicDa)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatCurrency(payslip.totalEarnings)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatCurrency(payslip.totalDeductions)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(payslip.incomeTax)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="font-medium text-green-600">{formatCurrency(payslip.netPay)}</div>

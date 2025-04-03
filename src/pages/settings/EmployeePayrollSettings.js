@@ -12,6 +12,7 @@ import {
   FiX,
   FiCheck,
 } from "react-icons/fi"
+import { getMonth, getYear } from "date-fns"
 import { employeeService } from "../../services/employeeService"
 import { payrollSettingsService } from "../../services/payrollSettingsService"
 import { allowanceService } from "../../services/allowanceService"
@@ -104,7 +105,7 @@ function EmployeePayroll() {
   const handleEditPayroll = async (employee) => {
     try {
       setSelectedEmployee(employee)
-      const payroll = await payrollSettingsService.getPayrollByEmployee(employee.id)
+      const payroll = await payrollSettingsService.getByEmployeeIdAndMonth(employee.id, getMonth(currentDate) + 1, getYear(currentDate))
       setPayrollData(payroll)
       setShowDialog(true)
     } catch (err) {

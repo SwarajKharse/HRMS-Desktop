@@ -421,7 +421,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
             { label: "Paid Leaves", value: report.paidLeavesCount },
             { label: "Unpaid Leaves", value: report.unpaidLeavesCount },
             { label: "Late Count", value: report.lateCount + "/" + (report.lateCheckIn.length + report.earlyCheckOuts.length) },
-            { label: "Half Days", value: report.paidHalfDayCount + report.unpaidHalfDayCount },
+            { label: "Half Days (Paid | Unpaid)", value: report.paidHalfDayCount + " | " + report.unpaidHalfDayCount },
             { label: "Weekends + Holidays", value: report.weekendsCount + report.holidaysCount },
             { label: "Effective Days", value: report.effectiveWorkingDays },
           ].map((item, index) => (

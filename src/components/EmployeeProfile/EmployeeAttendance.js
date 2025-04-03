@@ -149,7 +149,7 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
       try {
         setLoadingLeaveTypes(true)
         const user = authService.getUser()
-        const data = await leaveBalanceService.getLeaveTypesByEmpId(employeeId)
+        const data = await leaveBalanceService.getLeaveTypesByEmpId(employeeId, getMonth(date) + 1, getYear(date))
         setLeaveTypes(
           data.map((item) => ({
             id: item.leaveType.id,

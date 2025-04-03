@@ -23,12 +23,28 @@ const getAuthTokenHeader = () => {
 };
 
 export const payrollSettingsService = {
-  getPayrollByEmployee: async (empId) => {
+  // getPayrollByEmployee: async (empId) => {
+  //   try {
+  //     const response = await axios.get(`${BASE_URL}/employee/${empId}`, getAuthHeaders());
+  //     return response.data;
+  //   } catch (error) {
+  //     throw new Error(error.response?.data?.message || "Error fetching payroll details");
+  //   }
+  // },
+
+  getByEmployeeIdAndMonth: async (employeeId, month, year) => {
     try {
-      const response = await axios.get(`${BASE_URL}/employee/${empId}`, getAuthHeaders());
-      return response.data;
+      const response = await axios.get(
+        `${BASE_URL}/employee/${employeeId}?month=${month}&year=${year}`,
+        getAuthHeaders(),
+      )
+      return response.data
     } catch (error) {
-      throw new Error(error.response?.data?.message || "Error fetching payroll details");
+      if (error.response?.status === 404) {
+        // Return null if no data found for this month
+        return null
+      }
+      throw new Error(error.response?.data?.message || "Error fetching payroll settings")
     }
   },
 
@@ -96,9 +112,9 @@ export const payrollSettingsService = {
     }
   },
 
-  exportCTCBreakdown: async (orgId) => {
+  exportCTCBreakdown: async (orgId, month, year) => {
     try {
-      const response = await axios.get(`${BASE_URL}/export-all-ctc?orgId=${orgId}`, {
+      const response = await axios.get(`${BASE_URL}/export-all-ctc?orgId=${orgId}&month=${month}&year=${year}`, {
         ...getAuthHeaders(),
         responseType: "blob",
       });

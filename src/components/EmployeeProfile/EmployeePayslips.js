@@ -77,16 +77,13 @@ function EmployeePayslips({ employeeId }) {
                   Period
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Basic Salary
+                  Basic + DA
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total Earnings
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Deductions
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Income Tax
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Net Pay
@@ -118,16 +115,13 @@ function EmployeePayslips({ employeeId }) {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="font-medium text-gray-900">{formatCurrency(payslip.basicSalary)}</div>
+                      <div className="font-medium text-gray-900">{formatCurrency(payslip.basicDa)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatCurrency(payslip.totalEarnings)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatCurrency(payslip.totalDeductions)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(payslip.incomeTax)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="font-medium text-green-600">{formatCurrency(payslip.netPay)}</div>

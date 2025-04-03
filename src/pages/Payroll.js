@@ -64,10 +64,6 @@ function Payroll() {
     return format(date, "MMMM yyyy")
   }
 
-  const calculateAllowances = (totalEarnings, basicSalary) => {
-    return totalEarnings - basicSalary
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -98,7 +94,7 @@ function Payroll() {
                   Pay Period
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Basic Salary
+                  Basic + DA
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total Earnings
@@ -136,19 +132,13 @@ function Payroll() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.basicSalary)}</div>
-                      <div className="text-xs text-gray-500">
-                        Allowances: {formatCurrency(calculateAllowances(payslip.totalEarnings, payslip.basicSalary))}
-                      </div>
+                      <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.basicDa)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.totalEarnings)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.totalDeductions)}</div>
-                      {payslip.incomeTax > 0 && (
-                        <div className="text-xs text-gray-500">Tax: {formatCurrency(payslip.incomeTax)}</div>
-                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className={`text-sm font-medium ${payslip.netPay < 0 ? "text-red-600" : "text-green-600"}`}>

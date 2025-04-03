@@ -44,7 +44,7 @@ const Reports = () => {
       label: "CTC Breakdown",
       icon: <FiPieChart className="w-5 h-5" />,
       description: "Export CTC breakdown for all employees",
-      requiresMonth: false,
+      requiresMonth: true,
     },
     {
       value: "monthlySalary",
@@ -70,7 +70,7 @@ const Reports = () => {
           filename = `Payslips_${months.find((m) => m.value === Number.parseInt(month))?.label}_${year}.xlsx`
           break
         case "ctcBreakdown":
-          blob = await payrollSettingsService.exportCTCBreakdown(orgId)
+          blob = await payrollSettingsService.exportCTCBreakdown(orgId, month, year)
           filename = `CTC_Breakdown_${year}.xlsx`
           break
         case "monthlySalary":
