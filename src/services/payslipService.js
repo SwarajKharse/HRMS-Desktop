@@ -71,6 +71,18 @@ export const payslipService = {
     }
   },
 
+  downloadPayslipByEmpIdPdf: async (empId, month, year) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/pdf-employee?empId=${empId}&month=${month}&year=${year}`, {
+        ...getAuthHeaders(),
+        responseType: "blob",
+      })
+      return response.data
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error downloading payslip")
+    }
+  },
+
   exportPayslips: async (orgId, month, year) => {
     try {
       const response = await axios.get(`${BASE_URL}/export/${orgId}/month/${month}/year/${year}`, {
@@ -90,6 +102,23 @@ export const payslipService = {
         responseType: "blob",
         params: {
           orgId,
+          month,
+          year
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error exporting monthly salary");
+    }
+  },
+
+  exportIndividualMonthlySalary: async (empId, month, year) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/monthly-salary-individual`, {
+        ...getAuthHeaders(),
+        responseType: "blob",
+        params: {
+          empId,
           month,
           year
         }

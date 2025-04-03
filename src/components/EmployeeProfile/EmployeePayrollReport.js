@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiChevronLeft,
@@ -14,7 +14,9 @@ import {
   FiEdit2,
   FiTrash2,
   FiPlusCircle,
-  FiCheck
+  FiCheck,
+  FiDownload,
+  FiPieChart,
 } from "react-icons/fi";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -25,6 +27,7 @@ import { payrollSettingsService } from "../../services/payrollSettingsService";
 import { allowanceService } from "../../services/allowanceService";
 import { deductionService } from "../../services/deductionService";
 import { bonusService } from "../../services/bonusService";
+import { payslipService } from "../../services/payslipService";
 
 // Modals / Forms
 import PayrollDialog from "../../components/PayrollDialog";
@@ -390,6 +393,67 @@ const EmployeePayrollReport = ({ employeeId }) => {
     }
   };
 
+  // Add the following state for download operations:
+  const [downloadLoading, setDownloadLoading] = useState(null)
+
+  // Add the following download handler functions:
+  const handleDownloadCTCBreakdown = async () => {
+    try {
+      setDownloadLoading("ctc")
+      const blob = await payrollSettingsService.exportIndividualCTCBreakdown(employeeId, selectedMonth, selectedYear)
+      const url = window.URL.createObjectURL(new Blob([blob]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", `CTC_Breakdown_${employeeId}_${selectedMonth}_${selectedYear}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      setError("Failed to download CTC breakdown")
+      console.error(error)
+    } finally {
+      setDownloadLoading(null)
+    }
+  }
+
+  const handleDownloadPayslipXlsx = async () => {
+    try {
+      setDownloadLoading("xlsx")
+      const blob = await payslipService.exportIndividualMonthlySalary(employeeId, selectedMonth, selectedYear)
+      const url = window.URL.createObjectURL(new Blob([blob]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", `Monthly_Salary_${employeeId}_${selectedMonth}_${selectedYear}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      setError("Failed to download monthly salary report")
+      console.error(error)
+    } finally {
+      setDownloadLoading(null)
+    }
+  }
+
+  const handleDownloadPayslipPdf = async () => {
+    try {
+      setDownloadLoading("pdf")
+      const blob = await payslipService.downloadPayslipByEmpIdPdf(employeeId, selectedMonth, selectedYear)
+      const url = window.URL.createObjectURL(new Blob([blob]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", `Payslip_${employeeId}_${selectedMonth}_${selectedYear}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (error) {
+      setError("Failed to download payslip PDF")
+      console.error(error)
+    } finally {
+      setDownloadLoading(null)
+    }
+  }
+
   // --- Render Functions for Each Tab ---
 
   const renderSummary = () => (
@@ -423,6 +487,18 @@ const EmployeePayrollReport = ({ employeeId }) => {
                   <span className="font-medium">{formatCurrency(report.otherAllowances)}</span>
                 </div>
               )}
+              {report.incentives > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Incentives</span>
+                  <span className="font-medium">{formatCurrency(report.incentives)}</span>
+                </div>
+              )}
+              {report.grossSalary > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Gross Salary</span>
+                  <span className="font-medium">{formatCurrency(report.grossSalary)}</span>
+                </div>
+              )}
               {report.totalAllowances > 0 && (
                 <div className="flex justify-between items-center py-1 border-b">
                   <span className="text-gray-600">Total Allowances</span>
@@ -435,16 +511,10 @@ const EmployeePayrollReport = ({ employeeId }) => {
                   <span className="font-medium">{formatCurrency(report.totalBonuses)}</span>
                 </div>
               )}
-              {report.incentives > 0 && (
+              {report.totalEarnings > 0 && (
                 <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Incentives</span>
-                  <span className="font-medium">{formatCurrency(report.incentives)}</span>
-                </div>
-              )}
-              {report.grossSalary > 0 && (
-                <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Gross Salary</span>
-                  <span className="font-medium">{formatCurrency(report.grossSalary)}</span>
+                  <span className="text-gray-600">Total Earnings</span>
+                  <span className="font-medium">{formatCurrency(report.totalEarnings)}</span>
                 </div>
               )}
             </div>
@@ -509,6 +579,48 @@ const EmployeePayrollReport = ({ employeeId }) => {
       <div className="bg-green-50 rounded-lg p-6 border border-green-100">
         <div className="text-sm text-green-600 mb-1">Net Salary</div>
         <div className="text-3xl font-bold text-green-700">{formatCurrency(report.netSalary)}</div>
+      </div>
+
+      {/* Download Buttons */}
+      <div className="flex flex-wrap gap-3 justify-center mt-4">
+        <button
+          onClick={handleDownloadCTCBreakdown}
+          disabled={downloadLoading === "ctc"}
+          className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {downloadLoading === "ctc" ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-700 border-t-transparent mr-2"></div>
+          ) : (
+            <FiPieChart className="mr-2" />
+          )}
+          Download CTC Breakdown
+        </button>
+
+        <button
+          onClick={handleDownloadPayslipXlsx}
+          disabled={downloadLoading === "xlsx"}
+          className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {downloadLoading === "xlsx" ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-700 border-t-transparent mr-2"></div>
+          ) : (
+            <FiFileText className="mr-2" />
+          )}
+          Download Payslip (XLSX)
+        </button>
+
+        <button
+          onClick={handleDownloadPayslipPdf}
+          disabled={downloadLoading === "pdf"}
+          className="inline-flex items-center px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {downloadLoading === "pdf" ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-700 border-t-transparent mr-2"></div>
+          ) : (
+            <FiDownload className="mr-2" />
+          )}
+          Download Payslip (PDF)
+        </button>
       </div>
     </div>
   );
