@@ -71,8 +71,8 @@ function Onboarding() {
       const filtered = employees.filter((employee) => {
         const fullName = `${employee.firstName} ${employee.lastName}`.toLowerCase()
         return (
-          fullName.includes(searchQuery.toLowerCase()) ||
-          employee.employeeCode.includes(searchQuery)
+          fullName?.includes(searchQuery.toLowerCase()) ||
+          employee?.employeeCode?.includes(searchQuery)
         )
       })
       setFilteredEmployees(filtered)
