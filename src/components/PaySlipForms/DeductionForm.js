@@ -2,11 +2,11 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { FiX } from "react-icons/fi"
 
-function DeductionForm({ onSubmit, onClose, initialData = null, employeeId }) {
+function DeductionForm({ onSubmit, onClose, month = null, year = null, initialData = null, employeeId }) {
   const [formData, setFormData] = useState({
     amount: initialData?.amount || "",
     description: initialData?.description || "",
-    date: initialData?.date || new Date().toISOString().split("T")[0],
+    date: initialData?.date || (year && month ? new Date(year, month, 0).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]),
   })
 
   const [errors, setErrors] = useState({})

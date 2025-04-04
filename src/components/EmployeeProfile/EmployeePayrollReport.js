@@ -1126,6 +1126,8 @@ const EmployeePayrollReport = ({ employeeId }) => {
               setEditingItem(null);
               setEditingType(null);
             }}
+            month={selectedMonth}
+            year={selectedYear}
             initialData={editingItem}
             employeeId={employeeId}
           />
@@ -1139,6 +1141,8 @@ const EmployeePayrollReport = ({ employeeId }) => {
               setEditingItem(null);
               setEditingType(null);
             }}
+            month={selectedMonth}
+            year={selectedYear}
             initialData={editingItem}
             employeeId={employeeId}
           />
@@ -1152,6 +1156,8 @@ const EmployeePayrollReport = ({ employeeId }) => {
               setEditingItem(null);
               setEditingType(null);
             }}
+            month={selectedMonth}
+            year={selectedYear}
             initialData={editingItem}
             employeeId={employeeId}
           />

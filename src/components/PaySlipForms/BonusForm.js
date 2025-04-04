@@ -2,11 +2,12 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { FiX } from "react-icons/fi"
 
-function BonusForm({ onSubmit, onClose, initialData = null, employeeId }) {
+function BonusForm({ onSubmit, onClose, month = null, year = null, initialData = null, employeeId }) {
   const [formData, setFormData] = useState({
     amount: initialData?.amount || "",
     description: initialData?.description || "",
-    date: initialData?.date || new Date().toISOString().split("T")[0],
+    // set the default date to the last date of the month and year got from props
+    date: initialData?.date || (year && month ? new Date(year, month, 0).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]),
   })
 
   const [errors, setErrors] = useState({})
