@@ -23,9 +23,9 @@ export const payslipService = {
     }
   },
 
-  getAllPayslipsByMonthAndYear: async (month, year) => {
+  getAllPayslipsByMonthAndYear: async (orgId, month, year) => {
     try {
-      const response = await axios.get(`${BASE_URL}/month/${month}/year/${year}`, getAuthHeaders());
+      const response = await axios.get(`${BASE_URL}/org/${orgId}/month/${month}/year/${year}`, getAuthHeaders());
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Error fetching payslips');

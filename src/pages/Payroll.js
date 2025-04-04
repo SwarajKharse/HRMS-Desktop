@@ -97,13 +97,13 @@ function Payroll() {
                   Basic + DA
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Earnings
+                  Gross Salary
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Deductions
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Net Pay
+                  Net Salary
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -135,14 +135,14 @@ function Payroll() {
                       <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.basicDa)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.totalEarnings)}</div>
+                      <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.grossSalary)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{formatCurrency(payslip.totalDeductions)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className={`text-sm font-medium ${payslip.netPay < 0 ? "text-red-600" : "text-green-600"}`}>
-                        {formatCurrency(payslip.netPay)}
+                      <div className={`text-sm font-medium ${payslip.netSalary < 0 ? "text-red-600" : "text-green-600"}`}>
+                        {formatCurrency(payslip.netSalary)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
