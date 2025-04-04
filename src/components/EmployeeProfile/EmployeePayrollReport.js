@@ -493,28 +493,22 @@ const EmployeePayrollReport = ({ employeeId }) => {
                   <span className="font-medium">{formatCurrency(report.incentives)}</span>
                 </div>
               )}
+              {report.periodAllowances > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Total Allowances</span>
+                  <span className="font-medium">{formatCurrency(report.periodAllowances)}</span>
+                </div>
+              )}
+              {report.periodBonuses > 0 && (
+                <div className="flex justify-between items-center py-1 border-b">
+                  <span className="text-gray-600">Total Bonus</span>
+                  <span className="font-medium">{formatCurrency(report.periodBonuses)}</span>
+                </div>
+              )}
               {report.grossSalary > 0 && (
                 <div className="flex justify-between items-center py-1 border-b">
                   <span className="text-gray-600">Gross Salary</span>
                   <span className="font-medium">{formatCurrency(report.grossSalary)}</span>
-                </div>
-              )}
-              {report.totalAllowances > 0 && (
-                <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Total Allowances</span>
-                  <span className="font-medium">{formatCurrency(report.totalAllowances)}</span>
-                </div>
-              )}
-              {report.totalBonuses > 0 && (
-                <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Total Bonus</span>
-                  <span className="font-medium">{formatCurrency(report.totalBonuses)}</span>
-                </div>
-              )}
-              {report.totalEarnings > 0 && (
-                <div className="flex justify-between items-center py-1 border-b">
-                  <span className="text-gray-600">Total Earnings</span>
-                  <span className="font-medium">{formatCurrency(report.totalEarnings)}</span>
                 </div>
               )}
             </div>

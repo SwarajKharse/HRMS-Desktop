@@ -80,13 +80,13 @@ function EmployeePayslips({ employeeId }) {
                   Basic + DA
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Earnings
+                  Gross Salary
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Deductions
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Net Pay
+                  Net Salary
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -118,13 +118,13 @@ function EmployeePayslips({ employeeId }) {
                       <div className="font-medium text-gray-900">{formatCurrency(payslip.basicDa)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(payslip.totalEarnings)}
+                      {formatCurrency(payslip.grossSalary)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {formatCurrency(payslip.totalDeductions)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="font-medium text-green-600">{formatCurrency(payslip.netPay)}</div>
+                      <div className="font-medium text-green-600">{formatCurrency(payslip.netSalary)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <button

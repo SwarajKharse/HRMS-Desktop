@@ -26,7 +26,7 @@ function Payslips() {
       setLoading(true)
       const month = currentDate.getMonth() + 1
       const year = currentDate.getFullYear()
-      const data = await payslipService.getAllPayslipsByMonthAndYear(month, year)
+      const data = await payslipService.getAllPayslipsByMonthAndYear(orgId, month, year)
       setPayslips(data)
       setError(null)
     } catch (err) {
@@ -223,16 +223,16 @@ function Payslips() {
                     Employee ID
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Basic Salary
+                    Basic + DA
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Earnings
+                    Gross Salary
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Deductions
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Net Pay
+                    Net Salary
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -285,13 +285,13 @@ function Payslips() {
                         {formatCurrency(payslip.basicDa)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatCurrency(payslip.totalEarnings)}
+                        {formatCurrency(payslip.grossSalary)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatCurrency(payslip.totalDeductions)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="font-medium text-green-600">{formatCurrency(payslip.netPay)}</div>
+                        <div className="font-medium text-green-600">{formatCurrency(payslip.netSalary)}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <div className="flex items-center space-x-3">
