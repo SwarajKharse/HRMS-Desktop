@@ -14,6 +14,7 @@ import {
   FiFileText as FiFileTextIcon,
   FiX,
   FiChevronDown,
+  FiUsers,
 } from "react-icons/fi"
 
 const Reports = () => {
@@ -35,6 +36,9 @@ const Reports = () => {
 
   // Format selection for individual monthly salary
   const [selectedFormat, setSelectedFormat] = useState("xlsx")
+
+  // Selection mode (all employees or individual)
+  const [selectionMode, setSelectionMode] = useState("individual")
 
   // Refs for dropdown handling
   const dropdownRef = useRef(null)
@@ -85,16 +89,18 @@ const Reports = () => {
       value: "individualCtcBreakdown",
       label: "Individual CTC Breakdown",
       icon: <FiUser className="w-5 h-5" />,
-      description: "Export CTC breakdown for a specific employee",
+      description: "Export CTC breakdown for specific employees",
       requiresMonth: true,
+      requiresSelectionMode: true,
       requiresEmployee: true,
     },
     {
       value: "individualMonthlySalary",
       label: "Individual Monthly Salary",
       icon: <FiFilePlus className="w-5 h-5" />,
-      description: "Export monthly salary details for a specific employee (PDF or Excel)",
+      description: "Export monthly salary details for specific employees",
       requiresMonth: true,
+      requiresSelectionMode: true,
       requiresEmployee: true,
       requiresFormat: true,
     },
@@ -134,8 +140,8 @@ const Reports = () => {
   // Filter employees based on search term
   const filteredEmployees = employees.filter(
     (employee) =>
-      `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase()),
+      `${employee?.firstName} ${employee?.lastName}`?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
+      employee?.employeeCode?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   const handleSubmit = async (e) => {
@@ -162,18 +168,33 @@ const Reports = () => {
           filename = `Monthly_Salary_${monthLabel}_${year}.xlsx`
           break
         case "individualCtcBreakdown":
-          if (!selectedEmployee) throw new Error("Please select an employee")
-          blob = await payrollSettingsService.exportIndividualCTCBreakdown(selectedEmployee.id, month, year)
-          filename = `CTC_Breakdown_${selectedEmployee.firstName}_${selectedEmployee.lastName}_${monthLabel}_${year}.xlsx`
+          if (selectionMode === "all") {
+            blob = await payrollSettingsService.exportAllCTCBreakdownZip(orgId, month, year)
+            filename = `CTC_Breakdown_All_Employees_${monthLabel}_${year}.zip`
+          } else {
+            if (!selectedEmployee) throw new Error("Please select an employee")
+            blob = await payrollSettingsService.exportIndividualCTCBreakdown(selectedEmployee.id, month, year)
+            filename = `CTC_Breakdown_${selectedEmployee.firstName}_${selectedEmployee.lastName}_${monthLabel}_${year}.xlsx`
+          }
           break
         case "individualMonthlySalary":
-          if (!selectedEmployee) throw new Error("Please select an employee")
-          if (selectedFormat === "xlsx") {
-            blob = await payslipService.exportIndividualMonthlySalary(selectedEmployee.id, month, year)
-            filename = `Monthly_Salary_${selectedEmployee.firstName}_${selectedEmployee.lastName}_${monthLabel}_${year}.xlsx`
+          if (selectionMode === "all") {
+            if (selectedFormat === "xlsx") {
+              blob = await payslipService.exportAllIndividualMonthlySalaryZip(orgId, month, year)
+              filename = `Monthly_Salary_All_Employees_${monthLabel}_${year}.zip`
+            } else {
+              blob = await payslipService.exportAllPayslipsPdfZip(orgId, month, year)
+              filename = `Payslips_All_Employees_${monthLabel}_${year}.zip`
+            }
           } else {
-            blob = await payslipService.downloadPayslipByEmpIdPdf(selectedEmployee.id, month, year)
-            filename = `Payslip_${selectedEmployee.firstName}_${selectedEmployee.lastName}_${monthLabel}_${year}.pdf`
+            if (!selectedEmployee) throw new Error("Please select an employee")
+            if (selectedFormat === "xlsx") {
+              blob = await payslipService.exportIndividualMonthlySalary(selectedEmployee.id, month, year)
+              filename = `Monthly_Salary_${selectedEmployee.firstName}_${selectedEmployee.lastName}_${monthLabel}_${year}.xlsx`
+            } else {
+              blob = await payslipService.downloadPayslipByEmpIdPdf(selectedEmployee.id, month, year)
+              filename = `Payslip_${selectedEmployee.firstName}_${selectedEmployee.lastName}_${monthLabel}_${year}.pdf`
+            }
           }
           break
         default:
@@ -198,13 +219,13 @@ const Reports = () => {
 
   const selectedReport = reportTypes.find((r) => r.value === reportType)
 
-  // Reset employee selection when changing report type
+  // Reset employee selection when changing report type or selection mode
   useEffect(() => {
-    if (!selectedReport?.requiresEmployee) {
+    if (!selectedReport?.requiresEmployee || (selectedReport?.requiresSelectionMode && selectionMode === "all")) {
       setSelectedEmployee(null)
       setSearchTerm("")
     }
-  }, [reportType])
+  }, [reportType, selectionMode, selectedReport])
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -227,7 +248,10 @@ const Reports = () => {
                 <select
                   id="reportType"
                   value={reportType}
-                  onChange={(e) => setReportType(e.target.value)}
+                  onChange={(e) => {
+                    setReportType(e.target.value)
+                    setSelectionMode("individual") // Reset to individual by default
+                  }}
                   className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   required
                 >
@@ -255,102 +279,144 @@ const Reports = () => {
                 </div>
               )}
 
-              {/* Employee Selection (conditional) */}
-              {reportType && selectedReport?.requiresEmployee && (
+              {/* Selection Mode (All or Individual) */}
+              {reportType && selectedReport?.requiresSelectionMode && (
                 <div>
-                  <label htmlFor="employeeSearch" className="block text-sm font-medium text-gray-700 mb-1">
-                    Select Employee
-                  </label>
-                  <div className="relative" ref={dropdownRef}>
-                    <div
-                      className={`flex items-center w-full px-3 py-2 border ${
-                        isDropdownOpen ? "border-blue-500 ring-2 ring-blue-500" : "border-gray-300"
-                      } rounded-md shadow-sm focus:outline-none ${loadingEmployees ? "bg-gray-50 cursor-wait" : "cursor-pointer"}`}
-                      onClick={() => !loadingEmployees && setIsDropdownOpen(true)}
-                    >
-                      {loadingEmployees ? (
-                        <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2"></div>
-                      ) : (
-                        <FiSearch className="text-gray-400 mr-2" />
-                      )}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Selection Mode</label>
+                  <div className="flex space-x-4">
+                    <label className="inline-flex items-center">
                       <input
-                        type="text"
-                        id="employeeSearch"
-                        value={searchTerm}
-                        onChange={(e) => {
-                          setSearchTerm(e.target.value)
-                          if (!loadingEmployees) setIsDropdownOpen(true)
-                        }}
-                        placeholder={loadingEmployees ? "Loading employees..." : "Search employee by name or code"}
-                        className="flex-1 focus:outline-none bg-transparent"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (!loadingEmployees) setIsDropdownOpen(true)
-                        }}
-                        disabled={loadingEmployees}
+                        type="radio"
+                        name="selectionMode"
+                        value="all"
+                        checked={selectionMode === "all"}
+                        onChange={() => setSelectionMode("all")}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                       />
-                      {selectedEmployee && !loadingEmployees && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedEmployee(null)
-                            setSearchTerm("")
-                          }}
-                          className="text-gray-400 hover:text-gray-500"
-                        >
-                          <FiX className="w-4 h-4" />
-                        </button>
-                      )}
-                      <FiChevronDown
-                        className={`ml-2 text-gray-400 transition-transform ${isDropdownOpen ? "transform rotate-180" : ""} ${
-                          loadingEmployees ? "opacity-50" : ""
-                        }`}
+                      <span className="ml-2 flex items-center">
+                        <FiUsers className="w-4 h-4 mr-1 text-blue-600" />
+                        All Employees (ZIP)
+                      </span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="selectionMode"
+                        value="individual"
+                        checked={selectionMode === "individual"}
+                        onChange={() => setSelectionMode("individual")}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                       />
-                    </div>
-
-                    {/* Employee dropdown */}
-                    {isDropdownOpen && (
-                      <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-y-auto">
-                        {loadingEmployees ? (
-                          <div className="p-4 text-center text-gray-500">Loading employees...</div>
-                        ) : filteredEmployees.length > 0 ? (
-                          filteredEmployees.map((employee) => (
-                            <div
-                              key={employee.id}
-                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
-                              onClick={() => {
-                                setSelectedEmployee(employee)
-                                setSearchTerm(
-                                  `${employee.firstName} ${employee.lastName} (${employee.employeeCode || "No Code"})`,
-                                )
-                                setIsDropdownOpen(false)
-                              }}
-                            >
-                              <FiUser className="text-gray-400 mr-2" />
-                              <div>
-                                <div className="font-medium">
-                                  {employee.firstName} {employee.lastName}
-                                </div>
-                                {employee.employeeCode && (
-                                  <div className="text-xs text-gray-500">{employee.employeeCode}</div>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-4 text-center text-gray-500">No employees found</div>
-                        )}
-                      </div>
-                    )}
+                      <span className="ml-2 flex items-center">
+                        <FiUser className="w-4 h-4 mr-1 text-indigo-600" />
+                        Individual Employee
+                      </span>
+                    </label>
                   </div>
-                  {!selectedEmployee && reportType && selectedReport?.requiresEmployee && (
-                    <p className="mt-1 text-sm text-amber-600">Please select an employee</p>
-                  )}
                 </div>
               )}
 
-              {/* Format Selection for Individual Monthly Salary */}
+              {/* Employee Selection (conditional) */}
+              {reportType &&
+                selectedReport?.requiresEmployee &&
+                (!selectedReport?.requiresSelectionMode || selectionMode === "individual") && (
+                  <div>
+                    <label htmlFor="employeeSearch" className="block text-sm font-medium text-gray-700 mb-1">
+                      Select Employee
+                    </label>
+                    <div className="relative" ref={dropdownRef}>
+                      <div
+                        className={`flex items-center w-full px-3 py-2 border ${
+                          isDropdownOpen ? "border-blue-500 ring-2 ring-blue-500" : "border-gray-300"
+                        } rounded-md shadow-sm focus:outline-none ${loadingEmployees ? "bg-gray-50 cursor-wait" : "cursor-pointer"}`}
+                        onClick={() => !loadingEmployees && setIsDropdownOpen(true)}
+                      >
+                        {loadingEmployees ? (
+                          <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2"></div>
+                        ) : (
+                          <FiSearch className="text-gray-400 mr-2" />
+                        )}
+                        <input
+                          type="text"
+                          id="employeeSearch"
+                          value={searchTerm}
+                          onChange={(e) => {
+                            setSearchTerm(e.target.value)
+                            if (!loadingEmployees) setIsDropdownOpen(true)
+                          }}
+                          placeholder={loadingEmployees ? "Loading employees..." : "Search employee by name or code"}
+                          className="flex-1 focus:outline-none bg-transparent"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (!loadingEmployees) setIsDropdownOpen(true)
+                          }}
+                          disabled={loadingEmployees}
+                        />
+                        {selectedEmployee && !loadingEmployees && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedEmployee(null)
+                              setSearchTerm("")
+                            }}
+                            className="text-gray-400 hover:text-gray-500"
+                          >
+                            <FiX className="w-4 h-4" />
+                          </button>
+                        )}
+                        <FiChevronDown
+                          className={`ml-2 text-gray-400 transition-transform ${isDropdownOpen ? "transform rotate-180" : ""} ${
+                            loadingEmployees ? "opacity-50" : ""
+                          }`}
+                        />
+                      </div>
+
+                      {/* Employee dropdown */}
+                      {isDropdownOpen && (
+                        <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-y-auto">
+                          {loadingEmployees ? (
+                            <div className="p-4 text-center text-gray-500">Loading employees...</div>
+                          ) : filteredEmployees.length > 0 ? (
+                            filteredEmployees.map((employee) => (
+                              <div
+                                key={employee.id}
+                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                                onClick={() => {
+                                  setSelectedEmployee(employee)
+                                  setSearchTerm(
+                                    `${employee.firstName} ${employee.lastName} (${employee.employeeCode || "No Code"})`,
+                                  )
+                                  setIsDropdownOpen(false)
+                                }}
+                              >
+                                <FiUser className="text-gray-400 mr-2" />
+                                <div>
+                                  <div className="font-medium">
+                                    {employee.firstName} {employee.lastName}
+                                  </div>
+                                  {employee.employeeCode && (
+                                    <div className="text-xs text-gray-500">{employee.employeeCode}</div>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-4 text-center text-gray-500">No employees found</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    {!selectedEmployee &&
+                      reportType &&
+                      selectedReport?.requiresEmployee &&
+                      (!selectedReport?.requiresSelectionMode || selectionMode === "individual") && (
+                        <p className="mt-1 text-sm text-amber-600">Please select an employee</p>
+                      )}
+                  </div>
+                )}
+
+              {/* Format Selection for Monthly Salary */}
               {reportType === "individualMonthlySalary" && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Format</label>
@@ -438,13 +504,13 @@ const Reports = () => {
                     loading ||
                     !reportType ||
                     (selectedReport?.requiresMonth && !month) ||
-                    (selectedReport?.requiresEmployee && !selectedEmployee)
+                    (selectedReport?.requiresEmployee && selectionMode === "individual" && !selectedEmployee)
                   }
                   className={`w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
                     loading ||
                     !reportType ||
                     (selectedReport?.requiresMonth && !month) ||
-                    (selectedReport?.requiresEmployee && !selectedEmployee)
+                    (selectedReport?.requiresEmployee && selectionMode === "individual" && !selectedEmployee)
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   }`}
@@ -476,7 +542,7 @@ const Reports = () => {
                   ) : (
                     <>
                       <FiDownload className="mr-2" />
-                      Generate Report
+                      {selectionMode === "all" ? "Generate ZIP Archive" : "Generate Report"}
                     </>
                   )}
                 </button>

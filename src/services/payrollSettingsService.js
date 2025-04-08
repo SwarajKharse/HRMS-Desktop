@@ -135,4 +135,16 @@ export const payrollSettingsService = {
       throw new Error(error.response?.data?.message || "Error exporting CTC breakdown details");
     }
   },
+
+  exportAllCTCBreakdownZip: async (orgId, month, year) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/export-all-ctc-zip?orgId=${orgId}&month=${month}&year=${year}`, {
+        ...getAuthHeaders(),
+        responseType: "blob",
+      });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.message || "Error exporting CTC breakdown details");
+    }
+  },
 };
