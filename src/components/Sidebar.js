@@ -9,7 +9,9 @@ import {
   HiCog, 
   HiChartPie, 
   HiCash, 
-  HiArchive 
+  HiArchive,
+  HiDocumentAdd,
+  HiViewList 
 } from 'react-icons/hi';
 import { usePermissions } from "../contexts/PermissionsContext"
 
@@ -43,6 +45,12 @@ function Sidebar({logo}) {
     if (permissions?.webPayroll) {
       updatedNavItems.push({ icon: HiCash, label: 'Payroll', path: '/payroll' });
     }
+
+    /* if (permissions?.webPayroll) { */
+    updatedNavItems.push({ icon: HiDocumentAdd, label: 'Add New Lead', path: '/add-lead' });
+    
+    updatedNavItems.push({ icon: HiViewList, label: 'Leads', path: '/leads' });
+    //}
     setNavItems(updatedNavItems);
   }, [permissions]);
 

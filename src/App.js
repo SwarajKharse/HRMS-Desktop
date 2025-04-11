@@ -30,6 +30,8 @@ import GeoFencingSettings from "./pages/settings/GeoFencingSettings"
 import TdsSlabSettings from "./pages/settings/TdsSlabSettings"
 import EmployeePayrollSettings from "./pages/settings/EmployeePayrollSettings"
 import OrganizationPayrollSettings from "./pages/settings/OrganizationPayrollSettings"
+import AddLead from './pages/AddLead';
+import LeadsLising from './pages/LeadsListing';
 
 function App() {
   return (
@@ -140,6 +142,22 @@ function App() {
                   </PrivateRoute>
                 }
               />
+
+              <Route path="/add-lead" element={
+                <ProtectedPermissionRoute permissionKey="webAddLeads">
+                  <Layout>
+                    <AddLead />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
+
+              <Route path="/leads" element={
+                <ProtectedPermissionRoute permissionKey="webLeadsListing">
+                  <Layout>
+                    <LeadsLising />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
 
               <Route
                 path="/settings"
