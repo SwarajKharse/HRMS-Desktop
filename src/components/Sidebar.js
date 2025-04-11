@@ -46,11 +46,13 @@ function Sidebar({logo}) {
       updatedNavItems.push({ icon: HiCash, label: 'Payroll', path: '/payroll' });
     }
 
-    /* if (permissions?.webPayroll) { */
-    updatedNavItems.push({ icon: HiDocumentAdd, label: 'Add New Lead', path: '/add-lead' });
-    
-    updatedNavItems.push({ icon: HiViewList, label: 'Leads', path: '/leads' });
-    //}
+    if (permissions?.webAddLeads) {
+      updatedNavItems.push({ icon: HiDocumentAdd, label: 'Add New Lead', path: '/add-lead' });
+    }
+
+    if (permissions?.webLeadsListing) {
+      updatedNavItems.push({ icon: HiViewList, label: 'Leads', path: '/leads' });
+    }
     setNavItems(updatedNavItems);
   }, [permissions]);
 
