@@ -14,7 +14,6 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     firstName: '',
     middleName: '',
     lastName: '',
-    employeeCode: '',
     profileImage: employee?.profileImage || null,
     dateOfBirth: '',
     gender: '',
@@ -325,18 +324,6 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   value={formData.personalPhone}
                   onChange={handleChange}
                   required
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Employee Code
-                </label>
-                <input
-                  type="text"
-                  name="employeeCode"
-                  value={formData.employeeCode}
-                  onChange={handleChange}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
               </div>
