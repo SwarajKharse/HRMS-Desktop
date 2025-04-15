@@ -307,6 +307,14 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     })
   }
 
+  const handleLeadStatus = (e) => {
+    var newValue = e.target.value
+    setFormData({
+      ...formData,
+      lead_status: newValue,
+    })
+  }
+
   const handleFieldVisitRemarksChange = (e) => {
     const { value } = e.target
     setFormData({
@@ -1007,8 +1015,29 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     )
                   })}
                 </select>
+                </div>
               </div>
+
+
+              {/* Lead Status */}
+              {lead.salestl_shared_status === '1' ? (
+                <div className="space-y-4 rounded-lg bg-white border p-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
+                <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Lead Status:</label>
+                <select
+                    name="lead_status"
+                    //value={formData.need_of_field_visit || ""}
+                    value={formData.lead_status !== null ? formData.lead_status : ""}
+                    className="mt-1 rounded-md border border-gray-300 px-3 py-2" onChange={(e) => handleLeadStatus(e)}>
+                    <option value={null}>Please select</option>
+                    <option value="won">Won</option>
+                    <option value="lost">Lost</option>
+                </select>
+                  </div>
               </div>
+              ) : null}
+              {/* Lead Status End */}
               </>
           ) : null}
 
@@ -1176,7 +1205,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     <label className="block text-sm font-medium text-gray-700">Remarks:</label>
                     <textarea
                       name="bdm_visit_remarks"
-                      value={formData.bdm_visit_remarks || ""}
+                      value={formData.bdm_visit_remarks !== null ? formData.bdm_visit_remarks : ""}
                       onChange={handleChange}
                       className="mt-1 block w-full rounded-md border border-gray-300 min-h-[100px]"
                       placeholder="Enter any additional remarks..."
@@ -1308,7 +1337,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               </div>
               ) : null}
               
-              {lead.need_of_field_visit !== null ? (    
+            {lead.need_of_field_visit !== null ? (    
             <div className="space-y-4 rounded-lg bg-white border p-4">
 
 
@@ -1374,9 +1403,32 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               ) : null}
               {/* Shared Status End */}
                 </div>
-                ) : null}
+              ) : null}
+              
+              {/* Lead Status */}
+              {lead.salestl_shared_status === '1' ? (
+              <div className="space-y-4 rounded-lg bg-white border p-4">
+                <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
+              <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Lead Status:</label>
+              <select
+                  name="lead_status"
+                  //value={formData.need_of_field_visit || ""}
+                  value={formData.lead_status !== null ? formData.lead_status : ""}
+                  className="mt-1 rounded-md border border-gray-300 px-3 py-2" onChange={(e) => handleLeadStatus(e)}>
+                  <option value={null}>Please select</option>
+                  <option value="won">Won</option>
+                  <option value="lost">Lost</option>
+              </select>
+                </div>
+            </div>
+              ) : null}
+            {/* Lead Status End */}
+
             </>
           ) : null}
+
+          
 
           <div className="flex justify-end space-x-4 pt-4">
             <button
