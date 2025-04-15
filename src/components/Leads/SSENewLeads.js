@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
-import LeadEditForm from "./LeadEditForm"
+import LeadSSEEditForm from "./LeadSSEEditForm"
 import { FiEdit2, FiAlertCircle, FiX, FiCheck } from "react-icons/fi"
 
 function SSENewLeads() {
@@ -440,7 +440,7 @@ function SSENewLeads() {
       {/* Modals */}
       <AnimatePresence>
         {showForm && (
-          <LeadEditForm
+          <LeadSSEEditForm
             lead={selectedLead}
             activeTab="sse-new-leads"
             onClose={() => {

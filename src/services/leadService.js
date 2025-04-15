@@ -156,6 +156,7 @@ export const leadService = {
         formData,
         {
           headers: {
+            //...formData.getHeaders(),
             // Don't set Content-Type here - axios will automatically set it
           }
         }

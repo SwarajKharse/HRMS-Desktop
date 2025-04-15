@@ -215,7 +215,7 @@ function AssignLeadsToBDM() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","Assigned BDM" ,"Shared Status","Actions"]
+                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","SSE Remarks","Assigned BDM" ,"Shared Status","Actions"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -283,6 +283,16 @@ function AssignLeadsToBDM() {
                             {producttypelist.map((country, i) => {
                               return country.id == lead.product_type ? " " + country.label : ""
                             })}
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-medium text-gray-900">
+                          {lead.need_of_field_visit_remarks !== null && (
+                            <span className={`px-3 py-1 inline-flex text-xs font-semibold`}>
+                             {lead.need_of_field_visit_remarks}
+                            </span>
+                          )}
                           </div>
                         </td>
 

@@ -306,7 +306,7 @@ function BDMAssignedFieldVisit() {
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
                             {typelist.map((country, i) => {
-                              return country.id == lead.product_type ? " " + country.label : ""
+                              return country.id == lead.lead_type ? " " + country.label : ""
                             })}
                           </div>
                         </td>

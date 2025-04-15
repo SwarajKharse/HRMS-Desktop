@@ -110,7 +110,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
 
       if (activeTab == "assigned-leads") {
         const [leadSource, leadType, leadProductType] = await Promise.all([
-          leadService.getSSEList(),
           leadService.getLeadSourceList(),
           leadService.getLeadTypeList(),
           leadService.getLeadProductTypeList(),
@@ -135,7 +134,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         setBDMList(bdmdata)
       }
 
-      if(activeTab === "bdm-assigned-field-visit"){
+      if(activeTab === "bdm-assigned-field-visit" || activeTab === "sse-inprogress-leads"){
         const [leadSource, leadType, leadProductType] = await Promise.all([
           leadService.getLeadSourceList(),
           leadService.getLeadTypeList(),
@@ -602,316 +601,326 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           {/* Basic Information Section End */}
 
           {/* Additional Details */}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">Additional Details</h3>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Client Name : {lead.client_name}</label>
+          {lead.client_name && lead.project_location && lead.office_location && (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">Additional Details</h3>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Client Name : {lead.client_name}</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project Location : {lead.project_location}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Office Location : {lead.office_location}
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Project Location : {lead.project_location}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Office Location : {lead.office_location}
-                </label>
-              </div>
-            </div>
-            {lead.additionalDetails && lead.additionalDetails.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      {/* <TableHeader> # </TableHeader> */}
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Phone</TableHeader>
-                      <TableHeader>Email</TableHeader>
-                      <TableHeader>Designation</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lead.additionalDetails.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        {/* <td>{idx}</td> */}
-                        <td className="px-2 py-2">
-                          <label className="block text-sm font-medium text-gray-700">{row.contact_person_name}</label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {row.contact_person_phonenumber}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">{row.contact_person_email}</label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {row.contact_person_designation}
-                          </label>
-                        </td>
+              {lead.additionalDetails && lead.additionalDetails.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        {/* <TableHeader> # </TableHeader> */}
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Phone</TableHeader>
+                        <TableHeader>Email</TableHeader>
+                        <TableHeader>Designation</TableHeader>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lead.additionalDetails.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          {/* <td>{idx}</td> */}
+                          <td className="px-2 py-2">
+                            <label className="block text-sm font-medium text-gray-700">{row.contact_person_name}</label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {row.contact_person_phonenumber}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">{row.contact_person_email}</label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {row.contact_person_designation}
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
           {/* Addition Details Section End */}
 
           {/* Middle Man Details */}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">Middle Man Details</h3>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Client Name : {lead.middle_man_client_name}
-                </label>
+          {lead.middle_man_client_name && lead.middle_man_project_location && lead.middle_man_office_location && (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">Middle Man Details</h3>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Client Name : {lead.middle_man_client_name}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project Location : {lead.middle_man_project_location}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Office Location : {lead.middle_man_office_location}
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Project Location : {lead.middle_man_project_location}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Office Location : {lead.middle_man_office_location}
-                </label>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-              {lead.middleManDetails && lead.middleManDetails.length > 0 && (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      {/* <TableHeader> # </TableHeader> */}
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Phone no</TableHeader>
-                      <TableHeader>Email</TableHeader>
-                      <TableHeader>Designation</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lead.middleManDetails.map((mrow, midx) => (
-                      <tr key={midx} className="hover:bg-gray-50">
-                        {/* <td>{idx}</td> */}
-                        <td className="px-2 py-2">
-                          <label className="block text-sm font-medium text-gray-700">{mrow.mcontact_person_name}</label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mcontact_person_phonenumber}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mcontact_person_email}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mcontact_person_designation}
-                          </label>
-                        </td>
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                {lead.middleManDetails && lead.middleManDetails.length > 0 && (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        {/* <TableHeader> # </TableHeader> */}
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Phone no</TableHeader>
+                        <TableHeader>Email</TableHeader>
+                        <TableHeader>Designation</TableHeader>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lead.middleManDetails.map((mrow, midx) => (
+                        <tr key={midx} className="hover:bg-gray-50">
+                          {/* <td>{idx}</td> */}
+                          <td className="px-2 py-2">
+                            <label className="block text-sm font-medium text-gray-700">{mrow.mcontact_person_name}</label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mcontact_person_phonenumber}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mcontact_person_email}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mcontact_person_designation}
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           {/* Middle Man End */}
 
           {/* Architect Firm Details Section */}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">Architect Firm Details</h3>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Client Name : {lead.architect_client_name}
-                </label>
+          {lead.architect_client_name && lead.architect_project_location && lead.architect_office_location && (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">Architect Firm Details</h3>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Client Name : {lead.architect_client_name}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project Location : {lead.architect_project_location}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Office Location : {lead.architect_office_location}
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Project Location : {lead.architect_project_location}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Office Location : {lead.architect_office_location}
-                </label>
-              </div>
-            </div>
-            {lead.architectFirmDetails && lead.architectFirmDetails.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      {/* <TableHeader> # </TableHeader> */}
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Phone no</TableHeader>
-                      <TableHeader>Email</TableHeader>
-                      <TableHeader>Designation</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lead.architectFirmDetails.map((mrow, midx) => (
-                      <tr key={midx} className="hover:bg-gray-50">
-                        {/* <td>{idx}</td> */}
-                        <td className="px-2 py-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.arcontact_person_name}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.arcontact_person_phonenumber}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.arcontact_person_email}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.arcontact_person_designation}
-                          </label>
-                        </td>
+              {lead.architectFirmDetails && lead.architectFirmDetails.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        {/* <TableHeader> # </TableHeader> */}
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Phone no</TableHeader>
+                        <TableHeader>Email</TableHeader>
+                        <TableHeader>Designation</TableHeader>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lead.architectFirmDetails.map((mrow, midx) => (
+                        <tr key={midx} className="hover:bg-gray-50">
+                          {/* <td>{idx}</td> */}
+                          <td className="px-2 py-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.arcontact_person_name}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.arcontact_person_phonenumber}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.arcontact_person_email}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.arcontact_person_designation}
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
           {/* Architect Firm Details Section End */}
 
           {/* MEP Firm Details Section */}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">MEP Firm Details</h3>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Client Name : {lead.mep_client_name}</label>
+          {lead.mep_client_name && lead.mep_project_location && lead.mep_office_location && (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">MEP Firm Details</h3>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Client Name : {lead.mep_client_name}</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project Location : {lead.mep_project_location}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Office Location : {lead.mep_office_location}
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Project Location : {lead.mep_project_location}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Office Location : {lead.mep_office_location}
-                </label>
-              </div>
-            </div>
-            {lead.mepFirmDetails && lead.mepFirmDetails.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      {/* <TableHeader> # </TableHeader> */}
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Phone no</TableHeader>
-                      <TableHeader>Email</TableHeader>
-                      <TableHeader>Designation</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lead.mepFirmDetails.map((mrow, midx) => (
-                      <tr key={midx} className="hover:bg-gray-50">
-                        {/* <td>{idx}</td> */}
-                        <td className="px-2 py-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mepcontact_person_name}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mepcontact_person_phonenumber}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mepcontact_person_email}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mepcontact_person_designation}
-                          </label>
-                        </td>
+              {lead.mepFirmDetails && lead.mepFirmDetails.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        {/* <TableHeader> # </TableHeader> */}
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Phone no</TableHeader>
+                        <TableHeader>Email</TableHeader>
+                        <TableHeader>Designation</TableHeader>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lead.mepFirmDetails.map((mrow, midx) => (
+                        <tr key={midx} className="hover:bg-gray-50">
+                          {/* <td>{idx}</td> */}
+                          <td className="px-2 py-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mepcontact_person_name}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mepcontact_person_phonenumber}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mepcontact_person_email}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mepcontact_person_designation}
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
           {/* MEP Firm Details Section End */}
 
           {/* PMC Firm Details Section */}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">PMC Firm Details</h3>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Client Name : {lead.pmc_client_name}</label>
+          {lead.pmc_client_name && lead.pmc_project_location && lead.pmc_office_location && (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">PMC Firm Details</h3>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Client Name : {lead.pmc_client_name}</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project Location : {lead.pmc_project_location}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Office Location : {lead.pmc_office_location}
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Project Location : {lead.pmc_project_location}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Office Location : {lead.pmc_office_location}
-                </label>
-              </div>
-            </div>
-            {lead.pmcFirmDetails && lead.pmcFirmDetails.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      {/* <TableHeader> # </TableHeader> */}
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Phone no</TableHeader>
-                      <TableHeader>Email</TableHeader>
-                      <TableHeader>Designation</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lead.pmcFirmDetails.map((mrow, midx) => (
-                      <tr key={midx} className="hover:bg-gray-50">
-                        {/* <td>{idx}</td> */}
-                        <td className="px-2 py-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.pmccontact_person_name}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.pmccontact_person_phonenumber}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.pmccontact_person_email}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.pmccontact_person_designation}
-                          </label>
-                        </td>
+              {lead.pmcFirmDetails && lead.pmcFirmDetails.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        {/* <TableHeader> # </TableHeader> */}
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Phone no</TableHeader>
+                        <TableHeader>Email</TableHeader>
+                        <TableHeader>Designation</TableHeader>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lead.pmcFirmDetails.map((mrow, midx) => (
+                        <tr key={midx} className="hover:bg-gray-50">
+                          {/* <td>{idx}</td> */}
+                          <td className="px-2 py-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.pmccontact_person_name}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.pmccontact_person_phonenumber}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.pmccontact_person_email}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.pmccontact_person_designation}
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
           {/* PMC Firm Details End */}
 
           {activeTab == "unassigned-leads" ? (
@@ -969,6 +978,14 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           ) : null}
 
           {activeTab == "assign-leads-to-bdm" ? (
+             <>
+             <div className="space-y-4 rounded-lg bg-white border p-4">
+                <h3 className="font-semibold text-lg border-b pb-2">Details Filled By SSE</h3>
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Remarks: {lead.need_of_field_visit_remarks}</label>
+                </div>
+             </div>
+
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Assign BDM</h3>
               <div>
@@ -991,7 +1008,8 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   })}
                 </select>
               </div>
-            </div>
+              </div>
+              </>
           ) : null}
 
           {activeTab === "bdm-assigned-field-visit" ? (
