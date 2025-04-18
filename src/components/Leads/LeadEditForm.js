@@ -13,8 +13,12 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     userId = user.userId
   }
 
+  const allIds =  lead.lead_proposal_type !== null ?  lead.lead_proposal_type.map((item) => item.id) : []
+
   const [formData, setFormData] = useState({
     ...lead,
+    proposal_type: allIds || [],
+    lead_proposal_type : lead.lead_proposal_type,
     employee_updatedby: {
       id: userId,
     },
@@ -86,6 +90,70 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
+  const [showProposalTypeDropdown, setShowProposalTypeDropdown] = useState(false)
+
+  // Add click outside handler to close dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      const dropdown = document.getElementById("product-type-dropdown")
+      if (showProposalTypeDropdown && dropdown && !dropdown.contains(event.target)) {
+        setShowProposalTypeDropdown(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [setShowProposalTypeDropdown])
+
+
+  const handleProductTypeSelect = (id) => {
+    let updatedProposalTypes
+    if (formData.proposal_type.includes(id)) {
+      updatedProposalTypes = formData.proposal_type.filter((item) => item !== id)
+    } else {
+      updatedProposalTypes = [...formData.proposal_type, id]
+    }
+
+    let finalProductType = [];
+      finalProductType = (updatedProposalTypes.map((id, i) => {
+        return {
+          id: id
+          }
+      }))
+
+
+    console.log(updatedProposalTypes);
+    console.log(finalProductType);
+
+    setFormData({
+      ...formData,
+      proposal_type: updatedProposalTypes,
+      lead_proposal_type: finalProductType
+    })
+
+    // Don't close the dropdown after selection
+    // This allows selecting multiple items
+  }
+
+  const handleRemoveProductType = (id) => {
+    const updatedProductTypes = formData.proposal_type.filter((item) => item !== id)
+    let finalProductType = [];
+      finalProductType = (formData.proposal_type.map((id, i) => {
+        return {
+          id: id
+          }
+      }))
+
+    console.log(finalProductType);
+    setFormData({
+      ...formData,
+      proposal_type: updatedProductTypes,
+      lead_proposal_type: finalProductType
+    })
+  }
+
   useEffect(() => {
     fetchDepartmentsAndDesignations()
   }, [authService.getUser().orgId])
@@ -134,7 +202,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         setBDMList(bdmdata)
       }
 
-      if(activeTab === "bdm-assigned-field-visit" || activeTab === "sse-inprogress-leads"){
+      if(activeTab === "bdm-assigned-field-visit" || activeTab === "sse-inprogress-leads" || activeTab === "sse-won-leads"){
         const [leadSource, leadType, leadProductType] = await Promise.all([
           leadService.getLeadSourceList(),
           leadService.getLeadTypeList(),
@@ -504,6 +572,20 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     </th>
   )
 
+  const matchingLabels = (id, producttypelist) => {
+    let newlabel = ""
+    if (id !== null && id !== "") {
+      // Find the matching item instead of mapping through all items
+      const matchingItem = producttypelist.find((item) => item.id === id.id)
+      // If a matching item is found, use its label
+      if (matchingItem) {
+        newlabel = matchingItem.label.replace(/,/g, "") // Remove all commas
+      }
+    }
+    return newlabel
+  }
+
+
   // File input component
   const FileInput = ({ label, name, onChange, accept = "image/*", required = false }) => (
     <div className="space-y-2">
@@ -589,10 +671,12 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Product Type :
-                  {producttypelist.map((country, i) => {
-                    return country.id == lead.product_type ? " " + country.label : ""
-                  })}
+                  Product Type : {"  "}
+                  {lead.lead_product_type !== null ?
+                      lead.lead_product_type.map((country, itr) => {
+                        let ptlabel = matchingLabels(country, producttypelist).toString();
+                        return itr !== lead.lead_product_type.length-1 ? ptlabel+" , " : ptlabel.substring(0, ptlabel.length-1)
+                  }) : ""}
                 </label>
               </div>
 
@@ -990,7 +1074,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
              <div className="space-y-4 rounded-lg bg-white border p-4">
                 <h3 className="font-semibold text-lg border-b pb-2">Details Filled By SSE</h3>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Remarks: {lead.need_of_field_visit_remarks}</label>
+                  <label className="text-sm font-medium text-gray-700"><b>Remarks:</b> {lead.need_of_field_visit_remarks}</label>
                 </div>
              </div>
 
@@ -1183,7 +1267,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   </div>
 
                   {/* Proposal type */}
-                  <div className="mt-4 space-y-2">
+                  {/* <div className="mt-4 space-y-2">
                     <label className="block text-sm font-medium text-gray-700">Proposal Type:</label>
                     <select
                       name="proposal_type"
@@ -1198,14 +1282,88 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                         </option>
                       ))}
                     </select>
+                  </div> */}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Proposal Type
+                </label>
+                <div id="product-type-dropdown" className="relative mt-1">
+                  <div
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 min-h-[42px] flex flex-wrap gap-1 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowProposalTypeDropdown(!showProposalTypeDropdown)
+                    }}
+                  >
+                    {formData.proposal_type.length > 0 ? (
+                      formData.proposal_type.map((id) => {
+                        const item = producttypelist.find((item) => item.id === id)
+                        return (
+                          <span
+                            key={id}
+                            className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded flex items-center"
+                          >
+                            {item?.label}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemoveProductType(id)
+                              }}
+                              className="ml-1 text-blue-800 hover:text-blue-900"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )
+                      })
+                    ) : (
+                      <span className="text-gray-500">Select Proposal Types</span>
+                    )}
                   </div>
+                  {showProposalTypeDropdown && (
+                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-300">
+                      {producttypelist.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 ${
+                            formData.proposal_type.includes(item.id) ? "bg-blue-50" : ""
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleProductTypeSelect(item.id)
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 border-gray-300 rounded text-blue-600 focus:ring-blue-500 mr-2"
+                              checked={formData.proposal_type.includes(item.id)}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                handleProductTypeSelect(item.id)
+                              }}
+                            />
+                            <span
+                              className={`block truncate ${formData.proposal_type.includes(item.id) ? "font-medium" : "font-normal"}`}
+                            >
+                              {item.label}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
                   {/* Remarks */}
                   <div className="mt-4 space-y-2">
                     <label className="block text-sm font-medium text-gray-700">Remarks:</label>
                     <textarea
                       name="bdm_visit_remarks"
-                      value={formData.bdm_visit_remarks !== null ? formData.bdm_visit_remarks : ""}
+                      value={formData.bdm_visit_remarks !== null && formData.bdm_visit_remarks.toString().trim() !== "null"  ? formData.bdm_visit_remarks : ""}
                       onChange={handleChange}
                       className="mt-1 block w-full rounded-md border border-gray-300 min-h-[100px]"
                       placeholder="Enter any additional remarks..."
@@ -1305,14 +1463,14 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                       </div>
                     )}
 
-                  
-
-                  {lead.proposal_type && (
+                  {lead.lead_proposal_type && (
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-gray-700">Proposal Type:
-                        {producttypelist.map((country, i) => {
-                          return country.id == lead.proposal_type ? " " + country.label : ""
-                        })}
+                      { lead.lead_proposal_type !== null ?
+                              lead.lead_proposal_type.map((country, itr) => {
+                                let ptlabel = matchingLabels(country, producttypelist).toString();
+                                return itr !== lead.lead_proposal_type.length-1 ? ptlabel+",  " : ptlabel.substring(0, ptlabel.length-1)
+                            }) : ""}
                       </label>
                     </div>  
                     )}
@@ -1321,7 +1479,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-gray-700">Proposal Scope:
                         {typelist.map((country, i) => {
-                          return country.id == lead.proposal_type ? " " + country.label : ""
+                          return country.id == lead.proposal_scope ? " " + country.label : ""
                         })}
                       </label>
                     </div>  

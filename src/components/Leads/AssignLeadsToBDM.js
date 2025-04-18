@@ -131,6 +131,19 @@ function AssignLeadsToBDM() {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
+  const matchingLabels = (id, producttypelist) => {
+    let newlabel = ""
+    if (id !== null && id !== "") {
+      // Find the matching item instead of mapping through all items
+      const matchingItem = producttypelist.find((item) => item.id === id.id)
+      // If a matching item is found, use its label
+      if (matchingItem) {
+        newlabel = matchingItem.label.replace(/,/g, "") // Remove all commas
+      }
+    }
+    return newlabel
+  }
+
 
   if (loading) {
     return (
@@ -215,7 +228,7 @@ function AssignLeadsToBDM() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","SSE Remarks","Assigned BDM" ,"Shared Status","Actions"]
+                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","Assigned BDM" ,"Shared Status","Actions"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -269,7 +282,10 @@ function AssignLeadsToBDM() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">{lead.middle_man_client_name}</div>
+                        <div className="text-xs font-medium text-gray-900">
+                            {lead.middle_man_client_name === '' ? lead.client_name :
+                              lead.middle_man_client_name}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
@@ -280,13 +296,15 @@ function AssignLeadsToBDM() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
-                            {producttypelist.map((country, i) => {
-                              return country.id == lead.product_type ? " " + country.label : ""
-                            })}
+                          { lead.lead_product_type !== null ?
+                              lead.lead_product_type.map((country, itr) => {
+                                let ptlabel = matchingLabels(country, producttypelist).toString();
+                                return itr !== lead.lead_product_type.length-1 ? ptlabel+",  " : ptlabel.substring(0, ptlabel.length-1)
+                            }) : ""}
                           </div>
                         </td>
 
-                        <td className="px-6 py-4">
+                        {/* <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
                           {lead.need_of_field_visit_remarks !== null && (
                             <span className={`px-3 py-1 inline-flex text-xs font-semibold`}>
@@ -294,7 +312,7 @@ function AssignLeadsToBDM() {
                             </span>
                           )}
                           </div>
-                        </td>
+                        </td> */}
 
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">

@@ -12,10 +12,13 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
   if (user) {
     userId = user.userId
   }
+  const allIds =  lead.lead_product_type !== null ?  lead.lead_product_type.map((item) => item.id) : []
   
   const [leadData, setLeadData] = useState({
     ...lead,
     date_recieved: lead.lead_recieved !== null ? lead.lead_recieved : new Date().toISOString().split("T")[0],
+    product_type: allIds || [],
+    lead_product_type : lead.lead_product_type,
     employee_updatedby: {
       id: userId,
     },
@@ -74,8 +77,70 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
   }
 
 
-  
+  const [showProductTypeDropdown, setShowProductTypeDropdown] = useState(false)
 
+  // Add click outside handler to close dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      const dropdown = document.getElementById("product-type-dropdown")
+      if (showProductTypeDropdown && dropdown && !dropdown.contains(event.target)) {
+        setShowProductTypeDropdown(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [setShowProductTypeDropdown])
+
+
+  const handleProductTypeSelect = (id) => {
+    let updatedProposalTypes
+    if (leadData.product_type.includes(id)) {
+      updatedProposalTypes = leadData.product_type.filter((item) => item !== id)
+    } else {
+      updatedProposalTypes = [...leadData.product_type, id]
+    }
+
+    let finalProductType = [];
+      finalProductType = (updatedProposalTypes.map((id, i) => {
+        return {
+          id: id
+          }
+      }))
+
+
+    console.log(updatedProposalTypes);
+    console.log(finalProductType);
+
+    setLeadData({
+      ...leadData,
+      product_type: updatedProposalTypes,
+      lead_product_type: finalProductType
+    })
+
+    // Don't close the dropdown after selection
+    // This allows selecting multiple items
+  }
+
+  const handleRemoveProductType = (id) => {
+    const updatedProductTypes = leadData.product_type.filter((item) => item !== id)
+    let finalProductType = [];
+      finalProductType = (leadData.product_type.map((id, i) => {
+        return {
+          id: id
+          }
+      }))
+
+    console.log(finalProductType);
+    setLeadData({
+      ...leadData,
+      product_type: updatedProductTypes,
+      lead_product_type: finalProductType
+    })
+  }
+  
   useEffect(() => {
     fetchDepartmentsAndDesignations()
   }, [authService.getUser().orgId])
@@ -138,7 +203,7 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
     if (name === "mep_project_location") setLeadData({ ...leadData, date_recieved: leadData.date_recieved, product_type: leadData.product_type, lead_source: leadData.lead_source, lead_priority: leadData.lead_priority, lead_type: leadData.lead_type, client_name: leadData.client_name, project_location: leadData.project_location, office_location: leadData.office_location, middle_man_client_name: leadData.middle_man_client_name, middle_man_office_location: leadData.middle_man_office_location, middle_man_project_location: leadData.middle_man_project_location, architect_client_name: leadData.architect_client_name, architect_project_location: leadData.architect_project_location, architect_office_location: leadData.architect_office_location, mep_client_name: leadData.mep_client_name, mep_project_location: value, mep_office_location: leadData.mep_office_location, pmc_client_name: leadData.pmc_client_name, pmc_project_location: leadData.pmc_project_location, pmc_office_location: leadData.pmc_office_location });
 
     if (name === "mep_office_location") setLeadData({ ...leadData, date_recieved: leadData.date_recieved, product_type: leadData.product_type, lead_source: leadData.lead_source, lead_priority: leadData.lead_priority, lead_type: leadData.lead_type, client_name: leadData.client_name, project_location: leadData.project_location, office_location: leadData.office_location, middle_man_client_name: leadData.middle_man_client_name, middle_man_office_location: leadData.middle_man_office_location, middle_man_project_location: leadData.middle_man_project_location, architect_client_name: leadData.architect_client_name, architect_project_location: leadData.architect_project_location, architect_office_location: leadData.architect_office_location, mep_client_name: leadData.mep_client_name, mep_project_location: leadData.mep_project_location, mep_office_location: value, pmc_client_name: leadData.pmc_client_name, pmc_project_location: leadData.pmc_project_location, pmc_office_location: leadData.pmc_office_location });
-  
+
     if (name === "pmc_client_name") setLeadData({ ...leadData, date_recieved: leadData.date_recieved, product_type: leadData.product_type, lead_source: leadData.lead_source, lead_priority: leadData.lead_priority, lead_type: leadData.lead_type, client_name: leadData.client_name, project_location: leadData.project_location, office_location: leadData.office_location, middle_man_client_name: leadData.middle_man_client_name, middle_man_office_location: leadData.middle_man_office_location, middle_man_project_location: leadData.middle_man_project_location, architect_client_name: leadData.architect_client_name, architect_project_location: leadData.architect_project_location, architect_office_location: leadData.architect_office_location, mep_client_name: leadData.mep_client_name, mep_project_location: leadData.mep_project_location, mep_office_location: leadData.mep_office_location, pmc_client_name: value, pmc_project_location: leadData.pmc_project_location, pmc_office_location: leadData.pmc_office_location });
 
     if (name === "pmc_project_location") setLeadData({ ...leadData, date_recieved: leadData.date_recieved, product_type: leadData.product_type, lead_source: leadData.lead_source, lead_priority: leadData.lead_priority, lead_type: leadData.lead_type, client_name: leadData.client_name, project_location: leadData.project_location, office_location: leadData.office_location, middle_man_client_name: leadData.middle_man_client_name, middle_man_office_location: leadData.middle_man_office_location, middle_man_project_location: leadData.middle_man_project_location, architect_client_name: leadData.architect_client_name, architect_project_location: leadData.architect_project_location, architect_office_location: leadData.architect_office_location, mep_client_name: leadData.mep_client_name, mep_project_location: leadData.mep_project_location, mep_office_location: leadData.mep_office_location, pmc_client_name: leadData.pmc_client_name, pmc_project_location: value, pmc_office_location: leadData.pmc_office_location });
@@ -148,8 +213,7 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
     //console.log(leadData);
   };
 
-  
-  
+
   const handleFieldVisitRemarksChange = (e) => {
     const { value } = e.target
     setLeadData({
@@ -355,7 +419,7 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
     e.preventDefault()
     setLoading(true)
     setError("")
-    try {      
+    try {
       const updatedAdditionalRows = rows.map((row) => {
         if (row.id >= 1000) {
            return { ...row, id: null };
@@ -395,7 +459,12 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
           return row
         }
       });
-      
+
+      if (!leadData.product_type || leadData.product_type.length === 0) {
+        setError(true)
+        throw new Error("Please select at least one Product Type")
+      }
+
       const processedData = {
         ...leadData,
         additionalDetails : updatedAdditionalRows,
@@ -439,7 +508,7 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
-  
+
   // Simple table header and cell components
   const TableHeader = ({ children }) => (
     <th className="px-2 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b flex-wrap">
@@ -447,7 +516,7 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
     </th>
   )
 
-  
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -529,18 +598,80 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Type <span className="text-red-500">*</span></label>
-                <select
-                  name="product_type"
-                  value={leadData.product_type}
-                  onChange={handleSelectChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
-                  <option value="">Select Type</option>
-                  {producttypelist.map((country, i) => {
-                    return <option key={i} value={country.id}>{country.label}</option>
-                  })}
-                </select>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Product Type <span className="text-red-500">*</span>
+                </label>
+                <div id="product-type-dropdown" className="relative mt-1">
+                  <div
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 min-h-[42px] flex flex-wrap gap-1 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowProductTypeDropdown(!showProductTypeDropdown)
+                    }}
+                  >
+                    {leadData.product_type.length > 0 ? (
+                      leadData.product_type.map((id) => {
+                        const item = producttypelist.find((item) => item.id === id)
+                        return (
+                          <span
+                            key={id}
+                            className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded flex items-center"
+                          >
+                            {item?.label}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemoveProductType(id)
+                              }}
+                              className="ml-1 text-blue-800 hover:text-blue-900"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )
+                      })
+                    ) : (
+                      <span className="text-gray-500">Select Proposal Types</span>
+                    )}
+                  </div>
+                  {showProductTypeDropdown && (
+                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-300">
+                      {producttypelist.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 ${
+                            leadData.product_type.includes(item.id) ? "bg-blue-50" : ""
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleProductTypeSelect(item.id)
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 border-gray-300 rounded text-blue-600 focus:ring-blue-500 mr-2"
+                              checked={leadData.product_type.includes(item.id)}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                handleProductTypeSelect(item.id)
+                              }}
+                            />
+                            <span
+                              className={`block truncate ${leadData.product_type.includes(item.id) ? "font-medium" : "font-normal"}`}
+                            >
+                              {item.label}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
+
+
             </div>
           </div>
           {/* Basic Information Section End */}
@@ -548,7 +679,7 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
           {/* Additional Details */}
           <div className="space-y-4 rounded-lg bg-white border p-4">
             <h3 className="font-semibold text-lg border-b pb-2">Additional Details</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
             <table>
               <thead>
@@ -600,7 +731,6 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-              
                 {rows.map((row, idx) => (
                   <tr key={row.id} className="hover:bg-gray-50">
                     {/* <td>{idx}</td> */}
@@ -638,9 +768,7 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
                       </button>
                     </td>
                   </tr>
-                  
                 ))}
-                
               </tbody>
             </table>
             <div className="flex justify-start">

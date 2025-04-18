@@ -301,7 +301,10 @@ function BDMAssignedFieldVisit() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">{lead.middle_man_client_name}</div>
+                        <div className="text-xs font-medium text-gray-900">
+                            {lead.middle_man_client_name === '' ? lead.client_name :
+                              lead.middle_man_client_name}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
