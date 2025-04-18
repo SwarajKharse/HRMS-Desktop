@@ -233,7 +233,7 @@ function AssignLeadsToBDM() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","Assigned BDM"]
+                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","Assigned BDM", "Status"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -315,9 +315,25 @@ function AssignLeadsToBDM() {
                               lead.assigned_bdm.firstName+"  "+lead.assigned_bdm.lastName
                             ) : 
                            ( <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20`}>
-                            Pending
+                            N/A
                           </span>
                           )}
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-medium text-gray-900">
+                            <span
+                              className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${
+                                lead.lead_status === "won"
+                                  ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
+                                  : lead.lead_priority === "hot"
+                                    ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+                                    : ""
+                              }`}
+                            >
+                              {lead.lead_status !== "new" ? Capitalize(lead.lead_status) : ""}
+                            </span>
                           </div>
                         </td>
 
