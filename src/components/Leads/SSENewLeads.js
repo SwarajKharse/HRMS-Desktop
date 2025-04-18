@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
-import LeadEditForm from "./LeadEditForm"
+import LeadSSEEditForm from "./LeadSSEEditForm"
 import { FiEdit2, FiAlertCircle, FiX, FiCheck } from "react-icons/fi"
 
 function SSENewLeads() {
@@ -135,6 +135,19 @@ function SSENewLeads() {
  
   const Capitalize = (str) => {
     return str.charAt(0).toUpperCase() + str.slice(1)
+  }
+
+  const matchingLabels = (id, producttypelist) => {
+    let newlabel = ""
+    if (id !== null && id !== "") {
+      // Find the matching item instead of mapping through all items
+      const matchingItem = producttypelist.find((item) => item.id === id.id)
+      // If a matching item is found, use its label
+      if (matchingItem) {
+        newlabel = matchingItem.label.replace(/,/g, "") // Remove all commas
+      }
+    }
+    return newlabel
   }
 
   
@@ -287,9 +300,11 @@ function SSENewLeads() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
-                            {producttypelist.map((country, i) => {
-                              return country.id == lead.product_type ? " " + country.label : ""
-                            })}
+                          { lead.lead_product_type !== null ?
+                              lead.lead_product_type.map((country, itr) => {
+                                let ptlabel = matchingLabels(country, producttypelist).toString();
+                                return itr !== lead.lead_product_type.length-1 ? ptlabel+",  " : ptlabel.substring(0, ptlabel.length-1)
+                            }) : ""}
                           </div>
                         </td>
                         {/*  <td className="px-6 py-4">
@@ -440,7 +455,7 @@ function SSENewLeads() {
       {/* Modals */}
       <AnimatePresence>
         {showForm && (
-          <LeadEditForm
+          <LeadSSEEditForm
             lead={selectedLead}
             activeTab="sse-new-leads"
             onClose={() => {

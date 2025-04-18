@@ -13,8 +13,12 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     userId = user.userId
   }
 
+  const allIds =  lead.lead_proposal_type !== null ?  lead.lead_proposal_type.map((item) => item.id) : []
+
   const [formData, setFormData] = useState({
     ...lead,
+    proposal_type: allIds || [],
+    lead_proposal_type : lead.lead_proposal_type,
     employee_updatedby: {
       id: userId,
     },
@@ -86,6 +90,70 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
+  const [showProposalTypeDropdown, setShowProposalTypeDropdown] = useState(false)
+
+  // Add click outside handler to close dropdown
+  useEffect(() => {
+    function handleClickOutside(event) {
+      const dropdown = document.getElementById("product-type-dropdown")
+      if (showProposalTypeDropdown && dropdown && !dropdown.contains(event.target)) {
+        setShowProposalTypeDropdown(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [setShowProposalTypeDropdown])
+
+
+  const handleProductTypeSelect = (id) => {
+    let updatedProposalTypes
+    if (formData.proposal_type.includes(id)) {
+      updatedProposalTypes = formData.proposal_type.filter((item) => item !== id)
+    } else {
+      updatedProposalTypes = [...formData.proposal_type, id]
+    }
+
+    let finalProductType = [];
+      finalProductType = (updatedProposalTypes.map((id, i) => {
+        return {
+          id: id
+          }
+      }))
+
+
+    console.log(updatedProposalTypes);
+    console.log(finalProductType);
+
+    setFormData({
+      ...formData,
+      proposal_type: updatedProposalTypes,
+      lead_proposal_type: finalProductType
+    })
+
+    // Don't close the dropdown after selection
+    // This allows selecting multiple items
+  }
+
+  const handleRemoveProductType = (id) => {
+    const updatedProductTypes = formData.proposal_type.filter((item) => item !== id)
+    let finalProductType = [];
+      finalProductType = (formData.proposal_type.map((id, i) => {
+        return {
+          id: id
+          }
+      }))
+
+    console.log(finalProductType);
+    setFormData({
+      ...formData,
+      proposal_type: updatedProductTypes,
+      lead_proposal_type: finalProductType
+    })
+  }
+
   useEffect(() => {
     fetchDepartmentsAndDesignations()
   }, [authService.getUser().orgId])
@@ -110,7 +178,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
 
       if (activeTab == "assigned-leads") {
         const [leadSource, leadType, leadProductType] = await Promise.all([
-          leadService.getSSEList(),
           leadService.getLeadSourceList(),
           leadService.getLeadTypeList(),
           leadService.getLeadProductTypeList(),
@@ -135,7 +202,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         setBDMList(bdmdata)
       }
 
-      if(activeTab === "bdm-assigned-field-visit"){
+      if(activeTab === "bdm-assigned-field-visit" || activeTab === "sse-inprogress-leads" || activeTab === "sse-won-leads"){
         const [leadSource, leadType, leadProductType] = await Promise.all([
           leadService.getLeadSourceList(),
           leadService.getLeadTypeList(),
@@ -305,6 +372,14 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     setFormData({
       ...formData,
       salestl_shared_status: newValue,
+    })
+  }
+
+  const handleLeadStatus = (e) => {
+    var newValue = e.target.value
+    setFormData({
+      ...formData,
+      lead_status: newValue,
     })
   }
 
@@ -497,6 +572,20 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     </th>
   )
 
+  const matchingLabels = (id, producttypelist) => {
+    let newlabel = ""
+    if (id !== null && id !== "") {
+      // Find the matching item instead of mapping through all items
+      const matchingItem = producttypelist.find((item) => item.id === id.id)
+      // If a matching item is found, use its label
+      if (matchingItem) {
+        newlabel = matchingItem.label.replace(/,/g, "") // Remove all commas
+      }
+    }
+    return newlabel
+  }
+
+
   // File input component
   const FileInput = ({ label, name, onChange, accept = "image/*", required = false }) => (
     <div className="space-y-2">
@@ -582,10 +671,12 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Product Type :
-                  {producttypelist.map((country, i) => {
-                    return country.id == lead.product_type ? " " + country.label : ""
-                  })}
+                  Product Type : {"  "}
+                  {lead.lead_product_type !== null ?
+                      lead.lead_product_type.map((country, itr) => {
+                        let ptlabel = matchingLabels(country, producttypelist).toString();
+                        return itr !== lead.lead_product_type.length-1 ? ptlabel+" , " : ptlabel.substring(0, ptlabel.length-1)
+                  }) : ""}
                 </label>
               </div>
 
@@ -602,316 +693,326 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           {/* Basic Information Section End */}
 
           {/* Additional Details */}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">Additional Details</h3>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Client Name : {lead.client_name}</label>
+          {lead.client_name && lead.project_location && lead.office_location && (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">Additional Details</h3>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Client Name : {lead.client_name}</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project Location : {lead.project_location}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Office Location : {lead.office_location}
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Project Location : {lead.project_location}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Office Location : {lead.office_location}
-                </label>
-              </div>
-            </div>
-            {lead.additionalDetails && lead.additionalDetails.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      {/* <TableHeader> # </TableHeader> */}
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Phone</TableHeader>
-                      <TableHeader>Email</TableHeader>
-                      <TableHeader>Designation</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lead.additionalDetails.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        {/* <td>{idx}</td> */}
-                        <td className="px-2 py-2">
-                          <label className="block text-sm font-medium text-gray-700">{row.contact_person_name}</label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {row.contact_person_phonenumber}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">{row.contact_person_email}</label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {row.contact_person_designation}
-                          </label>
-                        </td>
+              {lead.additionalDetails && lead.additionalDetails.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        {/* <TableHeader> # </TableHeader> */}
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Phone</TableHeader>
+                        <TableHeader>Email</TableHeader>
+                        <TableHeader>Designation</TableHeader>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lead.additionalDetails.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          {/* <td>{idx}</td> */}
+                          <td className="px-2 py-2">
+                            <label className="block text-sm font-medium text-gray-700">{row.contact_person_name}</label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {row.contact_person_phonenumber}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">{row.contact_person_email}</label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {row.contact_person_designation}
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
           {/* Addition Details Section End */}
 
           {/* Middle Man Details */}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">Middle Man Details</h3>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Client Name : {lead.middle_man_client_name}
-                </label>
+          {lead.middle_man_client_name && lead.middle_man_project_location && lead.middle_man_office_location && (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">Middle Man Details</h3>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Client Name : {lead.middle_man_client_name}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project Location : {lead.middle_man_project_location}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Office Location : {lead.middle_man_office_location}
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Project Location : {lead.middle_man_project_location}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Office Location : {lead.middle_man_office_location}
-                </label>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-              {lead.middleManDetails && lead.middleManDetails.length > 0 && (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      {/* <TableHeader> # </TableHeader> */}
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Phone no</TableHeader>
-                      <TableHeader>Email</TableHeader>
-                      <TableHeader>Designation</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lead.middleManDetails.map((mrow, midx) => (
-                      <tr key={midx} className="hover:bg-gray-50">
-                        {/* <td>{idx}</td> */}
-                        <td className="px-2 py-2">
-                          <label className="block text-sm font-medium text-gray-700">{mrow.mcontact_person_name}</label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mcontact_person_phonenumber}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mcontact_person_email}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mcontact_person_designation}
-                          </label>
-                        </td>
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                {lead.middleManDetails && lead.middleManDetails.length > 0 && (
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        {/* <TableHeader> # </TableHeader> */}
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Phone no</TableHeader>
+                        <TableHeader>Email</TableHeader>
+                        <TableHeader>Designation</TableHeader>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lead.middleManDetails.map((mrow, midx) => (
+                        <tr key={midx} className="hover:bg-gray-50">
+                          {/* <td>{idx}</td> */}
+                          <td className="px-2 py-2">
+                            <label className="block text-sm font-medium text-gray-700">{mrow.mcontact_person_name}</label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mcontact_person_phonenumber}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mcontact_person_email}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mcontact_person_designation}
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
-          </div>
+          )}
           {/* Middle Man End */}
 
           {/* Architect Firm Details Section */}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">Architect Firm Details</h3>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Client Name : {lead.architect_client_name}
-                </label>
+          {lead.architect_client_name && lead.architect_project_location && lead.architect_office_location && (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">Architect Firm Details</h3>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Client Name : {lead.architect_client_name}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project Location : {lead.architect_project_location}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Office Location : {lead.architect_office_location}
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Project Location : {lead.architect_project_location}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Office Location : {lead.architect_office_location}
-                </label>
-              </div>
-            </div>
-            {lead.architectFirmDetails && lead.architectFirmDetails.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      {/* <TableHeader> # </TableHeader> */}
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Phone no</TableHeader>
-                      <TableHeader>Email</TableHeader>
-                      <TableHeader>Designation</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lead.architectFirmDetails.map((mrow, midx) => (
-                      <tr key={midx} className="hover:bg-gray-50">
-                        {/* <td>{idx}</td> */}
-                        <td className="px-2 py-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.arcontact_person_name}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.arcontact_person_phonenumber}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.arcontact_person_email}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.arcontact_person_designation}
-                          </label>
-                        </td>
+              {lead.architectFirmDetails && lead.architectFirmDetails.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        {/* <TableHeader> # </TableHeader> */}
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Phone no</TableHeader>
+                        <TableHeader>Email</TableHeader>
+                        <TableHeader>Designation</TableHeader>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lead.architectFirmDetails.map((mrow, midx) => (
+                        <tr key={midx} className="hover:bg-gray-50">
+                          {/* <td>{idx}</td> */}
+                          <td className="px-2 py-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.arcontact_person_name}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.arcontact_person_phonenumber}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.arcontact_person_email}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.arcontact_person_designation}
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
           {/* Architect Firm Details Section End */}
 
           {/* MEP Firm Details Section */}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">MEP Firm Details</h3>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Client Name : {lead.mep_client_name}</label>
+          {lead.mep_client_name && lead.mep_project_location && lead.mep_office_location && (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">MEP Firm Details</h3>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Client Name : {lead.mep_client_name}</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project Location : {lead.mep_project_location}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Office Location : {lead.mep_office_location}
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Project Location : {lead.mep_project_location}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Office Location : {lead.mep_office_location}
-                </label>
-              </div>
-            </div>
-            {lead.mepFirmDetails && lead.mepFirmDetails.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      {/* <TableHeader> # </TableHeader> */}
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Phone no</TableHeader>
-                      <TableHeader>Email</TableHeader>
-                      <TableHeader>Designation</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lead.mepFirmDetails.map((mrow, midx) => (
-                      <tr key={midx} className="hover:bg-gray-50">
-                        {/* <td>{idx}</td> */}
-                        <td className="px-2 py-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mepcontact_person_name}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mepcontact_person_phonenumber}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mepcontact_person_email}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.mepcontact_person_designation}
-                          </label>
-                        </td>
+              {lead.mepFirmDetails && lead.mepFirmDetails.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        {/* <TableHeader> # </TableHeader> */}
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Phone no</TableHeader>
+                        <TableHeader>Email</TableHeader>
+                        <TableHeader>Designation</TableHeader>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lead.mepFirmDetails.map((mrow, midx) => (
+                        <tr key={midx} className="hover:bg-gray-50">
+                          {/* <td>{idx}</td> */}
+                          <td className="px-2 py-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mepcontact_person_name}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mepcontact_person_phonenumber}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mepcontact_person_email}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.mepcontact_person_designation}
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
           {/* MEP Firm Details Section End */}
 
           {/* PMC Firm Details Section */}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">PMC Firm Details</h3>
-            <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Client Name : {lead.pmc_client_name}</label>
+          {lead.pmc_client_name && lead.pmc_project_location && lead.pmc_office_location && (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">PMC Firm Details</h3>
+              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Client Name : {lead.pmc_client_name}</label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Project Location : {lead.pmc_project_location}
+                  </label>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Office Location : {lead.pmc_office_location}
+                  </label>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Project Location : {lead.pmc_project_location}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Office Location : {lead.pmc_office_location}
-                </label>
-              </div>
-            </div>
-            {lead.pmcFirmDetails && lead.pmcFirmDetails.length > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead>
-                    <tr>
-                      {/* <TableHeader> # </TableHeader> */}
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>Phone no</TableHeader>
-                      <TableHeader>Email</TableHeader>
-                      <TableHeader>Designation</TableHeader>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {lead.pmcFirmDetails.map((mrow, midx) => (
-                      <tr key={midx} className="hover:bg-gray-50">
-                        {/* <td>{idx}</td> */}
-                        <td className="px-2 py-2">
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.pmccontact_person_name}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.pmccontact_person_phonenumber}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.pmccontact_person_email}
-                          </label>
-                        </td>
-                        <td>
-                          <label className="block text-sm font-medium text-gray-700">
-                            {mrow.pmccontact_person_designation}
-                          </label>
-                        </td>
+              {lead.pmcFirmDetails && lead.pmcFirmDetails.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead>
+                      <tr>
+                        {/* <TableHeader> # </TableHeader> */}
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Phone no</TableHeader>
+                        <TableHeader>Email</TableHeader>
+                        <TableHeader>Designation</TableHeader>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {lead.pmcFirmDetails.map((mrow, midx) => (
+                        <tr key={midx} className="hover:bg-gray-50">
+                          {/* <td>{idx}</td> */}
+                          <td className="px-2 py-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.pmccontact_person_name}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.pmccontact_person_phonenumber}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.pmccontact_person_email}
+                            </label>
+                          </td>
+                          <td>
+                            <label className="block text-sm font-medium text-gray-700">
+                              {mrow.pmccontact_person_designation}
+                            </label>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
           {/* PMC Firm Details End */}
 
           {activeTab == "unassigned-leads" ? (
@@ -969,6 +1070,14 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           ) : null}
 
           {activeTab == "assign-leads-to-bdm" ? (
+             <>
+             <div className="space-y-4 rounded-lg bg-white border p-4">
+                <h3 className="font-semibold text-lg border-b pb-2">Details Filled By SSE</h3>
+                <div>
+                  <label className="text-sm font-medium text-gray-700"><b>Remarks:</b> {lead.need_of_field_visit_remarks}</label>
+                </div>
+             </div>
+
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Assign BDM</h3>
               <div>
@@ -990,8 +1099,30 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     )
                   })}
                 </select>
+                </div>
               </div>
-            </div>
+
+
+              {/* Lead Status */}
+              {lead.salestl_shared_status === '1' ? (
+                <div className="space-y-4 rounded-lg bg-white border p-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
+                <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">Lead Status:</label>
+                <select
+                    name="lead_status"
+                    //value={formData.need_of_field_visit || ""}
+                    value={formData.lead_status !== null ? formData.lead_status : ""}
+                    className="mt-1 rounded-md border border-gray-300 px-3 py-2" onChange={(e) => handleLeadStatus(e)}>
+                    <option value={null}>Please select</option>
+                    <option value="won">Won</option>
+                    <option value="lost">Lost</option>
+                </select>
+                  </div>
+              </div>
+              ) : null}
+              {/* Lead Status End */}
+              </>
           ) : null}
 
           {activeTab === "bdm-assigned-field-visit" ? (
@@ -1136,7 +1267,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   </div>
 
                   {/* Proposal type */}
-                  <div className="mt-4 space-y-2">
+                  {/* <div className="mt-4 space-y-2">
                     <label className="block text-sm font-medium text-gray-700">Proposal Type:</label>
                     <select
                       name="proposal_type"
@@ -1151,14 +1282,88 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                         </option>
                       ))}
                     </select>
+                  </div> */}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Proposal Type
+                </label>
+                <div id="product-type-dropdown" className="relative mt-1">
+                  <div
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 min-h-[42px] flex flex-wrap gap-1 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowProposalTypeDropdown(!showProposalTypeDropdown)
+                    }}
+                  >
+                    {formData.proposal_type.length > 0 ? (
+                      formData.proposal_type.map((id) => {
+                        const item = producttypelist.find((item) => item.id === id)
+                        return (
+                          <span
+                            key={id}
+                            className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded flex items-center"
+                          >
+                            {item?.label}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemoveProductType(id)
+                              }}
+                              className="ml-1 text-blue-800 hover:text-blue-900"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )
+                      })
+                    ) : (
+                      <span className="text-gray-500">Select Proposal Types</span>
+                    )}
                   </div>
+                  {showProposalTypeDropdown && (
+                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-300">
+                      {producttypelist.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 ${
+                            formData.proposal_type.includes(item.id) ? "bg-blue-50" : ""
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleProductTypeSelect(item.id)
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 border-gray-300 rounded text-blue-600 focus:ring-blue-500 mr-2"
+                              checked={formData.proposal_type.includes(item.id)}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                handleProductTypeSelect(item.id)
+                              }}
+                            />
+                            <span
+                              className={`block truncate ${formData.proposal_type.includes(item.id) ? "font-medium" : "font-normal"}`}
+                            >
+                              {item.label}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
                   {/* Remarks */}
                   <div className="mt-4 space-y-2">
                     <label className="block text-sm font-medium text-gray-700">Remarks:</label>
                     <textarea
                       name="bdm_visit_remarks"
-                      value={formData.bdm_visit_remarks || ""}
+                      value={formData.bdm_visit_remarks !== null && formData.bdm_visit_remarks.toString().trim() !== "null"  ? formData.bdm_visit_remarks : ""}
                       onChange={handleChange}
                       className="mt-1 block w-full rounded-md border border-gray-300 min-h-[100px]"
                       placeholder="Enter any additional remarks..."
@@ -1258,14 +1463,14 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                       </div>
                     )}
 
-                  
-
-                  {lead.proposal_type && (
+                  {lead.lead_proposal_type && (
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-gray-700">Proposal Type:
-                        {producttypelist.map((country, i) => {
-                          return country.id == lead.proposal_type ? " " + country.label : ""
-                        })}
+                      { lead.lead_proposal_type !== null ?
+                              lead.lead_proposal_type.map((country, itr) => {
+                                let ptlabel = matchingLabels(country, producttypelist).toString();
+                                return itr !== lead.lead_proposal_type.length-1 ? ptlabel+",  " : ptlabel.substring(0, ptlabel.length-1)
+                            }) : ""}
                       </label>
                     </div>  
                     )}
@@ -1274,7 +1479,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     <div className="mt-4">
                       <label className="block text-sm font-medium text-gray-700">Proposal Scope:
                         {typelist.map((country, i) => {
-                          return country.id == lead.proposal_type ? " " + country.label : ""
+                          return country.id == lead.proposal_scope ? " " + country.label : ""
                         })}
                       </label>
                     </div>  
@@ -1290,7 +1495,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               </div>
               ) : null}
               
-              {lead.need_of_field_visit !== null ? (    
+            {lead.need_of_field_visit !== null ? (    
             <div className="space-y-4 rounded-lg bg-white border p-4">
 
 
@@ -1356,9 +1561,32 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               ) : null}
               {/* Shared Status End */}
                 </div>
-                ) : null}
+              ) : null}
+              
+              {/* Lead Status */}
+              {lead.salestl_shared_status === '1' ? (
+              <div className="space-y-4 rounded-lg bg-white border p-4">
+                <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
+              <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Lead Status:</label>
+              <select
+                  name="lead_status"
+                  //value={formData.need_of_field_visit || ""}
+                  value={formData.lead_status !== null ? formData.lead_status : ""}
+                  className="mt-1 rounded-md border border-gray-300 px-3 py-2" onChange={(e) => handleLeadStatus(e)}>
+                  <option value={null}>Please select</option>
+                  <option value="won">Won</option>
+                  <option value="lost">Lost</option>
+              </select>
+                </div>
+            </div>
+              ) : null}
+            {/* Lead Status End */}
+
             </>
           ) : null}
+
+          
 
           <div className="flex justify-end space-x-4 pt-4">
             <button

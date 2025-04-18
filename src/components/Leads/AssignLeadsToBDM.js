@@ -32,7 +32,7 @@ function AssignLeadsToBDM() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const leadsPerPage = 3
+  const leadsPerPage = 20
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -129,6 +129,19 @@ function AssignLeadsToBDM() {
 
   const Capitalize = (str) => {
     return str.charAt(0).toUpperCase() + str.slice(1)
+  }
+
+  const matchingLabels = (id, producttypelist) => {
+    let newlabel = ""
+    if (id !== null && id !== "") {
+      // Find the matching item instead of mapping through all items
+      const matchingItem = producttypelist.find((item) => item.id === id.id)
+      // If a matching item is found, use its label
+      if (matchingItem) {
+        newlabel = matchingItem.label.replace(/,/g, "") // Remove all commas
+      }
+    }
+    return newlabel
   }
 
 
@@ -269,7 +282,10 @@ function AssignLeadsToBDM() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">{lead.middle_man_client_name}</div>
+                        <div className="text-xs font-medium text-gray-900">
+                            {lead.middle_man_client_name === '' ? lead.client_name :
+                              lead.middle_man_client_name}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
@@ -280,11 +296,23 @@ function AssignLeadsToBDM() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
-                            {producttypelist.map((country, i) => {
-                              return country.id == lead.product_type ? " " + country.label : ""
-                            })}
+                          { lead.lead_product_type !== null ?
+                              lead.lead_product_type.map((country, itr) => {
+                                let ptlabel = matchingLabels(country, producttypelist).toString();
+                                return itr !== lead.lead_product_type.length-1 ? ptlabel+",  " : ptlabel.substring(0, ptlabel.length-1)
+                            }) : ""}
                           </div>
                         </td>
+
+                        {/* <td className="px-6 py-4">
+                          <div className="text-xs font-medium text-gray-900">
+                          {lead.need_of_field_visit_remarks !== null && (
+                            <span className={`px-3 py-1 inline-flex text-xs font-semibold`}>
+                             {lead.need_of_field_visit_remarks}
+                            </span>
+                          )}
+                          </div>
+                        </td> */}
 
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">

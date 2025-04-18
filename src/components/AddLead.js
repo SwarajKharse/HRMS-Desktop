@@ -414,19 +414,13 @@ function AddLead() {
 
       console.log(submitData);
       await leadService.createLead(submitData);
-      //console.log("lead data from server" + newLeadData);
-
+      
       window.scrollTo(0,0);
       setSuccess(true)
       setTimeout(function () {
         setSuccess(false);
         window.location.reload(1);
       }, 3000);
-      /* setTimeout(() =>
-        ,
-        window.location.reload(1)
-        , 9000) */
-      //window.location.reload();
     } catch (err) {
       setError(err.message)
     } finally {
@@ -766,9 +760,9 @@ function AddLead() {
                 <thead>
                   <tr>
                     {/* <TableHeader> # </TableHeader> */}
-                    <TableHeader>Client Name <span class="text-red-500">*</span></TableHeader>
-                    <TableHeader>Project Location <span class="text-red-500">*</span></TableHeader>
-                    <TableHeader>Office Location <span class="text-red-500">*</span></TableHeader>
+                    <TableHeader>Client Name</TableHeader>
+                    <TableHeader>Project Location</TableHeader>
+                    <TableHeader>Office Location</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -776,7 +770,6 @@ function AddLead() {
                     <td>
                       <textarea
                         name="architect_client_name"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.architect_client_name}
                         onChange={handleSelectChange}
@@ -784,14 +777,12 @@ function AddLead() {
                     </td>
                     <td>
                       <textarea name="architect_office_location"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.architect_office_location}
                         onChange={handleSelectChange}></textarea>
                     </td>
                     <td>
                       <textarea name="architect_project_location"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.architect_project_location}
                         onChange={handleSelectChange}></textarea>
@@ -865,9 +856,9 @@ function AddLead() {
                 <thead>
                   <tr>
                     {/* <TableHeader> # </TableHeader> */}
-                    <TableHeader>Client Name <span class="text-red-500">*</span></TableHeader>
-                    <TableHeader>Project Location <span class="text-red-500">*</span></TableHeader>
-                    <TableHeader>Office Location <span class="text-red-500">*</span></TableHeader>
+                    <TableHeader>Client Name</TableHeader>
+                    <TableHeader>Project Location</TableHeader>
+                    <TableHeader>Office Location</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -875,7 +866,6 @@ function AddLead() {
                     <td>
                       <textarea
                         name="mep_client_name"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.mep_client_name}
                         onChange={handleSelectChange}
@@ -883,14 +873,12 @@ function AddLead() {
                     </td>
                     <td>
                       <textarea name="mep_office_location"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.mep_office_location}
                         onChange={handleSelectChange}></textarea>
                     </td>
                     <td>
                       <textarea name="mep_project_location"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.mep_project_location}
                         onChange={handleSelectChange}></textarea>
@@ -959,15 +947,15 @@ function AddLead() {
 
           {/* PMC Firm Details */}
           <div class="space-y-4 bg-white border border border-t-indigo-500 p-4">
-            <h3 class="font-semibold text-lg border-b pb-2">PMC Firm Details</h3>
+            <h3 class="font-semibold text-lg border-b pb-2">PMC Firm Details 111</h3>
             <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
               <table>
                 <thead>
                   <tr>
                     {/* <TableHeader> # </TableHeader> */}
-                    <TableHeader>Client Name <span class="text-red-500">*</span></TableHeader>
-                    <TableHeader>Project Location <span class="text-red-500">*</span></TableHeader>
-                    <TableHeader>Office Location <span class="text-red-500">*</span></TableHeader>
+                    <TableHeader>Client Name</TableHeader>
+                    <TableHeader>Project Location</TableHeader>
+                    <TableHeader>Office Location</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -975,7 +963,6 @@ function AddLead() {
                     <td>
                       <textarea
                         name="pmc_client_name"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.pmc_client_name}
                         onChange={handleSelectChange}
@@ -983,14 +970,12 @@ function AddLead() {
                     </td>
                     <td>
                       <textarea name="pmc_office_location"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.pmc_office_location}
                         onChange={handleSelectChange}></textarea>
                     </td>
                     <td>
                       <textarea name="pmc_project_location"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.pmc_project_location}
                         onChange={handleSelectChange}></textarea>

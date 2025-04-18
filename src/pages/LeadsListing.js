@@ -27,7 +27,7 @@ function LeadsListing() {
       { id: "assign-leads-bdm", label: "Assign Leads To BDM", icon: MdManageAccounts, component: AssignLeadsToBDM },
       { id: "see-new-leads", label: "New Leads", icon: MdFiberNew, component: SSENewLeads },
       { id: "sse-inprocess-leads", label: "In Process Leads", icon: RiProgress3Line, component: SSEInProgressLeads },
-      { id: "sse-won-leads", label: "Won Leads", icon: BiWon, component: SSEWonLeads },
+      { id: "sse-won-leads", label: "Won/Lost Leads", icon: BiWon, component: SSEWonLeads },
       { id: "bdm-assigned-field-visit", label: "Assigned Field Visit", icon: GrWorkshop, component: BDMAssignedFieldVisit }
     ]
 
