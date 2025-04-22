@@ -29,6 +29,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
   const [feedbackFormName, setFeedbackFormName] = useState(lead.client_feedback_form_name || "")
   const [visitReportName, setVisitReportName] = useState(lead.bdm_client_visit_report || "")
   const [proposalName, setProposalName] = useState(lead.salestl_proposal || "")
+  const [poName, setPOName] = useState([])
   const [departments, setDepartments] = useState([])
   const [designations, setDesignations] = useState([])
   const [error, setError] = useState("")
@@ -221,6 +222,19 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
+  const isVisitTodayOrPast = (visit_scheduled_date) => {
+    if (!visit_scheduled_date) return false
+
+    const visitDate = new Date(visit_scheduled_date)
+    const today = new Date()
+
+    // Reset time part for accurate date comparison
+    visitDate.setHours(0, 0, 0, 0)
+    today.setHours(0, 0, 0, 0)
+
+    return visitDate <= today
+  }
+
   const handleChange = (e) => {
     const { name, value } = e.target
 
@@ -271,7 +285,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           
         }    
         
-        console.log("Location URL Outside111111 "+checkInSelfieLocationURL)
+        console.log("Location URL Outside "+checkInSelfieLocationURL)
         setFormData({
           ...formData,
           check_in_selfie: file,
@@ -1164,36 +1178,42 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                 </div>
               </div>
 
-              {/* Check-in selfie */}
-              <div className="mt-4">
-                {lead.check_in_selfie && (
-                  <div className="mt-2">
-                    <label className="block text-sm font-medium text-gray-700">Check-in Selfie:</label>
-                    <img
-                      src={lead.check_in_selfie || "/placeholder.svg"}
-                      alt="Check-in preview"
-                      className="h-24 w-auto object-cover rounded-md"
-                    />
-                  </div>
-                )}
+              {isVisitTodayOrPast(formData.visit_scheduled_date) && (
+              <>
+                {/* Check-in selfie */ }
+                <div className="mt-4">
+                {
+                  lead.check_in_selfie && (
+                    <div className="mt-2">
+                      <label className="block text-sm font-medium text-gray-700">Check-in Selfie:</label>
+                      <img
+                        src={lead.check_in_selfie || "/placeholder.svg"}
+                        alt="Check-in preview"
+                        className="h-24 w-auto object-cover rounded-md"
+                      />
+                    </div>
+                  )
+                }
                   {!lead.check_in_selfie && (
-                    <>
-                      <FileInput label="Check-in Selfie" name="check_in_selfie" onChange={handleChange} />
-                      {checkInPreview && (
-                        <div className="mt-2">
-                          <img
-                            src={checkInPreview || "/placeholder.svg"}
-                            alt="Check-in preview"
-                            className="h-24 w-auto object-cover rounded-md"
-                          />
-                        </div>
-                      )}
-                    </>
+                <>
+                  <FileInput label="Check-in Selfie" name="check_in_selfie" onChange={handleChange} />
+                  {checkInPreview && (
+                    <div className="mt-2">
+                      <img
+                        src={checkInPreview || "/placeholder.svg"}
+                        alt="Check-in preview"
+                        className="h-24 w-auto object-cover rounded-md"
+                      />
+                    </div>
                   )}
-                </div>
+                </>
+              )}
+            </div>
+            </>
+          )}
 
               {/* Fields that only show if check-in selfie is uploaded */}
-              {lead.check_in_selfie &&  (
+              {isVisitTodayOrPast(formData.visit_scheduled_date) && lead.check_in_selfie &&  (
                 <>
                   {/* Check-out selfie */}
                   {lead.check_out_selfie && (
@@ -1233,7 +1253,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                       >BDM Client Visit Report</a>
                     </div>
                   )}
-                  {!lead.bdm_client_visit_report && (
+                  {isVisitTodayOrPast(formData.visit_scheduled_date) && !lead.bdm_client_visit_report && (
                     <div className="mt-4">
                       <FileInput label="Upload Visit Report" accept="application/pdf" name="bdm_client_visit_report" onChange={handleChange} />
                       {visitReportName && (
@@ -1528,7 +1548,9 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               </div>
               {/* Upload Proposal End */}
 
-              {/* Approve Proposal */}
+              {/* Approve Proposal */}    
+              {activeTab === "assigned-leads" && (
+                    <>
               <div className="flex items-center gap-2">
                 <label className="text-sm font-medium text-gray-700">Approve Proposal:</label>
                 <select
@@ -1540,15 +1562,32 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     <option value="1">Yes</option>
                     <option value="0">No</option>
                 </select>
-              </div>
+                </div>
+                  </>
+                  )}
+                {activeTab === "sse-inprogress-leads" && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700">Approval Status:{" "}
+                      {lead.salestl_approval_status !== null &&  lead.salestl_approval_status === "1" ? (
+                          "Approved"
+                        ) : null}
+                      {lead.salestl_approval_status !== null &&  lead.salestl_approval_status === "0" ? (
+                          "Not Approved"
+                        ) : null}
+                      {lead.salestl_approval_status === null ||  lead.salestl_approval_status === "" ? (
+                          "Pending"
+                      ) : null}
+                  </label>
+                </div>  
+              )}
               {/* Approve Proposal End */}
 
 
-              {/* Shared Status */}
+              {/* Shared Status */}    
               {lead.salestl_approval_status == '1' ? (
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">Shared Status:</label>
-                <select
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Approve Proposal:</label>
+                  <select
                     name="salestl_shared_status"
                     //value={formData.need_of_field_visit || ""}
                     value={formData.salestl_shared_status !== null ? formData.salestl_shared_status : ""}
@@ -1556,7 +1595,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     <option value={null}>Please select</option>
                     <option value="1">Yes</option>
                     <option value="0">No</option>
-                </select>
+                  </select>
                 </div>
               ) : null}
               {/* Shared Status End */}
@@ -1581,8 +1620,13 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                 </div>
             </div>
               ) : null}
-            {/* Lead Status End */}
-
+              {/* Lead Status End */}
+              
+              {activeTab === "salestl-won-leads" ? (
+                <>
+                  
+                </>
+              ) : null}
             </>
           ) : null}
 

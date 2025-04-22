@@ -93,6 +93,20 @@ function AssignLeadsToBDM() {
     }
   }
 
+  const isVisitTodayOrPast = (visit_scheduled_date) => {
+    if (!visit_scheduled_date) return false
+
+    const visitDate = new Date(visit_scheduled_date)
+    const today = new Date()
+
+    // Reset time part for accurate date comparison
+    visitDate.setHours(0, 0, 0, 0)
+    today.setHours(0, 0, 0, 0)
+
+    return visitDate <= today
+  }
+
+
   // Calculate pagination variables
   const indexOfLastLead = currentPage * leadsPerPage
   const indexOfFirstLead = indexOfLastLead - leadsPerPage
@@ -228,7 +242,7 @@ function AssignLeadsToBDM() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","Assigned BDM" ,"Shared Status","Actions"]
+                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","Assigned BDM" ,"Visit Status","Actions"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -328,17 +342,19 @@ function AssignLeadsToBDM() {
 
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
-                          {lead.salestl_shared_status !== null && lead.salestl_shared_status === "1" && (
+                            {isVisitTodayOrPast(lead.visit_scheduled_date) &&  lead.lead_proposal_type !== null && lead.check_in_selfie !== null && lead.check_out_selfie !== null &&
+                              (
                             <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-600/20`}>
-                              Yes
+                              Completed
                             </span>
                           )}
-                          {lead.salestl_shared_status !== null && lead.salestl_shared_status === "0" && (
+                          {/* {lead.salestl_shared_status !== null && lead.salestl_shared_status === "0" && (
                             <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-red-50 text-red-700 ring-1 ring-red-600/20`}>
                               No
                             </span>
-                          )}
-                          {lead.salestl_shared_status === null && (
+                          )} */}
+                          {!isVisitTodayOrPast(lead.visit_scheduled_date) &&  lead.lead_proposal_type === null && lead.check_in_selfie === null && lead.check_out_selfie === null &&
+                            (
                             <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20`}>
                               Pending
                             </span>

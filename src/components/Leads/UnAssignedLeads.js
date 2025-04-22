@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
-import { FiEdit2, FiAlertCircle, FiCheck, FiX } from "react-icons/fi"
+import { FiEdit2, FiAlertCircle, FiCheck, FiDownload } from "react-icons/fi"
 
 function UnAssignedLeads() {
   const navigate = useNavigate()
@@ -32,6 +32,10 @@ function UnAssignedLeads() {
   // Add new state variables for lead type and source filters
   const [typeSearchQuery, setTypeSearchQuery] = useState("")
   const [sourceSearchQuery, setSourceSearchQuery] = useState("")
+
+  // Add state for export format
+  const [exportFormat, setExportFormat] = useState("csv")
+  const [showExportOptions, setShowExportOptions] = useState(false)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -153,6 +157,24 @@ function UnAssignedLeads() {
     setCurrentPage(1)
   }
 
+  const handleExport = async (format) => {
+    try {
+      setIsExporting(true)
+      setError(null)
+
+      await leadService.exportUnassignedLeads(format, searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery)
+
+      setSuccessMessage(`Leads exported successfully as ${format.toUpperCase()}`)
+      setTimeout(() => setSuccessMessage(null), 3000)
+      setShowExportOptions(false)
+    } catch (error) {
+      console.error("Export error:", error)
+      setError("Failed to export leads: " + (error.message || "Unknown error"))
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const Capitalize = (str) => {
     if (!str) return ""
     return str.charAt(0).toUpperCase() + str.slice(1)
@@ -210,6 +232,42 @@ function UnAssignedLeads() {
 
       {/* Employee List */}
       <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold text-gray-800">Unassigned Leads</h2>
+
+          <div className="relative">
+            <button
+              onClick={() => setShowExportOptions(!showExportOptions)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+              disabled={isExporting}
+            >
+              <FiDownload className="w-4 h-4" />
+              {isExporting ? "Exporting..." : "Export"}
+            </button>
+
+            {showExportOptions && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                <div className="py-1">
+                  <button
+                    onClick={() => handleExport("csv")}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    disabled={isExporting}
+                  >
+                    Export as CSV
+                  </button>
+                  <button
+                    onClick={() => handleExport("excel")}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    disabled={isExporting}
+                  >
+                    Export as Excel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="relative mb-6 min-w-full flex flex-wrap items-center gap-4">
           <div>
             <label className="text-sm font-medium text-gray-700 block mb-1">Lead Received</label>
@@ -301,7 +359,7 @@ function UnAssignedLeads() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type","Lead Source", "Product Type", "Actions"]
+                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type", "Actions"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -365,13 +423,6 @@ function UnAssignedLeads() {
                           <div className="text-xs font-medium text-gray-900">
                             {typelist.map((country, i) => {
                               return country.id == lead.lead_type ? " " + country.label : ""
-                            })}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">
-                            {sourcelist.map((country, i) => {
-                              return country.id == lead.lead_source ? " " + country.label : ""
                             })}
                           </div>
                         </td>
@@ -472,36 +523,6 @@ function UnAssignedLeads() {
           {Math.min(currentPage * leadsPerPage, totalResults)} of {totalResults} leads
         </div>
       </div>
-
-      {showMigrateDialog && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-          onClick={() => setShowMigrateDialog(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.95 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0.95 }}
-            className="bg-white rounded-xl shadow-xl p-6 w-[600px] relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowMigrateDialog(false)}
-              className="absolute right-4 top-4 p-1 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <FiX className="w-5 h-5 text-gray-500" />
-            </button>
-
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Migrate Employee Data</h2>
-              <p className="text-sm text-gray-500 mt-1">Export your current data or import new data</p>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
 
       {/* Modals */}
       <AnimatePresence>

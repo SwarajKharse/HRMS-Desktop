@@ -103,6 +103,65 @@ export const leadService = {
     }
   },
 
+  exportUnassignedLeads: async (
+    format = "csv",
+    leadPriority = "",
+    dateReceived = "",
+    leadType = "",
+    leadSource = "",
+  ) => {
+    try {
+      // Build query string for filtering based on the backend's expected format
+      let queryString = ""
+
+      if (leadPriority) {
+        queryString += `priority=${leadPriority}`
+      }
+
+      if (dateReceived) {
+        if (queryString) queryString += "&"
+        // Format date as ISO string (YYYY-MM-DD)
+        queryString += `date=${dateReceived}`
+      }
+
+      if (leadType) {
+        if (queryString) queryString += "&"
+        queryString += `leadType=${leadType}`
+      }
+
+      if (leadSource) {
+        if (queryString) queryString += "&"
+        queryString += `leadSource=${leadSource}`
+      }
+
+      console.log("Exporting with filters:", queryString)
+
+      // Make the request with responseType blob to handle file download
+      const response = await axios.get(`${BASE_URL}/export/unassignedleads`, {
+        params: {
+          query: queryString,
+          format: format,
+        },
+        responseType: "blob", // Important for file downloads
+      })
+
+      // Create a blob URL and trigger download
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", format === "excel" ? "unassigned_leads.xlsx" : "unassigned_leads.csv")
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+
+      return true
+    } catch (error) {
+      console.error("Export API Error:", error)
+      throw new Error("Failed to export leads: " + (error.message || "Unknown error"))
+    }
+  },
+
   getAssignedLeads: async () => {
     try {
       const response = await axios.get(`${BASE_URL}/assignedleads`, {
@@ -123,6 +182,18 @@ export const leadService = {
       const response = await axios.get(`${BASE_URL}/ssewonleads`, {
         params: {
           sseid: sseid,
+        },
+      })
+      return response.data
+    } catch (error) {
+      throw new Error("Failed to fetch lead details")
+    }
+  },
+
+  getSalesTlWonLeads: async (sseid) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/salestlwonleads`, {
+        params: {
         },
       })
       return response.data
