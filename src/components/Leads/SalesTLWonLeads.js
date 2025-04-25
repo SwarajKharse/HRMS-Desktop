@@ -8,7 +8,7 @@ import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
 import { FiEdit2, FiAlertCircle, FiX, FiCheck } from "react-icons/fi"
 
-function BDMAssignedFieldVisit() {
+function SalesTLWonLeads() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -21,11 +21,6 @@ function BDMAssignedFieldVisit() {
   const [showWarningForm, setShowWarningForm] = useState(false)
   const [showTerminationForm, setShowTerminationForm] = useState(false)
   const { user } = useAuth()
-  var userId = "";
-
-  if (user) {
-    userId = user.userId
-  }
 
   const [showMigrateDialog, setShowMigrateDialog] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
@@ -38,12 +33,17 @@ function BDMAssignedFieldVisit() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const leadsPerPage = 20
+  var userId = "";
+
+  if (user) {
+    userId = user.userId
+  }
 
   const fetchLeads = useCallback(async () => {
     try {
       setLoading(true)
       let data = []
-      data = await leadService.getLeadsAssignesToBDM(userId)
+      data = await leadService.getSalesTlWonLeads()
       console.log(data)
       var newBookArr = [].concat(data.results)
       setLeads(newBookArr)
@@ -136,32 +136,18 @@ function BDMAssignedFieldVisit() {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
-  const fetchDateFromApi = (apiDate) => {
-    
-      // Adjust this according to your actual API response format
-      //const apiDate = new Date(data.date)
-      // Get today's date (with time set to 00:00:00)
-      /* const today = new Date()
-      today.setHours(0, 0, 0, 0)
-
-      // Get the API date with time set to 00:00:00 for comparison
-      const apiDateOnly = new Date(apiDate)
-      apiDateOnly.setHours(0, 0, 0, 0)
-
-      return apiDateOnly.getTime() === today.getTime() */
-      // Create date from input value
-      var inputDate = new Date(apiDate);
-
-
-      var todaysDate = new Date();
-
-
-    if (inputDate.setHours(0, 0, 0, 0) == todaysDate.setHours(0, 0, 0, 0)) {
-      return true;
+  const matchingLabels = (id, producttypelist) => {
+    let newlabel = ""
+    if (id !== null && id !== "") {
+      // Find the matching item instead of mapping through all items
+      const matchingItem = producttypelist.find((item) => item.id === id.id)
+      // If a matching item is found, use its label
+      if (matchingItem) {
+        newlabel = matchingItem.label.replace(/,/g, "") // Remove all commas
+      }
     }
-    return false;
+    return newlabel
   }
-
 
 
   if (loading) {
@@ -247,7 +233,7 @@ function BDMAssignedFieldVisit() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Visit Scheduled Date", "Actions"]
+                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","Assigned BDM", "Status", "Action"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -315,16 +301,42 @@ function BDMAssignedFieldVisit() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
-                            {/* {producttypelist.map((country, i) => {
-                              return country.id == lead.product_type ? " " + country.label : ""
-                            })} */}
-                            {lead.visit_scheduled_date}<span className="px-1"></span>
-                            {fetchDateFromApi(lead.visit_scheduled_date) ?
-                              <span className="px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-600/20">Today</span>
-                              : ""}
+                          { lead.lead_product_type !== null ?
+                              lead.lead_product_type.map((country, itr) => {
+                                let ptlabel = matchingLabels(country, producttypelist).toString();
+                                return itr !== lead.lead_product_type.length-1 ? ptlabel+",  " : ptlabel.substring(0, ptlabel.length-1)
+                            }) : ""}
                           </div>
                         </td>
-                        
+
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-medium text-gray-900">
+                          {lead.assigned_bdm !== null ? (
+                              lead.assigned_bdm.firstName+"  "+lead.assigned_bdm.lastName
+                            ) : 
+                           ( <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20`}>
+                            N/A
+                          </span>
+                          )}
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-medium text-gray-900">
+                            <span
+                              className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${
+                                lead.lead_status === "won"
+                                  ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
+                                  : lead.lead_priority === "hot"
+                                    ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+                                    : ""
+                              }`}
+                            >
+                              {lead.lead_status !== "new" ? Capitalize(lead.lead_status) : ""}
+                            </span>
+                          </div>
+                        </td>
+
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <button
@@ -334,21 +346,6 @@ function BDMAssignedFieldVisit() {
                             >
                               <FiEdit2 size={18} />
                             </button>
-
-                            {/* <button
-                                    className="text-gray-400 hover:text-yellow-600 transition-colors"
-                                    onClick={(e) => handleIssueWarning(e, lead)}
-                                    title="Issue Warning"
-                                  >
-                                    <FiAlertTriangle size={18} />
-                                  </button>
-                                  <button
-                                    className="text-gray-400 hover:text-red-600 transition-colors"
-                                    onClick={(e) => handleTerminate(e, lead)}
-                                    title="Terminate"
-                                  >
-                                    <FiUserX size={18} />
-                                  </button> */}
                           </div>
                         </td>
                       </motion.tr>
@@ -412,11 +409,6 @@ function BDMAssignedFieldVisit() {
             >
               <FiX className="w-5 h-5 text-gray-500" />
             </button>
-
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Migrate Employee Data</h2>
-              <p className="text-sm text-gray-500 mt-1">Export your current data or import new data</p>
-            </div>
           </motion.div>
         </motion.div>
       )}
@@ -426,7 +418,7 @@ function BDMAssignedFieldVisit() {
         {showForm && (
           <LeadEditForm
             lead={selectedLead}
-            activeTab="bdm-assigned-field-visit"
+            activeTab="salestl-won-leads"
             onClose={() => {
               setShowForm(false)
               setSelectedLead(null)
@@ -439,5 +431,4 @@ function BDMAssignedFieldVisit() {
   )
 }
 
-export default BDMAssignedFieldVisit
-
+export default SalesTLWonLeads;

@@ -9,6 +9,7 @@ import SSENewLeads from "../components/Leads/SSENewLeads"
 import BDMAssignedFieldVisit from "../components/Leads/BDMAssignedFieldVisit"
 import SSEWonLeads from "../components/Leads/SSEWonLeads"
 import SSEInProgressLeads from "../components/Leads/SSEInProgressLeads"
+import SalesTLWonLeads from "../components/Leads/SalesTLWonLeads"
 import { MdFiberNew, MdEngineering, MdManageAccounts } from "react-icons/md"
 import { GrWorkshop } from "react-icons/gr";
 import { RiProgress3Line } from "react-icons/ri";
@@ -28,7 +29,8 @@ function LeadsListing() {
       { id: "see-new-leads", label: "New Leads", icon: MdFiberNew, component: SSENewLeads },
       { id: "sse-inprocess-leads", label: "In Process Leads", icon: RiProgress3Line, component: SSEInProgressLeads },
       { id: "sse-won-leads", label: "Won/Lost Leads", icon: BiWon, component: SSEWonLeads },
-      { id: "bdm-assigned-field-visit", label: "Assigned Field Visit", icon: GrWorkshop, component: BDMAssignedFieldVisit }
+      { id: "bdm-assigned-field-visit", label: "Assigned Field Visit", icon: GrWorkshop, component: BDMAssignedFieldVisit },
+      { id: "salestl-won-leads", label: "Won/Lost Leads", icon: MdManageAccounts, component: SalesTLWonLeads },
     ]
 
     if (!employee) return [allTabs[0]] // Default to unassigned leads if no employee
@@ -38,7 +40,7 @@ function LeadsListing() {
     if (designation.includes("director")) {
       return allTabs // Admin/Manager can see all tabs
     } else if (designation.includes("sales-team-leader") || designation.includes("leader")){
-      return [allTabs[0], allTabs[1], allTabs[2]] // BDM can see unassigned and BDM assigne
+      return [allTabs[0], allTabs[1], allTabs[2],allTabs[7]] // BDM can see unassigned and BDM assigne
     } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
       return [allTabs[3], allTabs[4] , allTabs[5]] // SSE can see unassigned and SSE assigned
     } else if (designation.includes("bdm") || designation.includes("business") || designation.includes("development")) {

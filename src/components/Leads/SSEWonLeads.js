@@ -233,7 +233,7 @@ function AssignLeadsToBDM() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","Assigned BDM", "Status"]
+                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type","Assigned BDM", "Status","Action"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -337,7 +337,7 @@ function AssignLeadsToBDM() {
                           </div>
                         </td>
 
-                        {/* <td className="px-6 py-4">
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <button
                               className="text-gray-400 hover:text-indigo-600 transition-colors"
@@ -347,7 +347,7 @@ function AssignLeadsToBDM() {
                               <FiEdit2 size={18} />
                             </button>
                           </div>
-                        </td> */}
+                        </td>
                       </motion.tr>
                     ))
                   )}
@@ -418,7 +418,7 @@ function AssignLeadsToBDM() {
         {showForm && (
           <LeadEditForm
             lead={selectedLead}
-            activeTab="sse-won-leads"
+            activeTab="salestl-won-leads"
             onClose={() => {
               setShowForm(false)
               setSelectedLead(null)
