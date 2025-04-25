@@ -307,6 +307,35 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
     setFormData((prev) => {
       const newData = { ...prev, [name]: value }
 
+      // Recalculate total deductions when any deduction component changes
+      if (name === "employeePf" || name === "employeeEsic" || name === "professionalTax") {
+        const updatedDeductions = 
+          Number.parseFloat(newData.employeePf || 0) + 
+          Number.parseFloat(newData.employeeEsic || 0) + 
+          Number.parseFloat(newData.professionalTax || 0);
+        
+        newData.totalDeductions = updatedDeductions;
+        // Also update the net salary
+        newData.netSalary = Number.parseFloat(newData.grossSalary || 0) - updatedDeductions;
+      }
+
+      // Recalculate employer contribution when any employer contribution changes
+      if (name === "employerPf" || name === "employerEsic" || name === "gratuity" || name === "bonus") {
+        let employerContribution = 0;
+        if (newData.employerPf && newData.includeEmployerPf) 
+          employerContribution += Number.parseFloat(newData.employerPf);
+        if (newData.employerEsic && newData.includeEmployerEsic) 
+          employerContribution += Number.parseFloat(newData.employerEsic);
+        if (newData.gratuity && newData.includeGratuity) 
+          employerContribution += Number.parseFloat(newData.gratuity);
+        if (newData.bonus && newData.includeBonus) 
+          employerContribution += Number.parseFloat(newData.bonus);
+        
+        newData.totalEmployerContribution = employerContribution;
+        // Also update the CTC
+        newData.costToCompany = Number.parseFloat(newData.grossSalary || 0) + employerContribution;
+      }
+
       // If changing include flags, recalculate employer contribution and CTC
       if (name.startsWith("include")) {
         let employerContribution = 0
@@ -368,7 +397,7 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
       newData.employeeEsic = 0
       newData.professionalTax = 0
 
-      // Recalculate total deductions
+      // Recalculate total deductions - now properly sets to zero
       newData.totalDeductions = 0
 
       // Recalculate net salary
@@ -1151,4 +1180,4 @@ function PayrollDialog({ employee, payroll, onClose, onSubmit }) {
   )
 }
 
-export default PayrollDialog;
+export default PayrollDialog
