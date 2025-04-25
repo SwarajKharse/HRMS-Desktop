@@ -271,7 +271,48 @@ export const leadService = {
 
   updateSSEProposalApproval: async (id, formData) => {
     try {
+      // Ensure document_type is set if proposal_document exists
+      if (formData.get("proposal_document") && !formData.get("document_type")) {
+        formData.append("document_type", "proposal")
+      }
+
       const response = await axios.post(`${BASE_URL}/updatesseproposalapproval/${id}`, formData, {
+        headers: {
+          // Don't set Content-Type here - axios will automatically set it
+        },
+      })
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  updateSalesTLProposalApproval: async (id, formData) => {
+    try {
+      // Ensure document_type is set if proposal_document exists
+      if (formData.get("proposal_document") && !formData.get("document_type")) {
+        formData.append("document_type", "proposal")
+      }
+
+      const response = await axios.post(`${BASE_URL}/updatesalestlproposalapproval/${id}`, formData, {
+        headers: {
+          // Don't set Content-Type here - axios will automatically set it
+        },
+      })
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  updatePOorRejectionReason: async (id, formData) => {
+    try {
+      // Ensure document_type is set if proposal_document exists
+      if (formData.get("po_document") && !formData.get("document_type")) {
+        formData.append("document_type", "po_document")
+      }
+
+      const response = await axios.post(`${BASE_URL}/updatepoorrejectionreason/${id}`, formData, {
         headers: {
           // Don't set Content-Type here - axios will automatically set it
         },
@@ -348,6 +389,20 @@ export const leadService = {
       return response.data
     } catch (error) {
       throw new Error("Failed to fetch lead details")
+    }
+  },
+
+  getLeadDocuments: async (leadId, documentType) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/documents/${leadId}`, {
+        params: {
+          documentType: documentType,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error fetching lead documents:", error)
+      throw error.response?.data || error.message
     }
   },
 }
