@@ -41,7 +41,7 @@ function UnAssignedLeads() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalResults, setTotalResults] = useState(0)
-  const leadsPerPage = 2
+  const leadsPerPage = 30
 
   const fetchLeads = useCallback(async () => {
     try {
