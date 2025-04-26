@@ -37,7 +37,7 @@ function SSENewLeads() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const leadsPerPage = 20
+  const leadsPerPage = 30
 
   const fetchLeads = useCallback(async () => {
     try {

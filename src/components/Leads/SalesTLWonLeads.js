@@ -32,7 +32,7 @@ function SalesTLWonLeads() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const leadsPerPage = 20
+  const leadsPerPage = 30
   var userId = "";
 
   if (user) {
