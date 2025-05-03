@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HelpCircle } from 'lucide-react';
 import { FiBell, FiSettings, FiLogOut } from 'react-icons/fi';
-import { HiHome, HiChartPie, HiArchive, HiCalendar, HiCash } from 'react-icons/hi';
+import { HiHome, HiChartPie, HiArchive, HiCalendar, HiCash, HiDocumentAdd, HiViewList  } from 'react-icons/hi';
 import { FaUsers } from 'react-icons/fa';
 import { authService } from '../services/authService';
 import { useNotifications } from '../contexts/NotificationsContext';
@@ -177,6 +177,14 @@ function Navbar({userData}) {
       }
       if (permissions?.webPayroll) {
         updatedNavItems.push({ icon: HiCash, label: 'Payroll', path: '/payroll' });
+      }
+    
+      if (permissions?.webAddLeads) {
+        updatedNavItems.push({ icon: HiDocumentAdd, label: 'Add New Lead', path: '/add-lead' });
+      }
+    
+      if (permissions?.webLeadsListing) {
+        updatedNavItems.push({ icon: HiViewList, label: 'Leads', path: '/leads' });
       }
       setNavItems(updatedNavItems);
     }, [permissions]);

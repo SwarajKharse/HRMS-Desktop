@@ -812,12 +812,55 @@ export const leadService = {
     }
   },
 
-  getLeadsAssignesToBDM: async (bdmid) => {
+  getLeadsAssignesToBDM: async (bdmid,
+    page = 0,
+    size = 30,
+    leadPriority = "",
+    dateReceived = "",
+    leadType = "",
+    leadSource = ""
+  ) => {
     try {
+
+      // Build query string for filtering based on the backend's expected format
+      const queryParams = {
+        bdmid,
+        page,
+        size
+      }
+
+      // Format the query string according to what the backend expects
+      let queryString = ""
+
+      if (leadPriority) {
+        queryString += `priority=${leadPriority}`
+      }
+
+      if (dateReceived) {
+        if (queryString) queryString += "&"
+        // Format date as ISO string (YYYY-MM-DD)
+        queryString += `date=${dateReceived}`
+        console.log("Date filter:", dateReceived)
+      }
+
+      if (leadType) {
+        if (queryString) queryString += "&"
+        queryString += `leadType=${leadType}`
+        console.log("Lead Type filter:", leadType)
+      }
+
+      if (leadSource) {
+        if (queryString) queryString += "&"
+        queryString += `leadSource=${leadSource}`
+        console.log("Lead Source filter:", leadSource)
+      }
+
+      if (queryString) {
+        queryParams.query = queryString
+      }
+
       const response = await axios.get(`${BASE_URL}/bdmassignedleads`, {
-        params: {
-          bdmid: bdmid,
-        },
+        params: queryParams,
       })
       return response.data
     } catch (error) {
