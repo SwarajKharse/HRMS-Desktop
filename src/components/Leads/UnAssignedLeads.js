@@ -270,22 +270,22 @@ function UnAssignedLeads() {
 
         <div className="relative mb-6 min-w-full flex flex-wrap items-center gap-4">
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Lead Received</label>
+            <label className="text-xs font-medium text-gray-700 mb-1">Lead Received </label>
             <input
               type="date"
               value={dateSearchQuery}
               onChange={(e) => handleFilterChange("date", e.target.value)}
-              className="pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Lead Priority</label>
+            <label className="text-xs font-medium text-gray-700 mb-1">Priority </label>
             <select
               value={searchQuery}
               onChange={(e) => handleFilterChange("priority", e.target.value)}
               name="lead_priority"
-              className="pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             >
               <option value="">All Priorities</option>
               <option value="cold">Cold</option>
@@ -295,12 +295,12 @@ function UnAssignedLeads() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Lead Type</label>
+            <label className="text-xs font-medium text-gray-700 mb-1">Lead Type </label>
             <select
               value={typeSearchQuery}
               onChange={(e) => handleFilterChange("type", e.target.value)}
               name="lead_type"
-              className="pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             >
               <option value="">All Types</option>
               {typelist.map((type) => (
@@ -312,12 +312,12 @@ function UnAssignedLeads() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Lead Source</label>
+            <label className="text-xs text-gray-700 mb-1">Source </label>
             <select
               value={sourceSearchQuery}
               onChange={(e) => handleFilterChange("source", e.target.value)}
               name="lead_source"
-              className="pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             >
               <option value="">All Sources</option>
               {sourcelist.map((source) => (
@@ -328,10 +328,10 @@ function UnAssignedLeads() {
             </select>
           </div>
 
-          <div className="mt-6">
+          <div>
             <button
               onClick={clearFilters}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm transition-colors"
+              className="text-xs px-3 pl-3 pr-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm transition-colors"
             >
               Clear Filters
             </button>
@@ -402,13 +402,12 @@ function UnAssignedLeads() {
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
                             <span
-                              className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${
-                                lead.lead_priority === "cold"
+                              className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${lead.lead_priority === "cold"
                                   ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
                                   : lead.lead_priority === "hot"
                                     ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
                                     : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
-                              }`}
+                                }`}
                             >
                               {Capitalize(lead.lead_priority)}
                             </span>
@@ -430,11 +429,11 @@ function UnAssignedLeads() {
                           <div className="text-xs font-medium text-gray-900">
                             {lead.lead_product_type !== null
                               ? lead.lead_product_type.map((country, itr) => {
-                                  const ptlabel = matchingLabels(country, producttypelist).toString()
-                                  return itr !== lead.lead_product_type.length - 1
-                                    ? ptlabel + ",  "
-                                    : ptlabel.substring(0, ptlabel.length - 1)
-                                })
+                                const ptlabel = matchingLabels(country, producttypelist).toString()
+                                return itr !== lead.lead_product_type.length - 1
+                                  ? ptlabel + ",  "
+                                  : ptlabel.substring(0, ptlabel.length - 1)
+                              })
                               : ""}
                           </div>
                         </td>
@@ -491,9 +490,8 @@ function UnAssignedLeads() {
                   key={pageNum}
                   onClick={() => handlePageChange(pageNum)}
                   disabled={loading}
-                  className={`px-3 py-1 rounded-md border text-sm ${
-                    currentPage === pageNum ? "bg-indigo-600 text-white" : "bg-white text-gray-600"
-                  }`}
+                  className={`px-3 py-1 rounded-md border text-sm ${currentPage === pageNum ? "bg-indigo-600 text-white" : "bg-white text-gray-600"
+                    }`}
                 >
                   {pageNum}
                 </button>

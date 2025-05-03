@@ -30,7 +30,7 @@ function LeadsListing() {
       { id: "sse-inprocess-leads", label: "In Process Leads", icon: RiProgress3Line, component: SSEInProgressLeads },
       { id: "sse-won-leads", label: "Won/Lost Leads", icon: BiWon, component: SSEWonLeads },
       { id: "bdm-assigned-field-visit", label: "Assigned Field Visit", icon: GrWorkshop, component: BDMAssignedFieldVisit },
-      { id: "salestl-won-leads", label: "Won/Lost Leads", icon: MdManageAccounts, component: SalesTLWonLeads },
+      { id: "salestl-won-leads", label: "Won/Lost Leads", icon: BiWon, component: SalesTLWonLeads },
     ]
 
     if (!employee) return [allTabs[0]] // Default to unassigned leads if no employee
