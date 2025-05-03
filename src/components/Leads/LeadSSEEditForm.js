@@ -671,6 +671,12 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Created By :
+                  {"  "+lead.employee.firstName+"  "+lead.employee.lastName}
+                </label>
+              </div>
 
             </div>
           </div>

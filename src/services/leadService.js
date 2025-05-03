@@ -838,4 +838,112 @@ export const leadService = {
       throw error.response?.data || error.message
     }
   },
+
+  createLeadProductType: async (data) => {
+    try {
+      console.log(data)
+      const payload = {
+        label: data.label,
+        id: null
+        // Don't include an ID field here
+      }
+      const response = await axios.post(`${BASE_URL}/create-lead-product-type`, payload)
+      return response.data
+    } catch (error) {
+      console.error("Error creating lead product type:", error)
+      throw error
+    }
+  },
+
+  updateLeadProductType: async (id, data) => {
+    try {
+      const payload = {
+        label: data.label,
+        id: id
+      }
+      const response = await axios.put(`${BASE_URL}/update-lead-product-type/${id}`, payload)
+      return response.data
+    } catch (error) {
+      console.error("Error updating lead product type:", error)
+      throw error
+    }
+  },
+
+  deleteLeadProductType: async (id) => {
+    try {
+      const response = await axios.delete(`${BASE_URL}/delete-lead-product-type/${id}`)
+      return response.data
+    } catch (error) {
+      console.error("Error deleting lead product type:", error)
+      throw error
+    }
+  },
+
+  createLeadSource: async (data) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/create-lead-source`, data)
+      return response.data
+    } catch (error) {
+      console.error("Error creating lead source:", error)
+      throw error
+    }
+  },
+
+  updateLeadSource: async (id, data) => {
+    try {
+      const payload = {
+        label: data.label,
+        id: id
+      }
+      const response = await axios.put(`${BASE_URL}/update-lead-source/${id}`, payload)
+      return response.data
+    } catch (error) {
+      console.error("Error updating lead source:", error)
+      throw error
+    }
+  },
+
+  deleteLeadSource: async (id) => {
+    try {
+      const response = await axios.delete(`${BASE_URL}/delete-lead-source/${id}`)
+      return response.data
+    } catch (error) {
+      console.error("Error deleting lead source:", error)
+      throw error
+    }
+  },
+
+  createLeadType: async (data) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/create-lead-type`, data)
+      return response.data
+    } catch (error) {
+      console.error("Error creating lead type:", error)
+      throw error
+    }
+  },
+
+  updateLeadType: async (id, data) => {
+    try {
+      const payload = {
+        label: data.label,
+        id: id
+      }
+      const response = await axios.put(`${BASE_URL}/update-lead-type/${id}`, payload)
+      return response.data
+    } catch (error) {
+      console.error("Error updating lead type:", error)
+      throw error
+    }
+  },
+
+  deleteLeadType: async (id) => {
+    try {
+      const response = await axios.delete(`${BASE_URL}/delete-lead-type/${id}`)
+      return response.data
+    } catch (error) {
+      console.error("Error deleting lead type:", error)
+      throw error
+    }
+  },
 }
