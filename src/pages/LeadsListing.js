@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import UnAssignedLeads from "../components/Leads/UnAssignedLeads"
 import SSEAssignedLeads from "../components/Leads/SSEAssignedLeads"
@@ -10,15 +10,18 @@ import BDMAssignedFieldVisit from "../components/Leads/BDMAssignedFieldVisit"
 import SSEWonLeads from "../components/Leads/SSEWonLeads"
 import SSEInProgressLeads from "../components/Leads/SSEInProgressLeads"
 import SalesTLWonLeads from "../components/Leads/SalesTLWonLeads"
+import UpdateMasterTables from "../components/Leads/UpdateMasterTables"
 import { MdFiberNew, MdEngineering, MdManageAccounts } from "react-icons/md"
-import { GrWorkshop } from "react-icons/gr";
-import { RiProgress3Line } from "react-icons/ri";
-import { BiWon } from "react-icons/bi";
+import { GrWorkshop } from "react-icons/gr"
+import { RiProgress3Line } from "react-icons/ri"
+import { BiWon } from "react-icons/bi"
+import { VscEditSession } from "react-icons/vsc"
 import { useAuth } from "../contexts/AuthContext"
 
 function LeadsListing() {
   const { employee } = useAuth()
-  console.log(employee.designation.name)
+  const tabsContainerRef = useRef(null)
+  const activeTabRef = useRef(null)
 
   // Define available tabs based on employee designation
   const getAvailableTabs = () => {
@@ -29,20 +32,31 @@ function LeadsListing() {
       { id: "see-new-leads", label: "New Leads", icon: MdFiberNew, component: SSENewLeads },
       { id: "sse-inprocess-leads", label: "In Process Leads", icon: RiProgress3Line, component: SSEInProgressLeads },
       { id: "sse-won-leads", label: "Won/Lost Leads", icon: BiWon, component: SSEWonLeads },
-      { id: "bdm-assigned-field-visit", label: "Assigned Field Visit", icon: GrWorkshop, component: BDMAssignedFieldVisit },
-      { id: "salestl-won-leads", label: "Won/Lost Leads", icon: MdManageAccounts, component: SalesTLWonLeads },
+      {
+        id: "bdm-assigned-field-visit",
+        label: "Assigned Field Visit",
+        icon: GrWorkshop,
+        component: BDMAssignedFieldVisit,
+      },
+      { id: "salestl-won-leads", label: "Won/Lost Leads", icon: BiWon, component: SalesTLWonLeads },
+      {
+        id: "salestl-update-master-table",
+        label: "Update Options",
+        icon: VscEditSession,
+        component: UpdateMasterTables,
+      },
     ]
 
     if (!employee) return [allTabs[0]] // Default to unassigned leads if no employee
-    const designation = employee.designation.name.replace(/\s+/g, '-').toLowerCase() || "";
+    const designation = employee.designation.name.replace(/\s+/g, "-").toLowerCase() || ""
 
     // Filter tabs based on designation
     if (designation.includes("director")) {
       return allTabs // Admin/Manager can see all tabs
-    } else if (designation.includes("sales-team-leader") || designation.includes("leader")){
-      return [allTabs[0], allTabs[1], allTabs[2],allTabs[7]] // BDM can see unassigned and BDM assigne
+    } else if (designation.includes("sales-team-leader") || designation.includes("leader")) {
+      return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]] // BDM can see unassigned and BDM assigne
     } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
-      return [allTabs[3], allTabs[4] , allTabs[5]] // SSE can see unassigned and SSE assigned
+      return [allTabs[3], allTabs[4], allTabs[5]] // SSE can see unassigned and SSE assigned
     } else if (designation.includes("bdm") || designation.includes("business") || designation.includes("development")) {
       return [allTabs[6]] // BDM can see unassigned and BDM assigned
     } else {
@@ -74,30 +88,60 @@ function LeadsListing() {
     }
   }, [validTabIds, activeTab])
 
+  // Scroll active tab into view when it changes
+  useEffect(() => {
+    if (activeTabRef.current && tabsContainerRef.current) {
+      const container = tabsContainerRef.current
+      const activeElement = activeTabRef.current
+
+      // Calculate position to scroll to
+      const scrollLeft = activeElement.offsetLeft - container.offsetWidth / 2 + activeElement.offsetWidth / 2
+
+      // Smooth scroll to the active tab
+      container.scrollTo({
+        left: scrollLeft,
+        behavior: "smooth",
+      })
+    }
+  }, [activeTab])
+
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId)
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Navigation Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          {availableTabs.map((tab) => {
-            const Icon = tab.icon
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2
-                  ${
-                    activeTab === tab.id
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                  }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            )
-          })}
-        </nav>
+      {/* Navigation Tabs - Now with horizontal scrolling */}
+      <div className="border-b border-gray-200 w-full">
+        <div
+          ref={tabsContainerRef}
+          className="overflow-x-auto scrollbar-hide pb-1"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <nav className="flex min-w-max">
+            {availableTabs.map((tab) => {
+              const Icon = tab.icon
+              const isActive = activeTab === tab.id
+
+              return (
+                <button
+                  key={tab.id}
+                  ref={isActive ? activeTabRef : null}
+                  onClick={() => handleTabClick(tab.id)}
+                  className={`py-3 px-3 sm:px-4 border-b-2 font-medium text-sm flex items-center transition-colors duration-200
+                    ${
+                      isActive
+                        ? "border-blue-500 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    }`}
+                >
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="ml-2 whitespace-nowrap">{tab.label}</span>
+                </button>
+              )
+            })}
+          </nav>
+        </div>
       </div>
 
       {/* Content Area */}
@@ -108,6 +152,7 @@ function LeadsListing() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.2 }}
+          className="w-full"
         >
           {availableTabs.map((tab) => activeTab === tab.id && <tab.component key={tab.id} />)}
         </motion.div>
@@ -117,4 +162,3 @@ function LeadsListing() {
 }
 
 export default LeadsListing
-

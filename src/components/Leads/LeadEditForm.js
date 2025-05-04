@@ -889,6 +889,15 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   })}
                 </label>
               </div>
+
+              {lead.employee !== null && lead.employee.firstName !== null ?
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Created By :
+                  {"  "+lead.employee.firstName+"  "+lead.employee.lastName}
+                </label>
+                </div>
+              : null}
             </div>
           </div>
           {/* Basic Information Section End */}

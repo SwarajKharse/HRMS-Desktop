@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
-import { FiEdit2, FiAlertCircle, FiCheck, FiDownload } from "react-icons/fi"
+import { FiEdit2, FiAlertCircle, FiCheck, FiDownload, FiChevronRight, FiFilter } from "react-icons/fi"
 
 function UnAssignedLeads() {
   const navigate = useNavigate()
@@ -37,11 +37,17 @@ function UnAssignedLeads() {
   const [exportFormat, setExportFormat] = useState("csv")
   const [showExportOptions, setShowExportOptions] = useState(false)
 
+  // Mobile filter state
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalResults, setTotalResults] = useState(0)
   const leadsPerPage = 30
+
+  // State for expanded rows on mobile
+  const [expandedRows, setExpandedRows] = useState({})
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -61,8 +67,6 @@ function UnAssignedLeads() {
         sourceSearchQuery,
       )
 
-      console.log("API Response:", data)
-
       // Update state with the paginated data from the server
       setLeads(data.results || [])
       setTotalPages(data.totalPages || 1)
@@ -81,7 +85,7 @@ function UnAssignedLeads() {
     if (sourcelist.length === 0) {
       fetchSourceTypeData()
     }
-  }, [fetchLeads, sourcelist.length])
+  }, [fetchLeads, sourcelist.length,typelist])
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -106,11 +110,18 @@ function UnAssignedLeads() {
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber)
+    // Scroll to top on mobile when changing pages
+    if (window.innerWidth < 768) {
+      window.scrollTo(0, 0)
+    }
   }
 
   const handleRowClick = (lead) => {
-    console.log("Row clicked")
-    //navigate(`/onboarding/employee/${encryptId(employee.id)}`)
+    // Toggle expanded state for mobile view
+    setExpandedRows((prev) => ({
+      ...prev,
+      [lead.id]: !prev[lead.id],
+    }))
   }
 
   const handleAddEmployee = async () => {
@@ -118,16 +129,16 @@ function UnAssignedLeads() {
       await fetchLeads()
       setShowForm(false)
       setSelectedLead(null)
+      setSuccessMessage("Lead updated successfully")
+      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
-      setError("Failed to add employee")
+      setError("Failed to update lead")
     }
   }
 
   const handleEdit = (e, id) => {
     e.stopPropagation()
     const lead = unassignedleads.find((emp) => emp.id === id)
-    console.log("Handle Edit")
-    console.log(lead)
     setSelectedLead(lead)
     setShowForm(true)
   }
@@ -136,17 +147,12 @@ function UnAssignedLeads() {
     if (type === "priority") {
       setSearchQuery(value)
     } else if (type === "date") {
-      console.log("Setting date filter:", value)
       setDateSearchQuery(value)
     } else if (type === "type") {
-      console.log("Setting lead type filter:", value)
       setTypeSearchQuery(value)
     } else if (type === "source") {
-      console.log("Setting lead source filter:", value)
       setSourceSearchQuery(value)
     }
-    // Reset to page 1 when filters change
-    setCurrentPage(1)
   }
 
   const clearFilters = () => {
@@ -155,6 +161,7 @@ function UnAssignedLeads() {
     setTypeSearchQuery("")
     setSourceSearchQuery("")
     setCurrentPage(1)
+    setShowMobileFilters(false)
   }
 
   const handleExport = async (format) => {
@@ -193,6 +200,21 @@ function UnAssignedLeads() {
     return newlabel
   }
 
+  const getLeadType = (leadTypeId) => {
+    const type = typelist.find((type) => type.id === leadTypeId)
+    return type ? type.label : ""
+  }
+
+  const getProductTypes = (productTypes) => {
+    if (!productTypes) return ""
+    return productTypes
+      .map((type, itr) => {
+        const ptlabel = matchingLabels(type, producttypelist).toString()
+        return itr !== productTypes.length - 1 ? ptlabel + ", " : ptlabel.substring(0, ptlabel.length - 1)
+      })
+      .join("")
+  }
+
   if (loading && unassignedleads.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -205,16 +227,16 @@ function UnAssignedLeads() {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-4 md:gap-8">
       {/* Error Message */}
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center gap-3 border border-red-100"
+          className="bg-red-50 text-red-600 p-3 md:p-4 rounded-lg flex items-center gap-2 md:gap-3 border border-red-100 mx-2 md:mx-0"
         >
-          <FiAlertCircle className="w-5 h-5" />
-          <span className="font-medium">{error}</span>
+          <FiAlertCircle className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
+          <span className="text-sm md:font-medium">{error}</span>
         </motion.div>
       )}
 
@@ -223,18 +245,62 @@ function UnAssignedLeads() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className="bg-green-50 text-green-600 p-4 rounded-lg border border-green-100 flex items-center shadow-sm"
+          className="bg-green-50 text-green-600 p-3 md:p-4 rounded-lg border border-green-100 flex items-center shadow-sm mx-2 md:mx-0"
         >
-          <FiCheck className="w-5 h-5 mr-2" />
-          <span className="font-medium">{successMessage}</span>
+          <FiCheck className="w-4 h-4 md:w-5 md:h-5 mr-2 flex-shrink-0" />
+          <span className="text-sm md:font-medium">{successMessage}</span>
         </motion.div>
       )}
 
-      {/* Employee List */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">Unassigned Leads</h2>
+      {/* Lead List */}
+      <div className="bg-white rounded-xl shadow-sm p-3 md:p-6 mx-2 md:mx-0">
+        {/* Mobile Header with Filter Toggle */}
+        <div className="md:hidden flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold text-gray-800">Unassigned Leads</h2>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium"
+            >
+              <FiFilter className="w-4 h-4" />
+              Filters
+            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowExportOptions(!showExportOptions)}
+                className="flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm"
+                disabled={isExporting}
+              >
+                <FiDownload className="w-4 h-4" />
+                {isExporting ? "..." : "Export"}
+              </button>
+              {showExportOptions && (
+                <div className="absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleExport("csv")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      disabled={isExporting}
+                    >
+                      CSV
+                    </button>
+                    <button
+                      onClick={() => handleExport("excel")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      disabled={isExporting}
+                    >
+                      Excel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
+        {/* Desktop Header */}
+        <div className="hidden md:flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold text-gray-800">Unassigned Leads</h2>
           <div className="relative">
             <button
               onClick={() => setShowExportOptions(!showExportOptions)}
@@ -244,7 +310,6 @@ function UnAssignedLeads() {
               <FiDownload className="w-4 h-4" />
               {isExporting ? "Exporting..." : "Export"}
             </button>
-
             {showExportOptions && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                 <div className="py-1">
@@ -268,24 +333,103 @@ function UnAssignedLeads() {
           </div>
         </div>
 
-        <div className="relative mb-6 min-w-full flex flex-wrap items-center gap-4">
+        {/* Mobile Filters */}
+        {showMobileFilters && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="md:hidden mb-4 flex flex-col gap-3 pb-3 border-b border-gray-200"
+          >
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Received</label>
+              <input
+                type="date"
+                value={dateSearchQuery}
+                onChange={(e) => handleFilterChange("date", e.target.value)}
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Priority</label>
+              <select
+                value={searchQuery}
+                onChange={(e) => handleFilterChange("priority", e.target.value)}
+                name="lead_priority"
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All Priorities</option>
+                <option value="cold">Cold</option>
+                <option value="hot">Hot</option>
+                <option value="warm">Warm</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Type</label>
+              <select
+                value={typeSearchQuery}
+                onChange={(e) => handleFilterChange("type", e.target.value)}
+                name="lead_type"
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All Types</option>
+                {typelist.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-700 mb-1 block">Source</label>
+              <select
+                value={sourceSearchQuery}
+                onChange={(e) => handleFilterChange("source", e.target.value)}
+                name="lead_source"
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All Sources</option>
+                {sourcelist.map((source) => (
+                  <option key={source.id} value={source.id}>
+                    {source.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={clearFilters}
+                className="text-xs px-3 pl-3 pr-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm transition-colors"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Desktop Filters */}
+        <div className="hidden md:flex mb-6 min-w-full flex-wrap items-center gap-4">
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Lead Received</label>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Received </label>
             <input
               type="date"
               value={dateSearchQuery}
               onChange={(e) => handleFilterChange("date", e.target.value)}
-              className="pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Lead Priority</label>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">Priority </label>
             <select
               value={searchQuery}
               onChange={(e) => handleFilterChange("priority", e.target.value)}
               name="lead_priority"
-              className="pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             >
               <option value="">All Priorities</option>
               <option value="cold">Cold</option>
@@ -295,12 +439,12 @@ function UnAssignedLeads() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Lead Type</label>
+            <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Type </label>
             <select
               value={typeSearchQuery}
               onChange={(e) => handleFilterChange("type", e.target.value)}
               name="lead_type"
-              className="pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             >
               <option value="">All Types</option>
               {typelist.map((type) => (
@@ -312,12 +456,12 @@ function UnAssignedLeads() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1">Lead Source</label>
+            <label className="text-xs text-gray-700 mb-1 block">Source </label>
             <select
               value={sourceSearchQuery}
               onChange={(e) => handleFilterChange("source", e.target.value)}
               name="lead_source"
-              className="pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             >
               <option value="">All Sources</option>
               {sourcelist.map((source) => (
@@ -328,10 +472,10 @@ function UnAssignedLeads() {
             </select>
           </div>
 
-          <div className="mt-6">
+          <div className="self-end">
             <button
               onClick={clearFilters}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm transition-colors"
+              className="text-xs px-3 pl-3 pr-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm transition-colors"
             >
               Clear Filters
             </button>
@@ -355,11 +499,12 @@ function UnAssignedLeads() {
             transition={{ duration: 0.2 }}
             className="overflow-hidden rounded-lg border border-gray-200"
           >
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type", "Actions"]
+                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Product Type", "Actions"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -393,10 +538,6 @@ function UnAssignedLeads() {
                             <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
                               {<span>{lead.lead_code}</span>}
                             </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors"></div>
-                              {/* <div className="text-sm text-gray-500">{employee.employeeCode}</div> */}
-                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -421,21 +562,7 @@ function UnAssignedLeads() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
-                            {typelist.map((country, i) => {
-                              return country.id == lead.lead_type ? " " + country.label : ""
-                            })}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">
-                            {lead.lead_product_type !== null
-                              ? lead.lead_product_type.map((country, itr) => {
-                                  const ptlabel = matchingLabels(country, producttypelist).toString()
-                                  return itr !== lead.lead_product_type.length - 1
-                                    ? ptlabel + ",  "
-                                    : ptlabel.substring(0, ptlabel.length - 1)
-                                })
-                              : ""}
+                            {getProductTypes(lead.lead_product_type)}
                           </div>
                         </td>
 
@@ -456,12 +583,84 @@ function UnAssignedLeads() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden">
+              {unassignedleads.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 font-medium">No leads found</div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {unassignedleads.map((lead) => (
+                    <motion.div
+                      key={lead.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => handleRowClick(lead)}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="text-sm font-semibold text-gray-900">{lead.lead_code}</div>
+                        <button
+                          className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
+                          onClick={(e) => handleEdit(e, lead.id)}
+                          title="Edit"
+                        >
+                          <FiEdit2 size={16} />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-y-2 text-xs">
+                        <div className="text-gray-500">Priority:</div>
+                        <div>
+                          <span
+                            className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
+                              lead.lead_priority === "cold"
+                                ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
+                                : lead.lead_priority === "hot"
+                                  ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+                                  : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
+                            }`}
+                          >
+                            {Capitalize(lead.lead_priority)}
+                          </span>
+                        </div>
+
+                        <div className="text-gray-500">Client:</div>
+                        <div className="font-medium">
+                          {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                        </div>
+
+                        {/* Expandable content */}
+                        {expandedRows[lead.id] && (
+                          <>
+                            <div className="text-gray-500">Type:</div>
+                            <div>{getLeadType(lead.lead_type)}</div>
+
+                            <div className="text-gray-500">Product Type:</div>
+                            <div className="break-words">{getProductTypes(lead.lead_product_type)}</div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Expand/collapse indicator */}
+                      <div className="flex justify-center mt-2">
+                        <FiChevronRight
+                          className={`text-gray-400 transition-transform ${expandedRows[lead.id] ? "rotate-90" : ""}`}
+                          size={16}
+                        />
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
           </motion.div>
         </AnimatePresence>
 
         {/* Pagination Controls */}
         {totalPages > 1 && (
-          <div className="mt-4 flex justify-center items-center gap-2">
+          <div className="mt-4 flex justify-center items-center gap-2 flex-wrap">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1 || loading}
@@ -469,46 +668,56 @@ function UnAssignedLeads() {
             >
               Prev
             </button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              // Show at most 5 page buttons
-              let pageNum
-              if (totalPages <= 5) {
-                // If 5 or fewer pages, show all
-                pageNum = i + 1
-              } else if (currentPage <= 3) {
-                // If near the start, show first 5 pages
-                pageNum = i + 1
-              } else if (currentPage >= totalPages - 2) {
-                // If near the end, show last 5 pages
-                pageNum = totalPages - 4 + i
-              } else {
-                // Otherwise show 2 before and 2 after current page
-                pageNum = currentPage - 2 + i
-              }
 
-              return (
+            {/* Mobile pagination - just show current/total */}
+            <div className="md:hidden px-3 py-1 text-sm">
+              Page {currentPage} of {totalPages}
+            </div>
+
+            {/* Desktop pagination - show page numbers */}
+            <div className="hidden md:flex">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                // Show at most 5 page buttons
+                let pageNum
+                if (totalPages <= 5) {
+                  // If 5 or fewer pages, show all
+                  pageNum = i + 1
+                } else if (currentPage <= 3) {
+                  // If near the start, show first 5 pages
+                  pageNum = i + 1
+                } else if (currentPage >= totalPages - 2) {
+                  // If near the end, show last 5 pages
+                  pageNum = totalPages - 4 + i
+                } else {
+                  // Otherwise show 2 before and 2 after current page
+                  pageNum = currentPage - 2 + i
+                }
+
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => handlePageChange(pageNum)}
+                    disabled={loading}
+                    className={`px-3 py-1 rounded-md border text-sm ${
+                      currentPage === pageNum ? "bg-indigo-600 text-white" : "bg-white text-gray-600"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                )
+              })}
+              {totalPages > 5 && currentPage < totalPages - 2 && <span className="px-2">...</span>}
+              {totalPages > 5 && currentPage < totalPages - 2 && (
                 <button
-                  key={pageNum}
-                  onClick={() => handlePageChange(pageNum)}
+                  onClick={() => handlePageChange(totalPages)}
                   disabled={loading}
-                  className={`px-3 py-1 rounded-md border text-sm ${
-                    currentPage === pageNum ? "bg-indigo-600 text-white" : "bg-white text-gray-600"
-                  }`}
+                  className={`px-3 py-1 rounded-md border text-sm bg-white text-gray-600`}
                 >
-                  {pageNum}
+                  {totalPages}
                 </button>
-              )
-            })}
-            {totalPages > 5 && currentPage < totalPages - 2 && <span className="px-2">...</span>}
-            {totalPages > 5 && currentPage < totalPages - 2 && (
-              <button
-                onClick={() => handlePageChange(totalPages)}
-                disabled={loading}
-                className={`px-3 py-1 rounded-md border text-sm bg-white text-gray-600`}
-              >
-                {totalPages}
-              </button>
-            )}
+              )}
+            </div>
+
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages || loading}
@@ -518,7 +727,8 @@ function UnAssignedLeads() {
             </button>
           </div>
         )}
-        <div className="mt-2 text-sm text-gray-500 text-center">
+
+        <div className="mt-2 text-xs md:text-sm text-gray-500 text-center">
           Showing {unassignedleads.length > 0 ? (currentPage - 1) * leadsPerPage + 1 : 0} to{" "}
           {Math.min(currentPage * leadsPerPage, totalResults)} of {totalResults} leads
         </div>
