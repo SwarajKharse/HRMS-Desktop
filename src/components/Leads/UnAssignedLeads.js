@@ -85,7 +85,7 @@ function UnAssignedLeads() {
     if (sourcelist.length === 0) {
       fetchSourceTypeData()
     }
-  }, [fetchLeads, sourcelist.length])
+  }, [fetchLeads, sourcelist.length,typelist])
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -504,7 +504,7 @@ function UnAssignedLeads() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Lead Type", "Product Type", "Actions"]
+                    {["Lead ID", "Lead Priority", "Middle Man Client Name", "Product Type", "Actions"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -559,9 +559,6 @@ function UnAssignedLeads() {
                           <div className="text-xs font-medium text-gray-900">
                             {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">{getLeadType(lead.lead_type)}</div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
