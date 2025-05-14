@@ -53,7 +53,7 @@ function LeadsListing() {
     // Filter tabs based on designation
     if (designation.includes("director")) {
       return allTabs // Admin/Manager can see all tabs
-    } else if (designation.includes("sales-team-leader") || designation.includes("leader")) {
+    } else if (designation.includes("sales-team-leader") || designation.includes('sales-manager') || designation.includes("leader")) {
       return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]] // BDM can see unassigned and BDM assigne
     } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
       return [allTabs[3], allTabs[4], allTabs[5]] // SSE can see unassigned and SSE assigned
