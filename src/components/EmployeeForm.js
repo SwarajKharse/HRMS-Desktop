@@ -95,16 +95,14 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
 
   const fetchDepartmentsAndDesignations = async () => {
     try {
-      const [deptData, desigData, mngrslist, vpList, mgDirList] = await Promise.all([
+      const [deptData, desigData, mngrslist] = await Promise.all([
         departmentService.getDepartmentsByOrgId(authService.getUser().orgId),
         designationService.getDesignationsByOrgId(authService.getUser().orgId),
-        employeeService.getManagerList("Manager"),
-        employeeService.getManagerList("Vice President"),
-        employeeService.getManagerList("Managing Director"),
+        employeeService.getAllEmployees()
       ]);
       setDepartments(deptData);
       setDesignations(desigData);
-      setManagerslist([...mngrslist, ...vpList, ...mgDirList]);
+      setManagerslist([...mngrslist]);
     } catch (err) {
       setError("Failed to load departments and designations")
       console.error(err)
