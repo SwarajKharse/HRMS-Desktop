@@ -13,6 +13,8 @@ import {
   HiDocumentAdd,
   HiViewList 
 } from 'react-icons/hi';
+import { HiOutlineBuildingStorefront } from "react-icons/hi2";
+import { GrProjects } from "react-icons/gr";
 import { usePermissions } from "../contexts/PermissionsContext"
 
 import { FaUsers } from "react-icons/fa";
@@ -53,6 +55,11 @@ function Sidebar({logo}) {
     if (permissions?.webLeadsListing) {
       updatedNavItems.push({ icon: HiViewList, label: 'Leads', path: '/leads' });
     }
+
+    updatedNavItems.push({ icon: GrProjects, label: 'Projects', path: '/projects' });
+
+    updatedNavItems.push({ icon: HiOutlineBuildingStorefront, label: 'Store', path: '/store' });
+
     setNavItems(updatedNavItems);
   }, [permissions]);
 

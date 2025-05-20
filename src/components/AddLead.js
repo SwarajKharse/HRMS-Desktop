@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FiClock, FiAlertCircle, FiCheck, FiFilePlus, FiTrash2 } from "react-icons/fi"
 import { leadService } from "../services/leadService";
@@ -12,6 +12,7 @@ function AddLead() {
   const [architectfirm, seArchitectFirm] = useState([]);
   const [mepFirm, setMepFirm] = useState([]);
   const [pmcFirm, setPmcFirm] = useState([]);
+  const topRef = useRef(null);
   const { user } = useAuth()
 
   let userId = '';
@@ -412,21 +413,37 @@ function AddLead() {
         pmcFirmDetails: newpmcFirm
       };
 
-      console.log(submitData);
-      await leadService.createLead(submitData);
+      //console.log(submitData);
+      //await leadService.createLead(submitData);
+      //console.log("lead data from server" + newLeadData);
       
-      window.scrollTo(0,0);
+
+      //document.getElementsByClassName("scrollToTop").scrollTo(0, 0);
+      //window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      scrollToTop();
       setSuccess(true)
       setTimeout(function () {
         setSuccess(false);
-        window.location.reload(1);
+        //window.location.reload(1);
+        window.location.href ="/leads";
       }, 3000);
     } catch (err) {
       setError(err.message)
+      scrollToTop();
+      
     } finally {
+      scrollToTop();
       setSaving(false)
     }
   }
+
+  const scrollToTop = () => {
+    // This is more reliable in React
+    if (topRef.current) {
+      topRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+  
 
   // Simple table header and cell components
   const TableHeader = ({ children }) => (
@@ -447,7 +464,7 @@ function AddLead() {
   return (
     <div className="max-w-4xl mx-auto p-6 min-w-full">
 
-      <div className="flex items-center space-x-2 mb-6">
+      <div ref={topRef} className="flex items-center space-x-2 mb-6">
         <FiFilePlus className="text-blue-600 w-6 h-6" />
         <h1 className="text-2xl font-bold">Add New Lead</h1>
       </div>
@@ -473,14 +490,14 @@ function AddLead() {
         )}
       </AnimatePresence>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto scrollToTop">
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm border">
           {/* Lead Details Start */}
-          <div class="space-y-4 bg-white p-4 border border-b-indigo-500">
-            <h3 class="font-semibold text-lg border-b pb-2">Lead Details</h3>
+          <div className="space-y-4 bg-white p-4 border border-b-indigo-500">
+            <h3 className="font-semibold text-lg border-b pb-2">Lead Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date Recieved <span class="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date Recieved <span className="text-red-500">*</span></label>
                 <input
                   type="date"
                   name="date_recieved"
@@ -491,7 +508,7 @@ function AddLead() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Source <span class="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Source <span className="text-red-500">*</span></label>
                 <select
                   name="lead_source"
                   value={leadData.lead_source}
@@ -506,7 +523,7 @@ function AddLead() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Lead Priority <span class="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Lead Priority <span className="text-red-500">*</span></label>
                 <select
                   value={leadData.lead_priority}
                   onChange={handleSelectChange}
@@ -519,7 +536,7 @@ function AddLead() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Lead Type <span class="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Lead Type <span className="text-red-500">*</span></label>
                 <select
                   name="lead_type"
                   value={leadData.lead_type}
@@ -533,7 +550,7 @@ function AddLead() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Product Type <span class="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Product Type <span className="text-red-500">*</span></label>
                 <select
                   name="product_type"
                   value={leadData.product_type}
@@ -551,16 +568,16 @@ function AddLead() {
           {/* Lead Details End */}
 
           {/* End CLient Details Start */}
-          <div class="space-y-4 bg-white border border border-t-indigo-500 border-b-indigo-500 p-4">
-            <h3 class="font-semibold text-lg border-b pb-2">End Client Details</h3>
+          <div className="space-y-4 bg-white border border border-t-indigo-500 border-b-indigo-500 p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">End Client Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
               <table>
                 <thead>
                   <tr>
                     {/* <TableHeader> # </TableHeader> */}
-                    <TableHeader>Client Name <span class="text-red-500">*</span></TableHeader>
-                    <TableHeader>Project Location <span class="text-red-500">*</span></TableHeader>
-                    <TableHeader>Office Location <span class="text-red-500">*</span></TableHeader>
+                    <TableHeader>Client Name <span className="text-red-500">*</span></TableHeader>
+                    <TableHeader>Project Location <span className="text-red-500">*</span></TableHeader>
+                    <TableHeader>Office Location <span className="text-red-500">*</span></TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -605,7 +622,7 @@ function AddLead() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {rows.map((row, idx) => (
-                    <tr key={idx} class="hover:bg-gray-50">
+                    <tr key={idx} className="hover:bg-gray-50">
                       {/* <td>{idx}</td> */}
 
                       <td className="px-2 py-2">
@@ -627,7 +644,7 @@ function AddLead() {
                           value={row.contact_person_email}
                           onChange={(event) => handleChange(idx, event,)} />
                       </td>
-                      <td class="px-2 py-2 whitespace-nowrap">
+                      <td className="px-2 py-2 whitespace-nowrap">
                         <input type="text"
                           name="contact_person_designation"
                           value={row.contact_person_designation}
@@ -654,16 +671,16 @@ function AddLead() {
 
 
           {/* Middle Man Details Start */}
-          <div class="space-y-4 bg-white border border border-t-indigo-500 border-b-indigo-500 p-4">
-            <h3 class="font-semibold text-lg border-b pb-2">Middle Man Details</h3>
+          <div className="space-y-4 bg-white border border border-t-indigo-500 border-b-indigo-500 p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Middle Man Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
               <table>
                 <thead>
                   <tr>
                     {/* <TableHeader> # </TableHeader> */}
-                    <TableHeader>Client Name <span class="text-red-500">*</span></TableHeader>
-                    <TableHeader>Project Location <span class="text-red-500">*</span></TableHeader>
-                    <TableHeader>Office Location <span class="text-red-500">*</span></TableHeader>
+                    <TableHeader>Client Name</TableHeader>
+                    <TableHeader>Project Location</TableHeader>
+                    <TableHeader>Office Location</TableHeader>
                   </tr>
                 </thead>
                 <tbody>
@@ -671,7 +688,6 @@ function AddLead() {
                     <td>
                       <textarea
                         name="middle_man_client_name"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.middle_man_client_name}
                         onChange={handleSelectChange}
@@ -679,14 +695,12 @@ function AddLead() {
                     </td>
                     <td>
                       <textarea name="middle_man_office_location"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.middle_man_office_location}
                         onChange={handleSelectChange}></textarea>
                     </td>
                     <td>
                       <textarea name="middle_man_project_location"
-                        required
                         className="mt-1 block w-full rounded-md border border-gray-300"
                         value={leadData.middle_man_project_location}
                         onChange={handleSelectChange}></textarea>
@@ -707,7 +721,7 @@ function AddLead() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {middleManrows.map((mrow, midx) => (
-                    <tr key={midx} class="hover:bg-gray-50">
+                    <tr key={midx} className="hover:bg-gray-50">
                       {/* <td>{idx}</td> */}
                       <td className="px-2 py-2">
                         <input type="text"
@@ -730,7 +744,7 @@ function AddLead() {
                           onChange={(event) => handleMiddleManChange(midx, event)}
                           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
                       </td>
-                      <td class="px-2 py-2 whitespace-nowrap">
+                      <td className="px-2 py-2 whitespace-nowrap">
                         <input type="text" name="mcontact_person_designation"
                           value={mrow.mcontact_person_designation}
                           onChange={(event) => handleMiddleManChange(midx, event)}
@@ -753,8 +767,8 @@ function AddLead() {
           {/* END of Middle Man Details */}
 
           {/* Architect Firm Details Start */}
-          <div class="space-y-4 rounded-lg bg-white border p-4">
-            <h3 class="font-semibold text-lg border-b pb-2">Architect Firm Details</h3>
+          <div className="space-y-4 rounded-lg bg-white border p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Architect Firm Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
               <table>
                 <thead>
@@ -803,7 +817,7 @@ function AddLead() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {architectfirm.map((mrow, midx) => (
-                    <tr key={midx} class="hover:bg-gray-50">
+                    <tr key={midx} className="hover:bg-gray-50">
                       {/* <td>{idx}</td> */}
                       <td className="px-2 py-2">
                         <input type="text"
@@ -826,7 +840,7 @@ function AddLead() {
                           onChange={(event) => handleArchitectChange(midx, event)}
                           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
                       </td>
-                      <td class="px-2 py-2 whitespace-nowrap">
+                      <td className="px-2 py-2 whitespace-nowrap">
                         <input type="text" name="arcontact_person_designation"
                           value={mrow.arcontact_person_designation}
                           onChange={(event) => handleArchitectChange(midx, event)}
@@ -849,8 +863,8 @@ function AddLead() {
           {/* End of Architect Firm   */}
 
           {/* Consultant / MEP Firm */}
-          <div class="space-y-4 bg-white border border border-t-indigo-500 border-b-indigo-500 p-4">
-            <h3 class="font-semibold text-lg border-b pb-2">Consultant / MEP Firm Details</h3>
+          <div className="space-y-4 bg-white border border border-t-indigo-500 border-b-indigo-500 p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">Consultant / MEP Firm Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
               <table>
                 <thead>
@@ -899,7 +913,7 @@ function AddLead() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {mepFirm.map((mrow, midx) => (
-                    <tr key={midx} class="hover:bg-gray-50">
+                    <tr key={midx} className="hover:bg-gray-50">
                       {/* <td>{idx}</td> */}
                       <td className="px-2 py-2">
                         <input type="text"
@@ -922,7 +936,7 @@ function AddLead() {
                           onChange={(event) => handleMEPChange(midx, event)}
                           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
                       </td>
-                      <td class="px-2 py-2 whitespace-nowrap">
+                      <td className="px-2 py-2 whitespace-nowrap">
                         <input type="text" name="mepcontact_person_designation"
                           value={mrow.mepcontact_person_designation}
                           onChange={(event) => handleMEPChange(midx, event)}
@@ -946,8 +960,8 @@ function AddLead() {
 
 
           {/* PMC Firm Details */}
-          <div class="space-y-4 bg-white border border border-t-indigo-500 p-4">
-            <h3 class="font-semibold text-lg border-b pb-2">PMC Firm Details 111</h3>
+          <div className="space-y-4 bg-white border border border-t-indigo-500 p-4">
+            <h3 className="font-semibold text-lg border-b pb-2">PMC Firm Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
               <table>
                 <thead>
@@ -996,7 +1010,7 @@ function AddLead() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {pmcFirm.map((mrow, midx) => (
-                    <tr key={midx} class="hover:bg-gray-50">
+                    <tr key={midx} className="hover:bg-gray-50">
                       {/* <td>{idx}</td> */}
                       <td className="px-2 py-2">
                         <input type="text"
@@ -1019,7 +1033,7 @@ function AddLead() {
                           onChange={(event) => handlePMCChange(midx, event)}
                           className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
                       </td>
-                      <td class="px-2 py-2 whitespace-nowrap">
+                      <td className="px-2 py-2 whitespace-nowrap">
                         <input type="text" name="pmccontact_person_designation"
                           value={mrow.pmccontact_person_designation}
                           onChange={(event) => handlePMCChange(midx, event)}
