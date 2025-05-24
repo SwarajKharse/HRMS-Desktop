@@ -1811,8 +1811,8 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     </div>
                   )}
 
-                  {/* Approve Proposal */}
-                  {showProposalApproval() && (
+                  {/* Approve Proposal commented the validation for recent changes - Sales TL - proposal approval always open   */}
+                 {/*  {showProposalApproval() && ( */}
                     <div className="flex items-center gap-2 mt-4">
                       <label className="text-sm font-medium text-gray-700">Approve Proposal:</label>
                       <select
@@ -1826,7 +1826,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                         <option value="0">No</option>
                       </select>
                     </div>
-                  )}
+                  {/* )} */}
                 </div>
               )}
                   

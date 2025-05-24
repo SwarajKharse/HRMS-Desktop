@@ -21,6 +21,13 @@ function AddLead() {
     userId = user.userId
   }
 
+  let userData = localStorage.getItem("userData");
+  let designationName = "";
+
+  if (userData !== null && userData !== "") {
+    designationName = JSON.parse(userData).designation.name;
+  }
+
   const [leadData, setLeadData] = useState({
     date_recieved: new Date().toISOString().split("T")[0],
     lead_source: "",
@@ -47,6 +54,7 @@ function AddLead() {
     pmc_client_name: "",
     pmc_office_location: "",
     pmc_project_location: "",
+    is_created_by_bdm : "0"
   })
 
   const [showProductTypeDropdown, setShowProductTypeDropdown] = useState(false)
@@ -209,9 +217,6 @@ function AddLead() {
   const handleSelectChange = (event) => {
     const name = event.target.name
     const value = event.target.value
-
-    //console.log(name + "  --  " + value);
-
     if (name === "date_recieved")
       setLeadData({
         ...leadData,
@@ -235,6 +240,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "lead_source")
@@ -260,6 +266,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "lead_priority")
@@ -285,6 +292,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "lead_type")
@@ -310,6 +318,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "client_name")
@@ -335,6 +344,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "project_location")
@@ -360,6 +370,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "office_location")
@@ -385,6 +396,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "middle_man_client_name")
@@ -410,6 +422,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "middle_man_office_location")
@@ -435,6 +448,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "middle_man_project_location")
@@ -460,6 +474,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "architect_client_name")
@@ -485,6 +500,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "architect_project_location")
@@ -510,6 +526,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "architect_office_location")
@@ -535,6 +552,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "mep_client_name")
@@ -560,6 +578,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "mep_project_location")
@@ -585,6 +604,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "mep_office_location")
@@ -610,6 +630,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "pmc_client_name")
@@ -635,6 +656,7 @@ function AddLead() {
         pmc_client_name: value,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "pmc_project_location")
@@ -660,6 +682,7 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: value,
         pmc_office_location: leadData.pmc_office_location,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
     if (name === "pmc_office_location")
@@ -685,8 +708,26 @@ function AddLead() {
         pmc_client_name: leadData.pmc_client_name,
         pmc_project_location: leadData.pmc_project_location,
         pmc_office_location: value,
+        is_created_by_bdm : leadData.is_created_by_bdm
       })
 
+    if (name === 'is_created_by_bdm') {
+      if (value === '1') {
+        setLeadData({
+          ...leadData,
+          assigned_bdm : userId,
+          is_created_by_bdm: value,
+        })
+      } else {
+        setLeadData({
+          ...leadData,
+          is_created_by_bdm: value,
+        })
+      }
+        
+    }
+      
+    
     //console.log(leadData);
   }
 
@@ -1076,7 +1117,7 @@ function AddLead() {
       finalProductType = (leadData.product_type.map((id, i) => {
         return {
           id: id
-          }
+        }
       }))
 
       const submitData = {
@@ -1280,9 +1321,8 @@ function AddLead() {
                       {producttypelist.map((item) => (
                         <div
                           key={item.id}
-                          className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 ${
-                            leadData.product_type.includes(item.id) ? "bg-blue-50" : ""
-                          }`}
+                          className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 ${leadData.product_type.includes(item.id) ? "bg-blue-50" : ""
+                            }`}
                           onClick={(e) => {
                             e.stopPropagation()
                             handleProductTypeSelect(item.id)
@@ -1913,13 +1953,28 @@ function AddLead() {
           </div>
           {/* END of PMC FIrm Detais */}
 
+          {designationName == "Business Development Manager" ?
+            <div className="space-y-4 bg-white border border border-t-indigo-500 p-4">
+              <label className="text-sm font-medium text-gray-700 mb-2 p-3">Set Created By BDM</label>
+              <select
+                name="is_created_by_bdm"
+                value={leadData.is_created_by_bdm}
+                onChange={handleSelectChange}
+                className="mt-1  rounded-md border border-gray-300 px-3 py-2">
+                <option value="">Select</option>
+                <option value="1">Yes</option>
+                <option value="0">No</option>
+              </select>
+            </div>
+          : null}
+
           <div className="flex justify-center py-4 px-4">
+
             <button
               type="submit"
               disabled={saving}
-              className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center ${
-                saving ? "opacity-50 cursor-not-allowed" : ""
-              }`}
+              className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center ${saving ? "opacity-50 cursor-not-allowed" : ""
+                }`}
             >
               {saving ? (
                 <>

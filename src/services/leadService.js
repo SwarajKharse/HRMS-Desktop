@@ -572,7 +572,14 @@ export const leadService = {
         `${EMP_BASE_URL}/manager/${user.orgId}/${"Sales Support Engineer"}`,
         getAuthHeaders(),
       )
-      return response.data
+      let finalResult = [];
+
+      const responsesalesTl = await axios.get(
+        `${EMP_BASE_URL}/manager/${user.orgId}/${"Sales Manager"}`,
+        getAuthHeaders(),
+      )
+      finalResult = [...response.data, ...responsesalesTl.data];
+      return finalResult
     } catch (error) {
       throw error.response?.data || error.message
     }
@@ -987,6 +994,62 @@ export const leadService = {
     } catch (error) {
       console.error("Error deleting lead type:", error)
       throw error
+    }
+  },
+
+  getLeadsCreatedByBDM: async (bdmid,
+    page = 0,
+    size = 30,
+    leadPriority = "",
+    dateReceived = "",
+    leadType = "",
+    leadSource = ""
+  ) => {
+    try {
+
+      // Build query string for filtering based on the backend's expected format
+      const queryParams = {
+        bdmid,
+        page,
+        size
+      }
+
+      // Format the query string according to what the backend expects
+      let queryString = ""
+
+      if (leadPriority) {
+        queryString += `priority=${leadPriority}`
+      }
+
+      if (dateReceived) {
+        if (queryString) queryString += "&"
+        // Format date as ISO string (YYYY-MM-DD)
+        queryString += `date=${dateReceived}`
+        console.log("Date filter:", dateReceived)
+      }
+
+      if (leadType) {
+        if (queryString) queryString += "&"
+        queryString += `leadType=${leadType}`
+        console.log("Lead Type filter:", leadType)
+      }
+
+      if (leadSource) {
+        if (queryString) queryString += "&"
+        queryString += `leadSource=${leadSource}`
+        console.log("Lead Source filter:", leadSource)
+      }
+
+      if (queryString) {
+        queryParams.query = queryString
+      }
+
+      const response = await axios.get(`${BASE_URL}/bdmcreatedleads`, {
+        params: queryParams,
+      })
+      return response.data
+    } catch (error) {
+      throw new Error("Failed to fetch lead details")
     }
   },
 }
