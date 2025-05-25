@@ -48,8 +48,12 @@ export const leadService = {
   getUnassignedLeads: async (
     page = 0,
     size = 20,
+    leadCode = "",
+    fromDate = "",
+    toDate = "",
+    assignedSse = "",
+    assignedBdm = "",
     leadPriority = "",
-    dateReceived = "",
     leadType = "",
     leadSource = "",
   ) => {
@@ -63,27 +67,43 @@ export const leadService = {
       // Format the query string according to what the backend expects
       let queryString = ""
 
-      if (leadPriority) {
-        queryString += `priority=${leadPriority}`
+      if (leadCode) {
+        queryString += `leadCode=${leadCode}`
       }
 
-      if (dateReceived) {
+      if (fromDate) {
         if (queryString) queryString += "&"
-        // Format date as ISO string (YYYY-MM-DD)
-        queryString += `date=${dateReceived}`
-        console.log("Date filter:", dateReceived)
+        queryString += `fromDate=${fromDate}`
+      }
+
+      if (toDate) {
+        if (queryString) queryString += "&"
+        queryString += `toDate=${toDate}`
+      }
+
+      if (assignedSse) {
+        if (queryString) queryString += "&"
+        queryString += `assignedSse=${assignedSse}`
+      }
+
+      if (assignedBdm) {
+        if (queryString) queryString += "&"
+        queryString += `assignedBdm=${assignedBdm}`
+      }
+
+      if (leadPriority) {
+        if (queryString) queryString += "&"
+        queryString += `priority=${leadPriority}`
       }
 
       if (leadType) {
         if (queryString) queryString += "&"
         queryString += `leadType=${leadType}`
-        console.log("Lead Type filter:", leadType)
       }
 
       if (leadSource) {
         if (queryString) queryString += "&"
         queryString += `leadSource=${leadSource}`
-        console.log("Lead Source filter:", leadSource)
       }
 
       if (queryString) {
@@ -105,8 +125,12 @@ export const leadService = {
 
   exportUnassignedLeads: async (
     format = "csv",
+    leadCode = "",
+    fromDate = "",
+    toDate = "",
+    assignedSse = "",
+    assignedBdm = "",
     leadPriority = "",
-    dateReceived = "",
     leadType = "",
     leadSource = "",
   ) => {
@@ -114,14 +138,33 @@ export const leadService = {
       // Build query string for filtering based on the backend's expected format
       let queryString = ""
 
-      if (leadPriority) {
-        queryString += `priority=${leadPriority}`
+      if (leadCode) {
+        queryString += `leadCode=${leadCode}`
       }
 
-      if (dateReceived) {
+      if (fromDate) {
         if (queryString) queryString += "&"
-        // Format date as ISO string (YYYY-MM-DD)
-        queryString += `date=${dateReceived}`
+        queryString += `fromDate=${fromDate}`
+      }
+
+      if (toDate) {
+        if (queryString) queryString += "&"
+        queryString += `toDate=${toDate}`
+      }
+
+      if (assignedSse) {
+        if (queryString) queryString += "&"
+        queryString += `assignedSse=${assignedSse}`
+      }
+
+      if (assignedBdm) {
+        if (queryString) queryString += "&"
+        queryString += `assignedBdm=${assignedBdm}`
+      }
+
+      if (leadPriority) {
+        if (queryString) queryString += "&"
+        queryString += `priority=${leadPriority}`
       }
 
       if (leadType) {
