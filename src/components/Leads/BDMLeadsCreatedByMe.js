@@ -58,7 +58,7 @@ function BDMLeadsCreatedByMe() {
 
       const page = currentPage - 1
 
-      const data = await leadService.getLeadsAssignesToBDM(userId,
+      const data = await leadService.getLeadsCreatedByBDM(userId,
         page,
         leadsPerPage,
         searchQuery,
