@@ -11,54 +11,84 @@ import SSEWonLeads from "../components/Leads/SSEWonLeads"
 import SSEInProgressLeads from "../components/Leads/SSEInProgressLeads"
 import SalesTLWonLeads from "../components/Leads/SalesTLWonLeads"
 import UpdateMasterTables from "../components/Leads/UpdateMasterTables"
+import BDMLeadsCreatedByMe from "../components/Leads/BDMLeadsCreatedByMe"
 import { MdFiberNew, MdEngineering, MdManageAccounts } from "react-icons/md"
 import { GrWorkshop } from "react-icons/gr"
 import { RiProgress3Line } from "react-icons/ri"
 import { BiWon } from "react-icons/bi"
 import { VscEditSession } from "react-icons/vsc"
+import { FaCreativeCommonsBy } from "react-icons/fa6";
 import { useAuth } from "../contexts/AuthContext"
 
 function LeadsListing() {
   const { employee } = useAuth()
   const tabsContainerRef = useRef(null)
   const activeTabRef = useRef(null)
+  
+  // Add state for main tab selection
+  const [activeMainTab, setActiveMainTab] = useState("SalesTL")
 
-  // Define available tabs based on employee designation
+  // Define all available tabs
+  const allTabs = [
+    { id: "unassigned-leads", label: "UnAssigned Leads", icon: MdFiberNew, component: UnAssignedLeads },
+    { id: "sse-assigned-leads", label: "SSE Assigned Leads", icon: MdEngineering, component: SSEAssignedLeads },
+    { id: "assign-leads-bdm", label: "Assign Leads To BDM", icon: MdManageAccounts, component: AssignLeadsToBDM },
+    { id: "see-new-leads", label: "New Leads", icon: MdFiberNew, component: SSENewLeads },
+    { id: "sse-inprocess-leads", label: "In Process Leads", icon: RiProgress3Line, component: SSEInProgressLeads },
+    { id: "sse-won-leads", label: "Won/Lost Leads", icon: BiWon, component: SSEWonLeads },
+    {
+      id: "bdm-assigned-field-visit",
+      label: "Assigned Field Visit",
+      icon: GrWorkshop,
+      component: BDMAssignedFieldVisit,
+    },
+    { id: "salestl-won-leads", label: "Won/Lost Leads", icon: BiWon, component: SalesTLWonLeads },
+    {
+      id: "salestl-update-master-table",
+      label: "Update Options",
+      icon: VscEditSession,
+      component: UpdateMasterTables,
+    },
+    {
+      id: "bdm-leads-by-me",
+      label: "Leads Created By Me",
+      icon: FaCreativeCommonsBy,
+      component: BDMLeadsCreatedByMe,
+    }
+  ]
+
+  // Check if user has a leadership role
+  const isLeadershipRole = () => {
+    if (!employee || !employee.designation || !employee.designation.name) return false
+    
+    const designation = employee.designation.name.replace(/\s+/g, "-").toLowerCase()
+    return designation.includes("sales-team-leader") || 
+           designation.includes('sales-manager') || 
+           designation.includes("leader")
+  }
+
+  // Get available tabs based on designation and main tab selection
   const getAvailableTabs = () => {
-    const allTabs = [
-      { id: "unassigned-leads", label: "UnAssigned Leads", icon: MdFiberNew, component: UnAssignedLeads },
-      { id: "sse-assigned-leads", label: "SSE Assigned Leads", icon: MdEngineering, component: SSEAssignedLeads },
-      { id: "assign-leads-bdm", label: "Assign Leads To BDM", icon: MdManageAccounts, component: AssignLeadsToBDM },
-      { id: "see-new-leads", label: "New Leads", icon: MdFiberNew, component: SSENewLeads },
-      { id: "sse-inprocess-leads", label: "In Process Leads", icon: RiProgress3Line, component: SSEInProgressLeads },
-      { id: "sse-won-leads", label: "Won/Lost Leads", icon: BiWon, component: SSEWonLeads },
-      {
-        id: "bdm-assigned-field-visit",
-        label: "Assigned Field Visit",
-        icon: GrWorkshop,
-        component: BDMAssignedFieldVisit,
-      },
-      { id: "salestl-won-leads", label: "Won/Lost Leads", icon: BiWon, component: SalesTLWonLeads },
-      {
-        id: "salestl-update-master-table",
-        label: "Update Options",
-        icon: VscEditSession,
-        component: UpdateMasterTables,
-      },
-    ]
-
     if (!employee) return [allTabs[0]] // Default to unassigned leads if no employee
-    const designation = employee.designation.name.replace(/\s+/g, "-").toLowerCase() || ""
+    
+    const designation = employee?.designation?.name?.replace(/\s+/g, "-").toLowerCase() || ""
 
-    // Filter tabs based on designation
+    // For leadership roles, return tabs based on main tab selection
+    if (isLeadershipRole()) {
+      if (activeMainTab === "SalesTL") {
+        return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]]
+      } else {
+        return [allTabs[3], allTabs[4], allTabs[5]]
+      }
+    }
+    
+    // For other roles, keep the existing logic
     if (designation.includes("director")) {
       return allTabs // Admin/Manager can see all tabs
-    } else if (designation.includes("sales-team-leader") || designation.includes('sales-manager') || designation.includes("leader")) {
-      return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]] // BDM can see unassigned and BDM assigne
     } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
       return [allTabs[3], allTabs[4], allTabs[5]] // SSE can see unassigned and SSE assigned
     } else if (designation.includes("bdm") || designation.includes("business") || designation.includes("development")) {
-      return [allTabs[6]] // BDM can see unassigned and BDM assigned
+      return [allTabs[6],allTabs[9]] // BDM can see unassigned and BDM assigned
     } else {
       return [allTabs[0]] // Default to just unassigned leads
     }
@@ -88,6 +118,13 @@ function LeadsListing() {
     }
   }, [validTabIds, activeTab])
 
+  // Reset active tab when main tab changes for leadership roles
+  useEffect(() => {
+    if (isLeadershipRole()) {
+      setActiveTab(validTabIds[0])
+    }
+  }, [activeMainTab])
+
   // Scroll active tab into view when it changes
   useEffect(() => {
     if (activeTabRef.current && tabsContainerRef.current) {
@@ -109,9 +146,41 @@ function LeadsListing() {
     setActiveTab(tabId)
   }
 
+  const handleMainTabClick = (tabName) => {
+    setActiveMainTab(tabName)
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Navigation Tabs - Now with horizontal scrolling */}
+      {/* Main Tabs for Leadership Roles */}
+      {isLeadershipRole() && (
+        <div className="border-b border-gray-200 w-full bg-gray-50">
+          <nav className="flex">
+            <button
+              onClick={() => handleMainTabClick("SalesTL")}
+              className={`py-4 px-8 border-b-2 font-medium text-base flex items-center transition-colors duration-200
+                ${activeMainTab === "SalesTL" 
+                  ? "border-red-600 text-red-700 bg-red-50" 
+                  : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                }`}
+            >
+              <span className="whitespace-nowrap font-semibold">Sales Team Leader</span>
+            </button>
+            <button
+              onClick={() => handleMainTabClick("SSE")}
+              className={`py-4 px-8 border-b-2 font-medium text-base flex items-center transition-colors duration-200
+                ${activeMainTab === "SSE" 
+                  ? "border-red-600 text-red-700 bg-red-50" 
+                  : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                }`}
+            >
+              <span className="whitespace-nowrap font-semibold">Site Support Engineer(SSE)</span>
+            </button>
+          </nav>
+        </div>
+      )}
+
+      {/* Sub Tabs Navigation */}
       <div className="border-b border-gray-200 w-full">
         <div
           ref={tabsContainerRef}

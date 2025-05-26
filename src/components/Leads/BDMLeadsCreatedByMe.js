@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
-import LeadSSEEditFormInProgress from "./LeadSSEEditFormInProgress"
+import LeadEditForm from "./LeadEditForm"
 import { FiEdit2, FiAlertCircle, FiX, FiCheck, FiChevronRight, FiFilter } from "react-icons/fi"
 
-function SSEInprogressLeads() {
+function BDMLeadsCreatedByMe() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -21,6 +21,11 @@ function SSEInprogressLeads() {
   const [showWarningForm, setShowWarningForm] = useState(false)
   const [showTerminationForm, setShowTerminationForm] = useState(false)
   const { user } = useAuth()
+  var userId = ""
+
+  if (user) {
+    userId = user.userId
+  }
 
   const [showMigrateDialog, setShowMigrateDialog] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
@@ -29,17 +34,13 @@ function SSEInprogressLeads() {
   const [sourcelist, setSourcelist] = useState([])
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
-  var userId = ""
-
-  if (user) {
-    userId = user.userId
-  }
-  // Add new state variables for lead type and source filters
-  const [typeSearchQuery, setTypeSearchQuery] = useState("")
-  const [sourceSearchQuery, setSourceSearchQuery] = useState("")
 
   // Mobile filter state
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+
+  // Add new state variables for lead type and source filters
+  const [typeSearchQuery, setTypeSearchQuery] = useState("")
+  const [sourceSearchQuery, setSourceSearchQuery] = useState("")
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -55,19 +56,16 @@ function SSEInprogressLeads() {
       setLoading(true)
       setError(null)
 
-      // Convert to 0-based index for the API
       const page = currentPage - 1
-      const data = await leadService.getSSEInprogressLeads(
-        userId,
+
+      const data = await leadService.getLeadsCreatedByBDM(userId,
         page,
         leadsPerPage,
         searchQuery,
         dateSearchQuery,
         typeSearchQuery,
-        sourceSearchQuery,
+        sourceSearchQuery
       )
-
-      // Update state with the paginated data from the server
       setLeads(data.results || [])
       setTotalPages(data.totalPages || 1)
       setTotalResults(data.totalResults || 0)
@@ -76,7 +74,7 @@ function SSEInprogressLeads() {
       setError("Failed to fetch leads")
       setLoading(false)
     }
-  }, [currentPage, leadsPerPage, searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery, userId])
+  }, [currentPage, leadsPerPage, searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery,user?.orgId, userId])
 
   useEffect(() => {
     fetchLeads()
@@ -84,6 +82,11 @@ function SSEInprogressLeads() {
       fetchSourceTypeData()
     }
   }, [fetchLeads, sourcelist.length])
+
+// Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery])
 
   const fetchSourceTypeData = async () => {
     try {
@@ -101,9 +104,6 @@ function SSEInprogressLeads() {
     }
   }
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery])
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber)
@@ -126,16 +126,16 @@ function SSEInprogressLeads() {
       await fetchLeads()
       setShowForm(false)
       setSelectedLead(null)
-      setSuccessMessage("Lead updated successfully")
-      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
-      setError("Failed to update lead")
+      setError("Failed to add employee")
     }
   }
 
   const handleEdit = (e, id) => {
     e.stopPropagation()
     const lead = unassignedleads.find((emp) => emp.id === id)
+    console.log("Handle Edit")
+    console.log(lead)
     setSelectedLead(lead)
     setShowForm(true)
   }
@@ -166,32 +166,22 @@ function SSEInprogressLeads() {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
-  const matchingLabels = (id, producttypelist) => {
-    let newlabel = ""
-    if (id !== null && id !== "") {
-      // Find the matching item instead of mapping through all items
-      const matchingItem = producttypelist.find((item) => item.id === id.id)
-      // If a matching item is found, use its label
-      if (matchingItem) {
-        newlabel = matchingItem.label.replace(/,/g, "") // Remove all commas
-      }
-    }
-    return newlabel
-  }
-
   const getLeadType = (leadTypeId) => {
     const type = typelist.find((type) => type.id === leadTypeId)
     return type ? type.label : ""
   }
 
-  const getProductTypes = (productTypes) => {
-    if (!productTypes) return ""
-    return productTypes
-      .map((type, itr) => {
-        const ptlabel = matchingLabels(type, producttypelist).toString()
-        return itr !== productTypes.length - 1 ? ptlabel + ", " : ptlabel.substring(0, ptlabel.length - 1)
-      })
-      .join("")
+  const fetchDateFromApi = (apiDate) => {
+    if (!apiDate) return false
+
+    // Create date from input value
+    var inputDate = new Date(apiDate)
+    var todaysDate = new Date()
+
+    if (inputDate.setHours(0, 0, 0, 0) == todaysDate.setHours(0, 0, 0, 0)) {
+      return true
+    }
+    return false
   }
 
   const formatDate = (dateString) => {
@@ -202,12 +192,6 @@ function SSEInprogressLeads() {
       month: "short",
       day: "numeric",
     })
-  }
-
-  const getApprovalStatus = (status) => {
-    if (status === "1") return { label: "Approved", className: "bg-green-50 text-green-700 ring-1 ring-green-600/20" }
-    if (status === "0") return { label: "Rejected", className: "bg-red-50 text-red-700 ring-1 ring-red-600/20" }
-    return { label: "Pending", className: "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20" }
   }
 
   if (loading && unassignedleads.length === 0) {
@@ -247,11 +231,11 @@ function SSEInprogressLeads() {
         </motion.div>
       )}
 
-      {/* Lead List */}
+      {/* Employee List */}
       <div className="bg-white rounded-xl shadow-sm p-3 md:p-6 mx-2 md:mx-0">
-        {/* Mobile Header with Filter Toggle */}
+        {/* Mobile Filter Toggle */}
         <div className="md:hidden flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">In Progress Leads</h2>
+          <h2 className="text-lg font-semibold text-gray-800">Assigned Field Visits</h2>
           <button
             onClick={() => setShowMobileFilters(!showMobileFilters)}
             className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium"
@@ -259,11 +243,6 @@ function SSEInprogressLeads() {
             <FiFilter className="w-4 h-4" />
             Filters
           </button>
-        </div>
-
-        {/* Desktop Header */}
-        <div className="hidden md:flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">In Progress Leads</h2>
         </div>
 
         {/* Mobile Filters */}
@@ -440,10 +419,9 @@ function SSEInprogressLeads() {
                     {[
                       "Lead ID",
                       "Lead Priority",
-                      "Client Name",
+                      "Middle Man Client Name",
                       "Lead Type",
-                      "Product Type",
-                      "Approval Status",
+                      "Visit Scheduled Date",
                       "Actions",
                     ]
                       .filter(Boolean)
@@ -460,82 +438,74 @@ function SSEInprogressLeads() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {unassignedleads.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="px-6 py-8 text-center text-gray-500 font-medium">
+                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500 font-medium">
                         No leads found
                       </td>
                     </tr>
                   ) : (
-                    unassignedleads.map((lead) => {
-                      const approvalStatus = getApprovalStatus(lead.salestl_approval_status)
-
-                      return (
-                        <motion.tr
-                          key={lead.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="hover:bg-gray-50 cursor-pointer transition-colors group"
-                          onClick={() => handleRowClick(lead)}
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center">
-                              <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                                {<span>{lead.lead_code}</span>}
-                              </div>
+                    unassignedleads.map((lead) => (
+                      <motion.tr
+                        key={lead.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="hover:bg-gray-50 cursor-pointer transition-colors group"
+                        onClick={() => handleRowClick(lead)}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                              {<span>{lead.lead_code}</span>}
                             </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-xs font-medium text-gray-900">
-                              <span
-                                className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${
-                                  lead.lead_priority === "cold"
-                                    ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
-                                    : lead.lead_priority === "hot"
-                                      ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
-                                      : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
-                                }`}
-                              >
-                                {Capitalize(lead.lead_priority)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-medium text-gray-900">
+                            <span
+                              className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${
+                                lead.lead_priority === "cold"
+                                  ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
+                                  : lead.lead_priority === "hot"
+                                    ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+                                    : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
+                              }`}
+                            >
+                              {Capitalize(lead.lead_priority)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-medium text-gray-900">
+                            {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-medium text-gray-900">{getLeadType(lead.lead_type)}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-xs font-medium text-gray-900">
+                            {formatDate(lead.visit_scheduled_date)}
+                            {fetchDateFromApi(lead.visit_scheduled_date) && (
+                              <span className="ml-2 px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-600/20">
+                                Today
                               </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-xs font-medium text-gray-900">
-                              {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-xs font-medium text-gray-900">{getLeadType(lead.lead_type)}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-xs font-medium text-gray-900">
-                              {getProductTypes(lead.lead_product_type)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-xs font-medium text-gray-900">
-                              <span
-                                className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${approvalStatus.className}`}
-                              >
-                                {approvalStatus.label}
-                              </span>
-                            </div>
-                          </td>
+                            )}
+                          </div>
+                        </td>
 
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-4">
-                              <button
-                                className="text-gray-400 hover:text-indigo-600 transition-colors"
-                                onClick={(e) => handleEdit(e, lead.id)}
-                                title="Edit"
-                              >
-                                <FiEdit2 size={18} />
-                              </button>
-                            </div>
-                          </td>
-                        </motion.tr>
-                      )
-                    })
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-4">
+                            <button
+                              className="text-gray-400 hover:text-indigo-600 transition-colors"
+                              onClick={(e) => handleEdit(e, lead.id)}
+                              title="Edit"
+                            >
+                              <FiEdit2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -547,87 +517,81 @@ function SSEInprogressLeads() {
                 <div className="p-4 text-center text-gray-500 font-medium">No leads found</div>
               ) : (
                 <div className="divide-y divide-gray-200">
-                  {unassignedleads.map((lead) => {
-                    const approvalStatus = getApprovalStatus(lead.salestl_approval_status)
+                  {unassignedleads.map((lead) => (
+                    <motion.div
+                      key={lead.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => handleRowClick(lead)}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="text-sm font-semibold text-gray-900">{lead.lead_code}</div>
+                        <button
+                          className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
+                          onClick={(e) => handleEdit(e, lead.id)}
+                          title="Edit"
+                        >
+                          <FiEdit2 size={16} />
+                        </button>
+                      </div>
 
-                    return (
-                      <motion.div
-                        key={lead.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                        onClick={() => handleRowClick(lead)}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="text-sm font-semibold text-gray-900">{lead.lead_code}</div>
-                          <button
-                            className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                            onClick={(e) => handleEdit(e, lead.id)}
-                            title="Edit"
+                      <div className="grid grid-cols-2 gap-y-2 text-xs">
+                        <div className="text-gray-500">Priority:</div>
+                        <div>
+                          <span
+                            className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
+                              lead.lead_priority === "cold"
+                                ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
+                                : lead.lead_priority === "hot"
+                                  ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
+                                  : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
+                            }`}
                           >
-                            <FiEdit2 size={16} />
-                          </button>
+                            {Capitalize(lead.lead_priority)}
+                          </span>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-y-2 text-xs">
-                          <div className="text-gray-500">Priority:</div>
-                          <div>
-                            <span
-                              className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
-                                lead.lead_priority === "cold"
-                                  ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
-                                  : lead.lead_priority === "hot"
-                                    ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
-                                    : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
-                              }`}
-                            >
-                              {Capitalize(lead.lead_priority)}
+                        <div className="text-gray-500">Client:</div>
+                        <div className="font-medium">
+                          {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                        </div>
+
+                        <div className="text-gray-500">Visit Date:</div>
+                        <div className="flex items-center gap-1">
+                          {formatDate(lead.visit_scheduled_date)}
+                          {fetchDateFromApi(lead.visit_scheduled_date) && (
+                            <span className="px-1.5 py-0.5 inline-flex text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-600/20">
+                              Today
                             </span>
-                          </div>
-
-                          <div className="text-gray-500">Client:</div>
-                          <div className="font-medium">
-                            {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
-                          </div>
-
-                          <div className="text-gray-500">Status:</div>
-                          <div>
-                            <span
-                              className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${approvalStatus.className}`}
-                            >
-                              {approvalStatus.label}
-                            </span>
-                          </div>
-
-                          {/* Expandable content */}
-                          {expandedRows[lead.id] && (
-                            <>
-                              <div className="text-gray-500">Type:</div>
-                              <div>{getLeadType(lead.lead_type)}</div>
-
-                              <div className="text-gray-500">Product Type:</div>
-                              <div className="break-words">{getProductTypes(lead.lead_product_type)}</div>
-                            </>
                           )}
                         </div>
 
-                        {/* Expand/collapse indicator */}
-                        <div className="flex justify-center mt-2">
-                          <FiChevronRight
-                            className={`text-gray-400 transition-transform ${expandedRows[lead.id] ? "rotate-90" : ""}`}
-                            size={16}
-                          />
-                        </div>
-                      </motion.div>
-                    )
-                  })}
+                        {expandedRows[lead.id] && (
+                          <>
+                            <div className="text-gray-500">Lead Type:</div>
+                            <div>{getLeadType(lead.lead_type)}</div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Expand/collapse indicator */}
+                      <div className="flex justify-center mt-2">
+                        <FiChevronRight
+                          className={`text-gray-400 transition-transform ${expandedRows[lead.id] ? "rotate-90" : ""}`}
+                          size={16}
+                        />
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
               )}
             </div>
           </motion.div>
         </AnimatePresence>
 
+        {/* Pagination Controls */}
         {/* Pagination Controls */}
         {totalPages > 1 && (
           <div className="mt-4 flex justify-center items-center gap-2 flex-wrap">
@@ -737,9 +701,9 @@ function SSEInprogressLeads() {
       {/* Modals */}
       <AnimatePresence>
         {showForm && (
-          <LeadSSEEditFormInProgress
+          <LeadEditForm
             lead={selectedLead}
-            activeTab="sse-inprogress-leads"
+            activeTab="bdm-assigned-field-visit"
             onClose={() => {
               setShowForm(false)
               setSelectedLead(null)
@@ -752,4 +716,4 @@ function SSEInprogressLeads() {
   )
 }
 
-export default SSEInprogressLeads
+export default BDMLeadsCreatedByMe
