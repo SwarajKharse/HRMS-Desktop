@@ -343,37 +343,8 @@ export const leadService = {
     }
   },
 
-  exportSalesTLWonOrLostLeads: async (
-    format = "csv",
-    leadPriority = "",
-    dateReceived = "",
-    leadType = "",
-    leadSource = "",
-  ) => {
+  exportSalesTLWonOrLostLeads: async (format = "csv", queryString = "") => {
     try {
-      // Build query string for filtering based on the backend's expected format
-      let queryString = ""
-
-      if (leadPriority) {
-        queryString += `priority=${leadPriority}`
-      }
-
-      if (dateReceived) {
-        if (queryString) queryString += "&"
-        // Format date as ISO string (YYYY-MM-DD)
-        queryString += `date=${dateReceived}`
-      }
-
-      if (leadType) {
-        if (queryString) queryString += "&"
-        queryString += `leadType=${leadType}`
-      }
-
-      if (leadSource) {
-        if (queryString) queryString += "&"
-        queryString += `leadSource=${leadSource}`
-      }
-
       console.log("Exporting with filters:", queryString)
 
       // Make the request with responseType blob to handle file download
@@ -478,7 +449,8 @@ export const leadService = {
     }
   },
 
-  getSSEWonLeads: async (sseid,
+  getSSEWonLeads: async (
+    sseid,
     page = 0,
     size = 20,
     leadPriority = "",
@@ -487,12 +459,11 @@ export const leadService = {
     leadSource = "",
   ) => {
     try {
-
       // Build query string for filtering based on the backend's expected format
       const queryParams = {
         sseid,
         page,
-        size
+        size,
       }
       // Format the query string according to what the backend expects
       let queryString = ""
@@ -533,17 +504,19 @@ export const leadService = {
     }
   },
 
-  getSalesTlWonLeads: async (sseid,
+  getSalesTlWonLeads: async (
     page = 0,
-    size = 30,
+    size = 10,
+    leadCode = "",
+    fromDate = "",
+    toDate = "",
+    assignedSse = "",
+    assignedBdm = "",
     leadPriority = "",
-    dateReceived = "",
     leadType = "",
     leadSource = "",
   ) => {
     try {
-
-      // Build query string for filtering based on the backend's expected format
       const queryParams = {
         page,
         size,
@@ -552,27 +525,43 @@ export const leadService = {
       // Format the query string according to what the backend expects
       let queryString = ""
 
-      if (leadPriority) {
-        queryString += `priority=${leadPriority}`
+      if (leadCode && leadCode.trim() !== "") {
+        queryString += `leadCode=${encodeURIComponent(leadCode.trim())}`
       }
 
-      if (dateReceived) {
+      if (fromDate && fromDate.trim() !== "") {
         if (queryString) queryString += "&"
-        // Format date as ISO string (YYYY-MM-DD)
-        queryString += `date=${dateReceived}`
-        console.log("Date filter:", dateReceived)
+        queryString += `fromDate=${encodeURIComponent(fromDate.trim())}`
       }
 
-      if (leadType) {
+      if (toDate && toDate.trim() !== "") {
         if (queryString) queryString += "&"
-        queryString += `leadType=${leadType}`
-        console.log("Lead Type filter:", leadType)
+        queryString += `toDate=${encodeURIComponent(toDate.trim())}`
       }
 
-      if (leadSource) {
+      if (assignedSse && assignedSse.trim() !== "") {
         if (queryString) queryString += "&"
-        queryString += `leadSource=${leadSource}`
-        console.log("Lead Source filter:", leadSource)
+        queryString += `assignedSse=${encodeURIComponent(assignedSse.trim())}`
+      }
+
+      if (assignedBdm && assignedBdm.trim() !== "") {
+        if (queryString) queryString += "&"
+        queryString += `assignedBdm=${encodeURIComponent(assignedBdm.trim())}`
+      }
+
+      if (leadPriority && leadPriority.trim() !== "") {
+        if (queryString) queryString += "&"
+        queryString += `priority=${encodeURIComponent(leadPriority.trim())}`
+      }
+
+      if (leadType && leadType.trim() !== "") {
+        if (queryString) queryString += "&"
+        queryString += `leadType=${encodeURIComponent(leadType.trim())}`
+      }
+
+      if (leadSource && leadSource.trim() !== "") {
+        if (queryString) queryString += "&"
+        queryString += `leadSource=${encodeURIComponent(leadSource.trim())}`
       }
 
       if (queryString) {
@@ -586,13 +575,14 @@ export const leadService = {
       })
       return response.data
     } catch (error) {
-      throw new Error("Failed to fetch lead details")
+      console.error("API Error:", error)
+      throw new Error("Failed to fetch lead details: " + (error.message || "Unknown error"))
     }
   },
 
   getLeadsForBDMAssignment: async (
     page = 0,
-    size = 30,
+    size = 10,
     leadCode = "",
     fromDate = "",
     toDate = "",
@@ -600,7 +590,7 @@ export const leadService = {
     assignedBdm = "",
     priority = "",
     leadType = "",
-    leadSource = ""
+    leadSource = "",
   ) => {
     try {
       const queryParams = {
@@ -672,13 +662,13 @@ export const leadService = {
         `${EMP_BASE_URL}/manager/${user.orgId}/${"Sales Support Engineer"}`,
         getAuthHeaders(),
       )
-      let finalResult = [];
+      let finalResult = []
 
       const responsesalesTl = await axios.get(
         `${EMP_BASE_URL}/manager/${user.orgId}/${"Sales Manager"}`,
         getAuthHeaders(),
       )
-      finalResult = [...response.data, ...responsesalesTl.data];
+      finalResult = [...response.data, ...responsesalesTl.data]
       return finalResult
     } catch (error) {
       throw error.response?.data || error.message
@@ -807,21 +797,21 @@ export const leadService = {
     }
   },
 
-  getLeadsAssignesToSSE: async (sseid,
+  getLeadsAssignesToSSE: async (
+    sseid,
     page = 0,
     size = 30,
     leadPriority = "",
     dateReceived = "",
     leadType = "",
-    leadSource = ""
+    leadSource = "",
   ) => {
     try {
-
       // Build query string for filtering based on the backend's expected format
       const queryParams = {
         sseid,
         page,
-        size
+        size,
       }
 
       // Format the query string according to what the backend expects
@@ -863,21 +853,21 @@ export const leadService = {
     }
   },
 
-  getSSEInprogressLeads: async (sseid,
+  getSSEInprogressLeads: async (
+    sseid,
     page = 0,
     size = 30,
     leadPriority = "",
     dateReceived = "",
     leadType = "",
-    leadSource = ""
+    leadSource = "",
   ) => {
     try {
-
       // Build query string for filtering based on the backend's expected format
       const queryParams = {
         sseid,
         page,
-        size
+        size,
       }
 
       // Format the query string according to what the backend expects
@@ -919,21 +909,21 @@ export const leadService = {
     }
   },
 
-  getLeadsAssignesToBDM: async (bdmid,
+  getLeadsAssignesToBDM: async (
+    bdmid,
     page = 0,
     size = 30,
     leadPriority = "",
     dateReceived = "",
     leadType = "",
-    leadSource = ""
+    leadSource = "",
   ) => {
     try {
-
       // Build query string for filtering based on the backend's expected format
       const queryParams = {
         bdmid,
         page,
-        size
+        size,
       }
 
       // Format the query string according to what the backend expects
@@ -994,7 +984,7 @@ export const leadService = {
       console.log(data)
       const payload = {
         label: data.label,
-        id: null
+        id: null,
         // Don't include an ID field here
       }
       const response = await axios.post(`${BASE_URL}/create-lead-product-type`, payload)
@@ -1009,7 +999,7 @@ export const leadService = {
     try {
       const payload = {
         label: data.label,
-        id: id
+        id: id,
       }
       const response = await axios.put(`${BASE_URL}/update-lead-product-type/${id}`, payload)
       return response.data
@@ -1043,7 +1033,7 @@ export const leadService = {
     try {
       const payload = {
         label: data.label,
-        id: id
+        id: id,
       }
       const response = await axios.put(`${BASE_URL}/update-lead-source/${id}`, payload)
       return response.data
@@ -1077,7 +1067,7 @@ export const leadService = {
     try {
       const payload = {
         label: data.label,
-        id: id
+        id: id,
       }
       const response = await axios.put(`${BASE_URL}/update-lead-type/${id}`, payload)
       return response.data
@@ -1097,21 +1087,21 @@ export const leadService = {
     }
   },
 
-  getLeadsCreatedByBDM: async (bdmid,
+  getLeadsCreatedByBDM: async (
+    bdmid,
     page = 0,
     size = 30,
     leadPriority = "",
     dateReceived = "",
     leadType = "",
-    leadSource = ""
+    leadSource = "",
   ) => {
     try {
-
       // Build query string for filtering based on the backend's expected format
       const queryParams = {
         bdmid,
         page,
-        size
+        size,
       }
 
       // Format the query string according to what the backend expects
