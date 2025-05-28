@@ -360,6 +360,158 @@ export const leadService = {
     }
   },
 
+  // Export function for SSE In Progress leads
+  exportSSEInprogressLeads: async (
+    format = "csv",
+    sseId = "",
+    leadCode = "",
+    fromDate = "",
+    toDate = "",
+    assignedBdm = "",
+    leadPriority = "",
+    leadType = "",
+    leadSource = "",
+  ) => {
+    try {
+      let queryString = ""
+
+      if (leadCode) {
+        queryString += `leadCode=${leadCode}`
+      }
+
+      if (fromDate) {
+        if (queryString) queryString += "&"
+        queryString += `fromDate=${fromDate}`
+      }
+
+      if (toDate) {
+        if (queryString) queryString += "&"
+        queryString += `toDate=${toDate}`
+      }
+
+      if (assignedBdm) {
+        if (queryString) queryString += "&"
+        queryString += `assignedBdm=${assignedBdm}`
+      }
+
+      if (leadPriority) {
+        if (queryString) queryString += "&"
+        queryString += `priority=${leadPriority}`
+      }
+
+      if (leadType) {
+        if (queryString) queryString += "&"
+        queryString += `leadType=${leadType}`
+      }
+
+      if (leadSource) {
+        if (queryString) queryString += "&"
+        queryString += `leadSource=${leadSource}`
+      }
+
+      console.log("Exporting SSE In Progress leads with filters:", queryString)
+
+      const response = await axios.get(`${BASE_URL}/export/sseinprogressleads`, {
+        params: {
+          sseId: sseId,
+          query: queryString,
+          format: format,
+        },
+        responseType: "blob",
+      })
+
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", format === "excel" ? "sse_inprogress_leads.xlsx" : "sse_inprogress_leads.csv")
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+
+      return true
+    } catch (error) {
+      console.error("Export API Error:", error)
+      throw new Error("Failed to export SSE In Progress leads: " + (error.message || "Unknown error"))
+    }
+  },
+
+  // Export function for SSE Won leads
+  exportSSEWonLeads: async (
+    format = "csv",
+    sseId = "",
+    leadCode = "",
+    fromDate = "",
+    toDate = "",
+    assignedBdm = "",
+    leadPriority = "",
+    leadType = "",
+    leadSource = "",
+  ) => {
+    try {
+      let queryString = ""
+
+      if (leadCode) {
+        queryString += `leadCode=${leadCode}`
+      }
+
+      if (fromDate) {
+        if (queryString) queryString += "&"
+        queryString += `fromDate=${fromDate}`
+      }
+
+      if (toDate) {
+        if (queryString) queryString += "&"
+        queryString += `toDate=${toDate}`
+      }
+
+      if (assignedBdm) {
+        if (queryString) queryString += "&"
+        queryString += `assignedBdm=${assignedBdm}`
+      }
+
+      if (leadPriority) {
+        if (queryString) queryString += "&"
+        queryString += `priority=${leadPriority}`
+      }
+
+      if (leadType) {
+        if (queryString) queryString += "&"
+        queryString += `leadType=${leadType}`
+      }
+
+      if (leadSource) {
+        if (queryString) queryString += "&"
+        queryString += `leadSource=${leadSource}`
+      }
+
+      console.log("Exporting SSE Won leads with filters:", queryString)
+
+      const response = await axios.get(`${BASE_URL}/export/ssewonleads`, {
+        params: {
+          sseId: sseId,
+          query: queryString,
+          format: format,
+        },
+        responseType: "blob",
+      })
+
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", format === "excel" ? "sse_won_leads.xlsx" : "sse_won_leads.csv")
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+
+      return true
+    } catch (error) {
+      console.error("Export API Error:", error)
+      throw new Error("Failed to export SSE Won leads: " + (error.message || "Unknown error"))
+    }
+  },
+
   exportLeadsForBDMAssignment: async (
     format = "csv",
     leadPriority = "",
@@ -530,7 +682,10 @@ export const leadService = {
     page = 0,
     size = 20,
     leadPriority = "",
-    dateReceived = "",
+    fromDate = "",
+    toDate = "",
+    assignedBdm = "",
+    leadCode = "",
     leadType = "",
     leadSource = "",
   ) => {
@@ -544,39 +699,53 @@ export const leadService = {
       // Format the query string according to what the backend expects
       let queryString = ""
 
-      if (leadPriority) {
-        queryString += `priority=${leadPriority}`
+      if (leadCode) {
+        queryString += `leadCode=${leadCode}`
       }
 
-      if (dateReceived) {
+      if (fromDate) {
         if (queryString) queryString += "&"
-        // Format date as ISO string (YYYY-MM-DD)
-        queryString += `date=${dateReceived}`
-        console.log("Date filter:", dateReceived)
+        queryString += `fromDate=${fromDate}`
+      }
+
+      if (toDate) {
+        if (queryString) queryString += "&"
+        queryString += `toDate=${toDate}`
+      }
+
+      if (assignedBdm) {
+        if (queryString) queryString += "&"
+        queryString += `assignedBdm=${assignedBdm}`
+      }
+
+      if (leadPriority) {
+        if (queryString) queryString += "&"
+        queryString += `priority=${leadPriority}`
       }
 
       if (leadType) {
         if (queryString) queryString += "&"
         queryString += `leadType=${leadType}`
-        console.log("Lead Type filter:", leadType)
       }
 
       if (leadSource) {
         if (queryString) queryString += "&"
         queryString += `leadSource=${leadSource}`
-        console.log("Lead Source filter:", leadSource)
       }
 
       if (queryString) {
         queryParams.query = queryString
       }
 
+      console.log("Sending SSE Won leads API request with params:", queryParams)
+
       const response = await axios.get(`${BASE_URL}/ssewonleads`, {
         params: queryParams,
       })
       return response.data
     } catch (error) {
-      throw new Error("Failed to fetch lead details")
+      console.error("API Error:", error)
+      throw new Error("Failed to fetch SSE Won lead details: " + (error.message || "Unknown error"))
     }
   },
 
@@ -799,6 +968,7 @@ export const leadService = {
       const response = await axios.post(`${BASE_URL}/updatesseproposalapproval/${id}`, formData, {
         headers: {
           // Don't set Content-Type here - axios will automatically set it
+          //'Content-Type': 'multipart/form-data',
         },
       })
       return response.data
@@ -817,6 +987,7 @@ export const leadService = {
       const response = await axios.post(`${BASE_URL}/updatesalestlproposalapproval/${id}`, formData, {
         headers: {
           // Don't set Content-Type here - axios will automatically set it
+          //'Content-Type': 'multipart/form-data',
         },
       })
       return response.data
@@ -835,6 +1006,7 @@ export const leadService = {
       const response = await axios.post(`${BASE_URL}/updatepoorrejectionreason/${id}`, formData, {
         headers: {
           // Don't set Content-Type here - axios will automatically set it
+          //'Content-Type': 'multipart/form-data',
         },
       })
       return response.data
@@ -902,6 +1074,73 @@ export const leadService = {
       }
 
       if (fromDate) {
+        queryString += `&fromDate=${fromDate}`
+      }
+
+      if (toDate) {
+        queryString += `&toDate=${toDate}`
+      }
+
+      if (assignedBdm) {
+        queryString += `&assignedBdm=${assignedBdm}`
+      }
+
+      if (leadPriority) {
+        queryString += `&priority=${leadPriority}`
+      }
+
+      if (leadType) {
+        queryString += `&leadType=${leadType}`
+      }
+
+      if (leadSource) {
+        queryString += `&leadSource=${leadSource}`
+      }
+
+      if (queryString) {
+        queryParams.query = queryString
+      }
+
+      console.log("Sending SSE leads API request with params:", queryParams)
+
+      const response = await axios.get(`${BASE_URL}/sseassignedleads`, {
+        params: queryParams,
+      })
+      return response.data
+    } catch (error) {
+      console.error("API Error:", error)
+      throw new Error("Failed to fetch SSE lead details: " + (error.message || "Unknown error"))
+    }
+  },
+
+  getSSEInprogressLeads: async (
+    sseid,
+    page = 0,
+    size = 30,
+    leadPriority = "",
+    fromDate = "",
+    toDate = "",
+    assignedBdm = "",
+    leadCode = "",
+    leadType = "",
+    leadSource = "",
+  ) => {
+    try {
+      // Build query string for filtering based on the backend's expected format
+      const queryParams = {
+        sseid,
+        page,
+        size,
+      }
+
+      // Format the query string according to what the backend expects
+      let queryString = ""
+
+      if (leadCode) {
+        queryString += `leadCode=${leadCode}`
+      }
+
+      if (fromDate) {
         if (queryString) queryString += "&"
         queryString += `fromDate=${fromDate}`
       }
@@ -935,71 +1174,15 @@ export const leadService = {
         queryParams.query = queryString
       }
 
-      console.log("Sending SSE leads API request with params:", queryParams)
-
-      const response = await axios.get(`${BASE_URL}/sseassignedleads`, {
-        params: queryParams,
-      })
-      return response.data
-    } catch (error) {
-      console.error("API Error:", error)
-      throw new Error("Failed to fetch SSE lead details: " + (error.message || "Unknown error"))
-    }
-  },
-
-  getSSEInprogressLeads: async (
-    sseid,
-    page = 0,
-    size = 30,
-    leadPriority = "",
-    dateReceived = "",
-    leadType = "",
-    leadSource = "",
-  ) => {
-    try {
-      // Build query string for filtering based on the backend's expected format
-      const queryParams = {
-        sseid,
-        page,
-        size,
-      }
-
-      // Format the query string according to what the backend expects
-      let queryString = ""
-
-      if (leadPriority) {
-        queryString += `priority=${leadPriority}`
-      }
-
-      if (dateReceived) {
-        if (queryString) queryString += "&"
-        // Format date as ISO string (YYYY-MM-DD)
-        queryString += `date=${dateReceived}`
-        console.log("Date filter:", dateReceived)
-      }
-
-      if (leadType) {
-        if (queryString) queryString += "&"
-        queryString += `leadType=${leadType}`
-        console.log("Lead Type filter:", leadType)
-      }
-
-      if (leadSource) {
-        if (queryString) queryString += "&"
-        queryString += `leadSource=${leadSource}`
-        console.log("Lead Source filter:", leadSource)
-      }
-
-      if (queryString) {
-        queryParams.query = queryString
-      }
+      console.log("Sending SSE In Progress leads API request with params:", queryParams)
 
       const response = await axios.get(`${BASE_URL}/sseinprogressleads`, {
         params: queryParams,
       })
       return response.data
     } catch (error) {
-      throw new Error("Failed to fetch lead details")
+      console.error("API Error:", error)
+      throw new Error("Failed to fetch SSE In Progress lead details: " + (error.message || "Unknown error"))
     }
   },
 
