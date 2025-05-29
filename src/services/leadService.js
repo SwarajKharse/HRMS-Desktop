@@ -1190,8 +1190,11 @@ export const leadService = {
     bdmid,
     page = 0,
     size = 30,
+    leadCode = "",
+    fromDate = "",
+    toDate = "",
+    assignedSse = "",
     leadPriority = "",
-    dateReceived = "",
     leadType = "",
     leadSource = "",
   ) => {
@@ -1206,39 +1209,53 @@ export const leadService = {
       // Format the query string according to what the backend expects
       let queryString = ""
 
-      if (leadPriority) {
-        queryString += `priority=${leadPriority}`
+      if (leadCode) {
+        queryString += `leadCode=${leadCode}`
       }
 
-      if (dateReceived) {
+      if (fromDate) {
         if (queryString) queryString += "&"
-        // Format date as ISO string (YYYY-MM-DD)
-        queryString += `date=${dateReceived}`
-        console.log("Date filter:", dateReceived)
+        queryString += `fromDate=${fromDate}`
+      }
+
+      if (toDate) {
+        if (queryString) queryString += "&"
+        queryString += `toDate=${toDate}`
+      }
+
+      if (assignedSse) {
+        if (queryString) queryString += "&"
+        queryString += `assignedSse=${assignedSse}`
+      }
+
+      if (leadPriority) {
+        if (queryString) queryString += "&"
+        queryString += `priority=${leadPriority}`
       }
 
       if (leadType) {
         if (queryString) queryString += "&"
         queryString += `leadType=${leadType}`
-        console.log("Lead Type filter:", leadType)
       }
 
       if (leadSource) {
         if (queryString) queryString += "&"
         queryString += `leadSource=${leadSource}`
-        console.log("Lead Source filter:", leadSource)
       }
 
       if (queryString) {
         queryParams.query = queryString
       }
 
+      console.log("Sending BDM assigned leads API request with params:", queryParams)
+
       const response = await axios.get(`${BASE_URL}/bdmassignedleads`, {
         params: queryParams,
       })
       return response.data
     } catch (error) {
-      throw new Error("Failed to fetch lead details")
+      console.error("API Error:", error)
+      throw new Error("Failed to fetch BDM assigned lead details: " + (error.message || "Unknown error"))
     }
   },
 
@@ -1368,8 +1385,11 @@ export const leadService = {
     bdmid,
     page = 0,
     size = 30,
+    leadCode = "",
+    fromDate = "",
+    toDate = "",
+    assignedSse = "",
     leadPriority = "",
-    dateReceived = "",
     leadType = "",
     leadSource = "",
   ) => {
@@ -1384,39 +1404,53 @@ export const leadService = {
       // Format the query string according to what the backend expects
       let queryString = ""
 
-      if (leadPriority) {
-        queryString += `priority=${leadPriority}`
+      if (leadCode) {
+        queryString += `leadCode=${leadCode}`
       }
 
-      if (dateReceived) {
+      if (fromDate) {
         if (queryString) queryString += "&"
-        // Format date as ISO string (YYYY-MM-DD)
-        queryString += `date=${dateReceived}`
-        console.log("Date filter:", dateReceived)
+        queryString += `fromDate=${fromDate}`
+      }
+
+      if (toDate) {
+        if (queryString) queryString += "&"
+        queryString += `toDate=${toDate}`
+      }
+
+      if (assignedSse) {
+        if (queryString) queryString += "&"
+        queryString += `assignedSse=${assignedSse}`
+      }
+
+      if (leadPriority) {
+        if (queryString) queryString += "&"
+        queryString += `priority=${leadPriority}`
       }
 
       if (leadType) {
         if (queryString) queryString += "&"
         queryString += `leadType=${leadType}`
-        console.log("Lead Type filter:", leadType)
       }
 
       if (leadSource) {
         if (queryString) queryString += "&"
         queryString += `leadSource=${leadSource}`
-        console.log("Lead Source filter:", leadSource)
       }
 
       if (queryString) {
         queryParams.query = queryString
       }
 
+      console.log("Sending BDM created leads API request with params:", queryParams)
+
       const response = await axios.get(`${BASE_URL}/bdmcreatedleads`, {
         params: queryParams,
       })
       return response.data
     } catch (error) {
-      throw new Error("Failed to fetch lead details")
+      console.error("API Error:", error)
+      throw new Error("Failed to fetch BDM created lead details: " + (error.message || "Unknown error"))
     }
   },
 }
