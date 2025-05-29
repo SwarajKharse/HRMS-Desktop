@@ -903,7 +903,7 @@ export const leadService = {
     try {
       const user = authService.getUser()
       const manager = "Manager"
-      const response = await axios.get(
+      /* const response = await axios.get(
         `${EMP_BASE_URL}/manager/${user.orgId}/${"Sales Support Engineer"}`,
         getAuthHeaders(),
       )
@@ -913,8 +913,13 @@ export const leadService = {
         `${EMP_BASE_URL}/manager/${user.orgId}/${"Sales Manager"}`,
         getAuthHeaders(),
       )
-      finalResult = [...response.data, ...responsesalesTl.data]
-      return finalResult
+      finalResult = [...response.data, ...responsesalesTl.data] */
+
+      const finalResult = await axios.get(
+        `${BASE_URL}/sselist/${user.orgId}`,
+        getAuthHeaders(),
+      )
+      return finalResult.data
     } catch (error) {
       throw error.response?.data || error.message
     }
@@ -924,8 +929,12 @@ export const leadService = {
     try {
       const user = authService.getUser()
       const manager = "Manager"
-      const response = await axios.get(
+      /* const response = await axios.get(
         `${EMP_BASE_URL}/manager/${user.orgId}/${"Business Development Manager"}`,
+        getAuthHeaders(),
+      ) */
+      const response = await axios.get(
+        `${BASE_URL}/bdmlist/${user.orgId}`,
         getAuthHeaders(),
       )
       return response.data
