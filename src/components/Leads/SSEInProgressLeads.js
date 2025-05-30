@@ -326,14 +326,14 @@ function SSEInprogressLeads() {
               Filters
             </button>
             <div className="relative">
-              <button
+              {/* <button
                 onClick={() => setShowExportOptions(!showExportOptions)}
                 className="flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm"
                 disabled={isExporting}
               >
                 <FiDownload className="w-4 h-4" />
                 {isExporting ? "..." : "Export"}
-              </button>
+              </button> */}
               {showExportOptions && (
                 <div className="absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                   <div className="py-1">
@@ -362,14 +362,14 @@ function SSEInprogressLeads() {
         <div className="hidden md:flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-800">In Progress Leads</h2>
           <div className="relative">
-            <button
+            {/* <button
               onClick={() => setShowExportOptions(!showExportOptions)}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
               disabled={isExporting}
             >
               <FiDownload className="w-4 h-4" />
               {isExporting ? "Exporting..." : "Export"}
-            </button>
+            </button> */}
             {showExportOptions && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                 <div className="py-1">
