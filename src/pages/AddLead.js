@@ -715,7 +715,9 @@ function AddLead() {
       if (value === '1') {
         setLeadData({
           ...leadData,
-          assigned_bdm : userId,
+          assigned_bdm: {
+            id: userId,
+          },
           is_created_by_bdm: value,
         })
       } else {
