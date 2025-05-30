@@ -17,14 +17,14 @@ import { GrWorkshop } from "react-icons/gr"
 import { RiProgress3Line } from "react-icons/ri"
 import { BiWon } from "react-icons/bi"
 import { VscEditSession } from "react-icons/vsc"
-import { FaCreativeCommonsBy } from "react-icons/fa6";
+import { FaCreativeCommonsBy } from "react-icons/fa6"
 import { useAuth } from "../contexts/AuthContext"
 
 function LeadsListing() {
   const { employee } = useAuth()
   const tabsContainerRef = useRef(null)
   const activeTabRef = useRef(null)
-  
+
   // Add state for main tab selection
   const [activeMainTab, setActiveMainTab] = useState("SalesTL")
 
@@ -54,41 +54,66 @@ function LeadsListing() {
       label: "Leads Created By Me",
       icon: FaCreativeCommonsBy,
       component: BDMLeadsCreatedByMe,
-    }
+    },
   ]
+
+  // Check if user is a super admin (employee IDs 1, 5, 6)
+  const isSuperAdmin = () => {
+    if (!employee || !employee.id) return false
+    return [2, 3, 1].includes(employee.id)
+  }
 
   // Check if user has a leadership role
   const isLeadershipRole = () => {
     if (!employee || !employee.designation || !employee.designation.name) return false
-    
+
     const designation = employee.designation.name.replace(/\s+/g, "-").toLowerCase()
-    return designation.includes("sales-team-leader") || 
-           designation.includes('sales-manager') || 
-           designation.includes("leader")
+    return (
+      designation.includes("sales-team-leader") ||
+      designation.includes("sales-manager") ||
+      designation.includes("leader")
+    )
+  }
+
+  // Check if main tabs should be visible
+  const shouldShowMainTabs = () => {
+    return isSuperAdmin() || isLeadershipRole()
+  }
+
+  // Get available main tabs based on role
+  const getAvailableMainTabs = () => {
+    if (isSuperAdmin()) {
+      return ["SalesTL", "SSE", "BDM"]
+    } else if (isLeadershipRole()) {
+      return ["SalesTL", "SSE"]
+    }
+    return []
   }
 
   // Get available tabs based on designation and main tab selection
   const getAvailableTabs = () => {
     if (!employee) return [allTabs[0]] // Default to unassigned leads if no employee
-    
+
     const designation = employee?.designation?.name?.replace(/\s+/g, "-").toLowerCase() || ""
 
-    // For leadership roles, return tabs based on main tab selection
-    if (isLeadershipRole()) {
+    // For users with main tabs, return tabs based on main tab selection
+    if (shouldShowMainTabs()) {
       if (activeMainTab === "SalesTL") {
         return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]]
-      } else {
+      } else if (activeMainTab === "SSE") {
         return [allTabs[3], allTabs[4], allTabs[5]]
+      } else if (activeMainTab === "BDM") {
+        return [allTabs[6], allTabs[9]]
       }
     }
-    
-    // For other roles, keep the existing logic
+
+    // For other roles without main tabs, keep the existing logic
     if (designation.includes("director")) {
       return allTabs // Admin/Manager can see all tabs
     } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
       return [allTabs[3], allTabs[4], allTabs[5]] // SSE can see unassigned and SSE assigned
     } else if (designation.includes("bdm") || designation.includes("business") || designation.includes("development")) {
-      return [allTabs[6],allTabs[9]] // BDM can see unassigned and BDM assigned
+      return [allTabs[6], allTabs[9]] // BDM can see unassigned and BDM assigned
     } else {
       return [allTabs[0]] // Default to just unassigned leads
     }
@@ -96,6 +121,7 @@ function LeadsListing() {
 
   const availableTabs = getAvailableTabs()
   const validTabIds = availableTabs.map((tab) => tab.id)
+  const availableMainTabs = getAvailableMainTabs()
 
   // Initialize activeTab from sessionStorage with validation against available tabs
   const [activeTab, setActiveTab] = useState(() => {
@@ -118,12 +144,19 @@ function LeadsListing() {
     }
   }, [validTabIds, activeTab])
 
-  // Reset active tab when main tab changes for leadership roles
+  // Reset active tab when main tab changes for users with main tabs
   useEffect(() => {
-    if (isLeadershipRole()) {
+    if (shouldShowMainTabs()) {
       setActiveTab(validTabIds[0])
     }
   }, [activeMainTab])
+
+  // Ensure active main tab is valid for current user
+  useEffect(() => {
+    if (shouldShowMainTabs() && !availableMainTabs.includes(activeMainTab)) {
+      setActiveMainTab(availableMainTabs[0])
+    }
+  }, [availableMainTabs, activeMainTab])
 
   // Scroll active tab into view when it changes
   useEffect(() => {
@@ -152,31 +185,52 @@ function LeadsListing() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Main Tabs for Leadership Roles */}
-      {isLeadershipRole() && (
+      {/* Main Tabs - Only visible for super admins and leadership roles */}
+      {shouldShowMainTabs() && (
         <div className="border-b border-gray-200 w-full bg-gray-50">
-          <nav className="flex">
-            <button
-              onClick={() => handleMainTabClick("SalesTL")}
-              className={`py-4 px-8 border-b-2 font-medium text-base flex items-center transition-colors duration-200
-                ${activeMainTab === "SalesTL" 
-                  ? "border-red-600 text-red-700 bg-red-50" 
-                  : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
-                }`}
-            >
-              <span className="whitespace-nowrap font-semibold">Sales Team Leader</span>
-            </button>
-            <button
-              onClick={() => handleMainTabClick("SSE")}
-              className={`py-4 px-8 border-b-2 font-medium text-base flex items-center transition-colors duration-200
-                ${activeMainTab === "SSE" 
-                  ? "border-red-600 text-red-700 bg-red-50" 
-                  : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
-                }`}
-            >
-              <span className="whitespace-nowrap font-semibold">Site Support Engineer(SSE)</span>
-            </button>
-          </nav>
+          <div className="overflow-x-auto scrollbar-hide">
+            <nav className="flex min-w-max">
+              {availableMainTabs.includes("SalesTL") && (
+                <button
+                  onClick={() => handleMainTabClick("SalesTL")}
+                  className={`py-3 sm:py-4 px-4 sm:px-8 border-b-2 font-medium text-sm sm:text-base flex items-center transition-colors duration-200 whitespace-nowrap
+                    ${
+                      activeMainTab === "SalesTL"
+                        ? "border-red-600 text-red-700 bg-red-50"
+                        : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                    }`}
+                >
+                  <span className="font-semibold">Sales Team Leader</span>
+                </button>
+              )}
+              {availableMainTabs.includes("SSE") && (
+                <button
+                  onClick={() => handleMainTabClick("SSE")}
+                  className={`py-3 sm:py-4 px-4 sm:px-8 border-b-2 font-medium text-sm sm:text-base flex items-center transition-colors duration-200 whitespace-nowrap
+                    ${
+                      activeMainTab === "SSE"
+                        ? "border-red-600 text-red-700 bg-red-50"
+                        : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                    }`}
+                >
+                  <span className="font-semibold">Site Support Engineer(SSE)</span>
+                </button>
+              )}
+              {availableMainTabs.includes("BDM") && (
+                <button
+                  onClick={() => handleMainTabClick("BDM")}
+                  className={`py-3 sm:py-4 px-4 sm:px-8 border-b-2 font-medium text-sm sm:text-base flex items-center transition-colors duration-200 whitespace-nowrap
+                    ${
+                      activeMainTab === "BDM"
+                        ? "border-red-600 text-red-700 bg-red-50"
+                        : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                    }`}
+                >
+                  <span className="font-semibold">Business Development Manager</span>
+                </button>
+              )}
+            </nav>
+          </div>
         </div>
       )}
 
