@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
-import { FiEdit2, FiAlertCircle, FiX, FiCheck, FiFilter } from "react-icons/fi"
+import { FiEdit2, FiAlertCircle, FiX, FiCheck, FiFilter, FiDownload, FiSearch } from "react-icons/fi"
 
 function SSEWonLeads() {
   const navigate = useNavigate()
@@ -14,8 +14,6 @@ function SSEWonLeads() {
   const [error, setError] = useState(null)
   const [unassignedleads, setLeads] = useState([])
   const [filteredLeads, setFilteredLeads] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [dateSearchQuery, setDateSearchQuery] = useState("")
   const [selectedLead, setSelectedLead] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [showWarningForm, setShowWarningForm] = useState(false)
@@ -24,15 +22,37 @@ function SSEWonLeads() {
 
   const [showMigrateDialog, setShowMigrateDialog] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
-  const [isExporting, setIsExporting] = useState(false)
-  const [isImporting, setIsImporting] = useState(false)
   const [sourcelist, setSourcelist] = useState([])
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
 
-  // Add new state variables for lead type and source filters
-  const [typeSearchQuery, setTypeSearchQuery] = useState("")
-  const [sourceSearchQuery, setSourceSearchQuery] = useState("")
+  const [bdmList, setBdmList] = useState([])
+
+  // Filter states - separate from applied filters
+  const [filters, setFilters] = useState({
+    leadCode: "",
+    fromDate: "",
+    toDate: "",
+    assignedBdm: "",
+    priority: "",
+    leadType: "",
+    leadSource: "",
+  })
+
+  // Applied filters state (what's actually sent to API)
+  const [appliedFilters, setAppliedFilters] = useState({
+    leadCode: "",
+    fromDate: "",
+    toDate: "",
+    assignedBdm: "",
+    priority: "",
+    leadType: "",
+    leadSource: "",
+  })
+
+  // Export states
+  const [isExporting, setIsExporting] = useState(false)
+  const [showExportOptions, setShowExportOptions] = useState(false)
 
   // Mobile filter state
   const [showMobileFilters, setShowMobileFilters] = useState(false)
@@ -57,14 +77,18 @@ function SSEWonLeads() {
       // Convert to 0-based index for the API
       const page = currentPage - 1
 
+      // Updated API call to use the enhanced getSSEWonLeads method with all filters
       const data = await leadService.getSSEWonLeads(
         userId,
         page,
         leadsPerPage,
-        searchQuery,
-        dateSearchQuery,
-        typeSearchQuery,
-        sourceSearchQuery,
+        appliedFilters.priority,
+        appliedFilters.fromDate,
+        appliedFilters.toDate,
+        appliedFilters.assignedBdm,
+        appliedFilters.leadCode,
+        appliedFilters.leadType,
+        appliedFilters.leadSource,
       )
 
       setLeads(data.results || [])
@@ -75,7 +99,7 @@ function SSEWonLeads() {
       setError("Failed to fetch leads")
       setLoading(false)
     }
-  }, [currentPage, leadsPerPage, searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery, userId])
+  }, [currentPage, leadsPerPage, appliedFilters, userId])
 
   useEffect(() => {
     fetchLeads()
@@ -86,23 +110,26 @@ function SSEWonLeads() {
 
   const fetchSourceTypeData = async () => {
     try {
-      const [leadSource, leadType, leadProductType] = await Promise.all([
+      const [leadSource, leadType, leadProductType, bdmData] = await Promise.all([
         leadService.getLeadSourceList(),
         leadService.getLeadTypeList(),
         leadService.getLeadProductTypeList(),
+        leadService.getBDMList(),
       ])
       setSourcelist(leadSource)
       setTypelist(leadType)
       setProductTypelist(leadProductType)
+      setBdmList(bdmData)
     } catch (err) {
       setError("Error while fetching data")
       console.error(err)
     }
   }
 
+  // Reset to first page when applied filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery])
+  }, [appliedFilters])
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber)
@@ -136,30 +163,60 @@ function SSEWonLeads() {
     setShowForm(true)
   }
 
-  const handleFilterChange = (type, value) => {
-    if (type === "priority") {
-      setSearchQuery(value)
-    } else if (type === "date") {
-      console.log("Setting date filter:", value)
-      setDateSearchQuery(value)
-    } else if (type === "type") {
-      console.log("Setting lead type filter:", value)
-      setTypeSearchQuery(value)
-    } else if (type === "source") {
-      console.log("Setting lead source filter:", value)
-      setSourceSearchQuery(value)
-    }
-    // Reset to page 1 when filters change
-    setCurrentPage(1)
+  const handleFilterChange = (filterName, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [filterName]: value,
+    }))
+  }
+
+  const applyFilters = () => {
+    setAppliedFilters({ ...filters })
+    setShowMobileFilters(false)
   }
 
   const clearFilters = () => {
-    setSearchQuery("")
-    setDateSearchQuery("")
-    setTypeSearchQuery("")
-    setSourceSearchQuery("")
+    const emptyFilters = {
+      leadCode: "",
+      fromDate: "",
+      toDate: "",
+      assignedBdm: "",
+      priority: "",
+      leadType: "",
+      leadSource: "",
+    }
+    setFilters(emptyFilters)
+    setAppliedFilters(emptyFilters)
     setCurrentPage(1)
     setShowMobileFilters(false)
+  }
+
+  const handleExport = async (format) => {
+    try {
+      setIsExporting(true)
+      setError(null)
+
+      await leadService.exportSSEWonLeads(
+        format,
+        userId,
+        appliedFilters.leadCode,
+        appliedFilters.fromDate,
+        appliedFilters.toDate,
+        appliedFilters.assignedBdm,
+        appliedFilters.priority,
+        appliedFilters.leadType,
+        appliedFilters.leadSource,
+      )
+
+      setSuccessMessage(`Leads exported successfully as ${format.toUpperCase()}`)
+      setTimeout(() => setSuccessMessage(null), 3000)
+      setShowExportOptions(false)
+    } catch (error) {
+      console.error("Export error:", error)
+      setError("Failed to export leads: " + (error.message || "Unknown error"))
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const Capitalize = (str) => {
@@ -218,34 +275,77 @@ function SSEWonLeads() {
 
       {/* Employee List */}
       <div className="bg-white rounded-xl shadow-sm p-3 md:p-6 mx-2 md:mx-0">
-        {/* Mobile Filter Toggle */}
+        {/* Mobile Header */}
         <div className="md:hidden flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-800">Won Leads</h2>
-          <button
-            onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium"
-          >
-            <FiFilter className="w-4 h-4" />
-            Filters
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium"
+            >
+              <FiFilter className="w-4 h-4" />
+              Filters
+            </button>
+            {/* <button
+              onClick={() => setShowExportOptions(true)}
+              className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium"
+            >
+              <FiDownload className="w-4 h-4" />
+              Export
+            </button> */}
+          </div>
+        </div>
+
+        {/* Desktop Header */}
+        <div className="hidden md:flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-semibold text-gray-800">Won Leads</h2>
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <input
+                type="search"
+                placeholder="Search Lead ID..."
+                value={filters.leadCode}
+                onChange={(e) => handleFilterChange("leadCode", e.target.value)}
+                className="text-sm pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiSearch className="w-5 h-5 text-gray-400" />
+              </div>
+            </div>
+            {/* <button
+              onClick={() => setShowExportOptions(true)}
+              className="flex items-center gap-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+            >
+              <FiDownload className="w-5 h-5" />
+              Export
+            </button> */}
+          </div>
         </div>
 
         {/* Desktop Filters */}
         <div className="hidden md:flex mb-6 min-w-full flex-wrap items-center gap-4">
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Received </label>
-            <input
-              type="date"
-              value={dateSearchQuery}
-              onChange={(e) => handleFilterChange("date", e.target.value)}
-              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-            />
+            <div className="flex gap-2">
+              <input
+                type="date"
+                value={filters.fromDate}
+                onChange={(e) => handleFilterChange("fromDate", e.target.value)}
+                className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              />
+              <input
+                type="date"
+                value={filters.toDate}
+                onChange={(e) => handleFilterChange("toDate", e.target.value)}
+                className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              />
+            </div>
           </div>
 
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">Priority </label>
             <select
-              value={searchQuery}
+              value={filters.priority}
               onChange={(e) => handleFilterChange("priority", e.target.value)}
               name="lead_priority"
               className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
@@ -260,8 +360,8 @@ function SSEWonLeads() {
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Type </label>
             <select
-              value={typeSearchQuery}
-              onChange={(e) => handleFilterChange("type", e.target.value)}
+              value={filters.leadType}
+              onChange={(e) => handleFilterChange("leadType", e.target.value)}
               name="lead_type"
               className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             >
@@ -277,8 +377,8 @@ function SSEWonLeads() {
           <div>
             <label className="text-xs text-gray-700 mb-1 block">Source </label>
             <select
-              value={sourceSearchQuery}
-              onChange={(e) => handleFilterChange("source", e.target.value)}
+              value={filters.leadSource}
+              onChange={(e) => handleFilterChange("leadSource", e.target.value)}
               name="lead_source"
               className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
             >
@@ -291,7 +391,30 @@ function SSEWonLeads() {
             </select>
           </div>
 
+          <div>
+            <label className="text-xs text-gray-700 mb-1 block">Assigned BDM </label>
+            <select
+              value={filters.assignedBdm}
+              onChange={(e) => handleFilterChange("assignedBdm", e.target.value)}
+              name="assigned_bdm"
+              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+            >
+              <option value="">All BDMs</option>
+              {bdmList.map((bdm) => (
+                <option key={bdm.id} value={bdm.id}>
+                  {bdm.firstName} {bdm.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="self-end">
+            <button
+              onClick={applyFilters}
+              className="text-xs px-3 pl-3 pr-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md text-white transition-colors"
+            >
+              Apply Filters
+            </button>
             <button
               onClick={clearFilters}
               className="text-xs px-3 pl-3 pr-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm transition-colors"
@@ -310,19 +433,38 @@ function SSEWonLeads() {
             className="md:hidden mb-4 flex flex-col gap-3 pb-3 border-b border-gray-200"
           >
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Received</label>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead ID</label>
               <input
-                type="date"
-                value={dateSearchQuery}
-                onChange={(e) => handleFilterChange("date", e.target.value)}
+                type="search"
+                placeholder="Search Lead ID..."
+                value={filters.leadCode}
+                onChange={(e) => handleFilterChange("leadCode", e.target.value)}
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               />
             </div>
 
             <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Received</label>
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={filters.fromDate}
+                  onChange={(e) => handleFilterChange("fromDate", e.target.value)}
+                  className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                />
+                <input
+                  type="date"
+                  value={filters.toDate}
+                  onChange={(e) => handleFilterChange("toDate", e.target.value)}
+                  className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                />
+              </div>
+            </div>
+
+            <div>
               <label className="text-xs font-medium text-gray-700 mb-1 block">Priority</label>
               <select
-                value={searchQuery}
+                value={filters.priority}
                 onChange={(e) => handleFilterChange("priority", e.target.value)}
                 name="lead_priority"
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
@@ -337,8 +479,8 @@ function SSEWonLeads() {
             <div>
               <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Type</label>
               <select
-                value={typeSearchQuery}
-                onChange={(e) => handleFilterChange("type", e.target.value)}
+                value={filters.leadType}
+                onChange={(e) => handleFilterChange("leadType", e.target.value)}
                 name="lead_type"
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
@@ -354,8 +496,8 @@ function SSEWonLeads() {
             <div>
               <label className="text-xs text-gray-700 mb-1 block">Source</label>
               <select
-                value={sourceSearchQuery}
-                onChange={(e) => handleFilterChange("source", e.target.value)}
+                value={filters.leadSource}
+                onChange={(e) => handleFilterChange("leadSource", e.target.value)}
                 name="lead_source"
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
@@ -368,7 +510,30 @@ function SSEWonLeads() {
               </select>
             </div>
 
+            <div>
+              <label className="text-xs text-gray-700 mb-1 block">Assigned BDM</label>
+              <select
+                value={filters.assignedBdm}
+                onChange={(e) => handleFilterChange("assignedBdm", e.target.value)}
+                name="assigned_bdm"
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All BDMs</option>
+                {bdmList.map((bdm) => (
+                  <option key={bdm.id} value={bdm.id}>
+                    {bdm.firstName} {bdm.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex justify-end">
+              <button
+                onClick={applyFilters}
+                className="text-xs px-3 pl-3 pr-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md text-white transition-colors"
+              >
+                Apply Filters
+              </button>
               <button
                 onClick={clearFilters}
                 className="text-xs px-3 pl-3 pr-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm transition-colors"
@@ -717,6 +882,49 @@ function SSEWonLeads() {
           >
             <button
               onClick={() => setShowMigrateDialog(false)}
+              className="absolute right-4 top-4 p-1 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <FiX className="w-5 h-5 text-gray-500" />
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {showExportOptions && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+          onClick={() => setShowExportOptions(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0.95 }}
+            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-[400px] mx-4 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Export Options</h3>
+            <p className="text-sm text-gray-600 mb-4">Choose the format to export leads:</p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => handleExport("csv")}
+                disabled={isExporting}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-md text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Export as CSV
+              </button>
+              <button
+                onClick={() => handleExport("excel")}
+                disabled={isExporting}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md text-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Export as Excel
+              </button>
+            </div>
+            <button
+              onClick={() => setShowExportOptions(false)}
               className="absolute right-4 top-4 p-1 rounded-full hover:bg-gray-100 transition-colors"
             >
               <FiX className="w-5 h-5 text-gray-500" />

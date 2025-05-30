@@ -6,20 +6,15 @@ import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadSSEEditForm from "./LeadSSEEditForm"
-import { FiEdit2, FiAlertCircle, FiX, FiCheck, FiChevronRight, FiFilter } from "react-icons/fi"
+import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight, FiFilter, FiDownload, FiSearch } from "react-icons/fi"
 
 function SSENewLeads() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [unassignedleads, setLeads] = useState([])
-  const [filteredLeads, setFilteredLeads] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [dateSearchQuery, setDateSearchQuery] = useState("")
   const [selectedLead, setSelectedLead] = useState(null)
   const [showForm, setShowForm] = useState(false)
-  const [showWarningForm, setShowWarningForm] = useState(false)
-  const [showTerminationForm, setShowTerminationForm] = useState(false)
   const { user } = useAuth()
   var userId = ""
 
@@ -27,19 +22,38 @@ function SSENewLeads() {
     userId = user.userId
   }
 
-  const [showMigrateDialog, setShowMigrateDialog] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
   const [isExporting, setIsExporting] = useState(false)
-  const [isImporting, setIsImporting] = useState(false)
   const [sourcelist, setSourcelist] = useState([])
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
+  const [bdmList, setBdmList] = useState([])
 
-  // Add new state variables for lead type and source filters
-  const [typeSearchQuery, setTypeSearchQuery] = useState("")
-  const [sourceSearchQuery, setSourceSearchQuery] = useState("")
+  // Filter states - separate from applied filters
+  const [filters, setFilters] = useState({
+    leadCode: "",
+    fromDate: "",
+    toDate: "",
+    assignedBdm: "",
+    priority: "",
+    leadType: "",
+    leadSource: "",
+  })
 
-  // Mobile filter state
+  // Applied filters state (what's actually sent to API)
+  const [appliedFilters, setAppliedFilters] = useState({
+    leadCode: "",
+    fromDate: "",
+    toDate: "",
+    assignedBdm: "",
+    priority: "",
+    leadType: "",
+    leadSource: "",
+  })
+
+  // Export and mobile states
+  const [exportFormat, setExportFormat] = useState("csv")
+  const [showExportOptions, setShowExportOptions] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   // Pagination state
@@ -63,20 +77,24 @@ function SSENewLeads() {
         userId,
         page,
         leadsPerPage,
-        searchQuery,
-        dateSearchQuery,
-        typeSearchQuery,
-        sourceSearchQuery,
+        appliedFilters.leadCode,
+        appliedFilters.fromDate,
+        appliedFilters.toDate,
+        appliedFilters.assignedBdm,
+        appliedFilters.priority,
+        appliedFilters.leadType,
+        appliedFilters.leadSource,
       )
       setLeads(data.results || [])
       setTotalPages(data.totalPages || 1)
       setTotalResults(data.totalResults || 0)
       setLoading(false)
     } catch (error) {
-      setError("Failed to fetch leads")
+      console.error("Error fetching leads:", error)
+      setError("Failed to fetch leads: " + (error.message || "Unknown error"))
       setLoading(false)
     }
-  }, [currentPage, leadsPerPage, searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery, userId])
+  }, [currentPage, leadsPerPage, appliedFilters, userId])
 
   useEffect(() => {
     fetchLeads()
@@ -87,24 +105,26 @@ function SSENewLeads() {
 
   const fetchSourceTypeData = async () => {
     try {
-      const [leadSource, leadType, leadProductType] = await Promise.all([
+      const [leadSource, leadType, leadProductType, bdmData] = await Promise.all([
         leadService.getLeadSourceList(),
         leadService.getLeadTypeList(),
         leadService.getLeadProductTypeList(),
+        leadService.getBDMList(),
       ])
       setSourcelist(leadSource)
       setTypelist(leadType)
       setProductTypelist(leadProductType)
+      setBdmList(bdmData)
     } catch (err) {
       setError("Error while fetching data")
       console.error(err)
     }
   }
 
-  // Reset to first page when filters change
+  // Reset to first page when applied filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery])
+  }, [appliedFilters])
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber)
@@ -141,25 +161,60 @@ function SSENewLeads() {
     setShowForm(true)
   }
 
-  const handleFilterChange = (type, value) => {
-    if (type === "priority") {
-      setSearchQuery(value)
-    } else if (type === "date") {
-      setDateSearchQuery(value)
-    } else if (type === "type") {
-      setTypeSearchQuery(value)
-    } else if (type === "source") {
-      setSourceSearchQuery(value)
-    }
+  const handleFilterChange = (filterName, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [filterName]: value,
+    }))
+  }
+
+  const applyFilters = () => {
+    setAppliedFilters({ ...filters })
+    setShowMobileFilters(false)
   }
 
   const clearFilters = () => {
-    setSearchQuery("")
-    setDateSearchQuery("")
-    setTypeSearchQuery("")
-    setSourceSearchQuery("")
+    const emptyFilters = {
+      leadCode: "",
+      fromDate: "",
+      toDate: "",
+      assignedBdm: "",
+      priority: "",
+      leadType: "",
+      leadSource: "",
+    }
+    setFilters(emptyFilters)
+    setAppliedFilters(emptyFilters)
     setCurrentPage(1)
     setShowMobileFilters(false)
+  }
+
+  const handleExport = async (format) => {
+    try {
+      setIsExporting(true)
+      setError(null)
+
+      await leadService.exportSSELeads(
+        format,
+        userId,
+        appliedFilters.leadCode,
+        appliedFilters.fromDate,
+        appliedFilters.toDate,
+        appliedFilters.assignedBdm,
+        appliedFilters.priority,
+        appliedFilters.leadType,
+        appliedFilters.leadSource,
+      )
+
+      setSuccessMessage(`Leads exported successfully as ${format.toUpperCase()}`)
+      setTimeout(() => setSuccessMessage(null), 3000)
+      setShowExportOptions(false)
+    } catch (error) {
+      console.error("Export error:", error)
+      setError("Failed to export leads: " + (error.message || "Unknown error"))
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const Capitalize = (str) => {
@@ -247,18 +302,80 @@ function SSENewLeads() {
         {/* Mobile Header with Filter Toggle */}
         <div className="md:hidden flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-800">New Leads</h2>
-          <button
-            onClick={() => setShowMobileFilters(!showMobileFilters)}
-            className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium"
-          >
-            <FiFilter className="w-4 h-4" />
-            Filters
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="flex items-center gap-1 px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium"
+            >
+              <FiFilter className="w-4 h-4" />
+              Filters
+            </button>
+            {/* <div className="relative">
+              <button
+                onClick={() => setShowExportOptions(!showExportOptions)}
+                className="flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm"
+                disabled={isExporting}
+              >
+                <FiDownload className="w-4 h-4" />
+                {isExporting ? "..." : "Export"}
+              </button>
+              {showExportOptions && (
+                <div className="absolute right-0 mt-2 w-36 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleExport("csv")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      disabled={isExporting}
+                    >
+                      CSV
+                    </button>
+                    <button
+                      onClick={() => handleExport("excel")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      disabled={isExporting}
+                    >
+                      Excel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div> */}
+          </div>
         </div>
 
         {/* Desktop Header */}
         <div className="hidden md:flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-800">New Leads</h2>
+          {/* <div className="relative">
+            <button
+              onClick={() => setShowExportOptions(!showExportOptions)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+              disabled={isExporting}
+            >
+              <FiDownload className="w-4 h-4" />
+              {isExporting ? "Exporting..." : "Export"}
+            </button>
+            {showExportOptions && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                <div className="py-1">
+                  <button
+                    onClick={() => handleExport("csv")}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    disabled={isExporting}
+                  >
+                    Export as CSV
+                  </button>
+                  <button
+                    onClick={() => handleExport("excel")}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    disabled={isExporting}
+                  >
+                    Export as Excel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div> */}
         </div>
 
         {/* Mobile Filters */}
@@ -270,21 +387,61 @@ function SSENewLeads() {
             className="md:hidden mb-4 flex flex-col gap-3 pb-3 border-b border-gray-200"
           >
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Received</label>
-              <input
-                type="date"
-                value={dateSearchQuery}
-                onChange={(e) => handleFilterChange("date", e.target.value)}
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+              <div className="relative">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  value={filters.leadCode}
+                  onChange={(e) => handleFilterChange("leadCode", e.target.value)}
+                  placeholder="Search by lead code..."
+                  className="w-full text-xs pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">From Date</label>
+                <input
+                  type="date"
+                  value={filters.fromDate}
+                  onChange={(e) => handleFilterChange("fromDate", e.target.value)}
+                  className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">To Date</label>
+                <input
+                  type="date"
+                  value={filters.toDate}
+                  onChange={(e) => handleFilterChange("toDate", e.target.value)}
+                  className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Assigned BDM</label>
+              <select
+                value={filters.assignedBdm}
+                onChange={(e) => handleFilterChange("assignedBdm", e.target.value)}
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-              />
+              >
+                <option value="">All BDM</option>
+                {bdmList.map((bdm) => (
+                  <option key={bdm.id} value={bdm.id}>
+                    {bdm.firstName} {bdm.lastName}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
               <label className="text-xs font-medium text-gray-700 mb-1 block">Priority</label>
               <select
-                value={searchQuery}
+                value={filters.priority}
                 onChange={(e) => handleFilterChange("priority", e.target.value)}
-                name="lead_priority"
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="">All Priorities</option>
@@ -297,9 +454,8 @@ function SSENewLeads() {
             <div>
               <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Type</label>
               <select
-                value={typeSearchQuery}
-                onChange={(e) => handleFilterChange("type", e.target.value)}
-                name="lead_type"
+                value={filters.leadType}
+                onChange={(e) => handleFilterChange("leadType", e.target.value)}
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="">All Types</option>
@@ -314,9 +470,8 @@ function SSENewLeads() {
             <div>
               <label className="text-xs text-gray-700 mb-1 block">Source</label>
               <select
-                value={sourceSearchQuery}
-                onChange={(e) => handleFilterChange("source", e.target.value)}
-                name="lead_source"
+                value={filters.leadSource}
+                onChange={(e) => handleFilterChange("leadSource", e.target.value)}
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="">All Sources</option>
@@ -328,84 +483,135 @@ function SSENewLeads() {
               </select>
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-between gap-2">
               <button
                 onClick={clearFilters}
-                className="text-xs px-3 pl-3 pr-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm transition-colors"
+                className="text-xs px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
               >
                 Clear Filters
+              </button>
+              <button
+                onClick={applyFilters}
+                className="text-xs px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+              >
+                Apply Filters
               </button>
             </div>
           </motion.div>
         )}
 
         {/* Desktop Filters */}
-        <div className="hidden md:flex mb-6 min-w-full flex-wrap items-center gap-4">
-          <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Received </label>
-            <input
-              type="date"
-              value={dateSearchQuery}
-              onChange={(e) => handleFilterChange("date", e.target.value)}
-              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-            />
+        <div className="hidden md:block mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+              <div className="relative">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  value={filters.leadCode}
+                  onChange={(e) => handleFilterChange("leadCode", e.target.value)}
+                  placeholder="Search by lead code..."
+                  className="w-full text-xs pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">From Date</label>
+              <input
+                type="date"
+                value={filters.fromDate}
+                onChange={(e) => handleFilterChange("fromDate", e.target.value)}
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">To Date</label>
+              <input
+                type="date"
+                value={filters.toDate}
+                onChange={(e) => handleFilterChange("toDate", e.target.value)}
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Assigned BDM</label>
+              <select
+                value={filters.assignedBdm}
+                onChange={(e) => handleFilterChange("assignedBdm", e.target.value)}
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All BDM</option>
+                {bdmList.map((bdm) => (
+                  <option key={bdm.id} value={bdm.id}>
+                    {bdm.firstName} {bdm.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Priority</label>
+              <select
+                value={filters.priority}
+                onChange={(e) => handleFilterChange("priority", e.target.value)}
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All Priorities</option>
+                <option value="cold">Cold</option>
+                <option value="hot">Hot</option>
+                <option value="warm">Warm</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Type</label>
+              <select
+                value={filters.leadType}
+                onChange={(e) => handleFilterChange("leadType", e.target.value)}
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All Types</option>
+                {typelist.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-700 mb-1 block">Source</label>
+              <select
+                value={filters.leadSource}
+                onChange={(e) => handleFilterChange("leadSource", e.target.value)}
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All Sources</option>
+                {sourcelist.map((source) => (
+                  <option key={source.id} value={source.id}>
+                    {source.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Priority </label>
-            <select
-              value={searchQuery}
-              onChange={(e) => handleFilterChange("priority", e.target.value)}
-              name="lead_priority"
-              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-            >
-              <option value="">All Priorities</option>
-              <option value="cold">Cold</option>
-              <option value="hot">Hot</option>
-              <option value="warm">Warm</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Type </label>
-            <select
-              value={typeSearchQuery}
-              onChange={(e) => handleFilterChange("type", e.target.value)}
-              name="lead_type"
-              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-            >
-              <option value="">All Types</option>
-              {typelist.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-xs text-gray-700 mb-1 block">Source </label>
-            <select
-              value={sourceSearchQuery}
-              onChange={(e) => handleFilterChange("source", e.target.value)}
-              name="lead_source"
-              className="text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-            >
-              <option value="">All Sources</option>
-              {sourcelist.map((source) => (
-                <option key={source.id} value={source.id}>
-                  {source.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="self-end">
+          <div className="flex justify-between items-center">
             <button
               onClick={clearFilters}
-              className="text-xs px-3 pl-3 pr-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm transition-colors"
+              className="text-xs px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
             >
               Clear Filters
+            </button>
+            <button
+              onClick={applyFilters}
+              className="text-xs px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors font-medium"
+            >
+              Apply Filters
             </button>
           </div>
         </div>
@@ -660,36 +866,6 @@ function SSENewLeads() {
           {Math.min(currentPage * leadsPerPage, totalResults)} of {totalResults} leads
         </div>
       </div>
-
-      {showMigrateDialog && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-          onClick={() => setShowMigrateDialog(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.95 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0.95 }}
-            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-[600px] mx-4 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowMigrateDialog(false)}
-              className="absolute right-4 top-4 p-1 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <FiX className="w-5 h-5 text-gray-500" />
-            </button>
-
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Migrate Employee Data</h2>
-              <p className="text-sm text-gray-500 mt-1">Export your current data or import new data</p>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
 
       {/* Modals */}
       <AnimatePresence>
