@@ -23,6 +23,8 @@ function SalesTLWonLeads() {
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
   const [employeeList, setEmployeeList] = useState([])
+  const [sseList, setSseList] = useState([])
+  const [bdmList, setBdmList] = useState([])
 
   // Enhanced filter states - separate current filters from applied filters
   const [filters, setFilters] = useState({
@@ -145,14 +147,18 @@ function SalesTLWonLeads() {
 
   const fetchSourceTypeData = async () => {
     try {
-      const [leadSource, leadType, leadProductType] = await Promise.all([
+      const [leadSource, leadType, leadProductType,sseData, bdmData] = await Promise.all([
         leadService.getLeadSourceList(),
         leadService.getLeadTypeList(),
         leadService.getLeadProductTypeList(),
+        leadService.getSSEList(),
+        leadService.getBDMList()
       ])
       setSourcelist(leadSource)
       setTypelist(leadType)
       setProductTypelist(leadProductType)
+      setSseList(sseData)
+      setBdmList(bdmData)
     } catch (err) {
       setError("Error while fetching data")
       console.error(err)
@@ -170,7 +176,7 @@ function SalesTLWonLeads() {
       }
     }
 
-    fetchEmployeeData()
+    //fetchEmployeeData()
   }, [])
 
   const handleFilterChange = (key, value) => {
@@ -312,6 +318,21 @@ function SalesTLWonLeads() {
     if (lead.assigned_bdm !== null) {
       return {
         label: `${lead.assigned_bdm.firstName} ${lead.assigned_bdm.lastName}`,
+        className: "",
+      }
+    } else {
+      return {
+        label: "N/A",
+        className: "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20",
+      }
+    }
+  }
+
+
+  const getSSEStatus = (lead) => {
+    if (lead.assigned_bdm !== null) {
+      return {
+        label: `${lead.assigned_sse.firstName} ${lead.assigned_sse.lastName}`,
         className: "",
       }
     } else {
@@ -507,13 +528,11 @@ function SalesTLWonLeads() {
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="">All SSEs</option>
-                {employeeList
-                  .filter((emp) => emp.role === "SSE")
-                  .map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.firstName} {employee.lastName}
-                    </option>
-                  ))}
+                {sseList.map((sse) => (
+                  <option key={sse.id} value={sse.id}>
+                    {sse.firstName} {sse.lastName}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -525,13 +544,11 @@ function SalesTLWonLeads() {
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="">All BDMs</option>
-                {employeeList
-                  .filter((emp) => emp.role === "BDM")
-                  .map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.firstName} {employee.lastName}
-                    </option>
-                  ))}
+                {bdmList.map((bdm) => (
+                  <option key={bdm.id} value={bdm.id}>
+                    {bdm.firstName} {bdm.lastName}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -641,13 +658,11 @@ function SalesTLWonLeads() {
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="">All SSEs</option>
-                {employeeList
-                  .filter((emp) => emp.role === "SSE")
-                  .map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.firstName} {employee.lastName}
-                    </option>
-                  ))}
+                {sseList.map((sse) => (
+                  <option key={sse.id} value={sse.id}>
+                    {sse.firstName} {sse.lastName}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -659,13 +674,11 @@ function SalesTLWonLeads() {
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="">All BDMs</option>
-                {employeeList
-                  .filter((emp) => emp.role === "BDM")
-                  .map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.firstName} {employee.lastName}
-                    </option>
-                  ))}
+                {bdmList.map((bdm) => (
+                  <option key={bdm.id} value={bdm.id}>
+                    {bdm.firstName} {bdm.lastName}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -761,6 +774,7 @@ function SalesTLWonLeads() {
                       "Middle Man Client Name",
                       "Lead Type",
                       "Product Type",
+                      "Asssigned SSE",
                       "Assigned BDM",
                       "Status",
                       "Action",
@@ -787,6 +801,7 @@ function SalesTLWonLeads() {
                     unassignedleads.map((lead) => {
                       const bdmStatus = getBDMStatus(lead)
                       const leadStatus = getLeadStatus(lead)
+                      const sseStatus = getSSEStatus(lead)
 
                       return (
                         <motion.tr
@@ -830,6 +845,20 @@ function SalesTLWonLeads() {
                           <td className="px-6 py-4">
                             <div className="text-xs font-medium text-gray-900">
                               {getProductTypes(lead.lead_product_type)}
+                            </div>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-medium text-gray-900">
+                              {sseStatus.className ? (
+                                <span
+                                  className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${sseStatus.className}`}
+                                >
+                                  {sseStatus.label}
+                                </span>
+                              ) : (
+                                sseStatus.label
+                              )}
                             </div>
                           </td>
 
@@ -887,6 +916,7 @@ function SalesTLWonLeads() {
                   {unassignedleads.map((lead) => {
                     const bdmStatus = getBDMStatus(lead)
                     const leadStatus = getLeadStatus(lead)
+                    const sseStatus = getSSEStatus(lead)
 
                     return (
                       <motion.div
@@ -937,6 +967,19 @@ function SalesTLWonLeads() {
                               >
                                 {leadStatus.label}
                               </span>
+                            )}
+                          </div>
+
+                          <div className="text-gray-500">SSE:</div>
+                          <div>
+                            {sseStatus.className ? (
+                              <span
+                                className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${sseStatus.className}`}
+                              >
+                                {sseStatus.label}
+                              </span>
+                            ) : (
+                              sseStatus.label
                             )}
                           </div>
 

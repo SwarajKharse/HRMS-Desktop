@@ -23,6 +23,8 @@ function AssignLeadsToBDM() {
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
   const [employeeList, setEmployeeList] = useState([])
+  const [sseList, setSseList] = useState([])
+  const [bdmList, setBdmList] = useState([])
 
   // Filter states
   const [filters, setFilters] = useState({
@@ -112,18 +114,22 @@ function AssignLeadsToBDM() {
 
   const fetchSourceTypeData = async () => {
     try {
-      const [leadSource, leadType, leadProductType] = await Promise.all([
+      const [leadSource, leadType, leadProductType,sseData, bdmData] = await Promise.all([
         leadService.getLeadSourceList(),
         leadService.getLeadTypeList(),
         leadService.getLeadProductTypeList(),
+        leadService.getSSEList(),
+        leadService.getBDMList(),
         //leadService.getEmployeeList()
       ])
       setSourcelist(leadSource)
       setTypelist(leadType)
       setProductTypelist(leadProductType)
+      setSseList(sseData)
+      setBdmList(bdmData)
       //setEmployeeList(employees)
     } catch (err) {
-      setError("Error while fetching data")
+      setError("Error while fetching data "+err)
       console.error(err)
     }
   }
@@ -281,6 +287,20 @@ function AssignLeadsToBDM() {
     if (lead.assigned_bdm !== null) {
       return {
         label: `${lead.assigned_bdm.firstName} ${lead.assigned_bdm.lastName}`,
+        className: "",
+      }
+    } else {
+      return {
+        label: "Pending",
+        className: "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20",
+      }
+    }
+  }
+
+  const getSSEStatus = (lead) => {
+    if (lead.assigned_bdm !== null) {
+      return {
+        label: `${lead.assigned_sse.firstName} ${lead.assigned_sse.lastName}`,
         className: "",
       }
     } else {
@@ -456,10 +476,10 @@ function AssignLeadsToBDM() {
                 onChange={(e) => handleFilterChange("assignedSse", e.target.value)}
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
-                <option value="">All SSEs</option>
-                {employeeList.filter(emp => emp.role === 'SSE').map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.firstName} {employee.lastName}
+               <option value="">All SSEs</option>
+                {sseList.map((sse) => (
+                  <option key={sse.id} value={sse.id}>
+                    {sse.firstName} {sse.lastName}
                   </option>
                 ))}
               </select>
@@ -473,9 +493,9 @@ function AssignLeadsToBDM() {
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="">All BDMs</option>
-                {employeeList.filter(emp => emp.role === 'BDM').map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.firstName} {employee.lastName}
+                {bdmList.map((bdm) => (
+                  <option key={bdm.id} value={bdm.id}>
+                    {bdm.firstName} {bdm.lastName}
                   </option>
                 ))}
               </select>
@@ -587,9 +607,9 @@ function AssignLeadsToBDM() {
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="">All SSEs</option>
-                {employeeList.filter(emp => emp.role === 'SSE').map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.firstName} {employee.lastName}
+                {sseList.map((bdm) => (
+                  <option key={bdm.id} value={bdm.id}>
+                    {bdm.firstName} {bdm.lastName}
                   </option>
                 ))}
               </select>
@@ -603,9 +623,9 @@ function AssignLeadsToBDM() {
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               >
                 <option value="">All BDMs</option>
-                {employeeList.filter(emp => emp.role === 'BDM').map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.firstName} {employee.lastName}
+                {bdmList.map((bdm) => (
+                  <option key={bdm.id} value={bdm.id}>
+                    {bdm.firstName} {bdm.lastName}
                   </option>
                 ))}
               </select>
@@ -703,6 +723,7 @@ function AssignLeadsToBDM() {
                       "Middle Man Client Name",
                       "Lead Type",
                       "Product Type",
+                      "Assigned SSE",
                       "Assigned BDM",
                       "Visit Status",
                       "Actions",
@@ -729,6 +750,7 @@ function AssignLeadsToBDM() {
                     unassignedleads.map((lead) => {
                       const visitStatus = getVisitStatus(lead)
                       const bdmStatus = getBDMStatus(lead)
+                      const sseStatus = getSSEStatus(lead)
 
                       return (
                         <motion.tr
@@ -772,6 +794,20 @@ function AssignLeadsToBDM() {
                           <td className="px-6 py-4">
                             <div className="text-xs font-medium text-gray-900">
                               {getProductTypes(lead.lead_product_type)}
+                            </div>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-medium text-gray-900">
+                              {sseStatus.className ? (
+                                <span
+                                  className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${sseStatus.className}`}
+                                >
+                                  {sseStatus.label}
+                                </span>
+                              ) : (
+                                sseStatus.label
+                              )}
                             </div>
                           </td>
 
@@ -827,6 +863,7 @@ function AssignLeadsToBDM() {
                   {unassignedleads.map((lead) => {
                     const visitStatus = getVisitStatus(lead)
                     const bdmStatus = getBDMStatus(lead)
+                    const sseStatus = getSSEStatus(lead)
 
                     return (
                       <motion.div
@@ -868,6 +905,20 @@ function AssignLeadsToBDM() {
                           <div className="font-medium">
                             {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
                           </div>
+
+                          <div className="text-gray-500">SSE:</div>
+                          <div>
+                            {sseStatus.className ? (
+                              <span
+                                className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${sseStatus.className}`}
+                              >
+                                {sseStatus.label}
+                              </span>
+                            ) : (
+                              sseStatus.label
+                            )}
+                          </div>
+
 
                           <div className="text-gray-500">BDM:</div>
                           <div>
