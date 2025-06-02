@@ -18,6 +18,7 @@ export const PermissionsProvider = ({ children }) => {
 
           if (empId) {
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/permission/emp/${empId}`);;
+            localStorage.setItem('userData', JSON.stringify(response.data.employee));
             setPermissions(response.data);
           }
         } catch (error) {
