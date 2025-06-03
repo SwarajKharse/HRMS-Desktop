@@ -6,7 +6,11 @@ import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
+import SalesTLHandOverForm from "./SalesTLHandOverForm"
 import { FiEdit2, FiAlertCircle, FiCheck, FiDownload, FiChevronRight, FiFilter, FiSearch } from "react-icons/fi"
+import { TbTransferIn } from "react-icons/tb";
+
+
 
 function SalesTLWonLeads() {
   const navigate = useNavigate()
@@ -15,6 +19,8 @@ function SalesTLWonLeads() {
   const [unassignedleads, setLeads] = useState([])
   const [selectedLead, setSelectedLead] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [handoverselectedLead, setHandOverSelectedLead] = useState(null)
+  const [showHandOverForm, setShowHandOverForm] = useState(false)
   const { user } = useAuth()
 
   const [successMessage, setSuccessMessage] = useState(null)
@@ -25,6 +31,7 @@ function SalesTLWonLeads() {
   const [employeeList, setEmployeeList] = useState([])
   const [sseList, setSseList] = useState([])
   const [bdmList, setBdmList] = useState([])
+  const [showHandoverButton, setShowHandoverButton] = useState([])
 
   // Enhanced filter states - separate current filters from applied filters
   const [filters, setFilters] = useState({
@@ -256,6 +263,14 @@ function SalesTLWonLeads() {
     setShowForm(true)
   }
 
+
+  const handleHandOverEdit = (e, id) => {
+    e.stopPropagation()
+    const lead = unassignedleads.find((emp) => emp.id === id)
+    setHandOverSelectedLead(lead)
+    setShowHandOverForm(true)
+  }
+
   const handleExport = async (format) => {
     try {
       setIsExporting(true)
@@ -340,6 +355,17 @@ function SalesTLWonLeads() {
         label: "N/A",
         className: "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20",
       }
+    }
+  }
+
+
+  const checkHandOverButton = (lead) => {
+    if (lead.leadStatus === "won") {
+      //setShowHandoverButton(true)
+      return true
+    } else {
+      //setShowHandoverButton(false)
+      return false
     }
   }
 
@@ -772,7 +798,6 @@ function SalesTLWonLeads() {
                       "Lead ID",
                       "Lead Priority",
                       "Middle Man Client Name",
-                      "Lead Type",
                       "Product Type",
                       "Asssigned SSE",
                       "Assigned BDM",
@@ -802,6 +827,7 @@ function SalesTLWonLeads() {
                       const bdmStatus = getBDMStatus(lead)
                       const leadStatus = getLeadStatus(lead)
                       const sseStatus = getSSEStatus(lead)
+                      //const showHandoverButtonFlag = checkHandOverButton(lead)
 
                       return (
                         <motion.tr
@@ -839,9 +865,9 @@ function SalesTLWonLeads() {
                               {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
                             </div>
                           </td>
-                          <td className="px-6 py-4">
+                          {/* <td className="px-6 py-4">
                             <div className="text-xs font-medium text-gray-900">{getLeadType(lead.lead_type)}</div>
-                          </td>
+                          </td> */}
                           <td className="px-6 py-4">
                             <div className="text-xs font-medium text-gray-900">
                               {getProductTypes(lead.lead_product_type)}
@@ -897,6 +923,16 @@ function SalesTLWonLeads() {
                               >
                                 <FiEdit2 size={18} />
                               </button>
+
+
+                              {lead.lead_status === "won" ?
+                              <button
+                                className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                onClick={(e) => handleHandOverEdit(e, lead.id)}
+                                title="HandOver to Project/AMC">
+                                <TbTransferIn size={18} />
+                              </button>
+                              : null }
                             </div>
                           </td>
                         </motion.tr>
@@ -1109,6 +1145,20 @@ function SalesTLWonLeads() {
             onClose={() => {
               setShowForm(false)
               setSelectedLead(null)
+            }}
+            onSubmit={handleAddEmployee}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showHandOverForm && (
+          <SalesTLHandOverForm
+            lead={handoverselectedLead}
+            activeTab="salestl-won-leads"
+            onClose={() => {
+              setShowHandOverForm(false)
+              setHandOverSelectedLead(null)
             }}
             onSubmit={handleAddEmployee}
           />
