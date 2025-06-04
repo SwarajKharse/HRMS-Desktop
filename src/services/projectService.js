@@ -3,13 +3,8 @@
 import axios from "axios"
 import { authService } from "./authService"
 
-//const BASE_URL = 'http://127.0.0.1:8081/api/lead';
 const BASE_URL = `${process.env.REACT_APP_API_URL}/project`
 
-
-//const { leadservice } = useAuth()
-
-// Add authorization headers to all requests
 const getAuthHeaders = () => {
   return {
     headers: {
@@ -19,15 +14,71 @@ const getAuthHeaders = () => {
 }
 
 export const projectService = {
-  createProject: async (leadData,id) => {
+  createOrUpdateProject: async (projectData, leadId) => {
     try {
-
-      console.log(leadData);
-      const response = await axios.post(`${BASE_URL}/create/${leadData.amc_or_project}/${id}`, leadData, getAuthHeaders())
+      console.log("Creating/Updating project:", projectData);
+      const response = await axios.post(
+        `${BASE_URL}/create/${projectData.amc_or_project}/${leadId}`, 
+        projectData, 
+        getAuthHeaders()
+      )
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
     }
   },
 
+  getProjectByLeadId: async (leadId) => {
+    try {
+      console.log("Fetching project for lead:", leadId);
+      const response = await axios.get(
+        `${BASE_URL}/lead/${leadId}`, 
+        getAuthHeaders()
+      )
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  createOrUpdateBOQ: async (projectId, boqData) => {
+    try {
+      console.log("Saving BOQ for project:", projectId, boqData);
+      const response = await axios.post(
+        `${BASE_URL}/${projectId}/boq`, 
+        boqData, 
+        getAuthHeaders()
+      )
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  getBOQ: async (projectId) => {
+    try {
+      console.log("Fetching BOQ for project:", projectId);
+      const response = await axios.get(
+        `${BASE_URL}/${projectId}/boq`, 
+        getAuthHeaders()
+      )
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  updateProjectTitle: async (projectId, newTitle) => {
+    try {
+      console.log("Updating project title:", projectId, newTitle);
+      const response = await axios.put(
+        `${BASE_URL}/${projectId}/title`, 
+        newTitle,
+        getAuthHeaders()
+      )
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
 }

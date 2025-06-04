@@ -213,7 +213,21 @@ export const storeService = {
         };
       }
     }
-  }
+  },
+
+  getProductsList: async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/getallproducts`, {
+        params: {},
+        ...getAuthHeaders()
+      });
+
+      return response;
+    } catch (error) {
+      console.error("Error in getProducts:", error);
+      throw error;
+    }
+  },
 
   /************** Product List End  **********************/
 
