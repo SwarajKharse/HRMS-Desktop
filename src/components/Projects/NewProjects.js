@@ -6,8 +6,11 @@ import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import { FiEdit2, FiAlertCircle, FiX, FiCheck, FiChevronRight, FiFilter } from "react-icons/fi"
+import { projectService } from "../../services/projectService"
+import ProjectLeadDetails from "./ProjectLeadDetails"
+import { all } from "axios"
 
-function BDMAssignedFieldVisit() {
+function NewProjects() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -41,6 +44,19 @@ function BDMAssignedFieldVisit() {
   const [typeSearchQuery, setTypeSearchQuery] = useState("")
   const [sourceSearchQuery, setSourceSearchQuery] = useState("")
 
+  // Applied filters state (what's actually sent to backend)
+  const [appliedFilters, setAppliedFilters] = useState({
+    leadCode: "",
+    fromDate: "",
+    toDate: "",
+    assignedSse: "",
+    assignedBdm: "",
+    priority: "",
+    leadType: "",
+    leadSource: "",
+  })
+
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -57,23 +73,36 @@ function BDMAssignedFieldVisit() {
 
       const page = currentPage - 1
 
-      const data = await leadService.getLeadsAssignesToBDM(userId,
+      /* const data = await leadService.getSalesTlWonLeads(
         page,
         leadsPerPage,
-        searchQuery,
-        dateSearchQuery,
-        typeSearchQuery,
-        sourceSearchQuery
+        appliedFilters.leadCode || "",
+        appliedFilters.fromDate || "",
+        appliedFilters.toDate || "",
+        appliedFilters.assignedSse || "",
+        appliedFilters.assignedBdm || "",
+        appliedFilters.priority || "",
+        appliedFilters.leadType || "",
+        appliedFilters.leadSource || "",
+      ) */
+
+      const projectData = await projectService.getNewProjects(
+        page,
+        leadsPerPage
       )
-      setLeads(data.results || [])
-      setTotalPages(data.totalPages || 1)
-      setTotalResults(data.totalResults || 0)
+
+      setLeads(projectData.content || [])
+      setTotalPages(projectData.totalPages || 1)
+      setTotalResults(projectData.totalResults || 0)
       setLoading(false)
+
+      console.log(unassignedleads);
+
     } catch (error) {
-      setError("Failed to fetch leads")
+      setError("Failed to fetch projects")
       setLoading(false)
     }
-  }, [currentPage, leadsPerPage, searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery,user?.orgId, userId])
+  }, [currentPage, leadsPerPage, user?.orgId, userId])
 
   useEffect(() => {
     fetchLeads()
@@ -82,7 +111,7 @@ function BDMAssignedFieldVisit() {
     }
   }, [fetchLeads, sourcelist.length])
 
-// Reset to first page when filters change
+  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery])
@@ -132,7 +161,8 @@ function BDMAssignedFieldVisit() {
 
   const handleEdit = (e, id) => {
     e.stopPropagation()
-    const lead = unassignedleads.find((emp) => emp.id === id)
+    const allLeads = [...new Set(unassignedleads.map(tag =>  tag.lead))];
+    const lead = allLeads.find((emp) => emp.id === id)
     console.log("Handle Edit")
     console.log(lead)
     setSelectedLead(lead)
@@ -234,10 +264,10 @@ function BDMAssignedFieldVisit() {
       <div className="bg-white rounded-xl shadow-sm p-3 md:p-6 mx-2 md:mx-0">
         {/* Mobile Filter Toggle */}
         <div className="md:hidden flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">New Projects</h2>   
+          <h2 className="text-lg font-semibold text-gray-800">New Projects</h2>
         </div>
 
-      
+
         {loading && (
           <div className="flex justify-center my-4">
             <div className="relative w-8 h-8">
@@ -264,8 +294,6 @@ function BDMAssignedFieldVisit() {
                       "Project ID",
                       "Project Name",
                       "Scope of Work",
-                      "Assigned Engg",
-                      "Date of assigning",
                       "Actions",
                     ]
                       .filter(Boolean)
@@ -287,53 +315,26 @@ function BDMAssignedFieldVisit() {
                       </td>
                     </tr>
                   ) : (
-                    unassignedleads.map((lead) => (
+                    unassignedleads.map((project) => (
                       <motion.tr
-                        key={lead.id}
+                        key={project.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="hover:bg-gray-50 cursor-pointer transition-colors group"
-                        onClick={() => handleRowClick(lead)}
+                        onClick={() => handleRowClick(project)}
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center">
                             <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                              {<span>{lead.lead_code}</span>}
+                              {<span>{project.lead.lead_code}</span>}
                             </div>
                           </div>
                         </td>
+
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
-                            <span
-                              className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${
-                                lead.lead_priority === "cold"
-                                  ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
-                                  : lead.lead_priority === "hot"
-                                    ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
-                                    : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
-                              }`}
-                            >
-                              {Capitalize(lead.lead_priority)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">
-                            {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">{getLeadType(lead.lead_type)}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">
-                            {formatDate(lead.visit_scheduled_date)}
-                            {fetchDateFromApi(lead.visit_scheduled_date) && (
-                              <span className="ml-2 px-2 py-1 inline-flex text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-600/20">
-                                Today
-                              </span>
-                            )}
+                            {project.project_name}
                           </div>
                         </td>
 
@@ -341,7 +342,18 @@ function BDMAssignedFieldVisit() {
                           <div className="flex items-center gap-4">
                             <button
                               className="text-gray-400 hover:text-indigo-600 transition-colors"
-                              onClick={(e) => handleEdit(e, lead.id)}
+                              onClick={(e) => handleEdit(e, project.id)}
+                              title="Edit">
+                              <label> BOQ </label>
+                            </button>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-4">
+                            <button
+                              className="text-gray-400 hover:text-indigo-600 transition-colors"
+                              onClick={(e) => handleEdit(e, project.lead.id)}
                               title="Edit"
                             >
                               <FiEdit2 size={18} />
@@ -385,13 +397,12 @@ function BDMAssignedFieldVisit() {
                         <div className="text-gray-500">Priority:</div>
                         <div>
                           <span
-                            className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${
-                              lead.lead_priority === "cold"
+                            className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${lead.lead_priority === "cold"
                                 ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
                                 : lead.lead_priority === "hot"
                                   ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
                                   : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
-                            }`}
+                              }`}
                           >
                             {Capitalize(lead.lead_priority)}
                           </span>
@@ -476,9 +487,8 @@ function BDMAssignedFieldVisit() {
                     key={pageNum}
                     onClick={() => handlePageChange(pageNum)}
                     disabled={loading}
-                    className={`px-3 py-1 rounded-md border text-sm ${
-                      currentPage === pageNum ? "bg-indigo-600 text-white" : "bg-white text-gray-600"
-                    }`}
+                    className={`px-3 py-1 rounded-md border text-sm ${currentPage === pageNum ? "bg-indigo-600 text-white" : "bg-white text-gray-600"
+                      }`}
                   >
                     {pageNum}
                   </button>
@@ -544,8 +554,8 @@ function BDMAssignedFieldVisit() {
 
       {/* Modals */}
       <AnimatePresence>
-       {/*  {showForm && (
-          <LeadEditForm
+         {showForm && (
+          <ProjectLeadDetails
             lead={selectedLead}
             activeTab="bdm-assigned-field-visit"
             onClose={() => {
@@ -554,10 +564,10 @@ function BDMAssignedFieldVisit() {
             }}
             onSubmit={handleAddEmployee}
           />
-        )} */}
+        )}
       </AnimatePresence>
     </div>
   )
 }
 
-export default BDMAssignedFieldVisit
+export default NewProjects

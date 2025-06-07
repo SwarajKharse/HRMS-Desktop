@@ -81,4 +81,25 @@ export const projectService = {
       throw error.response?.data || error.message
     }
   },
+
+  getNewProjects: async (page,leadsPerPage) => {
+    try {
+
+      const queryParams = {
+        page,
+        leadsPerPage,
+      }
+
+      const response = await axios.get(
+        `${BASE_URL}/getnewprojects`,
+        {
+          params : queryParams
+        },
+        getAuthHeaders()
+      )
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
 }
