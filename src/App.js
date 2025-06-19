@@ -33,7 +33,7 @@ import OrganizationPayrollSettings from "./pages/settings/OrganizationPayrollSet
 import AddLead from './pages/AddLead';
 import LeadsLising from './pages/LeadsListing';
 import Projects from './pages/Projects';
-import Store from './pages/Store';
+import ProductManagement from './pages/ProductManagement';
 
 function App() {
   return (
@@ -167,9 +167,9 @@ function App() {
                   </Layout>
               } />
 
-              <Route path="/store" element={
+              <Route path="/product-management" element={
                   <Layout>
-                    <Store />
+                    <ProductManagement />
                   </Layout>
               } />    
               <Route

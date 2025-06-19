@@ -1,7 +1,6 @@
 "use client"
 
 import axios from "axios"
-import { authService } from "./authService"
 
 const BASE_URL = `${process.env.REACT_APP_API_URL}/project`
 
@@ -16,11 +15,11 @@ const getAuthHeaders = () => {
 export const projectService = {
   createOrUpdateProject: async (projectData, leadId) => {
     try {
-      console.log("Creating/Updating project:", projectData);
+      console.log("Creating/Updating project:", projectData)
       const response = await axios.post(
-        `${BASE_URL}/create/${projectData.amc_or_project}/${leadId}`, 
-        projectData, 
-        getAuthHeaders()
+        `${BASE_URL}/create/${projectData.amc_or_project}/${leadId}`,
+        projectData,
+        getAuthHeaders(),
       )
       return response.data
     } catch (error) {
@@ -30,11 +29,8 @@ export const projectService = {
 
   getProjectByLeadId: async (leadId) => {
     try {
-      console.log("Fetching project for lead:", leadId);
-      const response = await axios.get(
-        `${BASE_URL}/lead/${leadId}`, 
-        getAuthHeaders()
-      )
+      console.log("Fetching project for lead:", leadId)
+      const response = await axios.get(`${BASE_URL}/lead/${leadId}`, getAuthHeaders())
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
@@ -43,25 +39,35 @@ export const projectService = {
 
   createOrUpdateBOQ: async (projectId, boqData) => {
     try {
-      console.log("Saving BOQ for project:", projectId, boqData);
-      const response = await axios.post(
-        `${BASE_URL}/${projectId}/boq`, 
-        boqData, 
-        getAuthHeaders()
-      )
+      console.log("Saving BOQ for project:", projectId, boqData)
+      const response = await axios.post(`${BASE_URL}/${projectId}/boq`, boqData, getAuthHeaders())
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
     }
   },
 
-  getBOQ: async (projectId) => {
+  // Fixed method name to match what frontend is calling
+  getBOQByProjectId: async (projectId) => {
     try {
-      console.log("Fetching BOQ for project:", projectId);
-      const response = await axios.get(
-        `${BASE_URL}/${projectId}/boq`, 
-        getAuthHeaders()
-      )
+      console.log("Fetching BOQ for project:", projectId)
+      const response = await axios.get(`${BASE_URL}/${projectId}/boq`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Keep the old method for backward compatibility
+  getBOQ: async (projectId) => {
+    return await projectService.getBOQByProjectId(projectId)
+  },
+
+  // New method for enhanced BOQ updates
+  updateBOQ: async (projectId, enhancedBOQData) => {
+    try {
+      console.log("Updating enhanced BOQ for project:", projectId, enhancedBOQData)
+      const response = await axios.put(`${BASE_URL}/${projectId}/boq`, enhancedBOQData, getAuthHeaders())
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
@@ -70,33 +76,25 @@ export const projectService = {
 
   updateProjectTitle: async (projectId, newTitle) => {
     try {
-      console.log("Updating project title:", projectId, newTitle);
-      const response = await axios.put(
-        `${BASE_URL}/${projectId}/title`, 
-        newTitle,
-        getAuthHeaders()
-      )
+      console.log("Updating project title:", projectId, newTitle)
+      const response = await axios.put(`${BASE_URL}/${projectId}/title`, newTitle, getAuthHeaders())
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
     }
   },
 
-  getNewProjects: async (page,leadsPerPage) => {
+  getNewProjects: async (page, leadsPerPage) => {
     try {
-
       const queryParams = {
         page,
-        leadsPerPage,
+        size: leadsPerPage, // Changed from leadsPerPage to size to match backend
       }
 
-      const response = await axios.get(
-        `${BASE_URL}/getnewprojects`,
-        {
-          params : queryParams
-        },
-        getAuthHeaders()
-      )
+      const response = await axios.get(`${BASE_URL}/getnewprojects`, {
+        params: queryParams,
+        ...getAuthHeaders(),
+      })
       return response.data
     } catch (error) {
       throw error.response?.data || error.message

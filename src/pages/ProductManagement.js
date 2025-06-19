@@ -9,7 +9,7 @@ import { TbCategoryPlus, TbBrandProducthunt  } from "react-icons/tb";
 import { useAuth } from "../contexts/AuthContext"
 import ProductList from "../components/Store/ProductList"
 
-function Projects() {
+function ProductManagement() {
   const { employee } = useAuth()
   const tabsContainerRef = useRef(null)
   const activeTabRef = useRef(null)
@@ -17,7 +17,7 @@ function Projects() {
   // Define available tabs based on employee designation
   const getAvailableTabs = () => {
     const allTabs = [
-      {
+      /* {
         id: "import-product-category",
         label: "Import Product Categories",
         icon: TbCategoryPlus,
@@ -29,7 +29,7 @@ function Projects() {
         label: "Import Product Sub Categories",
         icon: TiFlowChildren,
         component: ImportSubCategory,
-      },
+      }, */
 
       {
         id: "import-products",
@@ -155,4 +155,4 @@ function Projects() {
   )
 }
 
-export default Projects
+export default ProductManagement

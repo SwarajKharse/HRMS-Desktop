@@ -5,10 +5,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
-import { FiEdit2, FiAlertCircle, FiX, FiCheck, FiChevronRight, FiFilter } from "react-icons/fi"
+import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./ProjectLeadDetails"
-import { all } from "axios"
+import BOQEditComponent from "./BOQEditComponent"
 
 function NewProjects() {
   const navigate = useNavigate()
@@ -20,6 +20,8 @@ function NewProjects() {
   const [dateSearchQuery, setDateSearchQuery] = useState("")
   const [selectedLead, setSelectedLead] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [showBOQEdit, setShowBOQEdit] = useState(false)
+  const [selectedProject, setSelectedProject] = useState(null)
   const [showWarningForm, setShowWarningForm] = useState(false)
   const [showTerminationForm, setShowTerminationForm] = useState(false)
   const { user } = useAuth()
@@ -56,7 +58,6 @@ function NewProjects() {
     leadSource: "",
   })
 
-
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -73,31 +74,14 @@ function NewProjects() {
 
       const page = currentPage - 1
 
-      /* const data = await leadService.getSalesTlWonLeads(
-        page,
-        leadsPerPage,
-        appliedFilters.leadCode || "",
-        appliedFilters.fromDate || "",
-        appliedFilters.toDate || "",
-        appliedFilters.assignedSse || "",
-        appliedFilters.assignedBdm || "",
-        appliedFilters.priority || "",
-        appliedFilters.leadType || "",
-        appliedFilters.leadSource || "",
-      ) */
-
-      const projectData = await projectService.getNewProjects(
-        page,
-        leadsPerPage
-      )
+      const projectData = await projectService.getNewProjects(page, leadsPerPage)
 
       setLeads(projectData.content || [])
       setTotalPages(projectData.totalPages || 1)
       setTotalResults(projectData.totalResults || 0)
       setLoading(false)
 
-      console.log(unassignedleads);
-
+      console.log(unassignedleads)
     } catch (error) {
       setError("Failed to fetch projects")
       setLoading(false)
@@ -132,7 +116,6 @@ function NewProjects() {
     }
   }
 
-
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber)
     // Scroll to top on mobile when changing pages
@@ -161,12 +144,55 @@ function NewProjects() {
 
   const handleEdit = (e, id) => {
     e.stopPropagation()
-    const allLeads = [...new Set(unassignedleads.map(tag =>  tag.lead))];
+    const allLeads = [...new Set(unassignedleads.map((tag) => tag.lead))]
     const lead = allLeads.find((emp) => emp.id === id)
     console.log("Handle Edit")
     console.log(lead)
     setSelectedLead(lead)
     setShowForm(true)
+  }
+
+  const handleBOQEdit = async (e, project) => {
+    e.stopPropagation()
+    try {
+      setLoading(true)
+      // Fetch existing BOQ data for the project
+      const boqData = await projectService.getBOQByProjectId(project.id)
+      setSelectedProject({ ...project, boq: boqData })
+      setShowBOQEdit(true)
+    } catch (error) {
+      console.error("Error fetching BOQ data:", error)
+      // If no BOQ exists, create empty structure
+      setSelectedProject({
+        ...project,
+        boq: {
+          items: [],
+        },
+      })
+      setShowBOQEdit(true)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBOQSave = async (boqData) => {
+    try {
+      setLoading(true)
+      await projectService.updateBOQ(selectedProject.id, boqData)
+      setSuccessMessage("BOQ updated successfully!")
+      setShowBOQEdit(false)
+      setSelectedProject(null)
+
+      // Refresh the projects list
+      await fetchLeads()
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (error) {
+      setError("Failed to update BOQ: " + (error.message || error))
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleFilterChange = (type, value) => {
@@ -267,7 +293,6 @@ function NewProjects() {
           <h2 className="text-lg font-semibold text-gray-800">New Projects</h2>
         </div>
 
-
         {loading && (
           <div className="flex justify-center my-4">
             <div className="relative w-8 h-8">
@@ -290,27 +315,20 @@ function NewProjects() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {[
-                      "Project ID",
-                      "Project Name",
-                      "Scope of Work",
-                      "Actions",
-                    ]
-                      .filter(Boolean)
-                      .map((header) => (
-                        <th
-                          key={header}
-                          className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                        >
-                          {header}
-                        </th>
-                      ))}
+                    {["Project ID", "Project Name", "Scope of Work", "Actions"].filter(Boolean).map((header) => (
+                      <th
+                        key={header}
+                        className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      >
+                        {header}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {unassignedleads.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500 font-medium">
+                      <td colSpan="4" className="px-6 py-8 text-center text-gray-500 font-medium">
                         No projects found
                       </td>
                     </tr>
@@ -333,18 +351,17 @@ function NewProjects() {
                         </td>
 
                         <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">
-                            {project.project_name}
-                          </div>
+                          <div className="text-xs font-medium text-gray-900">{project.project_name}</div>
                         </td>
 
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <button
-                              className="text-gray-400 hover:text-indigo-600 transition-colors"
-                              onClick={(e) => handleEdit(e, project.id)}
-                              title="Edit">
-                              <label> BOQ </label>
+                              className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
+                              onClick={(e) => handleBOQEdit(e, project)}
+                              title="Edit BOQ"
+                            >
+                              BOQ
                             </button>
                           </div>
                         </td>
@@ -370,71 +387,46 @@ function NewProjects() {
             {/* Mobile Card View */}
             <div className="md:hidden">
               {unassignedleads.length === 0 ? (
-                <div className="p-4 text-center text-gray-500 font-medium">No leads found</div>
+                <div className="p-4 text-center text-gray-500 font-medium">No projects found</div>
               ) : (
                 <div className="divide-y divide-gray-200">
-                  {unassignedleads.map((lead) => (
+                  {unassignedleads.map((project) => (
                     <motion.div
-                      key={lead.id}
+                      key={project.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => handleRowClick(lead)}
+                      onClick={() => handleRowClick(project)}
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <div className="text-sm font-semibold text-gray-900">{lead.lead_code}</div>
-                        <button
-                          className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                          onClick={(e) => handleEdit(e, lead.id)}
-                          title="Edit"
-                        >
-                          <FiEdit2 size={16} />
-                        </button>
+                        <div className="text-sm font-semibold text-gray-900">{project.lead.lead_code}</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
+                            onClick={(e) => handleBOQEdit(e, project)}
+                            title="Edit BOQ"
+                          >
+                            BOQ
+                          </button>
+                          <button
+                            className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
+                            onClick={(e) => handleEdit(e, project.lead.id)}
+                            title="Edit"
+                          >
+                            <FiEdit2 size={16} />
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-y-2 text-xs">
-                        <div className="text-gray-500">Priority:</div>
-                        <div>
-                          <span
-                            className={`px-2 py-1 inline-flex text-xs font-semibold rounded-full ${lead.lead_priority === "cold"
-                                ? "bg-green-50 text-green-700 ring-1 ring-green-600/20"
-                                : lead.lead_priority === "hot"
-                                  ? "bg-red-50 text-red-700 ring-1 ring-red-600/20"
-                                  : "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-600/20"
-                              }`}
-                          >
-                            {Capitalize(lead.lead_priority)}
-                          </span>
-                        </div>
-
-                        <div className="text-gray-500">Client:</div>
-                        <div className="font-medium">
-                          {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
-                        </div>
-
-                        <div className="text-gray-500">Visit Date:</div>
-                        <div className="flex items-center gap-1">
-                          {formatDate(lead.visit_scheduled_date)}
-                          {fetchDateFromApi(lead.visit_scheduled_date) && (
-                            <span className="px-1.5 py-0.5 inline-flex text-xs font-semibold rounded-full bg-green-50 text-green-700 ring-1 ring-green-600/20">
-                              Today
-                            </span>
-                          )}
-                        </div>
-
-                        {expandedRows[lead.id] && (
-                          <>
-                            <div className="text-gray-500">Lead Type:</div>
-                            <div>{getLeadType(lead.lead_type)}</div>
-                          </>
-                        )}
+                      <div className="grid grid-cols-1 gap-y-2 text-xs">
+                        <div className="font-medium text-gray-900">{project.project_name}</div>
                       </div>
 
                       {/* Expand/collapse indicator */}
                       <div className="flex justify-center mt-2">
                         <FiChevronRight
-                          className={`text-gray-400 transition-transform ${expandedRows[lead.id] ? "rotate-90" : ""}`}
+                          className={`text-gray-400 transition-transform ${expandedRows[project.id] ? "rotate-90" : ""}`}
                           size={16}
                         />
                       </div>
@@ -446,7 +438,6 @@ function NewProjects() {
           </motion.div>
         </AnimatePresence>
 
-        {/* Pagination Controls */}
         {/* Pagination Controls */}
         {totalPages > 1 && (
           <div className="mt-4 flex justify-center items-center gap-2 flex-wrap">
@@ -487,8 +478,9 @@ function NewProjects() {
                     key={pageNum}
                     onClick={() => handlePageChange(pageNum)}
                     disabled={loading}
-                    className={`px-3 py-1 rounded-md border text-sm ${currentPage === pageNum ? "bg-indigo-600 text-white" : "bg-white text-gray-600"
-                      }`}
+                    className={`px-3 py-1 rounded-md border text-sm ${
+                      currentPage === pageNum ? "bg-indigo-600 text-white" : "bg-white text-gray-600"
+                    }`}
                   >
                     {pageNum}
                   </button>
@@ -518,43 +510,13 @@ function NewProjects() {
 
         <div className="mt-2 text-xs md:text-sm text-gray-500 text-center">
           Showing {unassignedleads.length > 0 ? (currentPage - 1) * leadsPerPage + 1 : 0} to{" "}
-          {Math.min(currentPage * leadsPerPage, totalResults)} of {totalResults} leads
+          {Math.min(currentPage * leadsPerPage, totalResults)} of {totalResults} projects
         </div>
       </div>
 
-      {showMigrateDialog && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-          onClick={() => setShowMigrateDialog(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.95 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0.95 }}
-            className="bg-white rounded-xl shadow-xl p-6 w-full max-w-[600px] mx-4 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShowMigrateDialog(false)}
-              className="absolute right-4 top-4 p-1 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <FiX className="w-5 h-5 text-gray-500" />
-            </button>
-
-            <div className="mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Migrate Employee Data</h2>
-              <p className="text-sm text-gray-500 mt-1">Export your current data or import new data</p>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-
       {/* Modals */}
       <AnimatePresence>
-         {showForm && (
+        {showForm && (
           <ProjectLeadDetails
             lead={selectedLead}
             activeTab="bdm-assigned-field-visit"
@@ -563,6 +525,19 @@ function NewProjects() {
               setSelectedLead(null)
             }}
             onSubmit={handleAddEmployee}
+          />
+        )}
+
+        {showBOQEdit && selectedProject && (
+          <BOQEditComponent
+            projectId={selectedProject.id}
+            projectName={selectedProject.project_name}
+            existingBOQ={selectedProject.boq}
+            onSave={handleBOQSave}
+            onClose={() => {
+              setShowBOQEdit(false)
+              setSelectedProject(null)
+            }}
           />
         )}
       </AnimatePresence>

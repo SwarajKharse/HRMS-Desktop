@@ -16,6 +16,8 @@ import {
 import { HiOutlineBuildingStorefront } from "react-icons/hi2";
 import { GrProjects } from "react-icons/gr";
 import { usePermissions } from "../contexts/PermissionsContext"
+import { RiProductHuntLine } from "react-icons/ri";
+
 
 import { FaUsers } from "react-icons/fa";
 import { useEffect } from 'react';
@@ -59,6 +61,8 @@ function Sidebar({logo}) {
     updatedNavItems.push({ icon: GrProjects, label: 'Projects', path: '/projects' });
 
     updatedNavItems.push({ icon: HiOutlineBuildingStorefront, label: 'Store', path: '/store' });
+
+    updatedNavItems.push({ icon: RiProductHuntLine, label: 'Product Management', path: '/product-management' });
 
     setNavItems(updatedNavItems);
   }, [permissions]);
