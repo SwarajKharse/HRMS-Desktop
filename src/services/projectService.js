@@ -63,11 +63,26 @@ export const projectService = {
     return await projectService.getBOQByProjectId(projectId)
   },
 
-  // New method for enhanced BOQ updates
+  // Enhanced method for BOQ updates with material requisitions
   updateBOQ: async (projectId, enhancedBOQData) => {
     try {
       console.log("Updating enhanced BOQ for project:", projectId, enhancedBOQData)
       const response = await axios.put(`${BASE_URL}/${projectId}/boq`, enhancedBOQData, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  // New method specifically for saving BOQ with material requisitions
+  saveBOQWithMaterialRequisition: async (projectId, enhancedBOQData) => {
+    try {
+      console.log("Saving BOQ with material requisitions for project:", projectId, enhancedBOQData)
+      const response = await axios.post(
+        `${BASE_URL}/${projectId}/boq/material-requisition`,
+        enhancedBOQData,
+        getAuthHeaders(),
+      )
       return response.data
     } catch (error) {
       throw error.response?.data || error.message

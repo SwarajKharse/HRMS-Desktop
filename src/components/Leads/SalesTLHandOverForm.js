@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { FiX, FiCalendar, FiUpload, FiFile, FiExternalLink, FiAlertCircle, FiCheck } from "react-icons/fi"
+import { FiX, FiUpload, FiFile, FiExternalLink, FiAlertCircle, FiCheck } from "react-icons/fi"
 import { authService } from "../../services/authService"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import { projectService } from "../../services/projectService"
-import ProductBOQSelector from '../Projects/ProductBOQSelector'
+import ProductBOQSelector from "../Projects/ProductBOQSelector"
 
 function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
@@ -54,7 +54,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const [isEditingProjectTitle, setIsEditingProjectTitle] = useState(false)
   const [editedProjectTitle, setEditedProjectTitle] = useState("")
 
-
   useEffect(() => {
     checkExistingProject()
   }, [lead.id])
@@ -69,6 +68,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   // Add state for BOQ data
   const [boqData, setBOQData] = useState(null)
   const [showBOQSelector, setShowBOQSelector] = useState(false)
+  const [existingBOQData, setExistingBOQData] = useState(null)
 
   // Add a function to fetch uploaded documents for the lead
   const fetchUploadedDocuments = async () => {
@@ -106,7 +106,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       fetchUploadedDocuments()
     }
 
-    if (activeTab === 'salestl-won-leads' && lead && lead.id) {
+    if (activeTab === "salestl-won-leads" && lead && lead.id) {
       fetchUploadedPOs()
     }
   }, [activeTab, lead])
@@ -127,9 +127,11 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
         onClick={() => onChange(!checked)}
       >
         <span
-          className={`${checked ? "translate-x-4" : "translate-x-0.5"
-            } inline-block transform rounded-full bg-white transition-transform ${size === "small" ? "h-3 w-3" : "h-5 w-5"
-            }`}
+          className={`${
+            checked ? "translate-x-4" : "translate-x-0.5"
+          } inline-block transform rounded-full bg-white transition-transform ${
+            size === "small" ? "h-3 w-3" : "h-5 w-5"
+          }`}
         />
       </button>
     )
@@ -191,29 +193,33 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
-
   const checkExistingProject = async () => {
     try {
       const projectData = await projectService.getProjectByLeadId(lead.id)
       if (projectData) {
         setExistingProject(projectData)
-        setProject(prev => ({
+        setProject((prev) => ({
           ...prev,
-          project_name: projectData.projectName
+          project_name: projectData.projectName,
         }))
         setEditedProjectTitle(projectData.projectName)
 
-        // If project has BOQ, load it
+        // If project has BOQ, load it and store it separately
         if (projectData.hasExistingBOQ && projectData.boq) {
-          setBOQData({
+          const existingBOQ = {
             project_id: projectData.projectId,
-            items: projectData.boq.items.map(item => ({
+            items: projectData.boq.items.map((item) => ({
+              id: item.id,
               product_id: item.product.id,
+              product: item.product,
               qty: item.totalQty,
+              totalQty: item.totalQty,
               make: item.make,
-              uom: item.uom
-            }))
-          })
+              uom: item.uom,
+            })),
+          }
+          setExistingBOQData(existingBOQ)
+          console.log("Loaded existing BOQ data:", existingBOQ)
         }
       }
     } catch (error) {
@@ -232,14 +238,14 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       await projectService.updateProjectTitle(existingProject.projectId, editedProjectTitle)
 
       // Update local state
-      setExistingProject(prev => ({
+      setExistingProject((prev) => ({
         ...prev,
-        projectName: editedProjectTitle
+        projectName: editedProjectTitle,
       }))
 
-      setProject(prev => ({
+      setProject((prev) => ({
         ...prev,
-        project_name: editedProjectTitle
+        project_name: editedProjectTitle,
       }))
 
       setIsEditingProjectTitle(false)
@@ -269,12 +275,15 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
 
   // Handle BOQ data save
   const handleBOQSave = (boqDataFromSelector, wasSavedToBackend = false) => {
+    console.log("BOQ Data received from selector:", boqDataFromSelector)
     setBOQData(boqDataFromSelector)
     setShowBOQSelector(false)
 
     if (wasSavedToBackend) {
       setSuccessMessage("BOQ saved successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
+      // Refresh the existing project data to get updated BOQ
+      checkExistingProject()
     }
 
     console.log("BOQ Data saved:", boqDataFromSelector)
@@ -288,35 +297,59 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
 
     const finalProjectName = existingProject
       ? existingProject.projectName
-      : (project.project_name === "other" ? project.custom_project_name : project.project_name)
+      : project.project_name === "other"
+        ? project.custom_project_name
+        : project.project_name
 
     try {
-      const processedData = {
-        amc_or_project: formData.amc_or_project,
-        lead: {
-          id: lead.id
-        },
-        project_name: finalProjectName,
-        employee_updatedby: {
-          id: userId,
+      // Validate required fields
+      if (formData.amc_or_project === "project") {
+        if (!finalProjectName || finalProjectName.trim() === "") {
+          throw new Error("Please select or enter a project name")
+        }
+
+        if (!boqData || !boqData.items || boqData.items.length === 0) {
+          throw new Error("Please create a BOQ with at least one item for the project")
         }
       }
 
-      console.log("Processed Data is ", processedData)
+      const processedData = {
+        amc_or_project: formData.amc_or_project,
+        project_name: finalProjectName,
+        employee_updatedby: {
+          id: userId,
+        },
+      }
 
-      // Create or update project
-      const projectResponse = await projectService.createOrUpdateProject(processedData, lead.id);
+      console.log("Processed Data is ", processedData)
+      console.log("BOQ Data to be saved:", boqData)
+      console.log("Lead ID IS   "+lead.id)
+
+      // Create or update project first - using the original working API call pattern
+      const projectResponse = await projectService.createOrUpdateProject(
+        processedData,
+        lead.id,
+      )
+      console.log("Project creation response:", projectResponse)
 
       // If BOQ data exists and project was created/updated successfully, save BOQ
-      if (formData.amc_or_project === 'project' && boqData && projectResponse) {
+      if (formData.amc_or_project === "project" && boqData && projectResponse && projectResponse.projectId) {
         try {
-          const projectIdForBOQ = projectResponse.projectId;
-          await projectService.createOrUpdateBOQ(projectIdForBOQ, boqData);
+          console.log("Saving BOQ for project ID:", projectResponse.projectId)
+          console.log("BOQ data being saved:", boqData)
+
+          await projectService.createOrUpdateBOQ(projectResponse.projectId, boqData)
+          console.log("BOQ saved successfully")
+
           setSuccessMessage("Project and BOQ saved successfully")
         } catch (boqError) {
-          console.error("BOQ creation failed:", boqError);
-          setSuccessMessage("Project saved successfully, but BOQ creation failed")
+          console.error("BOQ creation failed:", boqError)
+          setError("Project saved successfully, but BOQ creation failed: " + (boqError.message || boqError))
+          setLoading(false)
+          return
         }
+      } else if (formData.amc_or_project === "amc") {
+        setSuccessMessage("AMC handover successful")
       } else {
         setSuccessMessage("Lead handover successful")
       }
@@ -326,8 +359,8 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       await onSubmit()
       onClose()
     } catch (err) {
-      console.log(err)
-      setError(err.message || "Failed to update lead")
+      console.error("Handover error:", err)
+      setError(err.message || "Failed to complete handover")
       window.scrollTo(0, 0)
     } finally {
       setLoading(false)
@@ -379,11 +412,11 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     } else if (field === "amc_or_project") {
       setFormData({
         ...formData,
-        amc_or_project: value
+        amc_or_project: value,
       })
 
       // Reset BOQ data when switching between AMC and Project
-      if (value !== 'project') {
+      if (value !== "project") {
         setBOQData(null)
         setShowBOQSelector(false)
       }
@@ -416,9 +449,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
             ref={reference}
           />
         </label>
-        <span className="text-sm text-gray-500">
-          {name === 'lead_po' && poUpload ? poUpload : "No file chosen"}
-        </span>
+        <span className="text-sm text-gray-500">{name === "lead_po" && poUpload ? poUpload : "No file chosen"}</span>
       </div>
     </div>
   )
@@ -495,11 +526,11 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                   Product Type : {"  "}
                   {lead.lead_product_type !== null
                     ? lead.lead_product_type.map((country, itr) => {
-                      const ptlabel = matchingLabels(country, producttypelist).toString()
-                      return itr !== lead.lead_product_type.length - 1
-                        ? ptlabel + " , "
-                        : ptlabel.substring(0, ptlabel.length - 1)
-                    })
+                        const ptlabel = matchingLabels(country, producttypelist).toString()
+                        return itr !== lead.lead_product_type.length - 1
+                          ? ptlabel + " , "
+                          : ptlabel.substring(0, ptlabel.length - 1)
+                      })
                     : ""}
                 </label>
               </div>
@@ -513,14 +544,13 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                 </label>
               </div>
 
-              {lead.employee !== null && lead.employee.firstName !== null ?
+              {lead.employee !== null && lead.employee.firstName !== null ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Created By :
-                    {"  " + lead.employee.firstName + "  " + lead.employee.lastName}
+                    Created By :{"  " + lead.employee.firstName + "  " + lead.employee.lastName}
                   </label>
                 </div>
-                : null}
+              ) : null}
             </div>
           </div>
           {/* Basic Information Section End */}
@@ -853,11 +883,16 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               <>
                 {lead.salestl_approval_status == "1" ? (
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700">Shared Status:
-                      {formData.salestl_shared_status === "1" ? "Yes" : formData.salestl_shared_status === "0" ? "No" : "N/A"}</label>
+                    <label className="text-sm font-medium text-gray-700">
+                      Shared Status:
+                      {formData.salestl_shared_status === "1"
+                        ? "Yes"
+                        : formData.salestl_shared_status === "0"
+                          ? "No"
+                          : "N/A"}
+                    </label>
                   </div>
-                ) : null
-                }
+                ) : null}
               </>
               {/* Shared Status End */}
             </div>
@@ -868,11 +903,12 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
               <div className="flex items-center gap-2">
-                <label className="text-sm font-medium text-gray-700">Lead Status:{Capitalize(formData.lead_status)}</label>
+                <label className="text-sm font-medium text-gray-700">
+                  Lead Status:{Capitalize(formData.lead_status)}
+                </label>
               </div>
             </div>
-          ) : null
-          }
+          ) : null}
 
           {/* Upload PO, or update Rejection Reason */}
           <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -922,21 +958,20 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                 name="amc_or_project"
                 value={formData.amc_or_project}
                 onChange={(e) => handleTypeChange("amc_or_project", e.target.value)}
-                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200">
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
                 <option value="">Please select</option>
                 <option value="amc">AMC</option>
                 <option value="project">Project</option>
               </select>
             </div>
 
-            {formData.amc_or_project === 'project' && (
+            {formData.amc_or_project === "project" && (
               <>
                 {existingProject ? (
                   // Show existing project with edit option
                   <div>
-                    <label className="text-xs font-medium text-gray-700 mb-1 block">
-                      Existing Project
-                    </label>
+                    <label className="text-xs font-medium text-gray-700 mb-1 block">Existing Project</label>
                     <div className="flex items-center gap-2">
                       {isEditingProjectTitle ? (
                         <div className="flex items-center gap-2 flex-1">
@@ -982,8 +1017,8 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                       )}
                     </div>
                     <div className="mt-2 text-xs text-gray-500">
-                      Project ID: {existingProject.projectId} |
-                      Created: {new Date(existingProject.createdAt).toLocaleDateString()} |
+                      Project ID: {existingProject.projectId} | Created:{" "}
+                      {new Date(existingProject.createdAt).toLocaleDateString()} |
                       {existingProject.hasExistingBOQ ? " Has BOQ" : " No BOQ"}
                     </div>
                   </div>
@@ -995,7 +1030,8 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                       name="project_name"
                       value={project.project_name}
                       onChange={(e) => handleTypeChange("project_name", e.target.value)}
-                      className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200">
+                      className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                    >
                       <option value="">Please select</option>
                       <option value={lead.client_name}>{lead.client_name}</option>
                       <option value={lead.middle_man_client_name}>{lead.middle_man_client_name}</option>
@@ -1038,7 +1074,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                     <ProductBOQSelector
                       projectId={existingProject ? existingProject.projectId : lead.id}
                       onSave={handleBOQSave}
-                      existingBOQ={existingProject && existingProject.hasExistingBOQ ? existingProject.boq : null}
+                      existingBOQ={existingBOQData}
                       isEditMode={existingProject && existingProject.hasExistingBOQ}
                     />
                   )}
@@ -1063,11 +1099,38 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                           ? `${boqData.items.length} product(s) in BOQ`
                           : existingProject && existingProject.boq
                             ? `${existingProject.boq.items.length} product(s) in BOQ`
-                            : "BOQ data available"
-                        }
+                            : "BOQ data available"}
                       </div>
+
+                      {/* Show BOQ items preview */}
+                      {boqData && boqData.items && (
+                        <div className="mt-2 space-y-1">
+                          {boqData.items.slice(0, 3).map((item, index) => (
+                            <div key={index} className="text-xs text-gray-600">
+                              • {item.product_name || "Product"} - Qty: {item.qty} {item.uom}
+                            </div>
+                          ))}
+                          {boqData.items.length > 3 && (
+                            <div className="text-xs text-gray-500">... and {boqData.items.length - 3} more items</div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
+
+                  {/* Warning if no BOQ for project */}
+                  {formData.amc_or_project === "project" &&
+                    !boqData &&
+                    !(existingProject && existingProject.hasExistingBOQ) && (
+                      <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md mt-2">
+                        <div className="flex items-center">
+                          <FiAlertCircle className="text-yellow-600 mr-2" size={16} />
+                          <span className="text-xs text-yellow-800">
+                            A BOQ is required for project handover. Please create a BOQ before submitting.
+                          </span>
+                        </div>
+                      </div>
+                    )}
                 </div>
               </>
             )}

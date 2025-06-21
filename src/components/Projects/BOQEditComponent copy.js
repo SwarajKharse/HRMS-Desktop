@@ -28,96 +28,13 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
 
   // Initialize BOQ data
   useEffect(() => {
-    console.log("=== BOQ Data Debug ===")
-    console.log("Raw Existing BOQ:", JSON.stringify(existingBOQ, null, 2))
-
+    console.log("Existing BOQ:", existingBOQ)
     if (existingBOQ && existingBOQ.items && Array.isArray(existingBOQ.items)) {
       try {
-        const formattedProducts = existingBOQ.items.map((item, index) => {
-          console.log(`Processing item ${index}:`, JSON.stringify(item, null, 2))
-
+        const formattedProducts = existingBOQ.items.map((item) => {
           const product = item.product || {}
 
-          // FIXED: Map MTRs to materialRequisitions format (was looking for installments)
-          const materialRequisitions = (item.mtrs || []).map((mtr, mtrIndex) => {
-            console.log(`Processing MTR ${mtrIndex}:`, mtr)
-            return {
-              id: mtr.id || Date.now() + mtrIndex,
-              mtrQty: mtr.mtrQty || 0,
-              stockAlloted: mtr.stockAlloted || 0,
-              purchaseMTR: mtr.purchaseMTR || 0,
-              dcQty: mtr.dcQty || 0,
-              remarks: mtr.remarks || mtr.notes || "",
-              status: mtr.status || "Pending",
-              createdAt: mtr.createdAt || new Date().toISOString(),
-            }
-          })
-
-          console.log(`Mapped ${materialRequisitions.length} material requisitions for item ${index}`)
-
-          // FIXED: Handle category items with correct field names
-          const nonBillable = (item.nonBillableItems || []).map((nb) => {
-            console.log(`Processing nonBillable item:`, nb)
-            return {
-              ...nb,
-              id: nb.id || 0,
-              product_name: nb.product_name || "Unknown",
-              qty: nb.qty || 0,
-              make: nb.make || "",
-              uom: nb.uom || "",
-              materialRequisitions: (nb.materialRequisitions || []).map((mtr, mtrIndex) => ({
-                id: mtr.id || Date.now() + mtrIndex,
-                mtrQty: mtr.mtrQty || 0,
-                stockAlloted: mtr.stockAlloted || 0,
-                purchaseMTR: mtr.purchaseMTR || 0,
-                dcQty: mtr.dcQty || 0,
-                remarks: mtr.remarks || "",
-                status: mtr.status || "Pending",
-              })),
-            }
-          })
-
-          const skillSet = (item.skillSetItems || []).map((ss) => {
-            console.log(`Processing skillSet item:`, ss)
-            return {
-              ...ss,
-              id: ss.id || 0,
-              name: ss.product_name || "Unknown Skillset",
-              qty: ss.qty || 0,
-              make: ss.make || "",
-              materialRequisitions: (ss.materialRequisitions || []).map((mtr, mtrIndex) => ({
-                id: mtr.id || Date.now() + mtrIndex,
-                mtrQty: mtr.mtrQty || 0,
-                stockAlloted: mtr.stockAlloted || 0,
-                purchaseMTR: mtr.purchaseMTR || 0,
-                dcQty: mtr.dcQty || 0,
-                remarks: mtr.remarks || "",
-                status: mtr.status || "Pending",
-              })),
-            }
-          })
-
-          const tools = (item.toolsItems || []).map((t) => {
-            console.log(`Processing tools item:`, t)
-            return {
-              ...t,
-              id: t.id || 0,
-              name: t.product_name || "Unknown Tool",
-              qty: t.qty || 0,
-              make: t.make || "",
-              materialRequisitions: (t.materialRequisitions || []).map((mtr, mtrIndex) => ({
-                id: mtr.id || Date.now() + mtrIndex,
-                mtrQty: mtr.mtrQty || 0,
-                stockAlloted: mtr.stockAlloted || 0,
-                purchaseMTR: mtr.purchaseMTR || 0,
-                dcQty: mtr.dcQty || 0,
-                remarks: mtr.remarks || "",
-                status: mtr.status || "Pending",
-              })),
-            }
-          })
-
-          const formattedItem = {
+          return {
             id: item.id || 0,
             product_id: product.id || 0,
             product_name: product.productName || product.product_name || product.name || "Unknown Product",
@@ -126,27 +43,23 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             qty: item.totalQty || 0,
             make: item.make || "",
             uom: item.uom || "",
-
-            // Category items
-            nonBillable: nonBillable,
-            skillSet: skillSet,
-            tools: tools,
-
-            // Main product material requisitions
-            materialRequisitions: materialRequisitions,
+            nonBillable: (item.nonBillable || []).map((nb) => ({
+              ...nb,
+              materialRequisitions: nb.materialRequisitions || nb.installments || [],
+            })),
+            skillSet: (item.skillSet || []).map((ss) => ({
+              ...ss,
+              materialRequisitions: ss.materialRequisitions || ss.installments || [],
+            })),
+            tools: (item.tools || []).map((t) => ({
+              ...t,
+              materialRequisitions: t.materialRequisitions || t.installments || [],
+            })),
+            materialRequisitions: item.materialRequisitions || item.installments || [],
           }
-
-          console.log(`Final formatted item ${index}:`)
-          console.log(`- Billable MTRs: ${materialRequisitions.length}`)
-          console.log(`- NonBillable items: ${nonBillable.length}`)
-          console.log(`- SkillSet items: ${skillSet.length}`)
-          console.log(`- Tools items: ${tools.length}`)
-
-          return formattedItem
         })
-
-        console.log("All formatted products:", formattedProducts.length)
         setBOQProducts(formattedProducts)
+        console.log("Formatted products:", formattedProducts)
 
         if (formattedProducts.length > 0) {
           setExpandedProducts({ [formattedProducts[0].id]: true })
@@ -154,13 +67,11 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         }
       } catch (err) {
         console.error("Error processing BOQ data:", err)
-        console.error("Error stack:", err.stack)
         setError("Error processing BOQ data: " + err.message)
         setBOQProducts([])
       }
     } else {
       console.log("No BOQ items found or invalid structure")
-      console.log("existingBOQ:", existingBOQ)
       setBOQProducts([])
     }
 
@@ -711,7 +622,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
         <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="text-xl font-bold">Edit {product?.product_name || product?.name}</h3>
+            <h3 className="text-xl font-bold">Edit {product?.product_name}</h3>
             <button onClick={handleClose} className="p-1 rounded-full hover:bg-gray-100">
               <FiX />
             </button>
@@ -1370,7 +1281,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                               >
                                 <div className="flex items-center gap-2">
                                   <FiPackage size={16} />
-                                  Billable Product ({(product.materialRequisitions || []).length} MTRs)
+                                  Billable Product
                                 </div>
                               </button>
                               <button
@@ -1496,7 +1407,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 <div className="border rounded-lg bg-white shadow-sm">
                   <div
                     className="p-4 bg-gray-50 border-b flex justify-between items-center cursor-pointer"
-                    onClick={() => setShowAddProductSection(!showAddProductSection)}
+                    onClick={() => setShowAddProductModal(!showAddProductSection)}
                   >
                     <h3 className="text-lg font-medium">Add Another Billable Product</h3>
                   </div>

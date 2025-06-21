@@ -156,13 +156,20 @@ function NewProjects() {
     e.stopPropagation()
     try {
       setLoading(true)
-      // Fetch existing BOQ data for the project
+      console.log("Fetching BOQ data for project:", project.id)
+
+      // Always fetch fresh BOQ data from the database
       const boqData = await projectService.getBOQByProjectId(project.id)
-      setSelectedProject({ ...project, boq: boqData })
+      console.log("Fetched BOQ data:", boqData)
+
+      setSelectedProject({
+        ...project,
+        boq: boqData || { items: [] },
+      })
       setShowBOQEdit(true)
     } catch (error) {
       console.error("Error fetching BOQ data:", error)
-      // If no BOQ exists, create empty structure
+      // If no BOQ exists or error occurs, create empty structure
       setSelectedProject({
         ...project,
         boq: {
@@ -178,18 +185,27 @@ function NewProjects() {
   const handleBOQSave = async (boqData) => {
     try {
       setLoading(true)
-      await projectService.updateBOQ(selectedProject.id, boqData)
-      setSuccessMessage("BOQ updated successfully!")
+      console.log("Saving BOQ data:", boqData)
+
+      // Save the BOQ data
+      await projectService.saveBOQWithMaterialRequisition(selectedProject.id, boqData)
+
+      setSuccessMessage("BOQ saved successfully!")
+
+      // Close the BOQ edit modal
       setShowBOQEdit(false)
+
+      // Clear the selected project
       setSelectedProject(null)
 
-      // Refresh the projects list
+      // Refresh the projects list to get updated data
       await fetchLeads()
 
       // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
-      setError("Failed to update BOQ: " + (error.message || error))
+      console.error("Error saving BOQ:", error)
+      setError("Failed to save BOQ: " + (error.message || error))
     } finally {
       setLoading(false)
     }
