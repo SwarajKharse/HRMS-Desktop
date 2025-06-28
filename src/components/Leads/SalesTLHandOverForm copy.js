@@ -7,6 +7,7 @@ import { authService } from "../../services/authService"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import { projectService } from "../../services/projectService"
+import { storeService } from "../../services/storeService"
 import ProductBOQSelector from "../Projects/ProductBOQSelector"
 
 function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
@@ -53,6 +54,13 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const [existingProject, setExistingProject] = useState(null)
   const [isEditingProjectTitle, setIsEditingProjectTitle] = useState(false)
   const [editedProjectTitle, setEditedProjectTitle] = useState("")
+  const [availableProducts, setAvailableProducts] = useState([])
+  const [leadProductTypes, setLeadProductTypes] = useState([])
+  const [showAddProductModal, setShowAddProductModal] = useState(false)
+  const [boqProducts, setBOQProducts] = useState([])
+  const [expandedProducts, setExpandedProducts] = useState({})
+  const [selectedProductTab, setSelectedProductTab] = useState({})
+  const [expandedProductTypes, setExpandedProductTypes] = useState({})
 
   useEffect(() => {
     checkExistingProject()
@@ -69,10 +77,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const [boqData, setBOQData] = useState(null)
   const [showBOQSelector, setShowBOQSelector] = useState(false)
   const [existingBOQData, setExistingBOQData] = useState(null)
-
-  // --- DEBUG LOG ---
-  console.log("SalesTLHandOverForm Render - lead.salestl_approval_status:", lead.salestl_approval_status)
-  // --- END DEBUG LOG ---
 
   // Add a function to fetch uploaded documents for the lead
   const fetchUploadedDocuments = async () => {
@@ -104,8 +108,59 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
+
+  const fetchLeadProductTypes = async () => {
+    try {
+      setLeadProductTypes(producttypelist)
+    } catch (err) {
+      console.error("Error fetching lead product types:", err)
+      setLeadProductTypes([])
+    }
+  }
+
+  // Add new billable product function
+  const addNewBillableProduct = (selectedProduct) => {
+    const newProduct = {
+      id: Date.now(), // Temporary ID for new products
+      product_id: selectedProduct.id,
+      product_name: selectedProduct.product_name,
+      hsn_code: selectedProduct.hsn_code || "",
+      product_description: selectedProduct.product_description || "",
+      qty: selectedProduct.qty || 0,
+      make: selectedProduct.make || "",
+      uom: selectedProduct.uom || "",
+      leadProductTypeId: selectedProduct.leadProductTypeId || null,
+      leadProductType: selectedProduct.leadProductType || null,
+      pmApprovalStatus: "PENDING",
+      salestlApprovalStatus: "PENDING",
+      pmApprovalRemarks: "",
+      salestlApprovalRemarks: "",
+      pmApprovalDate: null,
+      salestlApprovalDate: null,
+      nonBillable: [],
+      skillSet: [],
+      tools: [],
+      materialRequisitions: [],
+    }
+
+    setBOQProducts((prev) => [...prev, newProduct])
+    setShowAddProductModal(false)
+
+    // Expand the newly added product
+    setExpandedProducts((prev) => ({ ...prev, [newProduct.id]: true }))
+    setSelectedProductTab((prev) => ({ ...prev, [newProduct.id]: "billable" }))
+
+    // Auto-expand the product type group if it exists
+    if (newProduct.leadProductTypeId) {
+      setExpandedProductTypes((prev) => ({ ...prev, [newProduct.leadProductTypeId]: true }))
+    } else {
+      setExpandedProductTypes((prev) => ({ ...prev, unassigned: true }))
+    }
+  }
+
   // Add useEffect to fetch documents when the component mounts or lead changes
   useEffect(() => {
+    fetchLeadProductTypes()
     if ((activeTab === "sse-inprogress-leads" || activeTab === "assigned-leads") && lead && lead.id) {
       fetchUploadedDocuments()
     }
@@ -160,25 +215,11 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
 
   useEffect(() => {
     fetchDepartmentsAndDesignations()
+    fetchProducts()
   }, [authService.getUser().orgId])
 
   const fetchDepartmentsAndDesignations = async () => {
     try {
-      if (activeTab == "unassigned-leads") {
-        const [ssedata, leadSource, leadType, leadProductType] = await Promise.all([
-          leadService.getSSEList(),
-          leadService.getLeadSourceList(),
-          leadService.getLeadTypeList(),
-          leadService.getLeadProductTypeList(),
-        ])
-        console.log("ssedata")
-        console.log(ssedata)
-        setSourcelist(leadSource)
-        setTypelist(leadType)
-        setProductTypelist(leadProductType)
-        setSSEList(ssedata)
-      }
-
       if (activeTab === "salestl-won-leads") {
         const [leadSource, leadType, leadProductType] = await Promise.all([
           leadService.getLeadSourceList(),
@@ -216,17 +257,10 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               id: item.id,
               product_id: item.product.id,
               product: item.product,
-              qty: item.totalQty || item.qty,
-              totalQty: item.totalQty || item.qty,
+              qty: item.totalQty,
+              totalQty: item.totalQty,
               make: item.make,
               uom: item.uom,
-              supply_rate: item.supply_rate,
-              installation_rate: item.installation_rate,
-              supply_amount: item.supply_amount,
-              installation_amount: item.installation_amount,
-              total: item.total,
-              category_id: item.category_id,
-              category_name: item.category_name,
             })),
           }
           setExistingBOQData(existingBOQ)
@@ -284,6 +318,50 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
+    // Rest of helper functions remain the same...
+    const fetchProducts = async () => {
+      try {
+        setLoading(true)
+        setError("")
+  
+        const response = await storeService.getProductsList()
+        console.log("Products API Response:", response)
+  
+        let productsData = []
+  
+        if (Array.isArray(response)) {
+          productsData = response
+        } else if (response && Array.isArray(response.data)) {
+          productsData = response.data
+        } else if (response && Array.isArray(response.products)) {
+          productsData = response.products
+        } else if (response && typeof response === "object") {
+          const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
+          if (arrayProperty) {
+            productsData = arrayProperty
+          }
+        }
+  
+        if (!Array.isArray(productsData)) {
+          throw new Error("Invalid response format: Expected an array of products")
+        }
+  
+        productsData = productsData.map((product) => ({
+          ...product,
+          product_name: product.product_name || product.productName || product.name || "Unknown Product",
+        }))
+  
+        setAvailableProducts(productsData)
+      } catch (err) {
+        console.error("Error fetching products:", err)
+        setError(`Failed to load products: ${err.message}`)
+        setAvailableProducts([])
+      } finally {
+        setLoading(false)
+      }
+    }
+  
+
   // Handle BOQ data save
   const handleBOQSave = (boqDataFromSelector, wasSavedToBackend = false) => {
     console.log("BOQ Data received from selector:", boqDataFromSelector)
@@ -298,27 +376,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     }
 
     console.log("BOQ Data saved:", boqDataFromSelector)
-  }
-
-  const handleBOQStatusChange = async (status, remarks) => {
-    try {
-      setLoading(true)
-      setError("")
-      if (!existingProject || !existingProject.projectId) {
-        throw new Error("Project not found for BOQ status update.")
-      }
-      await projectService.updateBOQStatus(existingProject.projectId, status, remarks) // Pass remarks here
-      setSuccessMessage(`BOQ status updated to ${status === "1" ? "Approved" : "Rejected"} successfully!`)
-      setTimeout(() => setSuccessMessage(null), 3000)
-      // Refresh lead data to reflect new status
-      await onSubmit() // This will likely re-fetch the lead and close the modal
-      onClose()
-    } catch (err) {
-      console.error("Error updating BOQ status:", err)
-      setError(`Failed to update BOQ status: ${err.message || err}`)
-    } finally {
-      setLoading(false)
-    }
   }
 
   const handleSubmit = async (e) => {
@@ -355,10 +412,13 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
 
       console.log("Processed Data is ", processedData)
       console.log("BOQ Data to be saved:", boqData)
-      console.log("Lead ID IS   " + lead.id)
+      console.log("Lead ID IS   "+lead.id)
 
       // Create or update project first - using the original working API call pattern
-      const projectResponse = await projectService.createOrUpdateProject(processedData, lead.id)
+      const projectResponse = await projectService.createOrUpdateProject(
+        processedData,
+        lead.id,
+      )
       console.log("Project creation response:", projectResponse)
 
       // If BOQ data exists and project was created/updated successfully, save BOQ
@@ -494,7 +554,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.95 }}
-        className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto" /* Changed max-w-4xl to max-w-6xl */
+        className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
       >
         {/* Error Message */}
         {error && (
@@ -666,8 +726,8 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                   </label>
                 </div>
               </div>
-              {lead.middleManDetails && lead.middleManDetails.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                {lead.middleManDetails && lead.middleManDetails.length > 0 && (
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead>
                       <tr>
@@ -704,8 +764,8 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                       ))}
                     </tbody>
                   </table>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
           {/* Middle Man End */}
@@ -932,7 +992,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
               <div className="flex items-center gap-2">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700">
                   Lead Status:{Capitalize(formData.lead_status)}
                 </label>
               </div>
@@ -982,7 +1042,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
           <div className="space-y-4 rounded-lg bg-white border p-4">
             <h3 className="font-semibold text-lg border-b pb-2">HandOver Details</h3>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Project Or AMC</label>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Project Or AMC</label>
               <select
                 name="amc_or_project"
                 value={formData.amc_or_project}
@@ -1000,7 +1060,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                 {existingProject ? (
                   // Show existing project with edit option
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Existing Project</label>
+                    <label className="text-xs font-medium text-gray-700 mb-1 block">Existing Project</label>
                     <div className="flex items-center gap-2">
                       {isEditingProjectTitle ? (
                         <div className="flex items-center gap-2 flex-1">
@@ -1054,7 +1114,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                 ) : (
                   // Show new project creation form
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Project Name</label>
+                    <label className="text-xs font-medium text-gray-700 mb-1 block">Project Name</label>
                     <select
                       name="project_name"
                       value={project.project_name}
@@ -1086,7 +1146,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                 {/* BOQ Section - Only show for projects */}
                 <div className="mt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-medium text-gray-700">Bill of Quantities (BOQ)</label>
+                    <label className="text-xs font-medium text-gray-700">Bill of Quantities (BOQ)</label>
                     {!showBOQSelector && (
                       <button
                         type="button"
@@ -1101,11 +1161,10 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                   {/* Show BOQ Selector */}
                   {showBOQSelector && (
                     <ProductBOQSelector
-                      projectId={existingProject ? existingProject.projectId : lead.id}
-                      onSave={handleBOQSave}
-                      leadProductTypes={producttypelist}
-                      existingBOQ={existingBOQData}
-                      isEditMode={existingProject && existingProject.hasExistingBOQ}
+                      availableProducts={availableProducts}
+                      leadProductTypes={leadProductTypes}
+                      onProductSelect={addNewBillableProduct}
+                      onClose={() => setShowAddProductModal(false)}
                     />
                   )}
 

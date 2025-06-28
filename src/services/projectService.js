@@ -115,4 +115,18 @@ export const projectService = {
       throw error.response?.data || error.message
     }
   },
+
+  updateBOQItemApprovalStatus: async (projectId, boqItemId, approvalData) => {
+    try {
+      console.log("Updating BOQ item approval status:", { projectId, boqItemId, approvalData })
+      const response = await axios.put(
+        `${BASE_URL}/${projectId}/boq/item/${boqItemId}/approval`,
+        approvalData,
+        getAuthHeaders()
+      )
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
 }
