@@ -1393,7 +1393,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                     </div>
                                     <button
                                       onClick={() => toggleProductExpansion(product.id)}
-                                      className="px-3 py-1 text-sm bg-red-100 text-red-800 rounded hover:bg-red-200 transition-colors flex items-center gap-1"
+                                      className="px-3 py-1 text-sm bg-zinc-100 text-zinc-800 rounded hover:bg-zinc-200 transition-colors flex items-center gap-1"
                                       aria-expanded={!!expandedProducts[product.id]}
                                       aria-label={
                                         expandedProducts[product.id] ? "Hide product details" : "View product details"
