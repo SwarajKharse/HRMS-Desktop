@@ -194,7 +194,7 @@ function BDMLeadsCreatedByMe() {
 
   const getLeadType = (leadTypeId) => {
     const type = typelist.find((type) => type.id === leadTypeId)
-    return type ? type.label : ""
+    return type ? type.label : "" 
   }
 
   const fetchDateFromApi = (apiDate) => {
@@ -540,7 +540,6 @@ function BDMLeadsCreatedByMe() {
                       "Lead ID",
                       "Lead Priority",
                       "Middle Man Client Name",
-                      "Lead Type",
                       "Visit Scheduled Date",
                       "Actions",
                     ]
@@ -599,9 +598,9 @@ function BDMLeadsCreatedByMe() {
                             {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        {/* <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">{getLeadType(lead.lead_type)}</div>
-                        </td>
+                        </td> */}
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
                             {formatDate(lead.visit_scheduled_date)}
@@ -688,12 +687,12 @@ function BDMLeadsCreatedByMe() {
                           )}
                         </div>
 
-                        {expandedRows[lead.id] && (
+                        {/* {expandedRows[lead.id] && (
                           <>
                             <div className="text-gray-500">Lead Type:</div>
                             <div>{getLeadType(lead.lead_type)}</div>
                           </>
-                        )}
+                        )} */}
                       </div>
 
                       {/* Expand/collapse indicator */}
@@ -792,7 +791,7 @@ function BDMLeadsCreatedByMe() {
         {showForm && (
           <LeadEditForm
             lead={selectedLead}
-            activeTab="bdm-leads-created-by-me"
+            activeTab="bdm-assigned-field-visit"
             onClose={() => {
               setShowForm(false)
               setSelectedLead(null)
