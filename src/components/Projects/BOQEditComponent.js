@@ -1,7 +1,5 @@
 "use client"
-
 import { useState, useEffect, useRef } from "react"
-
 import {
   FiSearch,
   FiPlus,
@@ -16,10 +14,8 @@ import {
   FiClock,
   FiAlertTriangle,
 } from "react-icons/fi"
-
 import { AiOutlineArrowDown, AiOutlineArrowUp } from "react-icons/ai"
 import { motion, AnimatePresence } from "framer-motion"
-
 // Import the renamed component
 import BillableProductSelector from "./BillableProductSelector"
 import { storeService } from "../../services/storeService"
@@ -75,13 +71,11 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   useEffect(() => {
     console.log("=== BOQ Data Debug ===")
     console.log("Raw Existing BOQ:", JSON.stringify(existingBOQ, null, 2))
-
     if (existingBOQ && existingBOQ.items && Array.isArray(existingBOQ.items) && !isBOQInitializedFromProps) {
       try {
         const formattedProducts = existingBOQ.items.map((item, index) => {
           console.log(`Processing item ${index}:`, JSON.stringify(item, null, 2))
           const product = item.product || {}
-
           const materialRequisitions = (item.mtrs || []).map((mtr, mtrIndex) => {
             console.log(`Processing MTR ${mtrIndex}:`, mtr)
             return {
@@ -97,7 +91,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               createdAt: mtr.createdAt || new Date().toISOString(),
             }
           })
-
           const nonBillable = (item.nonBillableItems || []).map((nb) => ({
             ...nb,
             id: nb.id || 0,
@@ -117,11 +110,10 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               priority: mtr.priority || "MEDIUM",
             })),
           }))
-
           const skillSet = (item.skillSetItems || []).map((ss) => ({
             ...ss,
             id: ss.id || 0,
-            name: ss.product_name || "Unknown Skillset",
+            name: ss.skillset_name || "Unknown Skillset", // Use skillset_name for existing data
             qty: ss.qty || 0,
             materialRequisitions: (ss.materialRequisitions || []).map((mtr, mtrIndex) => ({
               id: mtr.id || Date.now() + mtrIndex,
@@ -135,11 +127,10 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               priority: mtr.priority || "MEDIUM",
             })),
           }))
-
           const tools = (item.toolsItems || []).map((t) => ({
             ...t,
             id: t.id || 0,
-            name: t.product_name || "Unknown Tool",
+            name: t.tool_name || "Unknown Tool", // Use tool_name for existing data
             qty: t.qty || 0,
             make: t.make || "",
             materialRequisitions: (t.materialRequisitions || []).map((mtr, mtrIndex) => ({
@@ -151,10 +142,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               remarks: mtr.remarks || "",
               status: mtr.status || "Pending",
               expectedDeliveryDate: mtr.expectedDeliveryDate || "",
-              priority: mtr.priority || "MEDIUM",
+              priority: t.priority || "MEDIUM", // Use t.priority here
             })),
           }))
-
           const formattedItem = {
             id: item.id || Date.now() + Math.random(), // Ensure stable internal ID
             product_id: product.id || 0,
@@ -164,7 +154,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             qty: item.totalQty || 0,
             make: item.make || "",
             uom: item.uom || "",
-            leadProductTypeId: item.leadProductType?.id || null,
+            leadProductTypeId: item.product.categoryId.id || null,
             // Approval status fields
             pmApprovalStatus: item.pmApprovalStatus || "PENDING",
             salestlApprovalStatus: item.salestlApprovalStatus || "PENDING",
@@ -216,13 +206,21 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   const fetchLeadProductTypes = async () => {
     try {
       const response = await leadService.getLeadProductTypeList()
-      console.log("Lead Product Types API Response:", response)
+      console.log("Lead Product Types API Raw Response:", response)
       let productTypesData = []
       if (Array.isArray(response)) {
         productTypesData = response
       } else if (response && Array.isArray(response.data)) {
         productTypesData = response.data
+      } else if (response && Array.isArray(response.leadProductTypes)) { // Added specific key
+        productTypesData = response.leadProductTypes
+      } else if (response && typeof response === "object") {
+        const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
+        if (arrayProperty) {
+          productTypesData = arrayProperty
+        }
       }
+      console.log("Lead Product Types Data to set:", productTypesData)
       setLeadProductTypes(productTypesData)
     } catch (err) {
       console.error("Error fetching lead product types:", err)
@@ -233,18 +231,21 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   const fetchSkillsets = async () => {
     try {
       const response = await storeService.getSkillSetList()
-      console.log("Skillsets API Response:", response)
+      console.log("Skillsets API Raw Response:", response)
       let skillsetsData = []
       if (Array.isArray(response)) {
         skillsetsData = response
       } else if (response && Array.isArray(response.data)) {
         skillsetsData = response.data
+      } else if (response && Array.isArray(response.skillsets)) { // Added specific key for skillsets
+        skillsetsData = response.skillsets
       } else if (response && typeof response === "object") {
         const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
         if (arrayProperty) {
           skillsetsData = arrayProperty
         }
       }
+      console.log("Skillsets Data to set:", skillsetsData)
       setAvailableSkillsets(skillsetsData)
     } catch (err) {
       console.error("Error fetching skillsets:", err)
@@ -256,18 +257,21 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   const fetchTools = async () => {
     try {
       const response = await storeService.getToolsList()
-      console.log("Tools API Response:", response)
+      console.log("Tools API Raw Response:", response)
       let toolsData = []
       if (Array.isArray(response)) {
         toolsData = response
       } else if (response && Array.isArray(response.data)) {
         toolsData = response.data
+      } else if (response && Array.isArray(response.tools)) { // Added specific key for tools
+        toolsData = response.tools
       } else if (response && typeof response === "object") {
         const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
         if (arrayProperty) {
           toolsData = arrayProperty
         }
       }
+      console.log("Tools Data to set:", toolsData)
       setAvailableTools(toolsData)
     } catch (err) {
       console.error("Error fetching tools:", err)
@@ -280,12 +284,13 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   const fetchAllProductsForNonBillable = async () => {
     try {
       const response = await storeService.getProductsList()
+      console.log("Products API Raw Response (Non-Billable):", response)
       let productsData = []
       if (Array.isArray(response)) {
         productsData = response
       } else if (response && Array.isArray(response.data)) {
         productsData = response.data
-      } else if (response && Array.isArray(response.products)) {
+      } else if (response && Array.isArray(response.products)) { // Added specific key for products
         productsData = response.products
       } else if (response && typeof response === "object") {
         const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
@@ -293,6 +298,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           productsData = arrayProperty
         }
       }
+      console.log("Products Data to set (Non-Billable):", productsData)
       setAvailableProducts(productsData)
     } catch (err) {
       console.error("Error fetching all products for non-billable:", err)
@@ -314,7 +320,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           return "bg-gray-100 text-gray-800 border-gray-200"
       }
     }
-
     const getStatusIcon = (status) => {
       switch (status) {
         case "APPROVED":
@@ -327,7 +332,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           return <FiAlertTriangle size={14} />
       }
     }
-
     return (
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
@@ -793,7 +797,10 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   const getProductsByLeadProductType = () => {
     const grouped = {}
     boqProducts.forEach((product) => {
+      console.log("product ---------------- ")
+      console.log(product)
       const typeId = product.leadProductTypeId || "unassigned"
+      //const typeId = product.categoryId.id || "unassigned"
       const typeName = leadProductTypes.find((t) => t.id === typeId)?.label || "Unassigned"
       if (!grouped[typeId]) {
         grouped[typeId] = {
@@ -829,7 +836,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               priority: mtr.priority || "MEDIUM",
             }
           })
-
           return {
             id: product.id,
             product_id: product.product_id?.toString() || "",
@@ -902,15 +908,12 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           }
         }),
       }
-
       console.log("Saving BOQ with material requisitions:", enhancedBOQData)
       const response = await projectService.saveBOQWithMaterialRequisition(projectId, enhancedBOQData)
       console.log("BOQ saved successfully:", response)
-
       if (onSave) {
         onSave(enhancedBOQData)
       }
-
       setError("")
       alert("BOQ with material requisitions saved successfully!")
       onClose()
@@ -992,8 +995,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               ...(p.skillSet || []),
               {
                 ...skillset,
+                name: skillset.skillset_name, // Map skillset_name to name
                 qty: "",
-                // Don't set make for skillset
                 materialRequisitions: [],
               },
             ],
@@ -1002,6 +1005,14 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         return p
       }),
     )
+    setShowProductSearch((prev) => ({ // Close dropdown
+      ...prev,
+      [`${mainProductId}-skillSet`]: false,
+    }))
+    setSearchTerms((prev) => ({ // Clear search term
+      ...prev,
+      [`${mainProductId}-skillSet`]: "",
+    }))
   }
 
   const addToolToProduct = (mainProductId, tool) => {
@@ -1014,6 +1025,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               ...(p.tools || []),
               {
                 ...tool,
+                name: tool.tool_name, // Map tool_name to name
                 qty: "",
                 make: "",
                 materialRequisitions: [],
@@ -1024,6 +1036,14 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         return p
       }),
     )
+    setShowProductSearch((prev) => ({ // Close dropdown
+      ...prev,
+      [`${mainProductId}-tools`]: false,
+    }))
+    setSearchTerms((prev) => ({ // Clear search term
+      ...prev,
+      [`${mainProductId}-tools`]: "",
+    }))
   }
 
   const removeProductFromCategory = (mainProductId, category, productIndex) => {
@@ -1132,8 +1152,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   // This function is for searching within the non-billable product list
   const getFilteredNonBillableProducts = (searchKey) => {
     const searchTerm = searchTerms[searchKey] || ""
-    if (!searchTerm.trim()) return []
-
+    if (!searchTerm.trim()) return availableProducts // Show all if search term is empty
     const lowercasedSearch = searchTerm.toLowerCase()
     return availableProducts.filter((product) => {
       if (!product) return false
@@ -1180,7 +1199,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   // Handler for when BillableProductSelector saves
   const handleBillableProductSave = (boqDataFromSelector) => {
     console.log("Received BOQ data from BillableProductSelector:", boqDataFromSelector)
-
     const newBillableItemsMap = new Map(
       boqDataFromSelector.items.map((item) => [item.id, item]), // Map by actual product_id from store
     )
@@ -1660,7 +1678,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                   <div className="max-h-40 overflow-y-auto">
                                                     {availableSkillsets
                                                       .filter((skillset) =>
-                                                        skillset.name
+                                                        skillset.skillset_name // Use skillset_name for filtering
                                                           ?.toLowerCase()
                                                           .includes(
                                                             (searchTerms[`${product.id}-skillSet`] || "").toLowerCase(),
@@ -1672,7 +1690,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                           onClick={() => addSkillsetToProduct(product.id, skillset)}
                                                           className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm"
                                                         >
-                                                          <div className="font-medium">{skillset.name}</div>
+                                                          <div className="font-medium">{skillset.skillset_name}</div>{" "}
+                                                          {/* Use skillset_name for display */}
                                                           <div className="text-gray-500 text-xs">
                                                             Category: {skillset.category}
                                                           </div>
@@ -1764,7 +1783,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                   <div className="max-h-40 overflow-y-auto">
                                                     {availableTools
                                                       .filter((tool) =>
-                                                        tool.name
+                                                        tool.tool_name // Use tool_name for filtering
                                                           ?.toLowerCase()
                                                           .includes(
                                                             (searchTerms[`${product.id}-tools`] || "").toLowerCase(),
@@ -1776,7 +1795,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                           onClick={() => addToolToProduct(product.id, tool)}
                                                           className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm"
                                                         >
-                                                          <div className="font-medium">{tool.name}</div>
+                                                          <div className="font-medium">{tool.tool_name}</div>{" "}
+                                                          {/* Use tool_name for display */}
                                                           <div className="text-gray-500 text-xs">
                                                             Category: {tool.category}
                                                           </div>
@@ -1856,6 +1876,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             )}
           </div>
         </div>
+
         <div className="flex items-center justify-end gap-4 p-6 border-t bg-gray-50">
           <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
             Cancel

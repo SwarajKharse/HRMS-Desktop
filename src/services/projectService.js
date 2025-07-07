@@ -1,8 +1,6 @@
-"use client"
-
 import axios from "axios"
 
-const BASE_URL = `${process.env.REACT_APP_API_URL}/project`
+const API_URL = `${process.env.REACT_APP_API_URL}`
 
 const getAuthHeaders = () => {
   return {
@@ -13,120 +11,101 @@ const getAuthHeaders = () => {
 }
 
 export const projectService = {
-  createOrUpdateProject: async (projectData, leadId) => {
+  createOrUpdateProject: async (projectData, amc_or_project, leadId) => {
     try {
-      console.log("Creating/Updating project:", projectData)
       const response = await axios.post(
-        `${BASE_URL}/create/${projectData.amc_or_project}/${leadId}`,
+        `${API_URL}/projects/createOrUpdate/${leadId}?amc_or_project=${amc_or_project}`,
         projectData,
-        getAuthHeaders(),
       )
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      console.error("Error creating or updating project:", error.response ? error.response.data : error.message)
+      throw error
     }
   },
 
   getProjectByLeadId: async (leadId) => {
     try {
-      console.log("Fetching project for lead:", leadId)
-      const response = await axios.get(`${BASE_URL}/lead/${leadId}`, getAuthHeaders())
+      const response = await axios.get(`${API_URL}/projects/byLead/${leadId}`)
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      console.error("Error fetching project by lead ID:", error.response ? error.response.data : error.message)
+      throw error
     }
   },
 
-  createOrUpdateBOQ: async (projectId, boqData) => {
+  createOrUpdateBOQ: async (projectId, boqRequest) => {
     try {
-      console.log("Saving BOQ for project:", projectId, boqData)
-      const response = await axios.post(`${BASE_URL}/${projectId}/boq`, boqData, getAuthHeaders())
+      const response = await axios.post(`${API_URL}/projects/${projectId}/boq`, boqRequest)
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      console.error("Error creating or updating BOQ:", error.response ? error.response.data : error.message)
+      throw error
     }
   },
 
-  // Fixed method name to match what frontend is calling
   getBOQByProjectId: async (projectId) => {
     try {
-      console.log("Fetching BOQ for project:", projectId)
-      const response = await axios.get(`${BASE_URL}/${projectId}/boq`, getAuthHeaders())
+      const response = await axios.get(`${API_URL}/projects/${projectId}/boq`)
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      console.error("Error fetching BOQ by project ID:", error.response ? error.response.data : error.message)
+      throw error
     }
   },
 
-  // Keep the old method for backward compatibility
-  getBOQ: async (projectId) => {
-    return await projectService.getBOQByProjectId(projectId)
-  },
-
-  // Enhanced method for BOQ updates with material requisitions
-  updateBOQ: async (projectId, enhancedBOQData) => {
+  saveBOQWithMaterialRequisition: async (projectId, enhancedBOQRequest) => {
     try {
-      console.log("Updating enhanced BOQ for project:", projectId, enhancedBOQData)
-      const response = await axios.put(`${BASE_URL}/${projectId}/boq`, enhancedBOQData, getAuthHeaders())
+      const response = await axios.post(`${API_URL}/projects/${projectId}/boq/saveWithMTR`, enhancedBOQRequest)
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
-    }
-  },
-
-  // New method specifically for saving BOQ with material requisitions
-  saveBOQWithMaterialRequisition: async (projectId, enhancedBOQData) => {
-    try {
-      console.log("Saving BOQ with material requisitions for project:", projectId, enhancedBOQData)
-      const response = await axios.post(
-        `${BASE_URL}/${projectId}/boq/material-requisition`,
-        enhancedBOQData,
-        getAuthHeaders(),
+      console.error(
+        "Error saving BOQ with material requisitions:",
+        error.response ? error.response.data : error.message,
       )
-      return response.data
-    } catch (error) {
-      throw error.response?.data || error.message
+      throw error
     }
   },
 
   updateProjectTitle: async (projectId, newTitle) => {
     try {
-      console.log("Updating project title:", projectId, newTitle)
-      const response = await axios.put(`${BASE_URL}/${projectId}/title`, newTitle, getAuthHeaders())
+      // Frontend sends a JSON object { title: "..." }
+      const response = await axios.put(`${API_URL}/projects/${projectId}/title`, { title: newTitle })
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      console.error("Error updating project title:", error.response ? error.response.data : error.message)
+      throw error
     }
   },
 
-  getNewProjects: async (page, leadsPerPage) => {
+  updateBOQItemApprovalStatus: async (boqItemId, approvalType, status, remarks) => {
     try {
-      const queryParams = {
-        page,
-        size: leadsPerPage, // Changed from leadsPerPage to size to match backend
-      }
-
-      const response = await axios.get(`${BASE_URL}/getnewprojects`, {
-        params: queryParams,
-        ...getAuthHeaders(),
+      const response = await axios.put(`${API_URL}/projects/boqItem/${boqItemId}/approval`, null, {
+        params: {
+          approvalType,
+          status,
+          remarks,
+        },
       })
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      console.error("Error updating BOQ Item approval status:", error.response ? error.response.data : error.message)
+      throw error
     }
   },
 
-  updateBOQItemApprovalStatus: async (projectId, boqItemId, approvalData) => {
+  getNewProjects: async (page = 0, size = 10, query = "") => {
     try {
-      console.log("Updating BOQ item approval status:", { projectId, boqItemId, approvalData })
-      const response = await axios.put(
-        `${BASE_URL}/${projectId}/boq/item/${boqItemId}/approval`,
-        approvalData,
-        getAuthHeaders()
-      )
+      const response = await axios.get(`${API_URL}/projects/getnewprojects`, {
+        ...getAuthHeaders(),
+        params: { page, size, query },
+      })
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      console.error("Error fetching new projects:", error.response ? error.response.data : error.message)
+      throw error
     }
   },
 }
+
+//export default projectService
