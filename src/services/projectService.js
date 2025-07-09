@@ -106,6 +106,41 @@ export const projectService = {
       throw error
     }
   },
+
+  // Get project details
+  getProjectDetails: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/project`, {
+        ...getAuthHeaders()
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error fetching project details:", error)
+      throw error
+    }
+  },
+
+  // Save project initiation plan
+  saveProjectInitiationPlan: async (planData) => {
+    try {
+      const response = await fetch(`/api/projects/${planData.projectId}/initiation-plan`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(planData),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to save project initiation plan")
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error("Error saving project initiation plan:", error)
+      throw error
+    }
+  },
 }
 
 //export default projectService

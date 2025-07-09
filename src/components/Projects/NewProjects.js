@@ -9,6 +9,7 @@ import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./ProjectLeadDetails"
 import BOQEditComponent from "./BOQEditComponent"
+import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
 
 function NewProjects() {
   const navigate = useNavigate()
@@ -372,13 +373,14 @@ function NewProjects() {
 
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
-                            <button
+                            {/* <button
                               className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
                               onClick={(e) => handleBOQEdit(e, project)}
                               title="Edit BOQ"
                             >
                               Project Initiation
-                            </button>
+                            </button> */}
+                            <ProjectInitiationIntegration project={project} />
                           </div>
                         </td>
 
