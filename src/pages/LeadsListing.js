@@ -98,9 +98,11 @@ function LeadsListing() {
 
     // For users with main tabs, return tabs based on main tab selection
     if (shouldShowMainTabs()) {
-      if (activeMainTab === "SalesTL") {
+      if (activeMainTab === "SalesTL" && isSuperAdmin()) {
         return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]]
-      } else if (activeMainTab === "SSE") {
+      } else if (activeMainTab === "SalesTL" && !isSuperAdmin()) {
+        return [allTabs[0], allTabs[1], allTabs[2], allTabs[7]]
+      }else if (activeMainTab === "SSE") {
         return [allTabs[3], allTabs[4], allTabs[5]]
       } else if (activeMainTab === "BDM") {
         return [allTabs[6], allTabs[9]]
