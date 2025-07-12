@@ -141,6 +141,16 @@ export const projectService = {
       throw error
     }
   },
+
+  getLeadByLeadId: async (leadId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${leadId}/leaddetails`)
+      return response.data
+    } catch (error) {
+      console.error("Error fetching project by lead ID:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
 }
 
 //export default projectService
