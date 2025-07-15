@@ -282,12 +282,6 @@ export default function MaterialRequisition() {
                         Product Name
                       </th>
                       <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                        HSN Code
-                      </th>
-                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                        UOM
-                      </th>
-                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
                         MTR Qty
                       </th>
                       <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
@@ -308,9 +302,7 @@ export default function MaterialRequisition() {
                       <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
                         Priority
                       </th>
-                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                        Status
-                      </th>
+                      
                       <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
                         Remarks
                       </th>
@@ -324,8 +316,6 @@ export default function MaterialRequisition() {
                       >
                         <td className="p-4 align-middle font-medium">{req.id}</td>
                         <td className="p-4 align-middle">{req.boqItem?.product?.product_name || "N/A"}</td>
-                        <td className="p-4 align-middle">{req.boqItem?.product?.hsn_code || "N/A"}</td>
-                        <td className="p-4 align-middle">{req.boqItem?.product?.uom || "N/A"}</td>
                         <td className="p-4 align-middle">{req.mtrQty}</td>
                         <td className="p-4 align-middle">{req.stockAlloted}</td>
                         <td className="p-4 align-middle">{req.purchaseMTR}</td>
@@ -333,7 +323,6 @@ export default function MaterialRequisition() {
                         <td className="p-4 align-middle">{formatDate(req.mtrDate)}</td>
                         <td className="p-4 align-middle">{formatDate(req.expectedDeliveryDate)}</td>
                         <td className="p-4 align-middle">{req.priority}</td>
-                        <td className="p-4 align-middle">{req.status}</td>
                         <td className="p-4 align-middle max-w-[200px] truncate">{req.remarks}</td>
                       </tr>
                     ))}

@@ -214,6 +214,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
         projectTimeline: lead.project_timeline || "",
         projectStatus: lead.project_status || "planning",
         projectManager: lead.project_manager || "",
+        siteEngineer: lead.site_engineer || "",
         estimatedValue: lead.estimated_value || "",
         actualValue: lead.actual_value || "",
         startDate: lead.start_date || "",
@@ -756,10 +757,10 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
               {/* Project Information */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2">
-                  Assign Site Engineer <span className="text-red-500">*</span>
+                  Assign Project Manager <span className="text-red-500">*</span>
                 </label>
                 <select
-                  name="lead_source"
+                  name="project_manager"
                   value={projectData.projectManager} // Bind to projectData state
                   onChange={(e) => setProjectData({ ...projectData, projectManager: e.target.value })}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
@@ -769,7 +770,21 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                   <option value="4">Gahininath Maske</option>
                 </select>
               </div>
-              <div></div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2">
+                  Assign Site Engineer <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="project_manager"
+                  value={projectData.siteEngineer} // Bind to projectData state
+                  onChange={(e) => setProjectData({ ...projectData, siteEngineer: e.target.value })}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select Engineer</option>
+                  {/* You would map over your ssedata (Site Engineer data) here */}
+                  <option value="4">Gahininath Maske</option>
+                </select>
+              </div>
             </div>
           </ExpandableSection>
           {/* Action Buttons */}

@@ -334,7 +334,7 @@ function NewProjects() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Project ID", "Project Name", "Scope of Work", "Actions"].filter(Boolean).map((header) => (
+                    {["Project ID", "Project Name","Project Initiation", "Scope of Work", "Actions"].filter(Boolean).map((header) => (
                       <th
                         key={header}
                         className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"

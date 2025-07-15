@@ -2,114 +2,9 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FiX } from "react-icons/fi"
-
-// IMPORTANT: Replace these mock imports with your actual service and context imports
-// import { authService } from "../../services/authService"
- import { leadService } from "../../services/leadService"
- import { projectService } from "../../services/projectService"
-// import { useAuth } from "../../contexts/AuthContext"
-
-// Mock services and context for demonstration purposes
-// You should replace these with your actual service and context imports
-/* const authService = {
-  getUser: () => ({ userId: "user123", orgId: "org456" }),
-} */
-/* const leadService = {
-  getLeadSourceList: async () => [
-    { id: 1, label: "Web" },
-    { id: 2, label: "Referral" },
-  ],
-  getLeadTypeList: async () => [
-    { id: 1, label: "New" },
-    { id: 2, label: "Existing" },
-  ],
-  getLeadProductTypeList: async () => [
-    { id: 1, label: "Software" },
-    { id: 2, label: "Hardware" },
-  ],
-} */
-/* const projectService = {
-  getLeadByLeadId: async (id) => {
-    console.log(`Mocking fetch for leadId: ${id}`)
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          lead_code: `LEAD-${id}`,
-          lead_priority: "high",
-          employee: { firstName: "John", lastName: "Doe" },
-          client_name: "Acme Corp",
-          project_location: "New York",
-          office_location: "Main Office",
-          additionalDetails: [
-            {
-              contact_person_name: "Jane Smith",
-              contact_person_phonenumber: "123-456-7890",
-              contact_person_email: "jane@example.com",
-              contact_person_designation: "Manager",
-            },
-          ],
-          middle_man_client_name: "Middle Man Co",
-          middle_man_project_location: "Chicago",
-          middle_man_office_location: "Branch Office",
-          middleManDetails: [
-            {
-              mcontact_person_name: "Bob Johnson",
-              mcontact_person_phonenumber: "987-654-3210",
-              mcontact_person_email: "bob@example.com",
-              mcontact_person_designation: "Agent",
-            },
-          ],
-          architect_client_name: "Arch Design",
-          architect_project_location: "Los Angeles",
-          architect_office_location: "Studio A",
-          architectFirmDetails: [
-            {
-              arcontact_person_name: "Alice Green",
-              arcontact_person_phonenumber: "111-222-3333",
-              arcontact_person_email: "alice@example.com",
-              arcontact_person_designation: "Architect",
-            },
-          ],
-          mep_client_name: "MEP Solutions",
-          mep_project_location: "Houston",
-          mep_office_location: "MEP HQ",
-          mepFirmDetails: [
-            {
-              mepcontact_person_name: "Charlie Brown",
-              mepcontact_person_phonenumber: "444-555-6666",
-              mepcontact_person_email: "charlie@example.com",
-              mepcontact_person_designation: "Engineer",
-            },
-          ],
-          pmc_client_name: "PMC Partners",
-          pmc_project_location: "Dallas",
-          pmc_office_location: "PMC Tower",
-          pmcFirmDetails: [
-            {
-              pmccontact_person_name: "Diana Prince",
-              pmccontact_person_phonenumber: "777-888-9999",
-              pmccontact_person_email: "diana@example.com",
-              pmccontact_person_designation: "Consultant",
-            },
-          ],
-          project_name: "New Office Building",
-          project_description: "Construction of a new office building in downtown.",
-          project_budget: "1000000",
-          project_timeline: "12 months",
-          project_status: "planning",
-          project_manager: "Manager A",
-          estimated_value: "950000",
-          actual_value: "",
-          start_date: "2023-01-01",
-          end_date: "2023-12-31",
-          lead_proposal_type: [{ id: 1, label: "Software" }],
-          need_of_field_visit: true,
-        })
-      }, 500)
-    })
-  },
-} */
-const useAuth = () => ({ user: { userId: "user123", orgId: "org456" } })
+import { leadService } from "../../services/leadService"
+import { projectService } from "../../services/projectService"
+import { useAuth } from "../../contexts/AuthContext"
 
 function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
@@ -122,105 +17,164 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   })
 
   const userId = user ? user.userId : ""
-
   const [lead, setLead] = useState(null) // Initialize with null to indicate no data yet
-  const [departments, setDepartments] = useState([]) // Not used in original code, but kept
-  const [designations, setDesignations] = useState([]) // Not used in original code, but kept
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(true) // State to track initial data loading
-  const [managerslist, setManagerslist] = useState([]) // Not used in original code, but kept
-  const [ssedata, setSSEList] = useState([]) // Not used in original code, but kept
-  const [bdmdata, setBDMList] = useState([]) // Not used in original code, but kept
+  const [managerslist, setManagerslist] = useState([])
+  const [seData, setSEList] = useState([])
   const [sourcelist, setSourcelist] = useState([])
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
 
-  // Initialize formData and projectData with default empty structures
-  // These will be updated once 'lead' data is fetched in the second useEffect
-  const [formData, setFormData] = useState({
-    proposal_type: [],
-    lead_proposal_type: [],
-    employee_updatedby: {
-      id: userId,
-    },
-  })
-
+  // Initialize projectData with a comprehensive structure
   const [projectData, setProjectData] = useState({
     projectName: "",
     projectDescription: "",
     projectBudget: "",
     projectTimeline: "",
     projectStatus: "planning",
-    projectManager: "",
+    projectManager: "", // Will store ID
+    siteEngineer: "", // Will store ID
     estimatedValue: "",
     actualValue: "",
     startDate: "",
     endDate: "",
+    // Ensure employee_updatedby is always present for backend
+    employee_updatedby: { id: userId },
   })
 
-  // Effect to fetch initial data (lead details, sources, types)
+  // Effect to fetch all initial data (lead details, project details, managers, SEs)
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchAllInitialData = async () => {
       setDataLoading(true)
       setError("")
       try {
-        console.log("Fetching lead details for leadId:", leadId)
-        const [leadDetails, leadSource, leadType, leadProductType] = await Promise.all([
+        const [
+          leadDetails,
+          projectdetailsResponse, // This is the ProjectResponseDTO from backend
+          leadSource,
+          leadType,
+          leadProductType,
+          managers, // Fetched managers list
+          siteEngineers, // Fetched site engineers list
+        ] = await Promise.all([
           projectService.getLeadByLeadId(leadId),
+          projectService.getProjectByLeadId(leadId),
           leadService.getLeadSourceList(),
           leadService.getLeadTypeList(),
           leadService.getLeadProductTypeList(),
+          projectService.getProjectManagerList(),
+          projectService.getSiteEngineerList(),
         ])
+
         setLead(leadDetails)
         setSourcelist(leadSource)
         setTypelist(leadType)
         setProductTypelist(leadProductType)
-        console.log("Fetched lead details:", leadDetails)
+        setManagerslist(managers) // Set managers list
+        setSEList(siteEngineers) // Set site engineers list
+
+        // Initialize projectData based on fetched projectdetailsResponse
+        let initialProjectManager = ""
+        let initialSiteEngineer = ""
+        let initialProjectName = ""
+        let initialProjectDescription = ""
+        let initialProjectBudget = ""
+        let initialProjectTimeline = ""
+        let initialProjectStatus = "planning"
+        let initialEstimatedValue = ""
+        let initialActualValue = ""
+        let initialStartDate = ""
+        let initialEndDate = ""
+
+        if (projectdetailsResponse) {
+          // If project exists, use its values
+          initialProjectName = projectdetailsResponse.projectName || ""
+          initialProjectDescription = projectdetailsResponse.projectDescription || ""
+          initialProjectBudget = projectdetailsResponse.projectBudget || ""
+          initialProjectTimeline = projectdetailsResponse.projectTimeline || ""
+          initialProjectStatus = projectdetailsResponse.projectStatus || "planning"
+          initialEstimatedValue = projectdetailsResponse.estimatedValue || ""
+          initialActualValue = projectdetailsResponse.actualValue || ""
+          initialStartDate = projectdetailsResponse.startDate || ""
+          initialEndDate = projectdetailsResponse.endDate || ""
+
+          // Map backend IDs to frontend state for dropdowns
+          initialProjectManager = projectdetailsResponse.projectManagerId || ""
+          initialSiteEngineer = projectdetailsResponse.siteEngineerId || ""
+        }
+
+        // Override initialProjectManager if current user is a manager and no manager is assigned
+        // This logic should apply *after* trying to get it from fetched projectdetailsResponse
+        if (!initialProjectManager && managers.some((manager) => manager.id === userId)) {
+          initialProjectManager = userId
+        }
+
+        // Set the projectData state with all initialized values
+        setProjectData({
+          projectName: initialProjectName,
+          projectDescription: initialProjectDescription,
+          projectBudget: initialProjectBudget,
+          projectTimeline: initialProjectTimeline,
+          projectStatus: initialProjectStatus,
+          projectManager: initialProjectManager,
+          siteEngineer: initialSiteEngineer,
+          estimatedValue: initialEstimatedValue,
+          actualValue: initialActualValue,
+          startDate: initialStartDate,
+          endDate: initialEndDate,
+          employee_updatedby: { id: userId }, // Always ensure this is the current user
+        })
       } catch (err) {
-        setError("Failed to load lead details or related lists.")
+        setError("Failed to load project details or related lists.")
         console.error(err)
-        setLead(null) // Set lead to null on error to show error message
+        setLead(null)
+        // Ensure projectData is reset to defaults or minimal on error
+        setProjectData({
+          projectName: "",
+          projectDescription: "",
+          projectBudget: "",
+          projectTimeline: "",
+          projectStatus: "planning",
+          projectManager: "",
+          siteEngineer: "",
+          estimatedValue: "",
+          actualValue: "",
+          startDate: "",
+          endDate: "",
+          employee_updatedby: { id: userId },
+        })
       } finally {
         setDataLoading(false)
       }
     }
 
     if (leadId) {
-      // Only fetch if leadId is provided
-      fetchInitialData()
+      fetchAllInitialData()
     } else {
-      setDataLoading(false) // If no leadId, stop loading and show no data
+      setDataLoading(false)
       setLead(null)
-    }
-  }, [leadId, user?.orgId]) // Add leadId to dependencies. Use optional chaining for user.orgId
-
-  // Effect to update formData and projectData when lead changes
-  useEffect(() => {
-    if (lead) {
-      setFormData((prev) => ({
-        ...prev,
-        ...lead, // Spread lead properties to update formData
-        proposal_type: lead.proposal_type || [], // Ensure it's an array
-        lead_proposal_type: lead.lead_proposal_type || [], // Ensure it's an array
-        employee_updatedby: {
-          id: userId,
-        },
-      }))
+      // If no leadId, ensure projectData is also reset to defaults
       setProjectData({
-        projectName: lead.project_name || "",
-        projectDescription: lead.project_description || "",
-        projectBudget: lead.project_budget || "",
-        projectTimeline: lead.project_timeline || "",
-        projectStatus: lead.project_status || "planning",
-        projectManager: lead.project_manager || "",
-        estimatedValue: lead.estimated_value || "",
-        actualValue: lead.actual_value || "",
-        startDate: lead.start_date || "",
-        endDate: lead.end_date || "",
+        projectName: "",
+        projectDescription: "",
+        projectBudget: "",
+        projectTimeline: "",
+        projectStatus: "planning",
+        projectManager: "",
+        siteEngineer: "",
+        estimatedValue: "",
+        actualValue: "",
+        startDate: "",
+        endDate: "",
+        employee_updatedby: { id: userId },
       })
     }
-  }, [lead, userId]) // Depend on lead and userId
+  }, [leadId, userId]) // Dependencies: leadId and userId. managerslist and seData are fetched inside.
+
+  // REMOVED: The problematic useEffect that caused infinite updates.
+  // Its logic is now integrated into the first useEffect.
 
   // Toggle section expansion
   const toggleSection = (section) => {
@@ -234,23 +188,31 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     e.preventDefault()
     setLoading(true)
     setError("")
+
+    // Basic validation for leadId
+    if (!leadId) {
+      setError("Lead ID is missing. Cannot update project.")
+      setLoading(false)
+      return
+    }
+
     try {
-      const processedData = {
-        ...formData,
-        ...projectData,
-        employee_updatedby: {
-          id: userId,
-        },
+      // Construct the data object to match the Spring Boot Project model
+      const processedDataForBackend = {
+        ...projectData, // Spreads all current projectData state fields
+        // Ensure project_manager and site_engineer are sent as objects with 'id'
+        project_manager: projectData.projectManager ? { id: projectData.projectManager } : null,
+        site_engineer: projectData.siteEngineer ? { id: projectData.siteEngineer } : null,
+        // employee_updatedby is already part of projectData state, but ensure it's an object
+        employee_updatedby: { id: user?.userId }, // Always send current user ID for updated_by
       }
-      // The original code had `const formData = new FormData()` here, which shadows the state `formData`.
-      // If your `onSubmit` function expects a FormData object (e.g., for file uploads),
-      // you'll need to construct it here with `processedData` and any files.
-      // For now, assuming `onSubmit` can handle the processedData object directly.
-      await onSubmit(processedData) // Pass processedData to onSubmit if it expects it
+
+      // Call the service directly from here
+      await projectService.createOrUpdateProject(processedDataForBackend, "project", leadId)
       onClose()
     } catch (err) {
       console.log(err)
-      setError(err.message || "Failed to update lead")
+      setError(err.message || "Failed to update project")
       window.scrollTo(0, 0)
     } finally {
       setLoading(false)
@@ -756,20 +718,44 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
               {/* Project Information */}
               <div>
                 <label className="text-sm font-medium text-gray-700 mb-2">
-                  Assign Site Engineer <span className="text-red-500">*</span>
+                  Assign Project Manager <span className="text-red-500">*</span>
                 </label>
                 <select
-                  name="lead_source"
-                  value={projectData.projectManager} // Bind to projectData state
+                  name="project_manager"
+                  value={projectData.projectManager} // Bind to projectData.projectManager
                   onChange={(e) => setProjectData({ ...projectData, projectManager: e.target.value })}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 >
-                  <option value="">Select Engineer</option>
-                  {/* You would map over your ssedata (Site Engineer data) here */}
-                  <option value="4">Gahininath Maske</option>
+                  <option value="">Select Project Manager</option>
+                  {managerslist.map((manager, i) => {
+                    return (
+                      <option key={i} value={manager.id}>
+                        {manager.firstName + " " + manager.lastName}
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
-              <div></div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2">
+                  Assign Site Engineer <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="site_engineer"
+                  value={projectData.siteEngineer} // Bind to projectData.siteEngineer
+                  onChange={(e) => setProjectData({ ...projectData, siteEngineer: e.target.value })}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select Engineer</option>
+                  {seData.map((engineer, i) => {
+                    return (
+                      <option key={i} value={engineer.id}>
+                        {engineer.firstName + " " + engineer.lastName}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
             </div>
           </ExpandableSection>
           {/* Action Buttons */}
