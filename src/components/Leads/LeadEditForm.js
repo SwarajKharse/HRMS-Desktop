@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { FiX, FiCalendar, FiUpload, FiFile, FiExternalLink } from "react-icons/fi"
@@ -10,14 +9,11 @@ import { useAuth } from "../../contexts/AuthContext"
 function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
   const fileInputRef = useRef(null)
-
   let userId = ""
   if (user) {
     userId = user.userId
   }
-
   const allIds = lead.lead_proposal_type !== null ? lead.lead_proposal_type.map((item) => item.id) : []
-
   const [formData, setFormData] = useState({
     ...lead,
     proposal_type: allIds || [],
@@ -26,7 +22,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       id: userId,
     },
   })
-
   const [checkInPreview, setCheckInPreview] = useState(lead.check_in_selfie_url || "")
   const [checkOutPreview, setCheckOutPreview] = useState(lead.check_out_selfie_url || "")
   const [feedbackFormName, setFeedbackFormName] = useState(lead.client_feedback_form_name || "")
@@ -49,14 +44,11 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
   const [checkInSelfieUploaded, setCheckInSelfieUploaded] = useState(lead.check_in_selfie_url ? true : false)
   const [checkInSelfieLocationURL, setCheckInSelfieLocation] = useState("")
   const [checkOutSelfieLocation, setCheckOutSelfieLocation] = useState("")
-
   // In the LeadEditForm component, add a new state for storing uploaded documents
   const [uploadedDocuments, setUploadedDocuments] = useState([])
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
   const [poUpload, setPoUploads] = useState(false)
   const [poUploadedDocuments, setPoUploadedDocuments] = useState(false)
-
-  
 
   // Add a function to fetch uploaded documents for the lead
   const fetchUploadedDocuments = async () => {
@@ -72,7 +64,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       }
     }
   }
-
   // Add a function to fetch uploaded documents for the lead
   const fetchUploadedPOs = async () => {
     if (lead && lead.id) {
@@ -87,18 +78,15 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       }
     }
   }
-
   // Add useEffect to fetch documents when the component mounts or lead changes
   useEffect(() => {
-    if ((activeTab === "sse-inprogress-leads" ||  activeTab === "assigned-leads")  && lead && lead.id) {
+    if ((activeTab === "sse-inprogress-leads" || activeTab === "assigned-leads") && lead && lead.id) {
       fetchUploadedDocuments()
     }
-
-    if (activeTab === 'salestl-won-leads' && lead && lead.id) {
+    if (activeTab === "salestl-won-leads" && lead && lead.id) {
       fetchUploadedPOs()
     }
   }, [activeTab, lead])
-
   // Add a function to handle document upload
   const handleDocumentUpload = async (e) => {
     const file = e.target.files[0]
@@ -110,8 +98,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       setProposalDocumentName(file.name)
     }
   }
-
-
   const handlePOUpload = async (e) => {
     const file = e.target.files[0]
     if (file) {
@@ -122,21 +108,17 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       setPoUploads(file.name)
     }
   }
-
   // Function to trigger file input click
   const triggerFileInput = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click()
     }
   }
-
   // Initialize form data when employee prop changes
-
   const Toggle = ({ checked, onChange, size = "small" }) => {
     const baseClasses =
       "relative inline-flex items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
     const sizeClasses = size === "small" ? "h-4 w-8" : "h-6 w-11"
-
     return (
       <button
         type="button"
@@ -155,7 +137,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       </button>
     )
   }
-
   async function getCheckInSelfiePosition(position) {
     var url = "https://www.google.com/maps/search/?api=1&query="
     if (position.coords.latitude && position.coords.longitude) {
@@ -164,18 +145,14 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       //return url;
     }
   }
-
   function getCheckOutSelfiePosition(position) {
     var url = "https://www.google.com/maps/search/?api=1&query="
-
     if (position.coords.latitude && position.coords.longitude) {
       url = url + position.coords.latitude + "," + position.coords.longitude
       setCheckOutSelfieLocation(url)
     }
   }
-
   const [showProposalTypeDropdown, setShowProposalTypeDropdown] = useState(false)
-
   // Add click outside handler to close dropdown
   useEffect(() => {
     function handleClickOutside(event) {
@@ -184,13 +161,11 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         setShowProposalTypeDropdown(false)
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside)
     return () => {
       document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [setShowProposalTypeDropdown])
-
   const handleProductTypeSelect = (id) => {
     let updatedProposalTypes
     if (formData.proposal_type.includes(id)) {
@@ -198,27 +173,22 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     } else {
       updatedProposalTypes = [...formData.proposal_type, id]
     }
-
     let finalProductType = []
     finalProductType = updatedProposalTypes.map((id, i) => {
       return {
         id: id,
       }
     })
-
     console.log(updatedProposalTypes)
     console.log(finalProductType)
-
     setFormData({
       ...formData,
       proposal_type: updatedProposalTypes,
       lead_proposal_type: finalProductType,
     })
-
     // Don't close the dropdown after selection
     // This allows selecting multiple items
   }
-
   const handleRemoveProductType = (id) => {
     const updatedProductTypes = formData.proposal_type.filter((item) => item !== id)
     let finalProductType = []
@@ -227,7 +197,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         id: id,
       }
     })
-
     console.log(finalProductType)
     setFormData({
       ...formData,
@@ -235,11 +204,9 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       lead_proposal_type: finalProductType,
     })
   }
-
   useEffect(() => {
     fetchDepartmentsAndDesignations()
   }, [authService.getUser().orgId])
-
   const fetchDepartmentsAndDesignations = async () => {
     try {
       if (activeTab == "unassigned-leads") {
@@ -256,7 +223,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         setProductTypelist(leadProductType)
         setSSEList(ssedata)
       }
-
       if (activeTab == "assigned-leads") {
         const [leadSource, leadType, leadProductType] = await Promise.all([
           leadService.getLeadSourceList(),
@@ -267,7 +233,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         setTypelist(leadType)
         setProductTypelist(leadProductType)
       }
-
       if (activeTab == "assign-leads-to-bdm") {
         const [bdmdata, leadSource, leadType, leadProductType] = await Promise.all([
           leadService.getBDMList(),
@@ -282,7 +247,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         setProductTypelist(leadProductType)
         setBDMList(bdmdata)
       }
-
       if (
         activeTab === "bdm-assigned-field-visit" ||
         activeTab === "sse-inprogress-leads" ||
@@ -305,26 +269,19 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       setDataLoading(false)
     }
   }
-
   const isVisitTodayOrPast = (visit_scheduled_date) => {
     if (!visit_scheduled_date) return false
-
     const visitDate = new Date(visit_scheduled_date)
     const today = new Date()
-
     // Reset time part for accurate date comparison
     visitDate.setHours(0, 0, 0, 0)
     today.setHours(0, 0, 0, 0)
-
     return visitDate <= today
   }
-
   const handleChange = (e) => {
     const { name, value } = e.target
-
     console.log(name + " *********** " + value)
     console.log(e.target.value)
-
     // Handle Assigned SSE Changes
     if (name === "assigned_sse") {
       setFormData({
@@ -339,7 +296,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         },
       })
     }
-
     // Handle Assigned BDM Changes
     if (name === "assigned_bdm") {
       setFormData({
@@ -354,7 +310,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         },
       })
     }
-
     // Handle file uploads
     else if (name === "check_in_selfie") {
       const file = e.target.files[0]
@@ -366,13 +321,11 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             console.log("CHeck00 IN Location URL is -- ")
           })
         }
-
         setFormData({
           ...formData,
           check_in_selfie: file,
           checkin_selfie_location_url: checkInSelfieLocationURL,
         })
-
         setCheckInSelfieUploaded(true)
         // Create preview URL
         const reader = new FileReader()
@@ -388,7 +341,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           ...formData,
           check_out_selfie: file,
         })
-
         // Create preview URL
         const reader = new FileReader()
         reader.onloadend = () => {
@@ -432,7 +384,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         })
         setProposalDocumentName(file.name)
       }
-    }else if (name === "lead_po") {
+    } else if (name === "lead_po") {
       const file = e.target.files[0]
       if (file) {
         setFormData({
@@ -442,7 +394,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         setPoUploads(file.name)
       }
     }
-      
     // Handle regular form fields
     else {
       setFormData({
@@ -450,26 +401,21 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         [name]: value,
       })
     }
-
     if (error) {
       console.log(error)
     }
   }
-
   const handleToggleFieldVisit = (e) => {
     // Update the local state for UI
     var newValue = e.target.value
     //setLocalFieldVisit(newValue)
-
     console.log("here " + newValue)
-
     // Update the form data
     setFormData({
       ...formData,
       need_of_field_visit: newValue,
     })
   }
-
   const handleProposalApproval = (e) => {
     // Update the local state for UI
     var newValue = e.target.value
@@ -478,7 +424,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       salestl_approval_status: newValue,
     })
   }
-
   const handleSharedStatus = (e) => {
     var newValue = e.target.value
     setFormData({
@@ -486,7 +431,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       salestl_shared_status: newValue,
     })
   }
-
   const handleLeadStatus = (e) => {
     var newValue = e.target.value
     setFormData({
@@ -494,15 +438,13 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       lead_status: newValue,
     })
   }
-
   const handleFieldVisitRemarksChange = (e) => {
     const { value } = e.target
     setFormData({
       ...formData,
-      need_of_field_visit_remarks: value,
+      lead_rejection_reason: value,
     })
   }
-
   const handleLeadRejectionRemarksChange = (e) => {
     const { value } = e.target
     setFormData({
@@ -510,36 +452,30 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       lead_rejection_reason: value,
     })
   }
-
   // Fix the showUploadProposal function to correctly check for rejected documents
   const showUploadProposal = () => {
-    let flag = 0;
-    let returnV = false;
-    if (activeTab === 'sse-inprogress-leads') {
-      uploadedDocuments.map((doc, index) => (
-        doc.status === '0' ? flag = (flag + 1) : 0
-      ));
-    
-      if ((uploadedDocuments.length - 1) === flag) {
-          return false
+    let flag = 0
+    const returnV = false
+    if (activeTab === "sse-inprogress-leads") {
+      uploadedDocuments.map((doc, index) => (doc.status === "0" ? (flag = flag + 1) : 0))
+      if (uploadedDocuments.length - 1 === flag) {
+        return false
       } else {
-        return true;
+        return true
       }
     }
-    return false; 
+    return false
   }
-
   // Fix the showProposalApproval function to correctly check for pending documents
   const showProposalApproval = () => {
     // Only show approval option if there's at least one pending document
-    if (activeTab === 'assigned-leads') { 
-      let flag = uploadedDocuments.some((doc) => doc.status === null);
-      console.log("New Flag is  " + flag);
+    if (activeTab === "assigned-leads") {
+      const flag = uploadedDocuments.some((doc) => doc.status === null)
+      console.log("New Flag is  " + flag)
       return flag
     }
     return false
   }
-
   const handleSubmit = async (e) => {
     console.log("Submit CLicked " + activeTab)
     e.preventDefault()
@@ -558,13 +494,10 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           id: userId,
         },
       }
-
       setFormData(processedData)
-
       if (activeTab == "bdm-assigned-field-visit") {
         // Create FormData object to handle file uploads
         const formData = new FormData()
-
         // Add all the regular form data
         Object.keys(processedData).forEach((key) => {
           // Skip file fields, we'll add them separately
@@ -593,25 +526,22 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             }
           }
         })
-
         // Add file uploads if they exist
         if (processedData.check_in_selfie) {
           formData.append("check_in_selfie_file", processedData.check_in_selfie)
           /* var locationUrl = "";
             if (navigator.geolocation) {
-              await navigator.geolocation.getCurrentPosition((position) => {  
-                locationUrl = getCheckInSelfiePosition(position)
+              await navigator.geolocation.getCurrentPosition((position) => {
+                  locationUrl = getCheckInSelfiePosition(position)
                 console.log("Location URL Inside "+locationUrl);
               })
           }
           console.log("Location URL is "+locationUrl)
           await formData.append("checkin_selfie_location_url",locationUrl) */
         }
-
         if (processedData.check_out_selfie) {
           formData.append("check_out_selfie_file", processedData.check_out_selfie)
           //formData.append("checkout_selfie_upload_time", date)
-
           if (navigator.geolocation) {
             await navigator.geolocation.getCurrentPosition((position) => {
               const locationURL = getCheckInSelfiePosition(position)
@@ -621,24 +551,18 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           }
           //formData.append("checkout_selfie_location",checkOutSelfieLocation)
         }
-
         if (processedData.bdm_client_feedback_form) {
           formData.append("bdm_client_feedback_form", processedData.bdm_client_feedback_form)
         }
-
         if (processedData.bdm_client_visit_report) {
           formData.append("bdm_client_visit_report", processedData.bdm_client_visit_report)
         }
-
         //formData.append("bdm_visit_remarks", processedData.bdm_visit_remarks)
         formData.append("flag", "bdm-field-visit")
-
         // Use the FormData object for the API call
         await leadService.updateBDMFieldVisit(lead.id, formData)
-
       } else if (activeTab === "assigned-leads") {
         const formData = new FormData()
-
         // Add all the regular form data
         Object.keys(processedData).forEach((key) => {
           // Skip file fields, we'll add them separately
@@ -652,17 +576,12 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             }
           }
         })
-
-
         formData.append("flag", "assigned-leads")
-
         // Use the FormData object for the API call
         await leadService.updateSalesTLProposalApproval(lead.id, formData)
-
-      }else if (activeTab === "sse-inprogress-leads") {
+      } else if (activeTab === "sse-inprogress-leads") {
         // Create FormData object to handle file uploads
         const formData = new FormData()
-
         // Add all the regular form data
         Object.keys(processedData).forEach((key) => {
           // Skip file fields, we'll add them separately
@@ -676,29 +595,23 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             }
           }
         })
-
         // Add file uploads if they exist
         if (processedData.salestl_proposal) {
           formData.append("salestl_proposal_file", processedData.salestl_proposal)
         }
-
         // Add proposal document if it exists
         if (processedData.proposal_document) {
           formData.append("proposal_document", processedData.proposal_document)
           formData.append("document_type", "proposal")
         }
-
         formData.append("flag", "sse-assigned-leads")
-
         // Use the FormData object for the API call
         await leadService.updateSSEProposalApproval(lead.id, formData)
-
         // Refresh the document list after upload
         await fetchUploadedDocuments()
       } else if (activeTab === "salestl-won-leads") {
         // Create FormData object to handle file uploads
         const formData = new FormData()
-
         // Add all the regular form data
         Object.keys(processedData).forEach((key) => {
           // Skip file fields, we'll add them separately
@@ -712,20 +625,16 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             }
           }
         })
-
         // Add file uploads if they exist
         if (processedData.lead_po) {
           formData.append("po_document", processedData.lead_po)
         }
-
         formData.append("flag", "salestl-won-leads")
-
         // Use the FormData object for the API call
         await leadService.updatePOorRejectionReason(lead.id, formData)
-
         // Refresh the document list after upload
         //await fetchUploadedPOs()
-      }else {
+      } else {
         // For other tabs, use the existing approach
         if (activeTab == "unassigned-leads") {
           var processedData1 = {
@@ -739,12 +648,10 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           await leadService.updateLead(lead.id, processedData1, "assign-sse")
         }
         if (activeTab == "sse-new-leads") await leadService.updateLead(lead.id, processedData, "update-field-info")
-
         if (activeTab == "assign-leads-to-bdm") {
           await leadService.updateLead(lead.id, processedData, "assign-leads-to-bdm")
         }
       }
-
       await onSubmit() // Wait for parent component to handle the response
       onClose() // Only close after successful submission and parent handling
     } catch (err) {
@@ -755,24 +662,20 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       setLoading(false)
     }
   }
-
   const Capitalize = (str) => {
     if (!str) return ""
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
-
   const AssignSSE = (str) => {
     if (!str) return ""
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
-
   // Simple table header and cell components
   const TableHeader = ({ children }) => (
     <th className="px-2 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b flex-wrap">
       {children}
     </th>
   )
-
   const matchingLabels = (id, producttypelist) => {
     let newlabel = ""
     if (id !== null && id !== "") {
@@ -785,7 +688,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     }
     return newlabel
   }
-
   // File input component
   const FileInput = ({ label, name, onChange, accept = "image/*", required = false, reference = null }) => (
     <div className="space-y-2">
@@ -815,14 +717,27 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   ? visitReportName
                   : name === "salestl_proposal" && proposalName
                     ? proposalName
-                  : name === 'lead_po' && poUpload ? poUpload  
-                    : name === "proposal_document" && proposalDocumentName
-                      ? proposalDocumentName
-                      : "No file chosen"}
+                    : name === "lead_po" && poUpload
+                      ? poUpload
+                      : name === "proposal_document" && proposalDocumentName
+                        ? proposalDocumentName
+                        : "No file chosen"}
         </span>
       </div>
     </div>
   )
+
+  // Determine if any BDM field visit data is present
+  const hasBdmFieldVisitData =
+    lead.visit_confirmation_call_date ||
+    lead.visit_scheduled_date ||
+    lead.check_in_selfie ||
+    lead.check_out_selfie ||
+    lead.bdm_client_visit_report ||
+    lead.bdm_client_feedback_form ||
+    (lead.lead_proposal_type && lead.lead_proposal_type.length > 0) ||
+    lead.proposal_scope ||
+    lead.bdm_visit_remarks
 
   return (
     <motion.div
@@ -845,7 +760,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             </button>
           </div>
         </div>
-
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
           {/* Basic Information Section */}
           <div className="space-y-4 rounded-lg p-4 bg-white border">
@@ -880,7 +794,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     : ""}
                 </label>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700">
                   Lead Source :
@@ -889,19 +802,16 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   })}
                 </label>
               </div>
-
-              {lead.employee !== null && lead.employee.firstName !== null ?
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Created By :
-                  {"  "+lead.employee.firstName+"  "+lead.employee.lastName}
-                </label>
+              {lead.employee !== null && lead.employee.firstName !== null ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Created By : {"  " + lead.employee.firstName + " " + lead.employee.lastName}
+                  </label>
                 </div>
-              : null}
+              ) : null}
             </div>
           </div>
           {/* Basic Information Section End */}
-
           {/* Additional Details */}
           {lead.client_name && lead.project_location && lead.office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -964,7 +874,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             </div>
           )}
           {/* Addition Details Section End */}
-
           {/* Middle Man Details */}
           {lead.middle_man_client_name && lead.middle_man_project_location && lead.middle_man_office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -1031,7 +940,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             </div>
           )}
           {/* Middle Man End */}
-
           {/* Architect Firm Details Section */}
           {lead.architect_client_name && lead.architect_project_location && lead.architect_office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -1098,7 +1006,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             </div>
           )}
           {/* Architect Firm Details Section End */}
-
           {/* MEP Firm Details Section */}
           {lead.mep_client_name && lead.mep_project_location && lead.mep_office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -1165,7 +1072,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             </div>
           )}
           {/* MEP Firm Details Section End */}
-
           {/* PMC Firm Details Section */}
           {lead.pmc_client_name && lead.pmc_project_location && lead.pmc_office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -1232,7 +1138,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             </div>
           )}
           {/* PMC Firm Details End */}
-
           {activeTab == "unassigned-leads" ? (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Assign SSE</h3>
@@ -1257,7 +1162,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               </div>
             </div>
           ) : null}
-
           {activeTab == "sse-new-leads" ? (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Field Visit Details</h3>
@@ -1276,7 +1180,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   <option value="0">No</option>
                 </select>
               </div>
-
               <div>
                 <label className="text-sm font-medium text-gray-700">Need of Field Visit Remarks:</label>
                 <textarea
@@ -1288,7 +1191,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               </div>
             </div>
           ) : null}
-
           {activeTab == "assign-leads-to-bdm" ? (
             <>
               <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -1299,7 +1201,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   </label>
                 </div>
               </div>
-
               <div className="space-y-4 rounded-lg bg-white border p-4">
                 <h3 className="font-semibold text-lg border-b pb-2">Assign BDM</h3>
                 <div>
@@ -1323,7 +1224,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   </select>
                 </div>
               </div>
-
               {/* Lead Status */}
               {lead.salestl_shared_status === "1" ? (
                 <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -1347,7 +1247,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               {/* Lead Status End */}
             </>
           ) : null}
-
           {activeTab === "bdm-assigned-field-visit" ? (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Field Visit Details</h3>
@@ -1368,7 +1267,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     />
                   </div>
                 </div>
-
                 {/* Visit scheduled date */}
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700">Visit Scheduled Date:</label>
@@ -1386,7 +1284,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   </div>
                 </div>
               </div>
-
               {isVisitTodayOrPast(formData.visit_scheduled_date) && (
                 <>
                   {/* Check-in selfie */}
@@ -1418,7 +1315,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   </div>
                 </>
               )}
-
               {/* Fields that only show if check-in selfie is uploaded */}
               {isVisitTodayOrPast(formData.visit_scheduled_date) && lead.check_in_selfie && (
                 <>
@@ -1447,7 +1343,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                       )}
                     </div>
                   )}
-
                   {/* Visit report */}
                   {lead.bdm_client_visit_report && (
                     <div className="mt-4">
@@ -1477,7 +1372,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                       )}
                     </div>
                   )}
-
                   {/* Proposal scope */}
                   <div className="mt-4 space-y-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">Proposal scope</label>
@@ -1497,7 +1391,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                       })}
                     </select>
                   </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Proposal Type</label>
                     <div id="product-type-dropdown" className="relative mt-1">
@@ -1569,7 +1462,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                       )}
                     </div>
                   </div>
-
                   {/* Remarks */}
                   <div className="mt-4 space-y-2">
                     <label className="block text-sm font-medium text-gray-700">Remarks:</label>
@@ -1615,130 +1507,333 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   )}
                 </>
               )}
-
               {/* Client feedback form */}
             </div>
           ) : null}
-
           {/* File Uploads, list and approvals */}
-          {activeTab === "assigned-leads" || activeTab === "sse-inprogress-leads" || activeTab === "salestl-won-leads" ? (
-            <>
-              {lead.need_of_field_visit === "1" ? (
-                <div className="space-y-4 rounded-lg bg-white border p-4">
-                  <h3 className="font-semibold text-lg border-b pb-2">BDM Field Visit Data</h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Visit confirmation call date */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Visit Confirmation Call Date: {lead.visit_confirmation_call_date}
-                      </label>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Visit Scheduled Date:: {lead.visit_scheduled_date}
-                      </label>
-                    </div>
-
-                    {lead.check_in_selfie && (
-                      <div className="mt-2">
-                        <label className="block text-sm font-medium text-gray-700">Check-in Selfie:</label>
-                        <img
-                          src={lead.check_in_selfie || "/placeholder.svg"}
-                          alt="Check-in preview"
-                          className="h-24 w-auto object-cover rounded-md"
-                        />
-                      </div>
-                    )}
-
-                    {lead.check_out_selfie && (
-                      <div className="mt-2">
-                        <label className="block text-sm font-medium text-gray-700">Check-Out Selfie:</label>
-                        <img
-                          src={lead.check_out_selfie || "/placeholder.svg"}
-                          alt="Check-in preview"
-                          className="h-24 w-auto object-cover rounded-md"
-                        />
-                      </div>
-                    )}
-
-                    {lead.bdm_client_visit_report && (
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700">Visit Report:</label>
-                        <a
-                          href={lead.bdm_client_visit_report}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
-                        >
-                          BDM Client Visit Report
-                        </a>
-                      </div>
-                    )}
-
-                    {lead.bdm_client_feedback_form && (
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700">Client Feedback Form:</label>
-                        <a
-                          href={lead.bdm_client_feedback_form}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 underline"
-                        >
-                          BDM Client Feedback Form
-                        </a>
-                      </div>
-                    )}
-
-                    {lead.lead_proposal_type && (
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Proposal Type:
-                          {lead.lead_proposal_type !== null
-                            ? lead.lead_proposal_type.map((country, itr) => {
-                                const ptlabel = matchingLabels(country, producttypelist).toString()
-                                return itr !== lead.lead_proposal_type.length - 1
-                                  ? ptlabel + ",  "
-                                  : ptlabel.substring(0, ptlabel.length - 1)
-                              })
-                            : ""}
-                        </label>
-                      </div>
-                    )}
-
-                    {lead.proposal_scope && (
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Proposal Scope:
-                          {typelist.map((country, i) => {
-                            return country.id == lead.proposal_scope ? " " + country.label : ""
-                          })}
-                        </label>
-                      </div>
-                    )}
-
-                    {lead.bdm_visit_remarks && (
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium text-gray-700">
-                          Remarks: {lead.bdm_visit_remarks}
-                        </label>
-                      </div>
-                    )}
+          {(activeTab === "assigned-leads" ||
+            activeTab === "sse-inprogress-leads" ||
+            activeTab === "salestl-won-leads" ||
+            activeTab === "unassigned-leads") &&
+          hasBdmFieldVisitData ? (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">BDM Field Visit Data</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Visit confirmation call date */}
+                {lead.visit_confirmation_call_date && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Visit Confirmation Call Date: {lead.visit_confirmation_call_date}
+                    </label>
                   </div>
-                </div>
-              ) : null}
-
+                )}
+                {lead.visit_scheduled_date && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Visit Scheduled Date:: {lead.visit_scheduled_date}
+                    </label>
+                  </div>
+                )}
+                {lead.check_in_selfie && (
+                  <div className="mt-2">
+                    <label className="block text-sm font-medium text-gray-700">Check-in Selfie:</label>
+                    <img
+                      src={lead.check_in_selfie || "/placeholder.svg"}
+                      alt="Check-in preview"
+                      className="h-24 w-auto object-cover rounded-md"
+                    />
+                  </div>
+                )}
+                {lead.check_out_selfie && (
+                  <div className="mt-2">
+                    <label className="block text-sm font-medium text-gray-700">Check-Out Selfie:</label>
+                    <img
+                      src={lead.check_out_selfie || "/placeholder.svg"}
+                      alt="Check-in preview"
+                      className="h-24 w-auto object-cover rounded-md"
+                    />
+                  </div>
+                )}
+                {lead.bdm_client_visit_report && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700">Visit Report:</label>
+                    <a
+                      href={lead.bdm_client_visit_report}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      BDM Client Visit Report
+                    </a>
+                  </div>
+                )}
+                {lead.bdm_client_feedback_form && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700">Client Feedback Form:</label>
+                    <a
+                      href={lead.bdm_client_feedback_form}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      BDM Client Feedback Form
+                    </a>
+                  </div>
+                )}
+                {lead.lead_proposal_type && lead.lead_proposal_type.length > 0 && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Proposal Type:
+                      {lead.lead_proposal_type !== null
+                        ? lead.lead_proposal_type.map((country, itr) => {
+                            const ptlabel = matchingLabels(country, producttypelist).toString()
+                            return itr !== lead.lead_proposal_type.length - 1
+                              ? ptlabel + ",  "
+                              : ptlabel.substring(0, ptlabel.length - 1)
+                          })
+                        : ""}
+                    </label>
+                  </div>
+                )}
+                {lead.proposal_scope && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Proposal Scope:
+                      {typelist.map((country, i) => {
+                        return country.id == lead.proposal_scope ? " " + country.label : ""
+                      })}
+                    </label>
+                  </div>
+                )}
+                {lead.bdm_visit_remarks && (
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700">Remarks: {lead.bdm_visit_remarks}</label>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+          {activeTab === "assigned-leads" ||
+          activeTab === "sse-inprogress-leads" ||
+          activeTab === "salestl-won-leads" ? (
+            <>
               {lead.need_of_field_visit !== null ? (
                 <div className="space-y-4 rounded-lg bg-white border p-4">
                   <h3 className="font-semibold text-lg border-b pb-2">Proposal Approval</h3>
-
                   {/* Approve Proposal */}
-
-                {(activeTab === "sse-inprogress-leads" || activeTab === "assigned-leads") && (
-                <div className="space-y-4 rounded-lg bg-white border p-4 mt-4">
-                  <h4 className="font-semibold text-sm border-b pb-2">Proposal Documents</h4>
-
+                  {(activeTab === "sse-inprogress-leads" || activeTab === "assigned-leads") && (
+                    <div className="space-y-4 rounded-lg bg-white border p-4 mt-4">
+                      <h4 className="font-semibold text-sm border-b pb-2">Proposal Documents</h4>
+                      {/* List of existing proposal documents */}
+                      <div className="mt-4">
+                        {isLoadingDocuments ? (
+                          <div className="text-center py-4">
+                            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                            <p className="text-sm text-gray-500 mt-2">Loading documents...</p>
+                          </div>
+                        ) : uploadedDocuments.length > 0 ? (
+                          <div className="space-y-2">
+                            {uploadedDocuments.map((doc, index) => (
+                              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                                <div className="flex items-center">
+                                  <FiFile className="mr-2 text-blue-600" />
+                                  <span className="text-sm font-medium">{doc.fileName || `Document ${index + 1}`}</span>
+                                </div>
+                                <div className="flex items-center">
+                                  <span className="text-xs text-gray-500 mr-3">
+                                    {doc.status === null ? "Pending" : null}
+                                    {doc.status === "1" ? "Approved" : null}
+                                    {doc.status === "0" ? "Rejected" : null}
+                                  </span>
+                                  <span className="text-xs text-gray-500 mr-3">
+                                    {new Date(doc.uploadedAt).toLocaleDateString()}
+                                  </span>
+                                  <a
+                                    href={doc.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800"
+                                  >
+                                    <FiExternalLink />
+                                  </a>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500 py-2">No proposal documents uploaded yet.</p>
+                        )}
+                      </div>
+                      {/* Upload new proposal document */}
+                      {showUploadProposal() && (
+                        <div className="mt-4">
+                          <input
+                            type="file"
+                            name="proposal_document"
+                            onChange={handleDocumentUpload}
+                            accept="application/pdf"
+                            className="hidden"
+                            ref={fileInputRef}
+                          />
+                          <div className="flex flex-col space-y-2">
+                            <label className="block text-sm font-medium text-gray-700">Upload Proposal Document</label>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                type="button"
+                                onClick={triggerFileInput}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+                              >
+                                <FiUpload className="mr-2" />
+                                Choose File
+                              </button>
+                              <span className="text-sm text-gray-500">
+                                {proposalDocumentName ? proposalDocumentName : "No file chosen"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {/* Approve Proposal commented the validation for recent changes - Sales TL - proposal approval always open   */}
+                      {/*  {showProposalApproval() && ( */}
+                      <div className="flex items-center gap-2 mt-4">
+                        <label className="text-sm font-medium text-gray-700">Approve Proposal:</label>
+                        <select
+                          name="salestl_approval_status"
+                          value={formData.salestl_approval_status !== null ? formData.salestl_approval_status : ""}
+                          className="mt-1 rounded-md border border-gray-300 px-3 py-2"
+                          onChange={(e) => handleProposalApproval(e)}
+                        >
+                          <option value={null}>Please select</option>
+                          <option value="1">Yes</option>
+                          <option value="0">No</option>
+                        </select>
+                      </div>
+                      {/* )} */}
+                    </div>
+                  )}
+                  {activeTab === "sse-inprogress-leads" && (
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Approval Status:{" "}
+                        {lead.salestl_approval_status !== null && lead.salestl_approval_status === "1"
+                          ? "Approved"
+                          : null}
+                        {lead.salestl_approval_status !== null && lead.salestl_approval_status === "0"
+                          ? "Not Approved"
+                          : null}
+                        {lead.salestl_approval_status === null || lead.salestl_approval_status === ""
+                          ? "Pending"
+                          : null}
+                      </label>
+                    </div>
+                  )}
+                  {/* Approve Proposal End */}
+                  {/* Shared Status */}
+                  {activeTab === "salestl-won-leads" ? (
+                    <>
+                      {lead.salestl_approval_status == "1" ? (
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-medium text-gray-700">
+                            Shared Status:
+                            {formData.salestl_shared_status === "1"
+                              ? "Yes"
+                              : formData.salestl_shared_status === "0"
+                                ? "No"
+                                : "N/A"}
+                          </label>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {activeTab !== "salestl-won-leads" ? (
+                    <>
+                      {lead.salestl_approval_status == "1" ? (
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-medium text-gray-700">Shared Status:</label>
+                          <select
+                            name="salestl_shared_status"
+                            //value={formData.need_of_field_visit || ""}
+                            value={formData.salestl_shared_status !== null ? formData.salestl_shared_status : ""}
+                            className="mt-1 rounded-md border border-gray-300 px-3 py-2"
+                            onChange={(e) => handleSharedStatus(e)}
+                          >
+                            <option value={null}>Please select</option>
+                            <option value="1">Yes</option>
+                            <option value="0">No</option>
+                          </select>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {/* Shared Status End */}
+                </div>
+              ) : null}
+              {/* Lead Status */}
+              {activeTab === "salestl-won-leads" ? (
+                <>
+                  {lead.salestl_approval_status == "1" ? (
+                    <div className="space-y-4 rounded-lg bg-white border p-4">
+                      <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          Lead Status:{Capitalize(formData.lead_status)}
+                        </label>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+              {activeTab !== "salestl-won-leads" ? (
+                <>
+                  {lead.salestl_shared_status === "1" ? (
+                    <div className="space-y-4 rounded-lg bg-white border p-4">
+                      <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-700">Lead Status:</label>
+                        <select
+                          name="lead_status"
+                          //value={formData.need_of_field_visit || ""}
+                          value={formData.lead_status !== null ? formData.lead_status : ""}
+                          className="mt-1 rounded-md border border-gray-300 px-3 py-2"
+                          onChange={(e) => handleLeadStatus(e)}
+                        >
+                          <option value={null}>Please select</option>
+                          <option value="won">Won</option>
+                          <option value="lost">Lost</option>
+                        </select>
+                      </div>
+                    </div>
+                  ) : null}
+                  {/* Lead Status End */}
+                </>
+              ) : null}
+            </>
+          ) : null}
+          {/* File Uploads, list and approvals End */}
+          {/* Upload PO, or update Rejection Reason */}
+          {activeTab === "salestl-won-leads" ? (
+            <>
+              {lead.lead_status === "lost" ? (
+                <div className="space-y-4 rounded-lg bg-white border p-4">
+                  {lead.lead_rejection_reason === null ? (
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Rejection Reason:</label>
+                      <textarea
+                        name="lead_rejection_reason"
+                        className="mt-1 block w-full rounded-md border border-gray-300"
+                        value={formData.lead_rejection_reason || ""}
+                        onChange={handleLeadRejectionRemarksChange}
+                      ></textarea>
+                    </div>
+                  ) : (
+                    <label className="text-sm font-medium text-gray-700">
+                      Rejection Reason: {lead.lead_rejection_reason}
+                    </label>
+                  )}
+                </div>
+              ) : null}
+              {lead.lead_status === "won" ? (
+                <div className="space-y-4 rounded-lg bg-white border p-4">
                   {/* List of existing proposal documents */}
                   <div className="mt-4">
                     {isLoadingDocuments ? (
@@ -1746,21 +1841,15 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                         <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
                         <p className="text-sm text-gray-500 mt-2">Loading documents...</p>
                       </div>
-                    ) : uploadedDocuments.length > 0 ? (
+                    ) : poUploadedDocuments.length > 0 ? (
                       <div className="space-y-2">
-                        {uploadedDocuments.map((doc, index) => (
+                        {poUploadedDocuments.map((doc, index) => (
                           <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                             <div className="flex items-center">
                               <FiFile className="mr-2 text-blue-600" />
-                              <span className="text-sm font-medium">{doc.fileName || `Document ${index + 1}`}</span>
+                              <span className="text-sm font-medium">{`PO ${index + 1}`}</span>
                             </div>
                             <div className="flex items-center">
-                              <span className="text-xs text-gray-500 mr-3">
-                              {doc.status === null ? "Pending" : null}
-                              {doc.status === "1" ? "Approved" : null}
-                              {doc.status === "0" ? "Rejected" : null}
-                              </span>
-
                               <span className="text-xs text-gray-500 mr-3">
                                 {new Date(doc.uploadedAt).toLocaleDateString()}
                               </span>
@@ -1780,252 +1869,35 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                       <p className="text-sm text-gray-500 py-2">No proposal documents uploaded yet.</p>
                     )}
                   </div>
-
-                  {/* Upload new proposal document */}
-                  {showUploadProposal() && (
-                    <div className="mt-4">
-                      <input
-                        type="file"
-                        name="proposal_document"
-                        onChange={handleDocumentUpload}
-                        accept="application/pdf"
-                        className="hidden"
-                        ref={fileInputRef}
-                      />
-                      <div className="flex flex-col space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">Upload Proposal Document</label>
-                        <div className="flex items-center space-x-2">
-                          <button
-                            type="button"
-                            onClick={triggerFileInput}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                          >
-                            <FiUpload className="mr-2" />
-                            Choose File
-                          </button>
-                          <span className="text-sm text-gray-500">
-                            {proposalDocumentName ? proposalDocumentName : "No file chosen"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Approve Proposal commented the validation for recent changes - Sales TL - proposal approval always open   */}
-                 {/*  {showProposalApproval() && ( */}
-                    <div className="flex items-center gap-2 mt-4">
-                      <label className="text-sm font-medium text-gray-700">Approve Proposal:</label>
-                      <select
-                        name="salestl_approval_status"
-                        value={formData.salestl_approval_status !== null ? formData.salestl_approval_status : ""}
-                        className="mt-1 rounded-md border border-gray-300 px-3 py-2"
-                        onChange={(e) => handleProposalApproval(e)}
-                      >
-                        <option value={null}>Please select</option>
-                        <option value="1">Yes</option>
-                        <option value="0">No</option>
-                      </select>
-                    </div>
-                  {/* )} */}
-                </div>
-              )}
-                  
-                {activeTab === "sse-inprogress-leads" && (
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Approval Status:{" "}
-                      {lead.salestl_approval_status !== null && lead.salestl_approval_status === "1"
-                        ? "Approved"
-                        : null}
-                      {lead.salestl_approval_status !== null && lead.salestl_approval_status === "0"
-                        ? "Not Approved"
-                        : null}
-                      {lead.salestl_approval_status === null || lead.salestl_approval_status === ""
-                        ? "Pending"
-                        : null}
-                    </label>
-                  </div>
-                )}
-
-                  
-                  {/* Approve Proposal End */}
-
-                  {/* Shared Status */}
-
-                  {activeTab === 'salestl-won-leads' ? (
-                    <>
-                      {lead.salestl_approval_status == "1" ? (
-                      <div className="flex items-center gap-2">
-                          <label className="text-sm font-medium text-gray-700">Shared Status:
-                            { formData.salestl_shared_status === "1" ? "Yes" : formData.salestl_shared_status === "0" ? "No" : "N/A"}</label>
-                      </div>
-                      ) : null
-                      }
-                    </>
-                  ) : null}
-                  {activeTab !== 'salestl-won-leads' ? (
-                  <>
-                    {lead.salestl_approval_status == "1" ? (
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-gray-700">Shared Status:</label>
-                        <select
-                          name="salestl_shared_status"
-                          //value={formData.need_of_field_visit || ""}
-                          value={formData.salestl_shared_status !== null ? formData.salestl_shared_status : ""}
-                          className="mt-1 rounded-md border border-gray-300 px-3 py-2"
-                          onChange={(e) => handleSharedStatus(e)}
+                    <input
+                      type="file"
+                      name="lead_po"
+                      onChange={handlePOUpload}
+                      accept="application/pdf"
+                      className="hidden"
+                      ref={fileInputRef}
+                    />
+                    <div className="flex flex-col space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">Upload PO</label>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={triggerFileInput}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
                         >
-                          <option value={null}>Please select</option>
-                          <option value="1">Yes</option>
-                          <option value="0">No</option>
-                        </select>
+                          <FiUpload className="mr-2" />
+                          Choose File
+                        </button>
+                        <span className="text-sm text-gray-500">{poUpload ? poUpload : "No file chosen"}</span>
                       </div>
-                      ) : null
-                      }
-                    </>
-                  ) : null}
-                  {/* Shared Status End */}
-                </div>
-              ) : null}
-
-              {/* Lead Status */}
-
-              {activeTab === 'salestl-won-leads' ? (
-                <>
-                  {lead.salestl_approval_status == "1" ? (
-                  <div className="space-y-4 rounded-lg bg-white border p-4">
-                    <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
-                    <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-gray-700">Lead Status:{ Capitalize(formData.lead_status) }</label>
                     </div>
                   </div>
-                  ) : null
-                  }
-                </>
-              ) : null}
-
-            {activeTab !== 'salestl-won-leads' ? (
-              <>
-              {lead.salestl_shared_status === "1" ? (
-                <div className="space-y-4 rounded-lg bg-white border p-4">
-                  <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700">Lead Status:</label>
-                    <select
-                      name="lead_status"
-                      //value={formData.need_of_field_visit || ""}
-                      value={formData.lead_status !== null ? formData.lead_status : ""}
-                      className="mt-1 rounded-md border border-gray-300 px-3 py-2"
-                      onChange={(e) => handleLeadStatus(e)}
-                    >
-                      <option value={null}>Please select</option>
-                      <option value="won">Won</option>
-                      <option value="lost">Lost</option>
-                    </select>
-                  </div>
                 </div>
               ) : null}
-              {/* Lead Status End */}
+              {/* END Upload PO, or update Rejection Reason */}
             </>
           ) : null}
-          </>
-          ) : null}
-
-          {/* File Uploads, list and approvals End */}
-          
-          {/* Upload PO, or update Rejection Reason */}
-          {activeTab === "salestl-won-leads" ? <>
-              
-            {lead.lead_status === "lost" ? ( 
-              <div className="space-y-4 rounded-lg bg-white border p-4">
-                {lead.lead_rejection_reason === null ? (
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Rejection Reason:</label>
-                    <textarea
-                      name="lead_rejection_reason"
-                      className="mt-1 block w-full rounded-md border border-gray-300"
-                      value={formData.lead_rejection_reason || ""}
-                      onChange={handleLeadRejectionRemarksChange}
-                    ></textarea>
-                  </div>
-                ) :
-                  <label className="text-sm font-medium text-gray-700">Rejection Reason:  {lead.lead_rejection_reason
-                  }</label>
-              }
-              </div>
-                ) : null}
-                
-            {lead.lead_status === "won" ? ( 
-              <div className="space-y-4 rounded-lg bg-white border p-4">
-                
-                 {/* List of existing proposal documents */}
-                <div className="mt-4">
-                  {isLoadingDocuments ? (
-                    <div className="text-center py-4">
-                      <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                      <p className="text-sm text-gray-500 mt-2">Loading documents...</p>
-                    </div>
-                  ) : poUploadedDocuments.length > 0 ? (
-                    <div className="space-y-2">
-                      {poUploadedDocuments.map((doc, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                          <div className="flex items-center">
-                            <FiFile className="mr-2 text-blue-600" />
-                            <span className="text-sm font-medium">{`PO ${index + 1}`}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <span className="text-xs text-gray-500 mr-3">
-                              {new Date(doc.uploadedAt).toLocaleDateString()}
-                            </span>
-                            <a
-                              href={doc.fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              <FiExternalLink />
-                            </a>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500 py-2">No proposal documents uploaded yet.</p>
-                  )}
-                  </div>  
-                  <div className="mt-4">
-                <input
-                  type="file"
-                  name="lead_po"
-                  onChange={handlePOUpload}
-                  accept="application/pdf"
-                  className="hidden"
-                  ref={fileInputRef}
-                />
-                <div className="flex flex-col space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">Upload PO</label>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        type="button"
-                        onClick={triggerFileInput}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                      >
-                        <FiUpload className="mr-2" />
-                        Choose File
-                      </button>
-                      <span className="text-sm text-gray-500">
-                        {poUpload ? poUpload : "No file chosen"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              ) : null} 
-              {/* END Upload PO, or update Rejection Reason */}
-
-            
-          </> : null}
-          
           <div className="flex justify-end space-x-4 pt-4">
             <button
               type="button"
@@ -2039,8 +1911,8 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             activeTab === "sse-new-leads" ||
             activeTab === "assign-leads-to-bdm" ||
             (activeTab === "assigned-leads" && lead.need_of_field_visit !== null) ||
-              activeTab === "sse-inprogress-leads" ||
-              activeTab === 'salestl-won-leads' ||
+            activeTab === "sse-inprogress-leads" ||
+            activeTab === "salestl-won-leads" ||
             activeTab === "bdm-assigned-field-visit" ? (
               <button
                 type="submit"
@@ -2063,5 +1935,4 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     </motion.div>
   )
 }
-
 export default LeadEditForm
