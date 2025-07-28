@@ -1,5 +1,4 @@
 import axios from "axios"
-import { authService } from "../services/authService" // Corrected path if needed
 
 const API_URL = `${process.env.REACT_APP_API_URL}`
 
@@ -18,8 +17,8 @@ export const projectService = {
     try {
       const response = await axios.post(
         `${API_URL}/projects/createOrUpdate/${leadId}?amc_or_project=${amc_or_project}`,
-        projectData, // projectData now correctly formatted in ProjectLeadDetails.js
-        getAuthHeaders(), // Pass headers for authentication if needed
+        projectData,
+        getAuthHeaders(),
       )
       return response.data
     } catch (error) {
@@ -72,7 +71,6 @@ export const projectService = {
   },
   updateProjectTitle: async (projectId, newTitle) => {
     try {
-      // Frontend sends a JSON object { title: "..." }
       const response = await axios.put(`${API_URL}/projects/${projectId}/title`, { title: newTitle }, getAuthHeaders())
       return response.data
     } catch (error) {
@@ -108,7 +106,7 @@ export const projectService = {
       throw error
     }
   },
-  // Get project details
+  // Get project details (now returns ProjectResponseDTO without plan data maps)
   getProjectDetails: async (projectId) => {
     try {
       const response = await axios.get(`${API_URL}/projects/${projectId}/project`, {
@@ -116,28 +114,40 @@ export const projectService = {
       })
       return response.data
     } catch (error) {
-      console.error("Error fetching project details:", error)
+      console.error("Error fetching project details:", error.response ? error.response.data : error.message)
       throw error
     }
   },
-  // Save project initiation plan
-  saveProjectInitiationPlan: async (planData) => {
+  // Unified save function for all plans
+  saveProjectPlans: async (projectId, planData) => {
     try {
-      const response = await fetch(`/api/projects/${planData.projectId}/initiation-plan`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(planData),
-      })
-      if (!response.ok) {
-        throw new Error("Failed to save project initiation plan")
+      const response = await axios.post(`${API_URL}/projects/${projectId}/plans`, planData, getAuthHeaders())
+      if (response.status < 200 || response.status >= 300) {
+        throw new Error("Failed to save project plans")
       }
-      return await response.json()
+      return response.data
     } catch (error) {
-      console.error("Error saving project initiation plan:", error)
+      console.error("Error saving project plans:", error.response ? error.response.data : error.message)
       throw error
     }
+  },
+  // Unified fetch function for all plans
+  getProjectPlansByProjectId: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/plans`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error fetching project plans:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  // New unified fetch function for project plan history
+  async getProjectPlanHistory(projectId, planType) {
+    const response = await axios.get(
+      `${API_URL}/projects/${projectId}/plans/history?planType=${planType}`,
+      getAuthHeaders(),
+    )
+    return response.data
   },
   getLeadByLeadId: async (leadId) => {
     try {
@@ -150,13 +160,8 @@ export const projectService = {
   },
   getProjectManagerList: async () => {
     try {
-      //const user = authService.getUser()
-
-      const user = 1;
-      const response = await axios.get(
-        `${API_URL}/projects/pmlist/${user.orgId || 1}`, // Use user.orgId, fallback to 1
-        getAuthHeaders(),
-      )
+      const user = { orgId: 1 } // Placeholder for user object
+      const response = await axios.get(`${API_URL}/projects/pmlist/${user.orgId || 1}`, getAuthHeaders())
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
@@ -164,15 +169,42 @@ export const projectService = {
   },
   getSiteEngineerList: async () => {
     try {
-      //const user = authService.getUser()
-      const user = 1;
-      const response = await axios.get(
-        `${API_URL}/projects/selist/${user.orgId || 1}`, // Use user.orgId, fallback to 1
-        getAuthHeaders(),
-      )
+      const user = { orgId: 1 } // Placeholder for user object
+      const response = await axios.get(`${API_URL}/projects/selist/${user.orgId || 1}`, getAuthHeaders())
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
+    }
+  },
+
+  getSiteEngineerProjects: async (
+    page = 0,
+    size = 30,
+    assignedSE,
+  ) => {
+    try {
+      const queryParams = {
+        page,
+        size,
+        assignedSE
+      }
+
+      let queryString = ""
+
+      if (queryString) {
+        queryParams.query = queryString
+      }
+
+      console.log("Sending API request with params:", queryParams)
+
+      const response = await axios.get(`${API_URL}/projects/siteengineerprojects`, {
+        params: queryParams,
+      })
+
+      return response.data
+    } catch (error) {
+      console.error("API Error:", error)
+      throw new Error("Failed to fetch assigned leads: " + (error.message || "Unknown error"))
     }
   },
 }

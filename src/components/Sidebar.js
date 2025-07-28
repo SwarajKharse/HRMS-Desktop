@@ -13,7 +13,7 @@ import {
   HiDocumentAdd,
   HiViewList 
 } from 'react-icons/hi';
-import { HiOutlineBuildingStorefront } from "react-icons/hi2";
+import { HiOutlineBuildingStorefront, HiMiniShoppingBag  } from "react-icons/hi2";
 import { GrProjects } from "react-icons/gr";
 import { usePermissions } from "../contexts/PermissionsContext"
 import { RiProductHuntLine } from "react-icons/ri";
@@ -61,6 +61,8 @@ function Sidebar({logo}) {
     updatedNavItems.push({ icon: GrProjects, label: 'Projects', path: '/projects' });
 
     updatedNavItems.push({ icon: HiOutlineBuildingStorefront, label: 'Store', path: '/store' });
+
+    updatedNavItems.push({ icon: HiMiniShoppingBag, label: 'Purchase', path: '/purchase' });
 
     updatedNavItems.push({ icon: RiProductHuntLine, label: 'Product Management', path: '/product-management' });
 

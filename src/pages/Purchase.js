@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import NewProjects from "../components/Projects/NewProjects"
-import SiteEngineerProjects from "../components/Projects/SiteEngineerProjects"
+import NewProjects from "../components/Purchase/NewProjects"
 import { GrWorkshop } from "react-icons/gr"
 import { useAuth } from "../contexts/AuthContext"
 
@@ -17,29 +16,14 @@ function Projects() {
     const allTabs = [
       {
         id: "new-projects",
-        label: "New Projects",
+        label: "Projects",
         icon: GrWorkshop,
         component: NewProjects,
-      },
-      {
-        id: "site-engineer-projects",
-        label: "My Projects",
-        icon: GrWorkshop,
-        component: SiteEngineerProjects,
       }
     ]
 
     if (!employee) return [allTabs[0]] // Default to unassigned leads if no employee
     const designation = employee.designation.name.replace(/\s+/g, "-").toLowerCase() || ""
-
-
-    console.log(designation)
-
-    if (designation.includes("project-manager")) {
-      return [allTabs[0]] // Admin/Manager can see all tabs
-    } else if (designation.includes("sr.-site-engineer")) {
-      return [allTabs[1]]
-    } 
 
     // Filter tabs based on designation
    /*  if (designation.includes("director")) {

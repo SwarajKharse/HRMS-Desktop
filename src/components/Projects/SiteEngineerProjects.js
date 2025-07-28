@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
@@ -9,9 +8,9 @@ import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./ProjectLeadDetails"
 import BOQEditComponent from "./BOQEditComponent"
-import ProjectDispatch from "./ProjectDispatch" // Ensure this import is correct
+import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
 
-function NewProjects() {
+function SiteEngineerProjects() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -61,59 +60,50 @@ function NewProjects() {
   // State for expanded rows on mobile
   const [expandedRows, setExpandedRows] = useState({})
 
-  // New state for Project Dispatch modal
-  const [showProjectDispatch, setShowProjectDispatch] = useState(false)
-  const [selectedProjectForDispatch, setSelectedProjectForDispatch] = useState(null)
-
   const fetchLeads = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
       const page = currentPage - 1
-      const projectData = await projectService.getNewProjects(page, leadsPerPage)
-      setLeads(projectData.content || [])
+      const projectData = await projectService.getSiteEngineerProjects(page, leadsPerPage, userId)
+      console.log("Fetched project data:", projectData) // Log the full response
+      setLeads(projectData.results || [])
       setTotalPages(projectData.totalPages || 1)
       setTotalResults(projectData.totalResults || 0)
       setLoading(false)
-      console.log("Fetched project data:", projectData.content)
     } catch (error) {
       setError("Failed to fetch projects")
       setLoading(false)
     }
-  }, [currentPage, leadsPerPage, user?.orgId, userId]) // Removed unassignedleads from dependencies
+  }, [currentPage, leadsPerPage, userId]) // user?.orgId was not used in the function, removed from dependencies
 
-  // Effect to fetch leads
   useEffect(() => {
     fetchLeads()
-  }, [fetchLeads])
-
-  // Effect to fetch source/type data (runs once on mount)
-  useEffect(() => {
-    const fetchSourceTypeData = async () => {
-      try {
-        const [leadSource, leadType, leadProductType] = await Promise.all([
-          leadService.getLeadSourceList(),
-          leadService.getLeadTypeList(),
-          leadService.getLeadProductTypeList(),
-        ])
-        setSourcelist(leadSource)
-        setTypelist(leadType)
-        setProductTypelist(leadProductType)
-      } catch (err) {
-        setError("Error while fetching data")
-        console.error(err)
-      }
-    }
     if (sourcelist.length === 0) {
-      // Only fetch if lists are empty
       fetchSourceTypeData()
     }
-  }, []) // Empty dependency array means this runs once on mount
+  }, [fetchLeads, sourcelist.length])
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery])
+
+  const fetchSourceTypeData = async () => {
+    try {
+      const [leadSource, leadType, leadProductType] = await Promise.all([
+        leadService.getLeadSourceList(),
+        leadService.getLeadTypeList(),
+        leadService.getLeadProductTypeList(),
+      ])
+      setSourcelist(leadSource)
+      setTypelist(leadType)
+      setProductTypelist(leadProductType)
+    } catch (err) {
+      setError("Error while fetching data")
+      console.error(err)
+    }
+  }
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber)
@@ -143,8 +133,7 @@ function NewProjects() {
 
   const handleEdit = (e, id) => {
     e.stopPropagation()
-    // const allLeads = [...new Set(unassignedleads.map((tag) => tag.lead))]
-    //const lead = allLeads.find((emp) => emp.id === id)
+    // const allLeads = [...new Set(unassignedleads.map((tag) => tag.lead))] // This line was commented out and not used
     console.log("ID is =============" + id)
     setSelectedLead(id)
     setShowForm(true)
@@ -253,29 +242,6 @@ function NewProjects() {
     })
   }
 
-  // New handler for opening Project Dispatch modal
-  const handleProjectDispatchClick = (e, project) => {
-    e.stopPropagation() // Prevent row click from firing
-    setSelectedProjectForDispatch(project)
-    setShowProjectDispatch(true)
-  }
-
-  // New handler for closing Project Dispatch modal
-  const handleDispatchClose = () => {
-    setShowProjectDispatch(false)
-    setSelectedProjectForDispatch(null)
-  }
-
-  // New handler for saving Project Dispatch data
-  const handleDispatchSave = async (savedData) => {
-    console.log("Dispatch plan saved:", savedData)
-    setSuccessMessage("Dispatch plan saved successfully!")
-    setShowProjectDispatch(false)
-    setSelectedProjectForDispatch(null)
-    await fetchLeads() // Refresh the project list
-    setTimeout(() => setSuccessMessage(null), 3000)
-  }
-
   if (loading && unassignedleads.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -338,7 +304,7 @@ function NewProjects() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Project ID", "Project Name", "Dispatch Plan", "Scope of Work", "Actions"]
+                    {["Project ID", "Project Name", "Project Initiation", "Scope of Work", "Actions"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -353,7 +319,9 @@ function NewProjects() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {unassignedleads.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="px-6 py-8 text-center text-gray-500 font-medium">
+                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500 font-medium">
+                        {" "}
+                        {/* Changed colSpan to 5 */}
                         No projects found
                       </td>
                     </tr>
@@ -370,7 +338,7 @@ function NewProjects() {
                         <td className="px-6 py-4">
                           <div className="flex items-center">
                             <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                              {<span>{project.lead?.lead_code || "N/A"}</span>}
+                              {<span>{project.lead.lead_code}</span>}
                             </div>
                           </div>
                         </td>
@@ -379,13 +347,7 @@ function NewProjects() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
-                            <button
-                              className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
-                              onClick={(e) => handleProjectDispatchClick(e, project)}
-                              title="Project Dispatch"
-                            >
-                              Project Dispatch
-                            </button>
+                            <ProjectInitiationIntegration project={project} />
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -403,7 +365,7 @@ function NewProjects() {
                           <div className="flex items-center gap-4">
                             <button
                               className="text-gray-400 hover:text-indigo-600 transition-colors"
-                              onClick={(e) => handleEdit(e, project.lead?.id)}
+                              onClick={(e) => handleEdit(e, project.lead.id)}
                               title="Edit"
                             >
                               <FiEdit2 size={18} />
@@ -432,15 +394,8 @@ function NewProjects() {
                       onClick={() => handleRowClick(project)}
                     >
                       <div className="flex justify-between items-start mb-2">
-                        <div className="text-sm font-semibold text-gray-900">{project.lead?.lead_code || "N/A"}</div>
+                        <div className="text-sm font-semibold text-gray-900">{project.lead.lead_code}</div>
                         <div className="flex items-center gap-2">
-                          <button
-                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
-                            onClick={(e) => handleProjectDispatchClick(e, project)}
-                            title="Project Dispatch Plan"
-                          >
-                            Dispatch
-                          </button>
                           <button
                             className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
                             onClick={(e) => handleBOQEdit(e, project)}
@@ -450,7 +405,7 @@ function NewProjects() {
                           </button>
                           <button
                             className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                            onClick={(e) => handleEdit(e, project.lead?.id)}
+                            onClick={(e) => handleEdit(e, project.lead.id)}
                             title="Edit"
                           >
                             <FiEdit2 size={16} />
@@ -463,9 +418,7 @@ function NewProjects() {
                       {/* Expand/collapse indicator */}
                       <div className="flex justify-center mt-2">
                         <FiChevronRight
-                          className={`text-gray-400 transition-transform ${
-                            expandedRows[project.id] ? "rotate-90" : ""
-                          }`}
+                          className={`text-gray-400 transition-transform ${expandedRows[project.id] ? "rotate-90" : ""}`}
                           size={16}
                         />
                       </div>
@@ -571,16 +524,9 @@ function NewProjects() {
             }}
           />
         )}
-        {showProjectDispatch && selectedProjectForDispatch && (
-          <ProjectDispatch
-            project={selectedProjectForDispatch}
-            onClose={handleDispatchClose}
-            onSave={handleDispatchSave}
-          />
-        )}
       </AnimatePresence>
     </div>
   )
 }
 
-export default NewProjects
+export default SiteEngineerProjects

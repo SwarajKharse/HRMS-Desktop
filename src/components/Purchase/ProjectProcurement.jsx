@@ -1,11 +1,9 @@
 "use client"
-
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { FiX, FiCalendar, FiTruck, FiPackage } from "react-icons/fi"
-import { projectService } from "../../services/projectService" // Your actual projectService import
+import { Calendar, Truck, Package, X } from "lucide-react" // Using lucide-react as in previous response
+import { projectService } from "../../services/projectService" // Adjusted path
 
-function ProjectInitiation({ project, onClose, onSave }) {
+function ProjectProcurement({ project, onClose, onSave }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [boqItems, setBoqItems] = useState([])
@@ -15,6 +13,7 @@ function ProjectInitiation({ project, onClose, onSave }) {
   const [installationPlan, setInstallationPlan] = useState({})
   const [procurementPlan, setProcurementPlan] = useState({})
   const [dispatchPlan, setDispatchPlan] = useState({})
+  const [procurementHistory, setProcurementHistory] = useState({}) // New state for procurement history
 
   // Helper to format Date object to YYYY-MM-DD string for input type="date"
   // This version correctly handles local dates without timezone shifts
@@ -45,14 +44,11 @@ function ProjectInitiation({ project, onClose, onSave }) {
     const weeksList = []
     const start = new Date(startDate)
     start.setHours(0, 0, 0, 0) // Normalize to start of the day to avoid timezone issues
-
     for (let i = 0; i < numberOfWeeks; i++) {
       const weekStart = new Date(start) // Create a copy of the initial start date
       weekStart.setDate(start.getDate() + i * 7) // Add i weeks
-
       const weekEnd = new Date(weekStart)
       weekEnd.setDate(weekStart.getDate() + 6) // End of the 7-day week (0-indexed, so +6 for 7 days total)
-
       weeksList.push({
         weekNumber: i + 1,
         startDate: weekStart, // Keep as Date object for calculations
@@ -71,20 +67,19 @@ function ProjectInitiation({ project, onClose, onSave }) {
         const boqData = await projectService.getBOQByProjectId(project.id)
         const projectDetails = await projectService.getProjectDetails(project.id)
         const existingPlans = await projectService.getProjectPlansByProjectId(project.id) // This returns List<ProjectPlanItemDTO>
+        // FIX: Changed function name and added planType argument
+        const historyData = await projectService.getProjectPlanHistory(project.id, "PROCUREMENT") // Fetch history
 
         const initDate = projectDetails?.projectInitiationDate
           ? new Date(projectDetails.projectInitiationDate)
           : new Date()
         setProjectInitDate(initDate)
-
         const numWeeksFromProject = projectDetails?.numberOfWeeks || 12
         setNumWeeks(numWeeksFromProject)
-
         generateWeeks(initDate, numWeeksFromProject)
 
         // Consolidate all item types into a single array
         const combinedItems = []
-
         // Add Billable Items and then iterate through their nested items
         ;(boqData.items || []).forEach((item) => {
           // Add the main billable item
@@ -98,7 +93,6 @@ function ProjectInitiation({ project, onClose, onSave }) {
             type: "Billable",
             originalItem: item,
           })
-
           // Add nested Non-Billable Items
           ;(item.nonBillableItems || []).forEach((nestedItem) => {
             combinedItems.push({
@@ -112,7 +106,6 @@ function ProjectInitiation({ project, onClose, onSave }) {
               originalItem: nestedItem,
             })
           })
-
           // Add nested Skillset Items
           ;(item.skillSetItems || []).forEach((nestedItem) => {
             combinedItems.push({
@@ -126,7 +119,6 @@ function ProjectInitiation({ project, onClose, onSave }) {
               originalItem: nestedItem,
             })
           })
-
           // Add nested Tools Items
           ;(item.toolsItems || []).forEach((nestedItem) => {
             combinedItems.push({
@@ -141,19 +133,16 @@ function ProjectInitiation({ project, onClose, onSave }) {
             })
           })
         })
-
         setBoqItems(combinedItems)
 
         // Initialize plans from existingPlans (List<ProjectPlanItemDTO>)
         const installationInit = {}
         const procurementInit = {}
         const dispatchInit = {}
-
         if (existingPlans && Array.isArray(existingPlans)) {
           existingPlans.forEach((planItem) => {
             // Determine the correct key based on whether it's a BOQItem or BOQCategoryItem plan
             const key = planItem.boqItemId ? `boq-${planItem.boqItemId}` : `cat-${planItem.boqCategoryItemId}`
-
             switch (planItem.planType) {
               case "INSTALLATION":
                 installationInit[key] = planItem.weekNumber // Store as number
@@ -175,11 +164,30 @@ function ProjectInitiation({ project, onClose, onSave }) {
             }
           })
         }
-
         setInstallationPlan(installationInit)
         setProcurementPlan(procurementInit)
         setDispatchPlan(dispatchInit)
 
+        // Process history data
+        const procurementHistoryMap = {}
+        if (historyData && Array.isArray(historyData)) {
+          historyData.forEach((historyItem) => {
+            if (historyItem.planType === "PROCUREMENT") {
+              const key = historyItem.boqItemId
+                ? `boq-${historyItem.boqItemId}`
+                : `cat-${historyItem.boqCategoryItemId}`
+              if (!procurementHistoryMap[key]) {
+                procurementHistoryMap[key] = []
+              }
+              procurementHistoryMap[key].push(historyItem)
+            }
+          })
+          // Sort history by recordedAt descending
+          Object.keys(procurementHistoryMap).forEach((key) => {
+            procurementHistoryMap[key].sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt))
+          })
+        }
+        setProcurementHistory(procurementHistoryMap)
         setLoading(false)
       } catch (error) {
         console.error("Error fetching data:", error)
@@ -196,13 +204,11 @@ function ProjectInitiation({ project, onClose, onSave }) {
       ...prev,
       [itemKey]: Number.parseInt(weekNumber), // Store as number
     }))
-
     const selectedWeek = weeks.find((week) => week.weekNumber === Number.parseInt(weekNumber))
     if (selectedWeek) {
       // Procurement date is directly the start date of the selected installation week
       const procurementDateCalc = new Date(selectedWeek.startDate)
       const newProcurementDateString = toISODateString(procurementDateCalc)
-
       setProcurementPlan((prev) => {
         const newProcurementPlan = {
           ...prev,
@@ -232,6 +238,42 @@ function ProjectInitiation({ project, onClose, onSave }) {
     }
   }
 
+  // New handler for Procurement Date
+  const handleProcurementDateChange = (itemKey, dateString) => {
+    setProcurementPlan((prev) => {
+      const newProcurementPlan = {
+        ...prev,
+        [itemKey]: {
+          ...prev[itemKey],
+          date: dateString,
+        },
+      }
+      // Recalculate dispatch date based on new procurement date and existing lead time
+      const procurementDate = dateString ? new Date(dateString) : null
+      updateDispatchDate(itemKey, procurementDate, newProcurementPlan[itemKey]?.leadTime || 0)
+      return newProcurementPlan
+    })
+  }
+
+  // New handler for Procurement Lead Time
+  const handleProcurementLeadTimeChange = (itemKey, leadTime) => {
+    const newLeadTime = Number.parseInt(leadTime) || 0
+    setProcurementPlan((prev) => {
+      const newProcurementPlan = {
+        ...prev,
+        [itemKey]: {
+          ...prev[itemKey],
+          leadTime: newLeadTime,
+        },
+      }
+      // Recalculate dispatch date based on existing procurement date and new lead time
+      const procurementDateString = newProcurementPlan[itemKey]?.date
+      const procurementDate = procurementDateString ? new Date(procurementDateString) : null
+      updateDispatchDate(itemKey, procurementDate, newLeadTime)
+      return newProcurementPlan
+    })
+  }
+
   // Calculate and update dispatch date based on procurement date and lead time
   // procurementDateParam is expected to be a Date object for calculation
   const updateDispatchDate = (itemKey, procurementDateParam, leadTimeDays) => {
@@ -247,9 +289,7 @@ function ProjectInitiation({ project, onClose, onSave }) {
     }
     const dispatchDateCalc = new Date(procurementDateParam)
     dispatchDateCalc.setDate(dispatchDateCalc.getDate() + leadTimeDays)
-
     const newDispatchDateString = toISODateString(dispatchDateCalc)
-
     setDispatchPlan((prev) => ({
       ...prev,
       [itemKey]: {
@@ -264,10 +304,8 @@ function ProjectInitiation({ project, onClose, onSave }) {
     try {
       setLoading(true)
       const plansToSave = []
-
       boqItems.forEach((item) => {
         const itemKey = item.id // Use the combined item's unique key
-
         // Determine the correct ID to send to backend
         const boqItemId = item.boqItemId
         const boqCategoryItemId = item.boqCategoryItemId
@@ -347,17 +385,12 @@ function ProjectInitiation({ project, onClose, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="max-h-[90vh] w-full max-w-6xl overflow-auto rounded-lg bg-white p-4 shadow-lg"
-      >
+      <div className="max-h-[90vh] w-full max-w-6xl overflow-auto rounded-lg bg-white p-4 shadow-lg">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between border-b pb-4">
           <h2 className="text-xl font-bold text-gray-800">Project Initiation Plan</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <FiX size={24} />
+            <X size={24} />
           </button>
         </div>
 
@@ -397,19 +430,19 @@ function ProjectInitiation({ project, onClose, onSave }) {
                 </th>
                 <th className="w-1/4 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                   <div className="flex items-center">
-                    <FiCalendar className="mr-1 text-gray-600" />
+                    <Calendar className="mr-1 text-gray-600" size={16} />
                     Installation Plan
                   </div>
                 </th>
                 <th className="w-1/4 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                   <div className="flex items-center">
-                    <FiPackage className="mr-1 text-gray-600" />
+                    <Package className="mr-1 text-gray-600" size={16} />
                     Procurement Plan
                   </div>
                 </th>
                 <th className="w-1/4 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-700">
                   <div className="flex items-center">
-                    <FiTruck className="mr-1 text-gray-600" />
+                    <Truck className="mr-1 text-gray-600" size={16} />
                     Dispatch Plan
                   </div>
                 </th>
@@ -438,6 +471,7 @@ function ProjectInitiation({ project, onClose, onSave }) {
                         value={installationPlan[item.id] || ""}
                         onChange={(e) => handleInstallationChange(item.id, e.target.value)}
                         className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                        disabled // Disabled as per request
                       >
                         <option value="">Select Week</option>
                         {weeks.map((week) => (
@@ -455,8 +489,8 @@ function ProjectInitiation({ project, onClose, onSave }) {
                           <input
                             type="date"
                             value={procurementPlan[item.id]?.date || ""} // Directly use YYYY-MM-DD string
-                            disabled // Disabled as per request
-                            className="block w-full rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700 shadow-sm focus:outline-none"
+                            onChange={(e) => handleProcurementDateChange(item.id, e.target.value)}
+                            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                           />
                         </div>
                         <div>
@@ -465,10 +499,33 @@ function ProjectInitiation({ project, onClose, onSave }) {
                             type="number"
                             min="0"
                             value={procurementPlan[item.id]?.leadTime || ""}
-                            disabled // Disabled as per request
-                            className="block w-full rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700 shadow-sm focus:outline-none"
+                            onChange={(e) => handleProcurementLeadTimeChange(item.id, e.target.value)}
+                            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                           />
                         </div>
+                        {/* Procurement Plan History */}
+                        {procurementHistory[item.id] && procurementHistory[item.id].length > 0 && (
+                          <div className="mt-2 rounded-md bg-gray-50 p-2 text-xs text-gray-600">
+                            <h4 className="mb-1 font-semibold">History:</h4>
+                            <div className="max-h-24 overflow-y-auto">
+                              {procurementHistory[item.id].map((historyItem, index) => (
+                                <div
+                                  key={index}
+                                  className="mb-1 border-b border-gray-200 pb-1 last:mb-0 last:border-b-0"
+                                >
+                                  <div>
+                                    Date: {formatDate(historyItem.planDate)} (Lead: {historyItem.leadTime} days)
+                                  </div>
+                                  <div>
+                                    Version: {historyItem.version} (Recorded:{" "}
+                                    {formatDate(new Date(historyItem.recordedAt))}
+                                    {` ${new Date(historyItem.recordedAt).toLocaleTimeString()}`})
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </td>
                     {/* Dispatch Plan Column */}
@@ -518,9 +575,9 @@ function ProjectInitiation({ project, onClose, onSave }) {
             {loading ? "Saving..." : "Save Plan"}
           </button>
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }
 
-export default ProjectInitiation
+export default ProjectProcurement

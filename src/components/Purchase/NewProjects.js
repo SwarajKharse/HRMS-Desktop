@@ -3,13 +3,13 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
-import { leadService } from "../../services/leadService"
+import { leadService } from "../../services/leadService" // Adjusted path
 import { useAuth } from "../../contexts/AuthContext"
 import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
-import { projectService } from "../../services/projectService"
+import { projectService } from "../../services/projectService" // Adjusted path
 import ProjectLeadDetails from "./ProjectLeadDetails"
 import BOQEditComponent from "./BOQEditComponent"
-import ProjectDispatch from "./ProjectDispatch" // Ensure this import is correct
+import ProjectProcurement from "./ProjectProcurement" // Changed from ProjectInitiationIntegration
 
 function NewProjects() {
   const navigate = useNavigate()
@@ -61,9 +61,9 @@ function NewProjects() {
   // State for expanded rows on mobile
   const [expandedRows, setExpandedRows] = useState({})
 
-  // New state for Project Dispatch modal
-  const [showProjectDispatch, setShowProjectDispatch] = useState(false)
-  const [selectedProjectForDispatch, setSelectedProjectForDispatch] = useState(null)
+  // New state for Project Procurement modal
+  const [showProjectProcurement, setShowProjectProcurement] = useState(false)
+  const [selectedProjectForProcurement, setSelectedProjectForProcurement] = useState(null)
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -253,25 +253,25 @@ function NewProjects() {
     })
   }
 
-  // New handler for opening Project Dispatch modal
-  const handleProjectDispatchClick = (e, project) => {
+  // New handler for opening Project Procurement modal
+  const handleProjectInitiationClick = (e, project) => {
     e.stopPropagation() // Prevent row click from firing
-    setSelectedProjectForDispatch(project)
-    setShowProjectDispatch(true)
+    setSelectedProjectForProcurement(project)
+    setShowProjectProcurement(true)
   }
 
-  // New handler for closing Project Dispatch modal
-  const handleDispatchClose = () => {
-    setShowProjectDispatch(false)
-    setSelectedProjectForDispatch(null)
+  // New handler for closing Project Procurement modal
+  const handleProcurementClose = () => {
+    setShowProjectProcurement(false)
+    setSelectedProjectForProcurement(null)
   }
 
-  // New handler for saving Project Dispatch data
-  const handleDispatchSave = async (savedData) => {
-    console.log("Dispatch plan saved:", savedData)
-    setSuccessMessage("Dispatch plan saved successfully!")
-    setShowProjectDispatch(false)
-    setSelectedProjectForDispatch(null)
+  // New handler for saving Project Procurement data
+  const handleProcurementSave = async (savedData) => {
+    console.log("Procurement plan saved:", savedData)
+    setSuccessMessage("Procurement plan saved successfully!")
+    setShowProjectProcurement(false)
+    setSelectedProjectForProcurement(null)
     await fetchLeads() // Refresh the project list
     setTimeout(() => setSuccessMessage(null), 3000)
   }
@@ -338,7 +338,7 @@ function NewProjects() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Project ID", "Project Name", "Dispatch Plan", "Scope of Work", "Actions"]
+                    {["Project ID", "Project Name", "Project Initiation", "Scope of Work", "Actions"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -381,10 +381,10 @@ function NewProjects() {
                           <div className="flex items-center gap-4">
                             <button
                               className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
-                              onClick={(e) => handleProjectDispatchClick(e, project)}
-                              title="Project Dispatch"
+                              onClick={(e) => handleProjectInitiationClick(e, project)}
+                              title="Project Initiation"
                             >
-                              Project Dispatch
+                              Project Initiation
                             </button>
                           </div>
                         </td>
@@ -436,10 +436,10 @@ function NewProjects() {
                         <div className="flex items-center gap-2">
                           <button
                             className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
-                            onClick={(e) => handleProjectDispatchClick(e, project)}
-                            title="Project Dispatch Plan"
+                            onClick={(e) => handleProjectInitiationClick(e, project)}
+                            title="Project Initiation Plan"
                           >
-                            Dispatch
+                            Initiation
                           </button>
                           <button
                             className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
@@ -571,11 +571,11 @@ function NewProjects() {
             }}
           />
         )}
-        {showProjectDispatch && selectedProjectForDispatch && (
-          <ProjectDispatch
-            project={selectedProjectForDispatch}
-            onClose={handleDispatchClose}
-            onSave={handleDispatchSave}
+        {showProjectProcurement && selectedProjectForProcurement && (
+          <ProjectProcurement
+            project={selectedProjectForProcurement}
+            onClose={handleProcurementClose}
+            onSave={handleProcurementSave}
           />
         )}
       </AnimatePresence>

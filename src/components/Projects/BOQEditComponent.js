@@ -154,7 +154,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             qty: item.totalQty || 0,
             make: item.make || "",
             uom: item.uom || "",
-            leadProductTypeId: item.product.categoryId.id || null,
+            leadProductTypeId: item.product.categoryId?item.product.categoryId.id : null,
             // Approval status fields
             pmApprovalStatus: item.pmApprovalStatus || "PENDING",
             salestlApprovalStatus: item.salestlApprovalStatus || "PENDING",
@@ -450,9 +450,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   const MaterialRequisitionForm = ({ onSubmit, onCancel }) => {
     const [formData, setFormData] = useState({
       mtrQty: "",
-      stockAlloted: "",
+      stockAlloted: "0",
       purchaseMTR: "0",
-      dcQty: "",
+      dcQty: "0",
       remarks: "",
       expectedDeliveryDate: "",
       priority: "MEDIUM",
@@ -496,17 +496,18 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               required
             />
           </div>
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Stock Alloted</label>
             <input
               type="number"
               step="0.01"
+              disabled
               value={formData.stockAlloted}
               onChange={(e) => setFormData((prev) => ({ ...prev, stockAlloted: e.target.value }))}
               className="w-full p-2 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
               required
             />
-          </div>
+          </div> */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Purchase MTR</label>
             <input
@@ -517,20 +518,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               className="w-full p-2 border rounded bg-gray-50 focus:outline-none"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">DC Qty</label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.dcQty}
-              onChange={(e) => setFormData((prev) => ({ ...prev, dcQty: e.target.value }))}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              required
-            />
-          </div>
-        </div>
-        {/* New fields for delivery date and priority */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Expected Delivery Date</label>
             <input
@@ -540,6 +529,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               className="w-full p-2 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
             <select
@@ -552,6 +542,22 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               <option value="LOW">Low</option>
             </select>
           </div>
+          {/* <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">DC Qty</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.dcQty}
+              onChange={(e) => setFormData((prev) => ({ ...prev, dcQty: e.target.value }))}
+              className="w-full p-2 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+              required
+            />
+          </div> */}
+        </div>
+        {/* New fields for delivery date and priority */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+          
+          
         </div>
         <div className="mb-3">
           <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
@@ -1299,12 +1305,12 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         )}
         <div className="flex-1 overflow-auto p-6">
           {/* Project Fields Section */}
-          <div className="bg-gray-50 p-4 rounded-lg border mb-6">
+         {/*  <div className="bg-gray-50 p-4 rounded-lg border mb-6">
             <h4 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
               <FiCalendar className="text-blue-600" />
               Project Details
             </h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Project Initiation Date</label>
                 <input
@@ -1329,8 +1335,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                   ))}
                 </select>
               </div>
-            </div>
-          </div>
+            </div> *
+          </div> */}
 
           {/* Add Product Button - Now opens the full BillableProductSelector */}
           <div className="mb-6 flex justify-end">

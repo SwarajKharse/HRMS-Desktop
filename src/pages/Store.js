@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import NewProjects from "../components/Projects/NewProjects"
+import NewProjects from "../components/StoreManagement/NewProjects"
 import MaterialRequisitions from "../components/StoreManagement/MaterialRequisitions"
 import { GrWorkshop } from "react-icons/gr"
 import { useAuth } from "../contexts/AuthContext"
