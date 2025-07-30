@@ -8,7 +8,7 @@ import { useAuth } from "../../contexts/AuthContext"
 import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./ProjectLeadDetails"
-import BOQEditComponent from "./BOQEditComponent"
+import BOQEditComponent from "./BOQMTREditStore"
 import ProjectDispatch from "./ProjectDispatch" // Ensure this import is correct
 
 function NewProjects() {

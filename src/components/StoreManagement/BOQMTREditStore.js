@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect, useRef } from "react"
 import {
   FiSearch,
@@ -21,7 +20,7 @@ import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
 import { leadService } from "../../services/leadService"
 
-function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose }) {
+function BOQMTREditStore({ projectId, projectName, existingBOQ, onSave, onClose }) {
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [boqProducts, setBOQProducts] = useState([])
   const [availableSkillsets, setAvailableSkillsets] = useState([])
@@ -43,7 +42,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   const [isBOQInitializedFromProps, setIsBOQInitializedFromProps] = useState(false)
   const [projectInitiationDate, setProjectInitiationDate] = useState("")
   const [numberOfWeeks, setNumberOfWeeks] = useState("")
-  const [editingBillableMTR, setEditingBillableMTR] = useState(null)
+  const [editingBillableMTR, setEditingBillableMTR] = useState(null) // State to hold MTR being edited inline
+  const [editedBillableMTRData, setEditedBillableMTRData] = useState({}) // State for inline edited data
 
   const cleanProjectCode = (name) => {
     return name ? name.replace(/[^a-zA-Z0-9]/g, "") : ""
@@ -80,11 +80,11 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           const materialRequisitions = (item.mtrs || []).map((mtr, mtrIndex) => {
             console.log(`Processing MTR ${mtrIndex}:`, mtr)
             return {
-              id: mtr.id, // Preserve existing MTR ID for frontend state
-              mtrQty: mtr.mtrQty || 0,
-              stockAlloted: mtr.stockAlloted || 0,
-              purchaseMTR: mtr.purchaseMTR || 0,
-              dcQty: mtr.dcQty || 0,
+              id: mtr.id || Date.now() + mtrIndex,
+              mtrQty: Number.parseFloat(mtr.mtrQty || 0), // Ensure numeric
+              stockAlloted: Number.parseFloat(mtr.stockAlloted || 0), // Ensure numeric
+              purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0), // Ensure numeric
+              dcQty: Number.parseFloat(mtr.dcQty || 0), // Ensure numeric
               remarks: mtr.remarks || mtr.notes || "",
               status: mtr.status || "Pending",
               expectedDeliveryDate: mtr.expectedDeliveryDate || "",
@@ -94,17 +94,17 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           })
           const nonBillable = (item.nonBillableItems || []).map((nb) => ({
             ...nb,
-            id: nb.id, // Preserve existing non-billable item ID for frontend state
+            id: nb.id || 0,
             product_name: nb.product_name || "Unknown",
             qty: nb.qty || 0,
             make: nb.make || "",
             uom: nb.uom || "",
             materialRequisitions: (nb.materialRequisitions || []).map((mtr, mtrIndex) => ({
-              id: mtr.id, // Preserve existing category MTR ID for frontend state
-              mtrQty: mtr.mtrQty || 0,
-              stockAlloted: mtr.stockAlloted || 0,
-              purchaseMTR: mtr.purchaseMTR || 0,
-              dcQty: mtr.dcQty || 0,
+              id: mtr.id || Date.now() + mtrIndex,
+              mtrQty: Number.parseFloat(mtr.mtrQty || 0),
+              stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
+              purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
+              dcQty: Number.parseFloat(mtr.dcQty || 0),
               remarks: mtr.remarks || "",
               status: mtr.status || "Pending",
               expectedDeliveryDate: mtr.expectedDeliveryDate || "",
@@ -114,15 +114,15 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           }))
           const skillSet = (item.skillSetItems || []).map((ss) => ({
             ...ss,
-            id: ss.id, // Preserve existing skillset item ID for frontend state
+            id: ss.id || 0,
             name: ss.skillset_name || "Unknown Skillset",
             qty: ss.qty || 0,
             materialRequisitions: (ss.materialRequisitions || []).map((mtr, mtrIndex) => ({
-              id: mtr.id, // Preserve existing category MTR ID for frontend state
-              mtrQty: mtr.mtrQty || 0,
-              stockAlloted: mtr.stockAlloted || 0,
-              purchaseMTR: mtr.purchaseMTR || 0,
-              dcQty: mtr.dcQty || 0,
+              id: mtr.id || Date.now() + mtrIndex,
+              mtrQty: Number.parseFloat(mtr.mtrQty || 0),
+              stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
+              purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
+              dcQty: Number.parseFloat(mtr.dcQty || 0),
               remarks: mtr.remarks || "",
               status: mtr.status || "Pending",
               expectedDeliveryDate: mtr.expectedDeliveryDate || "",
@@ -132,16 +132,16 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           }))
           const tools = (item.toolsItems || []).map((t) => ({
             ...t,
-            id: t.id, // Preserve existing tool item ID for frontend state
+            id: t.id || 0,
             name: t.tool_name || "Unknown Tool",
             qty: t.qty || 0,
             make: t.make || "",
             materialRequisitions: (t.materialRequisitions || []).map((mtr, mtrIndex) => ({
-              id: mtr.id, // Preserve existing category MTR ID for frontend state
-              mtrQty: mtr.mtrQty || 0,
-              stockAlloted: mtr.stockAlloted || 0,
-              purchaseMTR: mtr.purchaseMTR || 0,
-              dcQty: mtr.dcQty || 0,
+              id: mtr.id || Date.now() + mtrIndex,
+              mtrQty: Number.parseFloat(mtr.mtrQty || 0),
+              stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
+              purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
+              dcQty: Number.parseFloat(mtr.dcQty || 0),
               remarks: mtr.remarks || "",
               status: mtr.status || "Pending",
               expectedDeliveryDate: t.expectedDeliveryDate || "",
@@ -150,7 +150,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             })),
           }))
           const formattedItem = {
-            id: item.id, // CRITICAL CHANGE: Use item.id directly for existing BOQ items
+            id: item.id || Date.now() + Math.random(),
             product_id: product.id || 0,
             product_name: product.productName || product.product_name || product.name || "Unknown Product",
             hsn_code: product.hsnCode || product.hsn_code || "",
@@ -356,10 +356,13 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   const ApprovalModal = ({ productId, type, currentStatus, currentRemarks, onClose, onSave }) => {
     const [status, setStatus] = useState(currentStatus)
     const [remarks, setRemarks] = useState(currentRemarks)
-
     const handleSave = async () => {
       try {
-        await projectService.updateBOQItemApprovalStatus(productId, type, status, remarks) // Corrected API call
+        await projectService.updateBOQItemApprovalStatus(projectId, productId, {
+          approvalType: type,
+          status: status,
+          remarks: remarks,
+        })
         setBOQProducts((prev) =>
           prev.map((product) => {
             if (product.id === productId) {
@@ -389,7 +392,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         setError("Failed to update approval status: " + error.message)
       }
     }
-
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
         <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
@@ -495,9 +497,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
 
     return (
       <form onSubmit={handleSubmit} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-        <h5 className="font-medium mb-3 text-blue-800">
+        {/* <h5 className="font-medium mb-3 text-blue-800">
           {initialMTRData ? "Edit Material Requisition" : "Add New Material Requisition"}
-        </h5>
+        </h5> */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">MTR Qty</label>
@@ -581,10 +583,44 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   }
 
   // Inline MTR List (replaces MaterialRequisitionList.js)
-  const MTRList = ({ materialRequisitions, onRemove, onEdit }) => {
+  const MTRList = ({ materialRequisitions, onRemove, onEdit, onSaveInlineEdit, isBillable = false }) => {
+    const [editingMTRId, setEditingMTRId] = useState(null)
+    const [editedMTRData, setEditedMTRData] = useState({})
+
+    const handleEditClick = (mtr) => {
+      setEditingMTRId(mtr.id)
+      setEditedMTRData({ ...mtr })
+    }
+
+    const handleCancelClick = () => {
+      setEditingMTRId(null)
+      setEditedMTRData({})
+    }
+
+    const handleInputChange = (e, field) => {
+      const { value } = e.target
+      setEditedMTRData((prev) => {
+        const newData = { ...prev, [field]: value }
+        // Recalculate Purchase MTR if Stock Allotted or MTR Qty changes
+        if (field === "stockAlloted" || field === "mtrQty") {
+          const mtrQty = Number.parseFloat(newData.mtrQty || 0)
+          const stockAlloted = Number.parseFloat(newData.stockAlloted || 0)
+          newData.purchaseMTR = Math.max(0, mtrQty - stockAlloted).toFixed(2)
+        }
+        return newData
+      })
+    }
+
+    const handleSaveClick = (mtrId) => {
+      onSaveInlineEdit(mtrId, editedMTRData)
+      setEditingMTRId(null)
+      setEditedMTRData({})
+    }
+
     if (!materialRequisitions || materialRequisitions.length === 0) {
       return <div className="text-center text-gray-500 py-2 text-sm">No material requisitions added yet</div>
     }
+
     const getPriorityColor = (priority) => {
       switch (priority) {
         case "HIGH":
@@ -597,11 +633,12 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           return "bg-gray-100 text-gray-800"
       }
     }
+
     return (
       <div className="space-y-2 mb-4">
         <h5 className="font-medium text-gray-800">Previous Material Requisitions ({materialRequisitions.length})</h5>
         {materialRequisitions.map((mtr, index) => (
-          <div key={mtr.id || `new-mtr-${index}`} className="bg-gray-50 p-3 rounded border">
+          <div key={mtr.id} className="bg-gray-50 p-3 rounded border">
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
@@ -619,15 +656,45 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                   <div>
                     <span className="text-gray-600">Stock:</span>
-                    <span className="ml-1 font-medium">{mtr.stockAlloted}</span>
+                    {editingMTRId === mtr.id && isBillable ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedMTRData.stockAlloted}
+                        onChange={(e) => handleInputChange(e, "stockAlloted")}
+                        className="w-20 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <span className="ml-1 font-medium">{mtr.stockAlloted}</span>
+                    )}
                   </div>
                   <div>
                     <span className="text-gray-600">Purchase:</span>
-                    <span className="ml-1 font-medium">{mtr.purchaseMTR}</span>
+                    {editingMTRId === mtr.id && isBillable ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedMTRData.purchaseMTR}
+                        readOnly
+                        className="w-20 p-1 border rounded bg-gray-100 text-gray-600"
+                      />
+                    ) : (
+                      <span className="ml-1 font-medium">{mtr.purchaseMTR}</span>
+                    )}
                   </div>
                   <div>
                     <span className="text-gray-600">DC Qty:</span>
-                    <span className="ml-1 font-medium">{mtr.dcQty}</span>
+                    {editingMTRId === mtr.id && isBillable ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedMTRData.dcQty}
+                        onChange={(e) => handleInputChange(e, "dcQty")}
+                        className="w-20 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <span className="ml-1 font-medium">{mtr.dcQty}</span>
+                    )}
                   </div>
                   {mtr.expectedDeliveryDate && (
                     <div>
@@ -646,20 +713,43 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 )}
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => onEdit(mtr)}
-                  className="text-blue-500 hover:bg-blue-50 p-1 rounded"
-                  title="Edit material requisition"
-                >
-                  <FiEdit3 size={14} />
-                </button>
-                <button
-                  onClick={() => onRemove(mtr.id)}
-                  className="text-red-500 hover:bg-red-50 p-1 rounded"
-                  title="Remove material requisition"
-                >
-                  <FiX size={14} />
-                </button>
+                {isBillable && editingMTRId === mtr.id ? (
+                  <>
+                    <button
+                      onClick={() => handleSaveClick(mtr.id)}
+                      className="text-green-600 hover:bg-green-50 p-1 rounded"
+                      title="Save changes"
+                    >
+                      <FiSave size={14} />
+                    </button>
+                    <button
+                      onClick={handleCancelClick}
+                      className="text-gray-600 hover:bg-gray-50 p-1 rounded"
+                      title="Cancel editing"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {isBillable && (
+                      <button
+                        onClick={() => handleEditClick(mtr)}
+                        className="text-blue-500 hover:bg-blue-50 p-1 rounded"
+                        title="Edit material requisition"
+                      >
+                        <FiEdit3 size={14} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onRemove(mtr.id)}
+                      className="text-red-500 hover:bg-red-50 p-1 rounded"
+                      title="Remove material requisition"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -683,7 +773,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       }
     })
     const debouncedSyncRef = useRef(null)
-
     const syncToMainState = (field, value) => {
       if (debouncedSyncRef.current) {
         clearTimeout(debouncedSyncRef.current)
@@ -692,21 +781,17 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         updateCategoryProduct(productId, category, productIndex, field, value)
       }, 300)
     }
-
     const handleQtyChange = (value) => {
       setLocalData((prev) => ({ ...prev, qty: value }))
       syncToMainState("qty", value)
     }
-
     const handleMakeChange = (value) => {
       if (category !== "skillSet") {
         setLocalData((prev) => ({ ...prev, make: value }))
         syncToMainState("make", value)
       }
     }
-
     const currentMTRCount = (getCurrentProduct()?.materialRequisitions || []).length + 1
-
     const handleCategoryMTRSubmit = (mtrData) => {
       updateCategoryProduct(productId, category, productIndex, "qty", localData.qty)
       if (category !== "skillSet") {
@@ -715,7 +800,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       handleMTRSubmit(productId, category, productIndex, mtrData)
       toggleMTRForm(`${productId}-${category}-${productIndex}`)
     }
-
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
         <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -854,9 +938,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         numberOfWeeks: numberOfWeeks ? Number.parseInt(numberOfWeeks) : null,
         items: boqProducts.map((product) => {
           const installmentData = {}
-          // Note: The backend's saveBOQWithMaterialRequisition deletes and recreates MTRs.
-          // So, the `id` field for MTRs sent from frontend is not used for updates, only for new ones.
-          // The `mtrCode` is important for tracking.
           product.materialRequisitions.forEach((mtr, index) => {
             installmentData[`mtr_${index}`] = {
               mtrQty: Number.parseFloat(mtr.mtrQty || 0),
@@ -869,9 +950,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               mtrCode: mtr.mtrCode || "", // mtrCode is included here
             }
           })
-
           return {
-            id: product.id, // Ensure this is null for new items, and actual ID for existing BOQItems
+            id: product.id,
             product_id: product.product_id?.toString() || "",
             product_name: product.product_name || "",
             hsn_code: product.hsn_code || "",
@@ -885,10 +965,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             salestlApprovalRemarks: product.salestlApprovalRemarks,
             nonBillable: (product.nonBillable || []).map((item) => ({
               ...item,
-              // For nonBillable, skillset, tools, the backend recreates them, so ID is not used for update
-              id: null, // Ensure ID is null for new/recreated category items
               materialRequisitions: (item.materialRequisitions || []).map((mtr) => ({
-                id: null, // Ensure ID is null for new/recreated category MTRs
                 mtrQty: Number.parseFloat(mtr.mtrQty || 0),
                 stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
                 purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
@@ -897,15 +974,13 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 status: mtr.status || "Pending",
                 expectedDeliveryDate: mtr.expectedDeliveryDate || null,
                 priority: mtr.priority || "MEDIUM",
-                mtrCode: mtr.mtrCode || "",
+                mtrCode: mtr.mtrCode || "", // mtrCode is included here
               })),
             })),
             skillSet: (product.skillSet || []).map((item) => ({
               ...item,
-              id: null, // Ensure ID is null for new/recreated category items
-              make: null, // Skillset items do not have 'make'
+              make: null,
               materialRequisitions: (item.materialRequisitions || []).map((mtr) => ({
-                id: null, // Ensure ID is null for new/recreated category MTRs
                 mtrQty: Number.parseFloat(mtr.mtrQty || 0),
                 stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
                 purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
@@ -914,14 +989,12 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 status: mtr.status || "Pending",
                 expectedDeliveryDate: mtr.expectedDeliveryDate || null,
                 priority: mtr.priority || "MEDIUM",
-                mtrCode: mtr.mtrCode || "",
+                mtrCode: mtr.mtrCode || "", // mtrCode is included here
               })),
             })),
             tools: (product.tools || []).map((item) => ({
               ...item,
-              id: null, // Ensure ID is null for new/recreated category items
               materialRequisitions: (item.materialRequisitions || []).map((mtr) => ({
-                id: null, // Ensure ID is null for new/recreated category MTRs
                 mtrQty: Number.parseFloat(mtr.mtrQty || 0),
                 stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
                 purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
@@ -930,12 +1003,12 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 status: mtr.status || "Pending",
                 expectedDeliveryDate: mtr.expectedDeliveryDate || null,
                 priority: mtr.priority || "MEDIUM",
-                mtrCode: mtr.mtrCode || "",
+                mtrCode: mtr.mtrCode || "", // mtrCode is included here
               })),
             })),
-            installmentData: installmentData, // This seems to be an old/alternative way of sending MTRs
+            installmentData: installmentData,
             materialRequisitions: (product.materialRequisitions || []).map((mtr) => ({
-              id: null, // CRITICAL CHANGE: Always send null for MTR IDs as backend recreates them
+              id: mtr.id,
               mtrQty: Number.parseFloat(mtr.mtrQty || 0),
               stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
               purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
@@ -944,7 +1017,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               status: mtr.status || "Pending",
               expectedDeliveryDate: mtr.expectedDeliveryDate || null,
               priority: mtr.priority || "MEDIUM",
-              mtrCode: mtr.mtrCode || "",
+              mtrCode: mtr.mtrCode || "", // mtrCode is included here
             })),
           }
         }),
@@ -1005,7 +1078,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             [category]: [
               ...(p[category] || []),
               {
-                id: null, // New category item, ID should be null
                 ...product,
                 qty: "",
                 make: category === "skillSet" ? null : "",
@@ -1036,7 +1108,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             skillSet: [
               ...(p.skillSet || []),
               {
-                id: null, // New skillset item, ID should be null
                 ...skillset,
                 name: skillset.skillset_name,
                 qty: "",
@@ -1067,7 +1138,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             tools: [
               ...(p.tools || []),
               {
-                id: null, // New tool item, ID should be null
                 ...tool,
                 name: tool.tool_name,
                 qty: "",
@@ -1130,6 +1200,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       prev.map((p) => {
         if (p.id === mainProductId) {
           if (category === "billable") {
+            // This block is now effectively unused for billable products due to inline editing
+            // but kept for other categories if they were to use a form
             if (editingBillableMTR) {
               return {
                 ...p,
@@ -1143,7 +1215,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 materialRequisitions: [
                   ...(p.materialRequisitions || []),
                   {
-                    id: null, // New MTR, ID should be null
+                    id: Date.now(),
                     ...mtrData,
                     createdAt: new Date().toISOString(),
                   },
@@ -1165,7 +1237,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 materialRequisitions: [
                   ...(updatedCategory[productIndex].materialRequisitions || []),
                   {
-                    id: null, // New category MTR, ID should be null
+                    id: Date.now(),
                     ...mtrData,
                     createdAt: new Date().toISOString(),
                   },
@@ -1182,6 +1254,21 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       }),
     )
     setEditingBillableMTR(null)
+  }
+
+  const handleSaveInlineBillableMTR = (mtrId, updatedMTRData) => {
+    setBOQProducts((prev) =>
+      prev.map((product) => {
+        // Find the product that contains this MTR
+        const updatedMaterialRequisitions = product.materialRequisitions.map((mtr) =>
+          mtr.id === mtrId ? { ...mtr, ...updatedMTRData } : mtr,
+        )
+        if (updatedMaterialRequisitions.some((mtr) => mtr.id === mtrId)) {
+          return { ...product, materialRequisitions: updatedMaterialRequisitions }
+        }
+        return product
+      }),
+    )
   }
 
   const removeMTRFromProduct = (mainProductId, category, productIndex, mtrId) => {
@@ -1262,12 +1349,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
     console.log("Received BOQ data from BillableProductSelector:", boqDataFromSelector)
     const newBillableItemsMap = new Map(boqDataFromSelector.items.map((item) => [item.id, item]))
     const updatedBOQProducts = []
-
-    // Process existing products first
     boqProducts.forEach((existingProduct) => {
       const updatedBillableItem = newBillableItemsMap.get(existingProduct.product_id)
       if (updatedBillableItem) {
-        // If product exists in both, update its details
         updatedBOQProducts.push({
           ...existingProduct,
           product_name: updatedBillableItem.product_name,
@@ -1285,19 +1369,13 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           category_id: updatedBillableItem.category_id,
           categoryInfo: updatedBillableItem.categoryInfo,
         })
-        newBillableItemsMap.delete(existingProduct.product_id) // Remove from map as it's processed
-      } else {
-        // If existing product is not in the new selection, keep it (or remove if that's the desired behavior)
-        // For now, assuming we keep it if not explicitly removed by the selector.
-        updatedBOQProducts.push(existingProduct)
+        newBillableItemsMap.delete(existingProduct.product_id)
       }
     })
-
-    // Add new products from the selector
     newBillableItemsMap.forEach((newSelectorItem) => {
       updatedBOQProducts.push({
-        id: null, // CRITICAL CHANGE: Set ID to null for new items
-        product_id: newSelectorItem.id, // This is the ProductsMaster ID
+        id: Date.now() + Math.random(),
+        product_id: newSelectorItem.id,
         product_name: newSelectorItem.product_name,
         hsn_code: newSelectorItem.hsn_code,
         product_description: newSelectorItem.product_description,
@@ -1523,16 +1601,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                 <h5 className="font-medium text-blue-800">
                                                   Billable Product Material Requisitions
                                                 </h5>
-                                                <button
-                                                  onClick={() => {
-                                                    toggleMTRForm(`${product.id}-billable`)
-                                                    setEditingBillableMTR(null)
-                                                  }}
-                                                  className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                                                >
-                                                  <FiPlus size={14} />
-                                                  Add Material Requisition
-                                                </button>
+                                                {/* Removed "Add Material Requisition" button as per request */}
                                               </div>
                                               <MTRList
                                                 materialRequisitions={product.materialRequisitions || []}
@@ -1546,6 +1615,10 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                     [`${product.id}-billable`]: true,
                                                   }))
                                                 }}
+                                                onSaveInlineEdit={(mtrId, updatedData) =>
+                                                  handleSaveInlineBillableMTR(mtrId, updatedData)
+                                                }
+                                                isBillable={true} // Indicate this is for billable products
                                               />
                                               <AnimatePresence>
                                                 {expandedMTRForms[`${product.id}-billable`] && (
@@ -1555,7 +1628,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                     exit={{ height: 0, opacity: 0 }}
                                                     className="overflow-hidden"
                                                   >
-                                                    <MTRForm
+                                                    {/* MTRForm is now only used for adding/editing non-billable, skillset, tools MTRs */}
+                                                    {/* This section can be removed if no longer needed for billable products */}
+                                                    {/* <MTRForm
                                                       projectCode={projectCode}
                                                       currentMTRCount={(product.materialRequisitions || []).length + 1}
                                                       initialMTRData={editingBillableMTR}
@@ -1564,7 +1639,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                         toggleMTRForm(`${product.id}-billable`)
                                                       }}
                                                       onCancel={() => toggleMTRForm(`${product.id}-billable`)}
-                                                    />
+                                                    /> */}
                                                   </motion.div>
                                                 )}
                                               </AnimatePresence>
@@ -1633,7 +1708,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                               <div className="space-y-2">
                                                 {(product.nonBillable || []).map((item, index) => (
                                                   <div
-                                                    key={item.id || `nb-${index}`} // Use item.id for key
+                                                    key={index}
                                                     className="bg-white p-3 rounded border flex items-center justify-between"
                                                   >
                                                     <div className="flex-1">
@@ -1738,7 +1813,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                               <div className="space-y-2">
                                                 {(product.skillSet || []).map((item, index) => (
                                                   <div
-                                                    key={item.id || `ss-${index}`} // Use item.id for key
+                                                    key={index}
                                                     className="bg-white p-3 rounded border flex items-center justify-between"
                                                   >
                                                     <div className="flex-1">
@@ -1843,7 +1918,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                               <div className="space-y-2">
                                                 {(product.tools || []).map((item, index) => (
                                                   <div
-                                                    key={item.id || `tool-${index}`} // Use item.id for key
+                                                    key={index}
                                                     className="bg-white p-3 rounded border flex items-center justify-between"
                                                   >
                                                     <div className="flex-1">
@@ -2055,9 +2130,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 >
                   {loading ? (
                     <>
-                      {" "}
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>{" "}
-                      Saving...{" "}
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Saving...
                     </>
                   ) : (
                     <>Save BOQ</>
@@ -2072,4 +2146,4 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   )
 }
 
-export default BOQEditComponent
+export default BOQMTREditStore

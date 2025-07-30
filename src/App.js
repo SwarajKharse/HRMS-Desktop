@@ -34,6 +34,7 @@ import AddLead from './pages/AddLead';
 import LeadsLising from './pages/LeadsListing';
 import Projects from './pages/Projects';
 import Store from './pages/Store';
+import Purchase from './pages/Purchase';
 import ProductManagement from './pages/ProductManagement';
 
 function App() {
@@ -171,6 +172,12 @@ function App() {
               <Route path="/store" element={
                   <Layout>
                     <Store />
+                  </Layout>
+              } />
+
+              <Route path="/purchase" element={
+                  <Layout>
+                    <Purchase />
                   </Layout>
               } />
 
