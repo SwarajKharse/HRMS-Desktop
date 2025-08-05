@@ -20,7 +20,7 @@ import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
 import { leadService } from "../../services/leadService"
 
-function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose }) {
+function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClose }) {
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [boqProducts, setBOQProducts] = useState([])
   const [availableSkillsets, setAvailableSkillsets] = useState([])
@@ -40,296 +40,267 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   const [editingProductModal, setEditingProductModal] = useState(null)
   const [showApprovalModal, setShowApprovalModal] = useState(null)
   const [isBOQInitializedFromProps, setIsBOQInitializedFromProps] = useState(false)
-  const [editingBillableMTR, setEditingBillableMTR] = useState(null)
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch Lead Product Types
-        const leadResponse = await leadService.getLeadProductTypeList()
-        let productTypesData = []
-        if (Array.isArray(leadResponse)) {
-          productTypesData = leadResponse
-        } else if (leadResponse && Array.isArray(leadResponse.data)) {
-          productTypesData = leadResponse.data
-        } else if (leadResponse && Array.isArray(leadResponse.leadProductTypes)) {
-          productTypesData = leadResponse.leadProductTypes
-        } else if (leadResponse && typeof leadResponse === "object") {
-          const arrayProperty = Object.values(leadResponse).find((value) => Array.isArray(value))
-          if (arrayProperty) {
-            productTypesData = arrayProperty
-          }
-        }
-        setLeadProductTypes(productTypesData)
-
-        // Fetch Skillsets
-        const skillsetsResponse = await storeService.getSkillSetList()
-        let skillsetsData = []
-        if (Array.isArray(skillsetsResponse)) {
-          skillsetsData = skillsetsResponse
-        } else if (skillsetsResponse && Array.isArray(skillsetsResponse.data)) {
-          skillsetsData = skillsetsResponse.data
-        } else if (skillsetsResponse && Array.isArray(skillsetsResponse.skillsets)) {
-          skillsetsData = skillsetsResponse.skillsets
-        } else if (skillsetsResponse && typeof skillsetsResponse === "object") {
-          const arrayProperty = Object.values(skillsetsResponse).find((value) => Array.isArray(value))
-          if (arrayProperty) {
-            skillsetsData = arrayProperty
-          }
-        }
-        setAvailableSkillsets(skillsetsData)
-
-        // Fetch Tools
-        const toolsResponse = await storeService.getToolsList()
-        let toolsData = []
-        if (Array.isArray(toolsResponse)) {
-          toolsData = toolsResponse
-        } else if (toolsResponse && Array.isArray(toolsResponse.data)) {
-          toolsData = toolsResponse.data
-        } else if (toolsResponse && Array.isArray(toolsResponse.tools)) {
-          toolsData = toolsResponse.tools
-        } else if (toolsResponse && typeof toolsResponse === "object") {
-          const arrayProperty = Object.values(toolsResponse).find((value) => Array.isArray(value))
-          if (arrayProperty) {
-            toolsData = arrayProperty
-          }
-        }
-        setAvailableTools(toolsData)
-
-        // Fetch All Products for Non-Billable
-        const allProductsResponse = await storeService.getProductsList()
-        let allProductsData = []
-        if (Array.isArray(allProductsResponse)) {
-          allProductsData = allProductsResponse
-        } else if (allProductsResponse && Array.isArray(allProductsResponse.data)) {
-          allProductsData = allProductsResponse.data
-        } else if (allProductsResponse && Array.isArray(allProductsResponse.products)) {
-          allProductsData = allProductsResponse.products
-        } else if (allProductsResponse && typeof allProductsResponse === "object") {
-          const arrayProperty = Object.values(allProductsResponse).find((value) => Array.isArray(value))
-          if (arrayProperty) {
-            allProductsData = arrayProperty
-          }
-        }
-        setAvailableProducts(allProductsData)
-      } catch (err) {
-        console.error("Error fetching initial data:", err)
-        setError("Error fetching initial data: " + err.message)
-      }
-    }
-    fetchData()
-  }, []) // Empty dependency array ensures this runs only once on mount
+  const [projectInitiationDate, setProjectInitiationDate] = useState("")
+  const [numberOfWeeks, setNumberOfWeeks] = useState("")
+  const [editingBillableMTR, setEditingBillableMTR] = useState(null) // State to hold MTR being edited inline
+  const [editedBillableMTRData, setEditedBillableMTRData] = useState({}) // State for inline edited data
 
   const cleanProjectCode = (name) => {
     return name ? name.replace(/[^a-zA-Z0-9]/g, "") : ""
   }
   const projectCode = cleanProjectCode(projectName)
 
-  const extractCategoryInfo = (product, allLeadProductTypes, explicitLeadProductTypeId = null) => {
-    if (!product) {
+  const extractCategoryInfo = (product) => {
+    if (!product)
       return {
-        topCategory: "Unassigned",
+        topCategory: "Uncategorized",
         mainCategory: "Uncategorized",
         subCategory: "Uncategorized",
-        fullPath: "Unassigned > Uncategorized > Uncategorized",
-        leadProductTypeId: null,
+        fullPath: "Uncategorized",
       }
-    }
-
-    let topCategory = "Unassigned"
-    let mainCategory = "Uncategorized"
-    let subCategory = "Uncategorized"
-    let finalLeadProductTypeId = explicitLeadProductTypeId // Prioritize explicit ID
-
-    // Determine finalLeadProductTypeId first
-    if (finalLeadProductTypeId === null) {
-      // Case 1: Product is an existing BOQ item's product (item.product)
-      // It has a categoryId which is the leadProductType object
-      if (product.categoryId && product.categoryId.id) {
-        finalLeadProductTypeId = product.categoryId.id
-      }
-      // Case 2: Product is from storeService (e.g., availableProducts for non-billable)
-      // It has a category_id which is the sub-category object
-      else if (
-        product.category_id &&
-        product.category_id.productCategory &&
-        product.category_id.productCategory.mainGroup
-      ) {
-        finalLeadProductTypeId = product.category_id.productCategory.mainGroup.id
-      }
-    }
-
-    // Now, use finalLeadProductTypeId to find the topCategory label
-    if (finalLeadProductTypeId) {
-      topCategory = allLeadProductTypes.find((t) => t.id === finalLeadProductTypeId)?.label || "Unassigned"
-    }
-
-    // Determine mainCategory and subCategory based on available product structure
-    // Prioritize existing BOQ item structure (product.categoryId)
-    if (product.categoryId) {
-      mainCategory = product.categoryId.productCategory?.category_name || "Uncategorized"
-      subCategory = product.categoryId.category_name || "Uncategorized"
-    }
-    // Fallback to storeService product structure (product.category_id)
-    else if (product.category_id) {
-      mainCategory = product.category_id.productCategory?.category_name || "Uncategorized"
-      subCategory = product.category_id.category_name || "Uncategorized"
-    }
-
+    const topCategory = product?.category_id?.productCategory?.leadProductType?.label || "Uncategorized"
+    const mainCategory = product?.category_id?.productCategory?.category_name || "Uncategorized"
+    const subCategory = product?.category_id?.category_name || "Uncategorized"
     return {
       topCategory,
       mainCategory,
       subCategory,
       fullPath: `${topCategory} > ${mainCategory} > ${subCategory}`,
-      leadProductTypeId: finalLeadProductTypeId,
     }
   }
 
   useEffect(() => {
     console.log("=== BOQ Data Debug ===")
     console.log("Raw Existing BOQ:", JSON.stringify(existingBOQ, null, 2))
-
-    const initializeBOQ = async () => {
-      // Ensure leadProductTypes are available before processing BOQ
-      if (
-        existingBOQ &&
-        existingBOQ.items &&
-        Array.isArray(existingBOQ.items) &&
-        !isBOQInitializedFromProps &&
-        leadProductTypes.length > 0
-      ) {
-        try {
-          const formattedProducts = existingBOQ.items.map((item, index) => {
-            console.log(`BOQEdit: Processing item ${index}:`, JSON.stringify(item, null, 2))
-            const product = item.product || {}
-            console.log(`BOQEdit: Item product object:`, JSON.stringify(product, null, 2))
-
-            // Correctly determine leadProductTypeId and categoryInfo for existing BOQ items
-            const boqItemLeadProductTypeId = product.categoryId?.id || null
-            const boqItemCategoryInfo = extractCategoryInfo(product, leadProductTypes, boqItemLeadProductTypeId) // Pass explicit ID
-            console.log(`BOQEdit: Derived boqItemLeadProductTypeId:`, boqItemLeadProductTypeId)
-            console.log(`BOQEdit: Derived boqItemCategoryInfo:`, boqItemCategoryInfo)
-
-            const materialRequisitions = (item.mtrs || []).map((mtr, mtrIndex) => {
-              console.log(`Processing MTR ${mtrIndex}:`, mtr)
-              return {
-                id: mtr.id, // Preserve existing MTR ID for frontend state
-                mtrQty: mtr.mtrQty || 0,
-                stockAlloted: mtr.stockAlloted || 0,
-                purchaseMTR: mtr.purchaseMTR || 0,
-                dcQty: mtr.dcQty || 0,
-                remarks: mtr.remarks || mtr.notes || "",
-                status: mtr.status || "Pending",
-                expectedDeliveryDate: mtr.expectedDeliveryDate || "",
-                priority: mtr.priority || "MEDIUM",
-                mtrCode: mtr.mtrCode || "",
-              }
-            })
-            const nonBillable = (item.nonBillableItems || []).map((nb) => ({
-              ...nb,
-              id: nb.id, // Preserve existing non-billable item ID for frontend state
-              product_name: nb.productName || nb.itemDescription || nb.hsnCode || "Unknown Non-Billable Product", // Use itemDescription or hsnCode as fallback
-              qty: nb.qty || 0,
-              make: nb.make || "",
-              uom: nb.uom || "",
-              materialRequisitions: (nb.materialRequisitions || []).map((mtr, mtrIndex) => ({
-                id: mtr.id, // Preserve existing category MTR ID for frontend state
-                mtrQty: mtr.mtrQty || 0,
-                stockAlloted: mtr.stockAlloted || 0,
-                purchaseMTR: mtr.purchaseMTR || 0,
-                dcQty: mtr.dcQty || 0,
-                remarks: mtr.remarks || "",
-                status: mtr.status || "Pending",
-                expectedDeliveryDate: mtr.expectedDeliveryDate || "",
-                priority: mtr.priority || "MEDIUM",
-                mtrCode: mtr.mtrCode || "",
-              })),
-            }))
-            const skillSet = (item.skillSetItems || []).map((ss) => ({
-              ...ss,
-              id: ss.id, // Preserve existing skillset item ID for frontend state
-              name: ss.skillset_name || ss.itemDescription || "Unknown Skillset", // Use skillset_name or itemDescription as fallback
-              qty: ss.qty || 0,
-              materialRequisitions: (ss.materialRequisitions || []).map((mtr, mtrIndex) => ({
-                id: mtr.id, // Preserve existing category MTR ID for frontend state
-                mtrQty: mtr.mtrQty || 0,
-                stockAlloted: mtr.stockAlloted || 0,
-                purchaseMTR: mtr.purchaseMTR || 0,
-                dcQty: mtr.dcQty || 0,
-                remarks: mtr.remarks || "",
-                status: mtr.status || "Pending",
-                expectedDeliveryDate: mtr.expectedDeliveryDate || "",
-                priority: mtr.priority || "MEDIUM",
-                mtrCode: mtr.mtrCode || "",
-              })),
-            }))
-            const tools = (item.toolsItems || []).map((t) => ({
-              ...t,
-              id: t.id, // Preserve existing tool item ID for frontend state
-              name: t.tool_name || t.itemDescription || "Unknown Tool", // Use tool_name or itemDescription as fallback
-              qty: t.qty || 0,
-              make: t.make || "",
-              materialRequisitions: (t.materialRequisitions || []).map((mtr, mtrIndex) => ({
-                id: mtr.id, // Preserve existing category MTR ID for frontend state
-                mtrQty: mtr.mtrQty || 0,
-                stockAlloted: mtr.stockAlloted || 0,
-                purchaseMTR: mtr.purchaseMTR || 0,
-                dcQty: t.dcQty || 0,
-                remarks: t.remarks || "",
-                status: t.status || "Pending",
-                expectedDeliveryDate: t.expectedDeliveryDate || "",
-                priority: t.priority || "MEDIUM",
-                mtrCode: t.mtrCode || "",
-              })),
-            }))
-            const formattedItem = {
-              id: item.id, // CRITICAL CHANGE: Use item.id directly for existing BOQ items
-              product_id: product.id || 0, // This is ProductsMaster ID
-              product_name: product.productName || product.product_name || product.name || "Unknown Product", // Prioritize productName
-              hsn_code: product.hsnCode || product.hsn_code || "",
-              product_description: product.productDescription || product.product_description || "",
-              qty: item.totalQty || 0,
-              make: item.make || "",
-              uom: item.uom || "",
-              leadProductTypeId: boqItemLeadProductTypeId, // Use the ID from the BOQ item's product.categoryId
-              pmApprovalStatus: item.pmApprovalStatus || "PENDING",
-              salestlApprovalStatus: item.salestlApprovalStatus || "PENDING",
-              pmApprovalRemarks: item.pmApprovalRemarks || "",
-              salestlApprovalRemarks: item.salestlApprovalRemarks || "",
-              pmApprovalDate: item.pmApprovalDate || null,
-              salestlApprovalDate: item.salestlApprovalDate || null,
-              nonBillable: nonBillable,
-              skillSet: skillSet,
-              tools: tools,
-              materialRequisitions: materialRequisitions,
-              categoryInfo: boqItemCategoryInfo, // Use the correctly extracted categoryInfo
-              supply_rate: item.supplyRate || 0,
-              installation_rate: item.installationRate || 0,
-              supply_amount: item.supplyAmount || 0, // Use item.supplyAmount directly
-              installation_amount: item.installationAmount || 0, // Use item.installationAmount directly
-              total: item.total || 0, // Use item.total directly
+    if (existingBOQ && existingBOQ.items && Array.isArray(existingBOQ.items) && !isBOQInitializedFromProps) {
+      try {
+        const formattedProducts = existingBOQ.items.map((item, index) => {
+          console.log(`Processing item ${index}:`, JSON.stringify(item, null, 2))
+          const product = item.product || {}
+          const materialRequisitions = (item.mtrs || []).map((mtr, mtrIndex) => {
+            console.log(`Processing MTR ${mtrIndex}:`, mtr)
+            return {
+              id: mtr.id || Date.now() + mtrIndex,
+              mtrQty: Number.parseFloat(mtr.mtrQty || 0), // Ensure numeric
+              stockAlloted: Number.parseFloat(mtr.stockAlloted || 0), // Ensure numeric
+              purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0), // Ensure numeric
+              dcQty: Number.parseFloat(mtr.dcQty || 0), // Ensure numeric
+              remarks: mtr.remarks || mtr.notes || "",
+              status: mtr.status || "Pending",
+              expectedDeliveryDate: mtr.expectedDeliveryDate || "",
+              priority: mtr.priority || "MEDIUM",
+              mtrCode: mtr.mtrCode || "",
             }
-            console.log(`BOQEdit: Final product_name for item:`, formattedItem.product_name)
-            return formattedItem
           })
-          setBOQProducts(formattedProducts)
-          if (formattedProducts.length > 0) {
-            setExpandedProducts({ [formattedProducts[0].id]: true })
-            setSelectedProductTab({ [formattedProducts[0].id]: "billable" })
+          const nonBillable = (item.nonBillableItems || []).map((nb) => ({
+            ...nb,
+            id: nb.id || 0,
+            product_name: nb.product_name || "Unknown",
+            qty: nb.qty || 0,
+            make: nb.make || "",
+            uom: nb.uom || "",
+            materialRequisitions: (nb.materialRequisitions || []).map((mtr, mtrIndex) => ({
+              id: mtr.id || Date.now() + mtrIndex,
+              mtrQty: Number.parseFloat(mtr.mtrQty || 0),
+              stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
+              purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
+              dcQty: Number.parseFloat(mtr.dcQty || 0),
+              remarks: mtr.remarks || "",
+              status: mtr.status || "Pending",
+              expectedDeliveryDate: mtr.expectedDeliveryDate || "",
+              priority: mtr.priority || "MEDIUM",
+              mtrCode: mtr.mtrCode || "",
+            })),
+          }))
+          const skillSet = (item.skillSetItems || []).map((ss) => ({
+            ...ss,
+            id: ss.id || 0,
+            name: ss.skillset_name || "Unknown Skillset",
+            qty: ss.qty || 0,
+            materialRequisitions: (ss.materialRequisitions || []).map((mtr, mtrIndex) => ({
+              id: mtr.id || Date.now() + mtrIndex,
+              mtrQty: Number.parseFloat(mtr.mtrQty || 0),
+              stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
+              purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
+              dcQty: Number.parseFloat(mtr.dcQty || 0),
+              remarks: mtr.remarks || "",
+              status: mtr.status || "Pending",
+              expectedDeliveryDate: mtr.expectedDeliveryDate || "",
+              priority: mtr.priority || "MEDIUM",
+              mtrCode: mtr.mtrCode || "",
+            })),
+          }))
+          const tools = (item.toolsItems || []).map((t) => ({
+            ...t,
+            id: t.id || 0,
+            name: t.tool_name || "Unknown Tool",
+            qty: t.qty || 0,
+            make: t.make || "",
+            materialRequisitions: (t.materialRequisitions || []).map((mtr, mtrIndex) => ({
+              id: mtr.id || Date.now() + mtrIndex,
+              mtrQty: Number.parseFloat(mtr.mtrQty || 0),
+              stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
+              purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
+              dcQty: Number.parseFloat(mtr.dcQty || 0),
+              remarks: mtr.remarks || "",
+              status: mtr.status || "Pending",
+              expectedDeliveryDate: t.expectedDeliveryDate || "",
+              priority: t.priority || "MEDIUM",
+              mtrCode: t.mtrCode || "",
+            })),
+          }))
+          const formattedItem = {
+            id: item.id || Date.now() + Math.random(),
+            product_id: product.id || 0,
+            product_name: product.productName || product.product_name || product.name || "Unknown Product",
+            hsn_code: product.hsnCode || product.hsn_code || "",
+            product_description: product.productDescription || product.product_description || "",
+            qty: item.totalQty || 0,
+            make: item.make || "",
+            uom: item.uom || "",
+            leadProductTypeId: item.product.categoryId ? item.product.categoryId.id : null,
+            pmApprovalStatus: item.pmApprovalStatus || "PENDING",
+            salestlApprovalStatus: item.salestlApprovalStatus || "PENDING",
+            pmApprovalRemarks: item.pmApprovalRemarks || "",
+            salestlApprovalRemarks: item.salestlApprovalRemarks || "",
+            pmApprovalDate: item.pmApprovalDate || null,
+            salestlApprovalDate: item.salestlApprovalDate || null,
+            nonBillable: nonBillable,
+            skillSet: skillSet,
+            tools: tools,
+            materialRequisitions: materialRequisitions,
+            category_id: item.category_id || product.category_id?.id || null,
+            categoryInfo: item.categoryInfo || (product.category_id ? extractCategoryInfo(product) : null),
+            supply_rate: item.supply_rate || 0,
+            installation_rate: item.installation_rate || 0,
+            supply_amount: item.supply_amount || 0,
+            installation_amount: item.installation_amount || 0,
+            total: item.total || 0,
           }
-          setIsBOQInitializedFromProps(true)
-        } catch (err) {
-          console.error("Error processing BOQ data:", err)
-          setError("Error processing BOQ data: " + err.message)
-          setBOQProducts([])
+          return formattedItem
+        })
+        setBOQProducts(formattedProducts)
+        if (formattedProducts.length > 0) {
+          setExpandedProducts({ [formattedProducts[0].id]: true })
+          setSelectedProductTab({ [formattedProducts[0].id]: "billable" })
         }
-      } else if (!existingBOQ && !isBOQInitializedFromProps) {
-        setBOQProducts([])
         setIsBOQInitializedFromProps(true)
+      } catch (err) {
+        console.error("Error processing BOQ data:", err)
+        setError("Error processing BOQ data: " + err.message)
+        setBOQProducts([])
       }
+    } else if (!existingBOQ && !isBOQInitializedFromProps) {
+      setBOQProducts([])
+      setIsBOQInitializedFromProps(true)
     }
-    initializeBOQ()
-  }, [existingBOQ, isBOQInitializedFromProps, leadProductTypes]) // Now leadProductTypes is a stable dependency after initial fetch
+    fetchSkillsets()
+    fetchTools()
+    fetchLeadProductTypes()
+    fetchAllProductsForNonBillable()
+  }, [existingBOQ, isBOQInitializedFromProps])
+
+  const fetchLeadProductTypes = async () => {
+    try {
+      const response = await leadService.getLeadProductTypeList()
+      console.log("Lead Product Types API Raw Response:", response)
+      let productTypesData = []
+      if (Array.isArray(response)) {
+        productTypesData = response
+      } else if (response && Array.isArray(response.data)) {
+        productTypesData = response.data
+      } else if (response && Array.isArray(response.leadProductTypes)) {
+        productTypesData = response.leadProductTypes
+      } else if (response && typeof response === "object") {
+        const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
+        if (arrayProperty) {
+          productTypesData = arrayProperty
+        }
+      }
+      console.log("Lead Product Types Data to set:", productTypesData)
+      setLeadProductTypes(productTypesData)
+    } catch (err) {
+      console.error("Error fetching lead product types:", err)
+      setLeadProductTypes([])
+    }
+  }
+
+  const fetchSkillsets = async () => {
+    try {
+      const response = await storeService.getSkillSetList()
+      console.log("Skillsets API Raw Response:", response)
+      let skillsetsData = []
+      if (Array.isArray(response)) {
+        skillsetsData = response
+      } else if (response && Array.isArray(response.data)) {
+        skillsetsData = response.data
+      } else if (response && Array.isArray(response.skillsets)) {
+        skillsetsData = response.skillsets
+      } else if (response && typeof response === "object") {
+        const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
+        if (arrayProperty) {
+          skillsetsData = arrayProperty
+        }
+      }
+      console.log("Skillsets Data to set:", skillsetsData)
+      setAvailableSkillsets(skillsetsData)
+    } catch (err) {
+      console.error("Error fetching skillsets:", err)
+      setError(`Failed to load skillsets: ${err.message}`)
+      setAvailableSkillsets([])
+    }
+  }
+
+  const fetchTools = async () => {
+    try {
+      const response = await storeService.getToolsList()
+      console.log("Tools API Raw Response:", response)
+      let toolsData = []
+      if (Array.isArray(response)) {
+        toolsData = response
+      } else if (response && Array.isArray(response.data)) {
+        toolsData = response.data
+      } else if (response && Array.isArray(response.tools)) {
+        toolsData = response.tools
+      } else if (response && typeof response === "object") {
+        const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
+        if (arrayProperty) {
+          toolsData = arrayProperty
+        }
+      }
+      console.log("Tools Data to set:", toolsData)
+      setAvailableTools(toolsData)
+    } catch (err) {
+      console.error("Error fetching tools:", err)
+      setError(`Failed to load tools: ${err.message}`)
+      setAvailableTools([])
+    }
+  }
+
+  const fetchAllProductsForNonBillable = async () => {
+    try {
+      const response = await storeService.getProductsList()
+      console.log("Products API Raw Response (Non-Billable):", response)
+      let productsData = []
+      if (Array.isArray(response)) {
+        productsData = response
+      } else if (response && Array.isArray(response.data)) {
+        productsData = response.data
+      } else if (response && Array.isArray(response.products)) {
+        productsData = response.products
+      } else if (response && typeof response === "object") {
+        const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
+        if (arrayProperty) {
+          productsData = arrayProperty
+        }
+      }
+      console.log("Products Data to set (Non-Billable):", productsData)
+      setAvailableProducts(productsData)
+    } catch (err) {
+      console.error("Error fetching all products for non-billable:", err)
+      setAvailableProducts([])
+    }
+  }
 
   const ApprovalStatusBadge = ({ status, type, onUpdate, productId, remarks, approvalDate }) => {
     const getStatusColor = (status) => {
@@ -385,10 +356,13 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   const ApprovalModal = ({ productId, type, currentStatus, currentRemarks, onClose, onSave }) => {
     const [status, setStatus] = useState(currentStatus)
     const [remarks, setRemarks] = useState(currentRemarks)
-
     const handleSave = async () => {
       try {
-        await projectService.updateBOQItemApprovalStatus(productId, type, status, remarks) // Corrected API call
+        await projectService.updateBOQItemApprovalStatus(projectId, productId, {
+          approvalType: type,
+          status: status,
+          remarks: remarks,
+        })
         setBOQProducts((prev) =>
           prev.map((product) => {
             if (product.id === productId) {
@@ -418,7 +392,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         setError("Failed to update approval status: " + error.message)
       }
     }
-
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
         <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
@@ -524,9 +497,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
 
     return (
       <form onSubmit={handleSubmit} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-        <h5 className="font-medium mb-3 text-blue-800">
+        {/* <h5 className="font-medium mb-3 text-blue-800">
           {initialMTRData ? "Edit Material Requisition" : "Add New Material Requisition"}
-        </h5>
+        </h5> */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">MTR Qty</label>
@@ -610,7 +583,40 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   }
 
   // Inline MTR List (replaces MaterialRequisitionList.js)
-  const MTRList = ({ materialRequisitions, onRemove, onEdit }) => {
+  const MTRList = ({ materialRequisitions, onRemove, onEdit, onSaveInlineEdit, isBillable = false }) => {
+    const [editingMTRId, setEditingMTRId] = useState(null)
+    const [editedMTRData, setEditedMTRData] = useState({})
+
+    const handleEditClick = (mtr) => {
+      setEditingMTRId(mtr.id)
+      setEditedMTRData({ ...mtr })
+    }
+
+    const handleCancelClick = () => {
+      setEditingMTRId(null)
+      setEditedMTRData({})
+    }
+
+    const handleInputChange = (e, field) => {
+      const { value } = e.target
+      setEditedMTRData((prev) => {
+        const newData = { ...prev, [field]: value }
+        // Recalculate Purchase MTR if Stock Allotted or MTR Qty changes
+        if (field === "stockAlloted" || field === "mtrQty") {
+          const mtrQty = Number.parseFloat(newData.mtrQty || 0)
+          const stockAlloted = Number.parseFloat(newData.stockAlloted || 0)
+          newData.purchaseMTR = Math.max(0, mtrQty - stockAlloted).toFixed(2)
+        }
+        return newData
+      })
+    }
+
+    const handleSaveClick = (mtrId) => {
+      onSaveInlineEdit(mtrId, editedMTRData)
+      setEditingMTRId(null)
+      setEditedMTRData({})
+    }
+
     if (!materialRequisitions || materialRequisitions.length === 0) {
       return <div className="text-center text-gray-500 py-2 text-sm">No material requisitions added yet</div>
     }
@@ -632,7 +638,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       <div className="space-y-2 mb-4">
         <h5 className="font-medium text-gray-800">Previous Material Requisitions ({materialRequisitions.length})</h5>
         {materialRequisitions.map((mtr, index) => (
-          <div key={mtr.id || `new-mtr-${index}`} className="bg-gray-50 p-3 rounded border">
+          <div key={mtr.id} className="bg-gray-50 p-3 rounded border">
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
@@ -650,15 +656,45 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                   <div>
                     <span className="text-gray-600">Stock:</span>
-                    <span className="ml-1 font-medium">{mtr.stockAlloted}</span>
+                    {editingMTRId === mtr.id && isBillable ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedMTRData.stockAlloted}
+                        onChange={(e) => handleInputChange(e, "stockAlloted")}
+                        className="w-20 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <span className="ml-1 font-medium">{mtr.stockAlloted}</span>
+                    )}
                   </div>
                   <div>
                     <span className="text-gray-600">Purchase:</span>
-                    <span className="ml-1 font-medium">{mtr.purchaseMTR}</span>
+                    {editingMTRId === mtr.id && isBillable ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedMTRData.purchaseMTR}
+                        readOnly
+                        className="w-20 p-1 border rounded bg-gray-100 text-gray-600"
+                      />
+                    ) : (
+                      <span className="ml-1 font-medium">{mtr.purchaseMTR}</span>
+                    )}
                   </div>
                   <div>
                     <span className="text-gray-600">DC Qty:</span>
-                    <span className="ml-1 font-medium">{mtr.dcQty}</span>
+                    {editingMTRId === mtr.id && isBillable ? (
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editedMTRData.dcQty}
+                        onChange={(e) => handleInputChange(e, "dcQty")}
+                        className="w-20 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    ) : (
+                      <span className="ml-1 font-medium">{mtr.dcQty}</span>
+                    )}
                   </div>
                   {mtr.expectedDeliveryDate && (
                     <div>
@@ -677,20 +713,43 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 )}
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={() => onEdit(mtr)}
-                  className="text-blue-500 hover:bg-blue-50 p-1 rounded"
-                  title="Edit material requisition"
-                >
-                  <FiEdit3 size={14} />
-                </button>
-                <button
-                  onClick={() => onRemove(mtr.id)}
-                  className="text-red-500 hover:bg-red-50 p-1 rounded"
-                  title="Remove material requisition"
-                >
-                  <FiX size={14} />
-                </button>
+                {isBillable && editingMTRId === mtr.id ? (
+                  <>
+                    <button
+                      onClick={() => handleSaveClick(mtr.id)}
+                      className="text-green-600 hover:bg-green-50 p-1 rounded"
+                      title="Save changes"
+                    >
+                      <FiSave size={14} />
+                    </button>
+                    <button
+                      onClick={handleCancelClick}
+                      className="text-gray-600 hover:bg-gray-50 p-1 rounded"
+                      title="Cancel editing"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {isBillable && (
+                      <button
+                        onClick={() => handleEditClick(mtr)}
+                        className="text-blue-500 hover:bg-blue-50 p-1 rounded"
+                        title="Edit material requisition"
+                      >
+                        <FiEdit3 size={14} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onRemove(mtr.id)}
+                      className="text-red-500 hover:bg-red-50 p-1 rounded"
+                      title="Remove material requisition"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -701,13 +760,11 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
 
   const CategoryProductModal = ({ product, productId, category, productIndex, onClose, onSave, projectCode }) => {
     const [editingCategoryMTR, setEditingCategoryMTR] = useState(null)
-
     const getCurrentProduct = () => {
       const mainProduct = boqProducts.find((p) => p.id === productId)
       if (!mainProduct || !mainProduct[category]) return product
       return mainProduct[category][productIndex] || product
     }
-
     const [localData, setLocalData] = useState(() => {
       const currentProduct = getCurrentProduct()
       return {
@@ -715,9 +772,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         make: category === "skillSet" ? "" : currentProduct?.make || "",
       }
     })
-
     const debouncedSyncRef = useRef(null)
-
     const syncToMainState = (field, value) => {
       if (debouncedSyncRef.current) {
         clearTimeout(debouncedSyncRef.current)
@@ -726,21 +781,17 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         updateCategoryProduct(productId, category, productIndex, field, value)
       }, 300)
     }
-
     const handleQtyChange = (value) => {
       setLocalData((prev) => ({ ...prev, qty: value }))
       syncToMainState("qty", value)
     }
-
     const handleMakeChange = (value) => {
       if (category !== "skillSet") {
         setLocalData((prev) => ({ ...prev, make: value }))
         syncToMainState("make", value)
       }
     }
-
     const currentMTRCount = (getCurrentProduct()?.materialRequisitions || []).length + 1
-
     const handleCategoryMTRSubmit = (mtrData) => {
       updateCategoryProduct(productId, category, productIndex, "qty", localData.qty)
       if (category !== "skillSet") {
@@ -749,7 +800,6 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       handleMTRSubmit(productId, category, productIndex, mtrData)
       toggleMTRForm(`${productId}-${category}-${productIndex}`)
     }
-
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
         <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -884,11 +934,10 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       setLoading(true)
       setError("")
       const enhancedBOQData = {
+        projectInitiationDate: projectInitiationDate || null,
+        numberOfWeeks: numberOfWeeks ? Number.parseInt(numberOfWeeks) : null,
         items: boqProducts.map((product) => {
           const installmentData = {}
-          // Note: The backend's saveBOQWithMaterialRequisition deletes and recreates MTRs.
-          // So, the `id` field for MTRs sent from frontend is not used for updates, only for new ones.
-          // The `mtrCode` is important for tracking.
           product.materialRequisitions.forEach((mtr, index) => {
             installmentData[`mtr_${index}`] = {
               mtrQty: Number.parseFloat(mtr.mtrQty || 0),
@@ -902,10 +951,10 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             }
           })
           return {
-            id: product.id, // Ensure this is null for new items, and actual ID for existing BOQItems
-            productId: product.product_id?.toString() || "", // This is the ProductsMaster ID
-            productName: product.product_name || "", // Use productName
-            hsnCode: product.hsn_code || "",
+            id: product.id,
+            product_id: product.product_id?.toString() || "",
+            product_name: product.product_name || "",
+            hsn_code: product.hsn_code || "",
             qty: Number.parseFloat(product.qty) || 0,
             make: product.make || "",
             uom: product.uom || "",
@@ -916,32 +965,50 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             salestlApprovalRemarks: product.salestlApprovalRemarks,
             nonBillable: (product.nonBillable || []).map((item) => ({
               ...item,
-              id: typeof item.id === "number" ? item.id : null, // Preserve actual IDs (numbers), set to null for temporary frontend IDs (strings)
               materialRequisitions: (item.materialRequisitions || []).map((mtr) => ({
-                ...mtr,
-                id: typeof mtr.id === "number" ? mtr.id : null, // Preserve actual MTR IDs if they are numbers
+                mtrQty: Number.parseFloat(mtr.mtrQty || 0),
+                stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
+                purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
+                dcQty: Number.parseFloat(mtr.dcQty || 0),
+                remarks: mtr.remarks || "",
+                status: mtr.status || "Pending",
+                expectedDeliveryDate: mtr.expectedDeliveryDate || null,
+                priority: mtr.priority || "MEDIUM",
+                mtrCode: mtr.mtrCode || "", // mtrCode is included here
               })),
             })),
             skillSet: (product.skillSet || []).map((item) => ({
               ...item,
-              id: typeof item.id === "number" ? item.id : null, // Preserve actual IDs (numbers), set to null for temporary frontend IDs (strings)
               make: null,
               materialRequisitions: (item.materialRequisitions || []).map((mtr) => ({
-                ...mtr,
-                id: typeof mtr.id === "number" ? mtr.id : null,
+                mtrQty: Number.parseFloat(mtr.mtrQty || 0),
+                stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
+                purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
+                dcQty: Number.parseFloat(mtr.dcQty || 0),
+                remarks: mtr.remarks || "",
+                status: mtr.status || "Pending",
+                expectedDeliveryDate: mtr.expectedDeliveryDate || null,
+                priority: mtr.priority || "MEDIUM",
+                mtrCode: mtr.mtrCode || "", // mtrCode is included here
               })),
             })),
             tools: (product.tools || []).map((item) => ({
               ...item,
-              id: typeof item.id === "number" ? item.id : null, // Preserve actual IDs (numbers), set to null for temporary frontend IDs (strings)
               materialRequisitions: (item.materialRequisitions || []).map((mtr) => ({
-                ...mtr,
-                id: typeof mtr.id === "number" ? mtr.id : null,
+                mtrQty: Number.parseFloat(mtr.mtrQty || 0),
+                stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
+                purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
+                dcQty: Number.parseFloat(mtr.dcQty || 0),
+                remarks: mtr.remarks || "",
+                status: mtr.status || "Pending",
+                expectedDeliveryDate: mtr.expectedDeliveryDate || null,
+                priority: mtr.priority || "MEDIUM",
+                mtrCode: mtr.mtrCode || "", // mtrCode is included here
               })),
             })),
-            installmentData: installmentData, // This seems to be an old/alternative way of sending MTRs
+            installmentData: installmentData,
             materialRequisitions: (product.materialRequisitions || []).map((mtr) => ({
-              id: null, // CRITICAL CHANGE: Always send null for MTR IDs as backend recreates them
+              id: mtr.id,
               mtrQty: Number.parseFloat(mtr.mtrQty || 0),
               stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
               purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
@@ -950,7 +1017,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
               status: mtr.status || "Pending",
               expectedDeliveryDate: mtr.expectedDeliveryDate || null,
               priority: mtr.priority || "MEDIUM",
-              mtrCode: mtr.mtrCode || "",
+              mtrCode: mtr.mtrCode || "", // mtrCode is included here
             })),
           }
         }),
@@ -1011,13 +1078,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             [category]: [
               ...(p[category] || []),
               {
-                id: null, // CRITICAL: Ensure BOQCategoryItem's own ID is null for new items
-                referenceId: product.id, // NEW: Pass the master data ID as referenceId
-                product_name: product.product_name || product.productName || product.name, // Ensure product_name is set
-                hsn_code: product.hsn_code || product.hsnCode || "",
-                uom: product.uom || "",
+                ...product,
                 qty: "",
-                make: "", // Non-billable products can have make
+                make: category === "skillSet" ? null : "",
                 materialRequisitions: [],
               },
             ],
@@ -1045,11 +1108,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             skillSet: [
               ...(p.skillSet || []),
               {
-                id: null, // CRITICAL: Ensure BOQCategoryItem's own ID is null for new items
-                referenceId: skillset.id, // NEW: Pass the master data ID as referenceId
-                name: skillset.skillset_name, // Use 'name' for display
+                ...skillset,
+                name: skillset.skillset_name,
                 qty: "",
-                make: null, // Skillsets do not have make
                 materialRequisitions: [],
               },
             ],
@@ -1077,11 +1138,10 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             tools: [
               ...(p.tools || []),
               {
-                id: null, // CRITICAL: Ensure BOQCategoryItem's own ID is null for new items
-                referenceId: tool.id, // NEW: Pass the master data ID as referenceId
-                name: tool.tool_name, // Use 'name' for display
+                ...tool,
+                name: tool.tool_name,
                 qty: "",
-                make: "", // Tools can have make
+                make: "",
                 materialRequisitions: [],
               },
             ],
@@ -1140,6 +1200,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       prev.map((p) => {
         if (p.id === mainProductId) {
           if (category === "billable") {
+            // This block is now effectively unused for billable products due to inline editing
+            // but kept for other categories if they were to use a form
             if (editingBillableMTR) {
               return {
                 ...p,
@@ -1153,7 +1215,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 materialRequisitions: [
                   ...(p.materialRequisitions || []),
                   {
-                    id: null, // New MTR, ID should be null
+                    id: Date.now(),
                     ...mtrData,
                     createdAt: new Date().toISOString(),
                   },
@@ -1175,7 +1237,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 materialRequisitions: [
                   ...(updatedCategory[productIndex].materialRequisitions || []),
                   {
-                    id: null, // New category MTR, ID should be null
+                    id: Date.now(),
                     ...mtrData,
                     createdAt: new Date().toISOString(),
                   },
@@ -1192,6 +1254,21 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       }),
     )
     setEditingBillableMTR(null)
+  }
+
+  const handleSaveInlineBillableMTR = (mtrId, updatedMTRData) => {
+    setBOQProducts((prev) =>
+      prev.map((product) => {
+        // Find the product that contains this MTR
+        const updatedMaterialRequisitions = product.materialRequisitions.map((mtr) =>
+          mtr.id === mtrId ? { ...mtr, ...updatedMTRData } : mtr,
+        )
+        if (updatedMaterialRequisitions.some((mtr) => mtr.id === mtrId)) {
+          return { ...product, materialRequisitions: updatedMaterialRequisitions }
+        }
+        return product
+      }),
+    )
   }
 
   const removeMTRFromProduct = (mainProductId, category, productIndex, mtrId) => {
@@ -1270,54 +1347,42 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
 
   const handleBillableProductSave = (boqDataFromSelector) => {
     console.log("Received BOQ data from BillableProductSelector:", boqDataFromSelector)
-    // CRITICAL CHANGE: Key by productId (ProductsMaster.id) to correctly match existing products
-    const newBillableItemsMap = new Map(boqDataFromSelector.items.map((item) => [item.productId, item]))
+    const newBillableItemsMap = new Map(boqDataFromSelector.items.map((item) => [item.id, item]))
     const updatedBOQProducts = []
-
-    // Process existing products first
     boqProducts.forEach((existingProduct) => {
-      // Match by existingProduct.product_id (ProductsMaster ID)
       const updatedBillableItem = newBillableItemsMap.get(existingProduct.product_id)
       if (updatedBillableItem) {
-        // If product exists in both, update its details
         updatedBOQProducts.push({
           ...existingProduct,
-          // Keep existing BOQItem.id
-          product_id: updatedBillableItem.productId, // Ensure product_id is ProductsMaster ID
-          product_name: updatedBillableItem.productName, // Use productName from selector
-          hsn_code: updatedBillableItem.hsnCode,
-          product_description: updatedBillableItem.productDescription,
+          product_name: updatedBillableItem.product_name,
+          hsn_code: updatedBillableItem.hsn_code,
+          product_description: updatedBillableItem.product_description,
           qty: updatedBillableItem.qty,
           make: updatedBillableItem.make,
           uom: updatedBillableItem.uom,
-          leadProductTypeId: updatedBillableItem.leadProductTypeId, // Use leadProductTypeId from selector
-          supply_rate: updatedBillableItem.supplyRate,
-          installation_rate: updatedBillableItem.installationRate,
-          supply_amount: updatedBillableItem.supplyAmount,
-          installation_amount: updatedBillableItem.installationAmount,
+          leadProductTypeId: updatedBillableItem.category_id,
+          supply_rate: updatedBillableItem.supply_rate,
+          installation_rate: updatedBillableItem.installation_rate,
+          supply_amount: updatedBillableItem.supply_amount,
+          installation_amount: updatedBillableItem.installation_amount,
           total: updatedBillableItem.total,
+          category_id: updatedBillableItem.category_id,
           categoryInfo: updatedBillableItem.categoryInfo,
         })
-        newBillableItemsMap.delete(existingProduct.product_id) // Remove from map as it's processed
-      } else {
-        // If existing product is not in the new selection, keep it (or remove if that's the desired behavior)
-        // For now, assuming we keep it if not explicitly removed by the selector.
-        updatedBOQProducts.push(existingProduct)
+        newBillableItemsMap.delete(existingProduct.product_id)
       }
     })
-
-    // Add new products from the selector
     newBillableItemsMap.forEach((newSelectorItem) => {
       updatedBOQProducts.push({
-        id: null, // CRITICAL CHANGE: Set ID to null for new items (backend will assign)
-        product_id: newSelectorItem.productId, // This is the ProductsMaster ID
-        product_name: newSelectorItem.productName, // Use productName from selector
-        hsn_code: newSelectorItem.hsnCode,
-        product_description: newSelectorItem.productDescription,
+        id: Date.now() + Math.random(),
+        product_id: newSelectorItem.id,
+        product_name: newSelectorItem.product_name,
+        hsn_code: newSelectorItem.hsn_code,
+        product_description: newSelectorItem.product_description,
         qty: newSelectorItem.qty,
         make: newSelectorItem.make,
         uom: newSelectorItem.uom,
-        leadProductTypeId: newSelectorItem.leadProductTypeId, // Use leadProductTypeId from selector
+        leadProductTypeId: newSelectorItem.category_id,
         pmApprovalStatus: "PENDING",
         salestlApprovalStatus: "PENDING",
         pmApprovalRemarks: "",
@@ -1328,15 +1393,15 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         skillSet: [],
         tools: [],
         materialRequisitions: [],
-        supply_rate: newSelectorItem.supplyRate,
-        installation_rate: newSelectorItem.installationRate,
-        supply_amount: newSelectorItem.supplyAmount,
-        installation_amount: newSelectorItem.installationAmount,
+        supply_rate: newSelectorItem.supply_rate,
+        installation_rate: newSelectorItem.installation_rate,
+        supply_amount: newSelectorItem.supply_amount,
+        installation_amount: newSelectorItem.installation_amount,
         total: newSelectorItem.total,
+        category_id: newSelectorItem.category_id,
         categoryInfo: newSelectorItem.categoryInfo,
       })
     })
-
     setBOQProducts(updatedBOQProducts)
     setShowAddProductModal(false)
   }
@@ -1536,16 +1601,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                 <h5 className="font-medium text-blue-800">
                                                   Billable Product Material Requisitions
                                                 </h5>
-                                                <button
-                                                  onClick={() => {
-                                                    toggleMTRForm(`${product.id}-billable`)
-                                                    setEditingBillableMTR(null)
-                                                  }}
-                                                  className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                                                >
-                                                  <FiPlus size={14} />
-                                                  Add Material Requisition
-                                                </button>
+                                                {/* Removed "Add Material Requisition" button as per request */}
                                               </div>
                                               <MTRList
                                                 materialRequisitions={product.materialRequisitions || []}
@@ -1559,6 +1615,10 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                     [`${product.id}-billable`]: true,
                                                   }))
                                                 }}
+                                                onSaveInlineEdit={(mtrId, updatedData) =>
+                                                  handleSaveInlineBillableMTR(mtrId, updatedData)
+                                                }
+                                                isBillable={true} // Indicate this is for billable products
                                               />
                                               <AnimatePresence>
                                                 {expandedMTRForms[`${product.id}-billable`] && (
@@ -1568,7 +1628,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                     exit={{ height: 0, opacity: 0 }}
                                                     className="overflow-hidden"
                                                   >
-                                                    <MTRForm
+                                                    {/* MTRForm is now only used for adding/editing non-billable, skillset, tools MTRs */}
+                                                    {/* This section can be removed if no longer needed for billable products */}
+                                                    {/* <MTRForm
                                                       projectCode={projectCode}
                                                       currentMTRCount={(product.materialRequisitions || []).length + 1}
                                                       initialMTRData={editingBillableMTR}
@@ -1577,7 +1639,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                         toggleMTRForm(`${product.id}-billable`)
                                                       }}
                                                       onCancel={() => toggleMTRForm(`${product.id}-billable`)}
-                                                    />
+                                                    /> */}
                                                   </motion.div>
                                                 )}
                                               </AnimatePresence>
@@ -1646,7 +1708,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                               <div className="space-y-2">
                                                 {(product.nonBillable || []).map((item, index) => (
                                                   <div
-                                                    key={item.id || `nb-${index}`} // Use item.id for key
+                                                    key={index}
                                                     className="bg-white p-3 rounded border flex items-center justify-between"
                                                   >
                                                     <div className="flex-1">
@@ -1751,7 +1813,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                               <div className="space-y-2">
                                                 {(product.skillSet || []).map((item, index) => (
                                                   <div
-                                                    key={item.id || `ss-${index}`} // Use item.id for key
+                                                    key={index}
                                                     className="bg-white p-3 rounded border flex items-center justify-between"
                                                   >
                                                     <div className="flex-1">
@@ -1856,7 +1918,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                               <div className="space-y-2">
                                                 {(product.tools || []).map((item, index) => (
                                                   <div
-                                                    key={item.id || `tool-${index}`} // Use item.id for key
+                                                    key={index}
                                                     className="bg-white p-3 rounded border flex items-center justify-between"
                                                   >
                                                     <div className="flex-1">
@@ -2068,9 +2130,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 >
                   {loading ? (
                     <>
-                      {" "}
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>{" "}
-                      Saving...{" "}
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      Saving...
                     </>
                   ) : (
                     <>Save BOQ</>
@@ -2084,4 +2145,5 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
     </motion.div>
   )
 }
-export default BOQEditComponent
+
+export default BOQMTREditPurchase

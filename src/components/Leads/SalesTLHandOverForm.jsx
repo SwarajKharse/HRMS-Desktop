@@ -16,7 +16,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   if (user) {
     userId = user.userId
   }
-
   const allIds = Array.isArray(lead.lead_proposal_type) ? lead.lead_proposal_type.map((item) => item.id) : []
   const [formData, setFormData] = useState({
     ...lead,
@@ -27,7 +26,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       id: userId,
     },
   })
-
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
@@ -49,13 +47,11 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const [existingProject, setExistingProject] = useState(null)
   const [isEditingProjectTitle, setIsEditingProjectTitle] = useState(false)
   const [editedProjectTitle, setEditedProjectTitle] = useState("")
-
   const [project, setProject] = useState({
     project_name: "",
     custom_project_name: "",
   })
   const [showCustomInput, setShowCustomInput] = useState(false)
-
   // State for BOQ data, will hold the structure expected by backend BOQRequestDTO
   const [boqData, setBOQData] = useState(null)
   const [showBOQSelector, setShowBOQSelector] = useState(false)
@@ -181,9 +177,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     try {
       const responseFromService = await projectService.getProjectByLeadId(lead.id)
       console.log("Response from projectService.getProjectByLeadId (in SalesTLHandOverForm):", responseFromService)
-
       const projectData = responseFromService?.project
-
       if (projectData) {
         setExistingProject({
           ...projectData,
@@ -194,7 +188,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
           project_name: projectData.project_name,
         }))
         setEditedProjectTitle(projectData.project_name)
-
         // If project has BOQ, load it and store it separately
         if (projectData.hasExistingBOQ && projectData.boq) {
           const existingBOQ = {
@@ -202,24 +195,30 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
             projectOrAmc: projectData.boq.projectOrAmc,
             amcOrProjectType: projectData.boq.amcOrProjectType,
             // Map boqItems from backend to 'items' for ProductBOQSelector
-            items: Array.isArray(projectData.boq.boqItems)
-              ? projectData.boq.boqItems.map((item) => ({
+            items: Array.isArray(projectData.boq.items)
+              ? projectData.boq.items.map((item) => ({
                   id: item.id,
-                  productName: item.productName, // This is from BOQItem
-                  quantity: item.quantity,
-                  unitPrice: item.unitPrice,
-                  totalPrice: item.totalPrice,
+                  productName: item.product.productName, // This is from BOQItem
+                  quantity: item.totalQty,
+                  unitPrice: item.supplyRate,
+                  totalPrice: item.total,
                   createdBy: item.createdBy,
                   status: item.status,
                   make: item.make, // Ensure make is passed
                   uom: item.uom, // Ensure uom is passed
-                  // For ProductBOQSelector, we need supply_rate and installation_rate
-                  // Assuming unitPrice from backend is the supply_rate for display, and installation_rate is 0 on load.
-                  supply_rate: item.unitPrice || 0,
-                  installation_rate: 0, // Cannot retrieve from backend's single unitPrice
-                  // Pass product details if available, for categoryInfo extraction
+                  supplyRate: item.supplyRate, // Pass supplyRate
+                  installationRate: item.installationRate, // Pass installationRate
+                  supplyAmount: item.supplyAmount,
+                  installationAmount: item.installationAmount,
+                  total: item.total,
                   product: item.product, // Pass the nested product object if it exists
-                  // MTRs are no longer handled by ProductBOQSelector, so we don't pass them
+                  leadProductTypeId: item.product.categoryId?.id, // Pass leadProductTypeId
+                  pmApprovalStatus: item.pmApprovalStatus,
+                  salestlApprovalStatus: item.salestlApprovalStatus,
+                  pmApprovalRemarks: item.pmApprovalRemarks,
+                  salestlApprovalRemarks: item.salestlApprovalRemarks,
+                  pmApprovalDate: item.pmApprovalDate,
+                  salestlApprovalDate: item.salestlApprovalDate,
                 }))
               : [],
           }
@@ -298,6 +297,10 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       if (!existingProject || !existingProject.projectId) {
         throw new Error("Project not found for BOQ status update.")
       }
+      // This function is for overall BOQ status, which is not the current requirement.
+      // The user wants individual item approval.
+      // This part of the code might need to be re-evaluated if overall BOQ status is still a requirement.
+      // For now, I'll keep it as is, but it won't be used for item-level approval.
       await projectService.updateBOQStatus(existingProject.projectId, status, remarks)
       setSuccessMessage(`BOQ status updated to ${status === "1" ? "Approved" : "Rejected"} successfully!`)
       setTimeout(() => setSuccessMessage(null), 3000)
@@ -329,7 +332,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
           throw new Error("Please select or enter a project name")
         }
         // CORRECTED: boqData is now the full DTO, so boqData.boqItems is correct
-        if (!boqData || !Array.isArray(boqData.boqItems) || boqData.boqItems.length === 0) {
+        if (!boqData || !Array.isArray(boqData.items) || boqData.items.length === 0) {
           throw new Error("Please create a BOQ with at least one item for the project")
         }
       }
@@ -359,7 +362,9 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
         try {
           console.log("Saving BOQ for project ID:", projectResponse.projectId)
           // boqData is already the full BOQRequestDTO compatible object from ProductBOQSelector
-          await projectService.createOrUpdateBOQ(boqData) // Pass the entire boqData object
+          // Ensure the projectId is correctly set in the boqData object before sending
+          const boqPayload = { ...boqData, projectId: projectResponse.projectId }
+          await projectService.createOrUpdateBOQ(boqPayload) // Pass the entire boqData object
           console.log("BOQ saved successfully")
           setSuccessMessage("Project and BOQ saved successfully")
         } catch (boqError) {
@@ -373,6 +378,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       } else {
         setSuccessMessage("Lead handover successful")
       }
+
       setTimeout(() => setSuccessMessage(null), 3000)
       await onSubmit()
       onClose()
@@ -561,7 +567,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               ) : null}
             </div>
           </div>
-
           {lead.client_name && lead.project_location && lead.office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Additional Details</h3>
@@ -620,7 +625,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               )}
             </div>
           )}
-
           {lead.middle_man_client_name && lead.middle_man_project_location && lead.middle_man_office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Middle Man Details</h3>
@@ -683,7 +687,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               )}
             </div>
           )}
-
           {lead.architect_client_name && lead.architect_project_location && lead.architect_office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Architect Firm Details</h3>
@@ -746,7 +749,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               )}
             </div>
           )}
-
           {lead.mep_client_name && lead.mep_project_location && lead.mep_office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">MEP Firm Details</h3>
@@ -809,7 +811,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               )}
             </div>
           )}
-
           {lead.pmc_client_name && lead.pmc_project_location && lead.pmc_office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">PMC Firm Details</h3>
@@ -872,7 +873,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               )}
             </div>
           )}
-
           {lead.need_of_field_visit !== null ? (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Proposal Approval</h3>
@@ -892,7 +892,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               </>
             </div>
           ) : null}
-
           {lead.salestl_approval_status == "1" ? (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
@@ -903,7 +902,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               </div>
             </div>
           ) : null}
-
           <div className="space-y-4 rounded-lg bg-white border p-4">
             <div className="mt-4">
               {isLoadingDocuments ? (
@@ -940,9 +938,8 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               )}
             </div>
           </div>
-
           <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">HandOver Details</h3>
+            <h3 className="font-semibold text-lg border-b pb-2">HandOver Details111</h3>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Project Or AMC</label>
               <select
@@ -1062,6 +1059,8 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                       isEditMode={existingProject && existingProject.hasExistingBOQ}
                       projectOrAmc={formData.amc_or_project} // Pass projectOrAmc
                       amcOrProjectType={formData.amcOrProjectType} // Pass amcOrProjectType
+                      currentUserId={userId} // Pass current user ID
+                      projectSalesTlId={existingProject?.salesTl?.id} // Pass project Sales TL ID
                     />
                   )}
                   {(boqData || (existingProject && existingProject.hasExistingBOQ)) && !showBOQSelector && (
@@ -1080,24 +1079,22 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                       </div>
                       <div className="text-xs text-gray-600">
                         {boqData
-                          ? `${Array.isArray(boqData.boqItems) ? boqData.boqItems.length : 0} product(s) in BOQ`
+                          ? `${Array.isArray(boqData.items) ? boqData.items.length : 0} product(s) in BOQ`
                           : existingProject && existingProject.boq
                             ? `${
-                                Array.isArray(existingProject.boq.boqItems) ? existingProject.boq.boqItems.length : 0
+                                Array.isArray(existingProject.boq.items) ? existingProject.boq.items.length : 0
                               } product(s) in BOQ`
                             : "BOQ data available"}
                       </div>
-                      {boqData && Array.isArray(boqData.boqItems) && (
+                      {boqData && Array.isArray(boqData.items) && (
                         <div className="mt-2 space-y-1">
-                          {boqData.boqItems.slice(0, 3).map((item, index) => (
+                          {boqData.items.slice(0, 3).map((item, index) => (
                             <div key={index} className="text-xs text-gray-600">
                               • {item.productName || "Product"} - Qty: {item.quantity} {item.uom}
                             </div>
                           ))}
-                          {boqData.boqItems.length > 3 && (
-                            <div className="text-xs text-gray-500">
-                              ... and {boqData.boqItems.length - 3} more items
-                            </div>
+                          {boqData.items.length > 3 && (
+                            <div className="text-xs text-gray-500">... and {boqData.items.length - 3} more items</div>
                           )}
                         </div>
                       )}
@@ -1148,5 +1145,4 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     </motion.div>
   )
 }
-
 export default SalesTLHandOverForm

@@ -176,35 +176,53 @@ export const projectService = {
       throw error.response?.data || error.message
     }
   },
-
-  getSiteEngineerProjects: async (
-    page = 0,
-    size = 30,
-    assignedSE,
-  ) => {
+  getSiteEngineerProjects: async (page = 0, size = 30, assignedSE) => {
     try {
       const queryParams = {
         page,
         size,
-        assignedSE
+        assignedSE,
       }
-
-      let queryString = ""
-
+      const queryString = ""
       if (queryString) {
         queryParams.query = queryString
       }
-
       console.log("Sending API request with params:", queryParams)
-
       const response = await axios.get(`${API_URL}/projects/siteengineerprojects`, {
         params: queryParams,
       })
-
       return response.data
     } catch (error) {
       console.error("API Error:", error)
       throw new Error("Failed to fetch assigned leads: " + (error.message || "Unknown error"))
+    }
+  },
+  async updateProjectDetails(projectId, details) {
+    try {
+      // Corrected: Pass 'details' directly as the request body for axios.put
+      const response = await axios.put(`${API_URL}/projects/${projectId}/update-details`, details, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error updating project details:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  saveProjectPlanBOQ: async (boqData) => {
+    try {
+      const response = await axios.post(`${API_URL}/projects/saveProjectPlanBOQ`, boqData, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error saving project plan BOQ:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  getProjectPlanBOQ: async (projectId, projectPlanId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/plans/${projectPlanId}/boq`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error fetching project plan BOQ:", error.response ? error.response.data : error.message)
+      throw error
     }
   },
 }

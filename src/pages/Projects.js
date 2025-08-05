@@ -39,7 +39,9 @@ function Projects() {
       return [allTabs[0]] // Admin/Manager can see all tabs
     } else if (designation.includes("sr.-site-engineer")) {
       return [allTabs[1]]
-    } 
+    } else {
+      return []
+    }
 
     // Filter tabs based on designation
    /*  if (designation.includes("director")) {

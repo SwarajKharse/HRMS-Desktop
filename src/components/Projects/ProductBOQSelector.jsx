@@ -1,32 +1,11 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import {
-  FiSearch,
-  FiPlus,
-  FiTrash2,
-  FiX,
-  FiEdit2,
-  FiSave,
-  FiChevronDown,
-  FiChevronRight,
-  FiClock,
-  FiAlertTriangle,
-  FiCheck,
-  FiAlertCircle,
-} from "react-icons/fi"
+import { FiSearch, FiPlus, FiTrash2, FiX, FiEdit2, FiSave, FiChevronDown, FiChevronRight } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
 
-function ProductBOQSelector({
-  projectId,
-  onSave,
-  leadProductTypes,
-  existingBOQ = null,
-  isEditMode = false,
-  currentUserId,
-  projectSalesTlId,
-}) {
+function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ = null, isEditMode = false }) {
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([]) // This will hold leadProductTypes as categories
   const [selectedCategories, setSelectedCategories] = useState([]) // Categories (leadProductTypes) selected by the user
@@ -43,7 +22,6 @@ function ProductBOQSelector({
   const [selectedCategoryToAdd, setSelectedCategoryToAdd] = useState("") // Declare selectedCategoryToAdd
   const dropdownRef = useRef(null)
   const searchInputRef = useRef(null)
-  const [showApprovalModal, setShowApprovalModal] = useState(null) // State for approval modal
 
   // Helper function to calculate amounts
   const calculateAmounts = (qty, supplyRate, installationRate) => {
@@ -54,170 +32,6 @@ function ProductBOQSelector({
     const installationAmount = parsedQty * parsedInstallationRate
     const total = supplyAmount + installationAmount
     return { supplyAmount, installationAmount, total } // Changed to camelCase
-  }
-
-  // Approval Status Badge Component (copied and adapted from BOQEditComponent)
-  const ApprovalStatusBadge = ({ status, type, onUpdate, productId, remarks, approvalDate }) => {
-    const getStatusColor = (status) => {
-      switch (status) {
-        case "APPROVED":
-          return "bg-green-100 text-green-800 border-green-200"
-        case "REJECTED":
-          return "bg-red-100 text-red-800 border-red-200"
-        case "PENDING":
-          return "bg-yellow-100 text-yellow-800 border-yellow-200"
-        default:
-          return "bg-gray-100 text-gray-800 border-gray-200"
-      }
-    }
-    const getStatusIcon = (status) => {
-      switch (status) {
-        case "APPROVED":
-          return <FiCheck size={14} />
-        case "REJECTED":
-          return <FiX size={14} />
-        case "PENDING":
-          return <FiClock size={14} />
-        default:
-          return <FiAlertTriangle size={14} />
-      }
-    }
-    return (
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-600">{type} Approval:</span>
-          <button
-            onClick={() => setShowApprovalModal({ productId, type, currentStatus: status, currentRemarks: remarks })}
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)} hover:opacity-80 transition-opacity`}
-          >
-            {getStatusIcon(status)}
-            {status}
-          </button>
-        </div>
-        {remarks && (
-          <div className="text-xs text-gray-500">
-            <span className="font-medium">Remarks:</span> {remarks}
-          </div>
-        )}
-        {approvalDate && (
-          <div className="text-xs text-gray-500">
-            <span className="font-medium">Date:</span> {new Date(approvalDate).toLocaleDateString()}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // Approval Modal Component (copied and adapted from BOQEditComponent)
-  const ApprovalModal = ({ productId, type, currentStatus, currentRemarks, onClose, onSaveSuccess }) => {
-    const [status, setStatus] = useState(currentStatus)
-    const [remarks, setRemarks] = useState(currentRemarks)
-    const [modalLoading, setModalLoading] = useState(false)
-    const [modalError, setModalError] = useState("")
-
-    const handleSave = async () => {
-      setModalLoading(true)
-      setModalError("")
-      try {
-        await projectService.updateBOQItemApprovalStatus(productId, type, status, remarks)
-        // Update the local state in ProductBOQSelector
-        setSelectedProductsByCategory((prev) => {
-          const updatedState = { ...prev }
-          for (const categoryId in updatedState) {
-            updatedState[categoryId] = updatedState[categoryId].map((product) => {
-              if (product.id === productId) {
-                const updatedProduct = { ...product }
-                if (type === "PM") {
-                  updatedProduct.pmApprovalStatus = status
-                  updatedProduct.pmApprovalRemarks = remarks
-                  if (status !== "PENDING") {
-                    updatedProduct.pmApprovalDate = new Date().toISOString()
-                  }
-                } else if (type === "SALESTL") {
-                  updatedProduct.salestlApprovalStatus = status
-                  updatedProduct.salestlApprovalRemarks = remarks
-                  if (status !== "PENDING") {
-                    updatedProduct.salestlApprovalDate = new Date().toISOString()
-                  }
-                }
-                return updatedProduct
-              }
-              return product
-            })
-          }
-          return updatedState
-        })
-        onSaveSuccess() // Callback to parent to indicate success (e.g., show success message)
-        onClose()
-      } catch (error) {
-        console.error("Error updating approval status:", error)
-        setModalError("Failed to update approval status: " + (error.message || "Unknown error"))
-      } finally {
-        setModalLoading(false)
-      }
-    }
-
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="text-lg font-bold">Update {type} Approval Status</h3>
-            <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
-              <FiX />
-            </button>
-          </div>
-          <div className="p-4 space-y-4">
-            {modalError && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 border border-red-100">
-                <FiAlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span className="text-sm font-medium">{modalError}</span>
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="PENDING">Pending</option>
-                <option value="APPROVED">Approved</option>
-                <option value="REJECTED">Rejected</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Remarks</label>
-              <textarea
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                placeholder="Enter approval remarks..."
-                rows="3"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
-            <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md">
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              disabled={modalLoading}
-            >
-              {modalLoading ? (
-                <div className="flex items-center">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Updating...
-                </div>
-              ) : (
-                "Update Status"
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   // Initialize with existing BOQ data if in edit mode
@@ -233,7 +47,7 @@ function ProductBOQSelector({
         if (!usedCategories.find((cat) => cat.id === categoryId)) {
           usedCategories.push({ id: categoryId, name: categoryName })
         }
-        const initialQty = item.quantity || 1
+        const initialQty = item.qty || 1
         const initialSupplyRate = item.supplyRate || 0
         const initialInstallationRate = item.installationRate || 0
         const { supplyAmount, installationAmount, total } = calculateAmounts(
@@ -243,12 +57,12 @@ function ProductBOQSelector({
         )
         const product = {
           id: item.id, // This is the BOQItem ID, important for potential future updates to individual items
-          productId: item.product.id, // This is the actual ProductsMaster ID
-          productName: item.product.productName || "Unknown Product", // For display (camelCase)
-          hsnCode: item.product.hsnCode || "", // For display (camelCase)
-          productDescription: item.product.productDescription || "", // For display (camelCase)
-          productQty: item.product.productQty || 0, // For display (camelCase)
-          uom: item.uom || item.product.uom || "",
+          productId: item.productId, // This is the actual ProductsMaster ID
+          productName: item.product?.productName || "Unknown Product", // For display (camelCase)
+          hsnCode: item.product?.hsnCode || "", // For display (camelCase)
+          productDescription: item.product?.productDescription || "", // For display (camelCase)
+          productQty: item.product?.productQty || 0, // For display (camelCase)
+          uom: item.uom || item.product?.uom || "",
           qty: initialQty,
           make: item.make || "",
           supplyRate: initialSupplyRate, // camelCase
@@ -259,12 +73,6 @@ function ProductBOQSelector({
           leadProductTypeId: categoryId, // This internally represents leadProductTypeId for grouping (camelCase)
           categoryInfo: extractCategoryInfo(item.product), // Pass item.product for category info
           isExisting: true, // Flag to mark as an existing item
-          pmApprovalStatus: item.pmApprovalStatus,
-          salestlApprovalStatus: item.salestlApprovalStatus,
-          pmApprovalRemarks: item.pmApprovalRemarks,
-          salestlApprovalRemarks: item.salestlApprovalRemarks,
-          pmApprovalDate: item.pmApprovalDate,
-          salestlApprovalDate: item.salestlApprovalDate,
         }
         if (!productsByCategory[categoryId]) {
           productsByCategory[categoryId] = []
@@ -316,10 +124,10 @@ function ProductBOQSelector({
         subCategory: "Uncategorized",
         fullPath: "Uncategorized",
       }
-    // Assuming product.categoryId is an object with nested category info (camelCase from DTO)
-    const topCategory = product?.categoryId?.label || "Uncategorized"
-    const mainCategory = product?.categoryId?.productCategory?.category_name || "Uncategorized"
-    const subCategory = product?.categoryId?.category_name || "Uncategorized"
+    // Assuming product.category_id is an object with nested category info (snake_case from API)
+    const topCategory = product?.category_id?.productCategory?.leadProductType?.label || "Uncategorized"
+    const mainCategory = product?.category_id?.productCategory?.category_name || "Uncategorized"
+    const subCategory = product?.category_id?.category_name || "Uncategorized"
     return {
       topCategory,
       mainCategory,
@@ -466,12 +274,6 @@ function ProductBOQSelector({
       leadProductTypeId: activeProductSearch, // This internally represents leadProductTypeId for grouping (camelCase)
       categoryInfo: extractCategoryInfo(product),
       isExisting: false,
-      pmApprovalStatus: "APPROVED", // Default to APPROVED for new items
-      salestlApprovalStatus: "APPROVED", // Default to APPROVED for new items
-      pmApprovalRemarks: "",
-      salestlApprovalRemarks: "",
-      pmApprovalDate: new Date().toISOString(),
-      salestlApprovalDate: new Date().toISOString(),
     }
     setSelectedProductsByCategory((prev) => ({
       ...prev,
@@ -570,7 +372,7 @@ function ProductBOQSelector({
       const boqData = {
         projectId: projectId, // This key is correct as per BOQRequestDTO (camelCase)
         items: allProducts.map((p) => ({
-          id: p.isExisting ? p.id : null, // Send existing BOQItem ID or null for new
+          // No 'id' field in BOQItemDTO, so we don't send the internal BOQItem ID
           productId: Number.parseInt(p.productId), // Corrected key name to camelCase
           qty: Number.parseFloat(p.qty), // Ensure it's a number (Double)
           make: p.make || "",
@@ -581,18 +383,16 @@ function ProductBOQSelector({
           supplyAmount: Number.parseFloat(p.supplyAmount), // Ensure it's a number (BigDecimal) (camelCase)
           installationAmount: Number.parseFloat(p.installationAmount), // Ensure it's a number (BigDecimal) (camelCase)
           total: Number.parseFloat(p.total), // Ensure it's a number (BigDecimal) (camelCase)
-          // Include approval statuses for existing items
-          pmApprovalStatus: p.pmApprovalStatus,
-          salestlApprovalStatus: p.salestlApprovalStatus,
-          pmApprovalRemarks: p.pmApprovalRemarks,
-          salestlApprovalRemarks: p.salestlApprovalRemarks,
-          pmApprovalDate: p.pmApprovalDate,
-          salestlApprovalDate: p.salestlApprovalDate,
+          // Removed product_name and hsn_code as they are not part of BOQItemDTO
         })),
       }
       console.log("Saving BOQ data (payload to backend):", boqData)
-      // Call the onSave prop, which will handle the actual API call in SalesTLHandOverForm
-      onSave(boqData)
+      if (isEditMode && projectId) {
+        await projectService.createOrUpdateBOQ(projectId, boqData)
+        onSave(boqData, true) // Pass true to indicate it was saved to backend
+      } else {
+        onSave(boqData, false) // Pass false if not directly saving to backend (e.g., new project)
+      }
     } catch (err) {
       console.error("Error saving BOQ:", err)
       setError(`Failed to save BOQ: ${err.message || err}`)
@@ -835,12 +635,6 @@ function ProductBOQSelector({
                                 Total
                               </th>
                               <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                PM Approval
-                              </th>
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Sales TL Approval
-                              </th>
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
                               </th>
                             </tr>
@@ -961,41 +755,6 @@ function ProductBOQSelector({
                                     />
                                   </td>
                                   <td className="px-3 py-2">
-                                    <ApprovalStatusBadge
-                                      productId={product.id}
-                                      type="PM"
-                                      status={product.pmApprovalStatus}
-                                      remarks={product.pmApprovalRemarks}
-                                      approvalDate={product.pmApprovalDate}
-                                      onUpdate={() => {}} // PM approval is not editable here
-                                    />
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <ApprovalStatusBadge
-                                      productId={product.id}
-                                      type="SALESTL"
-                                      status={product.salestlApprovalStatus}
-                                      remarks={product.salestlApprovalRemarks}
-                                      approvalDate={product.salestlApprovalDate}
-                                      onUpdate={() => {}} // This will be handled by the modal
-                                    />
-                                    {isEditMode && currentUserId === projectSalesTlId && (
-                                      <button
-                                        onClick={() =>
-                                          setShowApprovalModal({
-                                            productId: product.id,
-                                            type: "SALESTL",
-                                            currentStatus: product.salestlApprovalStatus,
-                                            currentRemarks: product.salestlApprovalRemarks,
-                                          })
-                                        }
-                                        className="text-blue-500 hover:underline text-xs mt-1"
-                                      >
-                                        Edit Status
-                                      </button>
-                                    )}
-                                  </td>
-                                  <td className="px-3 py-2">
                                     <button
                                       onClick={() => handleRemoveProduct(category.id, product.id)}
                                       className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors"
@@ -1061,21 +820,8 @@ function ProductBOQSelector({
           </div>
         )}
       </div>
-      {showApprovalModal && (
-        <ApprovalModal
-          productId={showApprovalModal.productId}
-          type={showApprovalModal.type}
-          currentStatus={showApprovalModal.currentStatus}
-          currentRemarks={showApprovalModal.currentRemarks}
-          onClose={() => setShowApprovalModal(null)}
-          onSaveSuccess={() => {
-            // Optionally show a success message or re-fetch data if needed
-            console.log("Approval status updated successfully!")
-            setError("") // Clear any previous errors
-          }}
-        />
-      )}
     </div>
   )
 }
+
 export default ProductBOQSelector

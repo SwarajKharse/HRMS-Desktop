@@ -1,4 +1,5 @@
 "use client"
+
 import { useState, useEffect, useRef } from "react"
 import { FiSearch, FiPlus, FiTrash2, FiX, FiEdit2, FiSave, FiChevronDown, FiChevronRight } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
@@ -31,85 +32,16 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
     return { supply_amount: supplyAmount, installation_amount: installationAmount, total: total }
   }
 
-  const extractCategoryInfo = (product, allLeadProductTypes, explicitLeadProductTypeId = null) => {
-    if (!product) {
-      return {
-        topCategory: "Unassigned",
-        mainCategory: "Uncategorized",
-        subCategory: "Uncategorized",
-        fullPath: "Unassigned > Uncategorized > Uncategorized",
-        leadProductTypeId: null,
-      }
-    }
-
-    let topCategory = "Unassigned"
-    let mainCategory = "Uncategorized"
-    let subCategory = "Uncategorized"
-    let finalLeadProductTypeId = explicitLeadProductTypeId // Prioritize explicit ID
-
-    // Determine finalLeadProductTypeId first
-    if (finalLeadProductTypeId === null) {
-      // Case 1: Product is an existing BOQ item's product (item.product)
-      // It has a categoryId which is the leadProductType object
-      if (product.categoryId && product.categoryId.id) {
-        finalLeadProductTypeId = product.categoryId.id
-      }
-      // Case 2: Product is from storeService (e.g., availableProducts for non-billable)
-      // It has a category_id which is the sub-category object
-      else if (
-        product.category_id &&
-        product.category_id.productCategory &&
-        product.category_id.productCategory.mainGroup
-      ) {
-        finalLeadProductTypeId = product.category_id.productCategory.mainGroup.id
-      }
-    }
-
-    // Now, use finalLeadProductTypeId to find the topCategory label
-    if (finalLeadProductTypeId) {
-      topCategory = allLeadProductTypes.find((t) => t.id === finalLeadProductTypeId)?.label || "Unassigned"
-    }
-
-    // Determine mainCategory and subCategory based on available product structure
-    // Prioritize existing BOQ item structure (product.categoryId)
-    if (product.categoryId) {
-      mainCategory = product.categoryId.productCategory?.category_name || "Uncategorized"
-      subCategory = product.categoryId.category_name || "Uncategorized"
-    }
-    // Fallback to storeService product structure (product.category_id)
-    else if (product.category_id) {
-      mainCategory = product.category_id.productCategory?.category_name || "Uncategorized"
-      subCategory = product.category_id.category_name || "Uncategorized"
-    }
-
-    return {
-      topCategory,
-      mainCategory,
-      subCategory,
-      fullPath: `${topCategory} > ${mainCategory} > ${subCategory}`,
-      leadProductTypeId: finalLeadProductTypeId,
-    }
-  }
-
   // Initialize with existing BOQ data if in edit mode
   useEffect(() => {
     if (isEditMode && existingBOQ && existingBOQ.items && !isInitialized) {
-      console.log("BPS: Initializing with existing BOQ data:", existingBOQ)
+      console.log("Initializing with existing BOQ data in BillableProductSelector:", existingBOQ)
       const productsByCategory = {}
       const usedCategories = []
       existingBOQ.items.forEach((item) => {
-        // 'item' here is already the flattened product from BOQEditComponent's boqProducts state
-        const boqItemId = item.id // This is the BOQItem.id from the backend
-        const productMasterId = item.product_id // This is the ProductsMaster.id
-
-        // Use the leadProductTypeId and categoryInfo directly from the item
+        // Use leadProductTypeId from BOQEditComponent's formatted item as category_id
         const categoryId = item.leadProductTypeId || "unassigned"
-        const categoryName =
-          item.categoryInfo?.topCategory || leadProductTypes.find((cat) => cat.id === categoryId)?.label || "Unassigned"
-
-        console.log("BPS: Initializing existing BOQ item (flattened):", JSON.stringify(item, null, 2))
-        console.log("BPS: Derived categoryId for existing item:", categoryId)
-        console.log("BPS: Derived categoryName for existing item:", categoryName)
+        const categoryName = leadProductTypes.find((cat) => cat.id === categoryId)?.label || "Unassigned"
 
         if (!usedCategories.find((cat) => cat.id === categoryId)) {
           usedCategories.push({ id: categoryId, name: categoryName })
@@ -125,12 +57,11 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
         )
 
         const product = {
-          id: boqItemId, // CRITICAL: Use BOQItem.id as the unique identifier for the selector's internal state
-          productId: productMasterId, // Store ProductsMaster.id separately
-          product_name: item.product_name || "Unknown Product", // Use product_name directly from item
+          id: item.product_id || item.id, // Use product_id as the unique identifier for the store product
+          product_name: item.product_name || "Unknown Product",
           hsn_code: item.hsn_code || "",
           product_description: item.product_description || "",
-          product_qty: item.product_qty || 0, // This is the available quantity from store (if present)
+          product_qty: item.product_qty || 0, // This is the available quantity from store
           uom: item.uom || "",
           qty: initialQty, // This is the BOQ quantity
           make: item.make || "",
@@ -139,14 +70,10 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
           supply_amount: supply_amount,
           installation_amount: installation_amount,
           total: total,
-          leadProductTypeId: categoryId, // This is the leadProductType ID
-          leadProductTypeLabel: categoryName, // Ensure this is set for existing items
-          categoryInfo: item.categoryInfo, // Use the categoryInfo directly from the item
+          category_id: categoryId,
+          categoryInfo: item.categoryInfo || extractCategoryInfo(item), // Use existing categoryInfo if available
           isExisting: true, // Flag to mark as an existing item
-          isNewBoqItem: false, // Explicitly false for existing items
         }
-        console.log("BPS: Final product_name for existing item:", product.product_name)
-        console.log("BPS: Final categoryInfo for existing item:", product.categoryInfo)
         if (!productsByCategory[categoryId]) {
           productsByCategory[categoryId] = []
         }
@@ -165,50 +92,13 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
       setSelectedCategories([])
       setIsInitialized(true)
     }
-  }, [isEditMode, existingBOQ, isInitialized, leadProductTypes]) // Add leadProductTypes to dependencies
+  }, [isEditMode, existingBOQ, isInitialized, leadProductTypes])
 
   // Fetch products and categories on component mount
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true)
-      setError(null)
-      try {
-        const response = await storeService.getProductsList()
-        console.log("API Response (BillableProductSelector):", response)
-        let productsData = []
-        if (Array.isArray(response)) {
-          productsData = response
-        } else if (response && Array.isArray(response.data)) {
-          productsData = response.data
-        } else if (response && Array.isArray(response.products)) {
-          productsData = response.products
-        } else if (response && typeof response === "object") {
-          const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
-          if (arrayProperty) {
-            productsData = arrayProperty
-          }
-        }
-        if (!Array.isArray(productsData)) {
-          throw new Error("Invalid response format: Expected an array of products")
-        }
-        setProducts(productsData)
-        setFilteredProducts(productsData)
-      } catch (err) {
-        console.error("Error fetching products (BillableProductSelector):", err)
-        setError(`Failed to load products: ${err.message}`)
-        setProducts([])
-        setFilteredProducts([])
-      } finally {
-        setLoading(false)
-      }
-    }
     fetchProducts()
+    fetchCategories()
   }, [])
-
-  // Update categories state directly from prop
-  useEffect(() => {
-    setCategories(leadProductTypes.map((item) => ({ id: item.id, name: item.label })))
-  }, [leadProductTypes]) // This useEffect will run when leadProductTypes prop changes
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -224,6 +114,28 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
     }
   }, [])
 
+  // Helper function to extract category information from nested structure
+  const extractCategoryInfo = (product) => {
+    if (!product)
+      return {
+        topCategory: "Uncategorized",
+        mainCategory: "Uncategorized",
+        subCategory: "Uncategorized",
+        fullPath: "Uncategorized",
+      }
+    // This logic needs to correctly map from the product object received from storeService.getProductsList()
+    // The structure is product.category_id.productCategory.leadProductType.label
+    const topCategory = product?.category_id?.productCategory?.leadProductType?.label || "Uncategorized"
+    const mainCategory = product?.category_id?.productCategory?.category_name || "Uncategorized"
+    const subCategory = product?.category_id?.category_name || "Uncategorized"
+    return {
+      topCategory,
+      mainCategory,
+      subCategory,
+      fullPath: `${topCategory} > ${mainCategory} > ${subCategory}`,
+    }
+  }
+
   // Filter products based on search term (no category filtering)
   useEffect(() => {
     if (!Array.isArray(products)) {
@@ -236,7 +148,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
       const lowercasedSearch = searchTerm.toLowerCase()
       const filtered = products.filter((product) => {
         if (!product) return false
-        const categoryInfo = extractCategoryInfo(product, leadProductTypes) // Pass leadProductTypes
+        const categoryInfo = extractCategoryInfo(product)
         return (
           (product.product_name || "").toLowerCase().includes(lowercasedSearch) ||
           categoryInfo.topCategory.toLowerCase().includes(lowercasedSearch) ||
@@ -248,7 +160,56 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
       })
       setFilteredProducts(filtered)
     }
-  }, [searchTerm, products, leadProductTypes]) // Add leadProductTypes to dependencies
+  }, [searchTerm, products])
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+      setError("")
+      const response = await storeService.getProductsList()
+      console.log("API Response (BillableProductSelector):", response)
+      let productsData = []
+      if (Array.isArray(response)) {
+        productsData = response
+      } else if (response && Array.isArray(response.data)) {
+        productsData = response.data
+      } else if (response && Array.isArray(response.products)) {
+        productsData = response.products
+      } else if (response && typeof response === "object") {
+        const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
+        if (arrayProperty) {
+          productsData = arrayProperty
+        }
+      }
+      if (!Array.isArray(productsData)) {
+        throw new Error("Invalid response format: Expected an array of products")
+      }
+      setProducts(productsData)
+      setFilteredProducts(productsData)
+    } catch (err) {
+      console.error("Error fetching products (BillableProductSelector):", err)
+      setError(`Failed to load products: ${err.message}`)
+      setProducts([])
+      setFilteredProducts([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      // Categories are now passed via leadProductTypes prop
+      setCategories(
+        leadProductTypes.map((item) => {
+          const newitem = { id: item.id, name: item.label }
+          return newitem
+        }),
+      )
+    } catch (err) {
+      console.error("Error fetching categories (BillableProductSelector):", err)
+      setError(`Failed to load categories: ${err.message}`)
+    }
+  }
 
   const handleCategorySelect = (categoryId) => {
     const category = categories.find((cat) => cat.id === Number.parseInt(categoryId))
@@ -276,48 +237,33 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
 
   const handleProductSelect = (product) => {
     if (!activeProductSearch) return
+
     const categoryProducts = selectedProductsByCategory[activeProductSearch] || []
-    // Check if product (by its actual product master ID) is already selected in this category
-    if (categoryProducts.some((p) => p.productId === product.id)) {
+    // Check if product is already selected in this category by its actual product ID
+    if (categoryProducts.some((p) => p.id === product.id)) {
       return
     }
 
-    const tempBoqItemId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    const selectedLeadProductType = leadProductTypes.find((t) => t.id === activeProductSearch)
-    const categoryLabelForNewProduct = selectedLeadProductType ? selectedLeadProductType.label : "Unassigned"
-
-    const { supply_amount, installation_amount, total } = calculateAmounts(1, 0, 0)
-
-    // CRITICAL CHANGE: Ensure categoryInfo reflects the selected leadProductType
-    const newCategoryInfo = extractCategoryInfo(product, leadProductTypes, activeProductSearch)
-
-    console.log("BPS: Selecting new product:", JSON.stringify(product, null, 2))
-    console.log("BPS: Active Product Search (leadProductTypeId):", activeProductSearch)
-    console.log("BPS: New Category Info for selected product:", newCategoryInfo)
-
+    // For new products, rates and amounts are set to 0
+    const { supply_amount, installation_amount, total } = calculateAmounts(1, 0, 0) // Default values
     const updatedProduct = {
-      id: tempBoqItemId,
-      productId: product.id,
+      id: product.id, // Use the actual product ID from the store
       product_name: product.product_name || product.productName || product.name || "Unknown Product",
       hsn_code: product.hsn_code || product.hsnCode || "",
       product_description: product.product_description || product.productDescription || "",
-      product_qty: product.product_qty || product.productQty || 0,
+      product_qty: product.product_qty || product.productQty || 0, // Available quantity
       uom: product.uom || "",
-      qty: 1,
+      qty: 1, // Default BOQ quantity
       make: "",
-      supply_rate: 0,
-      installation_rate: 0,
+      supply_rate: 0, // Set to 0 for new products
+      installation_rate: 0, // Set to 0 for new products
       supply_amount: supply_amount,
       installation_amount: installation_amount,
       total: total,
-      leadProductTypeId: activeProductSearch, // This is the leadProductType ID
-      leadProductTypeLabel: categoryLabelForNewProduct, // Store the label directly for new products
-      categoryInfo: newCategoryInfo, // Use the newly constructed categoryInfo
-      isExisting: false,
-      isNewBoqItem: true,
+      category_id: activeProductSearch, // This is the leadProductTypeId
+      categoryInfo: extractCategoryInfo(product),
+      isExisting: false, // New product
     }
-
-    console.log("BPS: Final product_name for new product:", updatedProduct.product_name)
 
     setSelectedProductsByCategory((prev) => ({
       ...prev,
@@ -388,30 +334,14 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
 
   const handleSaveBOQ = async () => {
     const allProducts = Object.entries(selectedProductsByCategory).flatMap(([categoryId, products]) =>
-      products.map((p) => ({
-        id: p.id, // This is the BOQItem.id (for existing) or temporary ID (for new)
-        productId: p.productId, // This is the ProductsMaster.id
-        productName: p.product_name || "", // Use productName
-        hsnCode: p.hsn_code || "",
-        qty: Number.parseFloat(p.qty) || 1,
-        make: p.make || "",
-        uom: p.uom || "",
-        leadProductTypeId: p.leadProductTypeId, // Use p.leadProductTypeId
-        leadProductTypeLabel: p.leadProductTypeLabel, // ADDED: Pass the label
-        supplyRate: Number.parseFloat(p.supply_rate) || 0,
-        installationRate: Number.parseFloat(p.installation_rate) || 0,
-        supplyAmount: p.supply_amount,
-        installationAmount: p.installation_amount,
-        total: p.total,
-        categoryInfo: p.categoryInfo,
-        isNewBoqItem: p.isNewBoqItem || false,
-      })),
+      products.map((product) => ({ ...product, category_id: Number.parseInt(categoryId) })),
     )
 
     if (allProducts.length === 0) {
       setError("Please add at least one product to the BOQ")
       return
     }
+
     const invalidProducts = allProducts.filter((p) => !p.qty || Number.parseFloat(p.qty) <= 0)
     if (invalidProducts.length > 0) {
       setError("Please enter valid quantities for all products")
@@ -423,9 +353,24 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
     try {
       const boqData = {
         project_id: projectId,
-        items: allProducts, // Pass the array directly
+        items: allProducts.map((p) => ({
+          id: p.id, // This is the actual product ID from the store
+          product_name: p.product_name || "",
+          hsn_code: p.hsn_code || "",
+          qty: Number.parseFloat(p.qty) || 1,
+          make: p.make || "",
+          uom: p.uom || "",
+          category_id: p.category_id, // This is the leadProductTypeId
+          supply_rate: Number.parseFloat(p.supply_rate) || 0,
+          installation_rate: Number.parseFloat(p.installation_rate) || 0,
+          supply_amount: p.supply_amount,
+          installation_amount: p.installation_amount,
+          total: p.total,
+          categoryInfo: p.categoryInfo, // Pass categoryInfo for easier re-initialization in BOQEditComponent
+        })),
       }
       console.log("Saving BOQ data from BillableProductSelector:", boqData)
+
       // Call the onSave prop passed from BOQEditComponent
       onSave(boqData, isEditMode)
     } catch (err) {
@@ -442,7 +387,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
 
   const getSelectedProductsInCategory = (categoryId) => {
     const categoryProducts = selectedProductsByCategory[categoryId] || []
-    return categoryProducts.map((p) => p.productId) // Check against ProductsMaster.id
+    return categoryProducts.map((p) => p.id)
   }
 
   return (
@@ -550,12 +495,12 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                 ) : Array.isArray(filteredProducts) && filteredProducts.length > 0 ? (
                   filteredProducts.map((product) => {
                     if (!product || !product.id) return null
-                    const categoryInfo = extractCategoryInfo(product, leadProductTypes) // Pass leadProductTypes
+                    const categoryInfo = extractCategoryInfo(product)
                     const selectedInCategory = getSelectedProductsInCategory(activeProductSearch)
-                    const isAlreadySelected = selectedInCategory.includes(product.id) // Check against product.id (ProductsMaster.id)
+                    const isAlreadySelected = selectedInCategory.includes(product.id)
                     return (
                       <div
-                        key={product.id} // Key by ProductsMaster.id for the search results list
+                        key={product.id}
                         className={
                           "p-3 cursor-pointer border-b border-gray-100 last:border-b-0 " +
                           (isAlreadySelected ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100")
@@ -652,8 +597,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {categoryProducts.map((product, index) => {
-                              const categoryInfo =
-                                product.categoryInfo || extractCategoryInfo(product, leadProductTypes)
+                              const categoryInfo = product.categoryInfo || extractCategoryInfo(product)
                               return (
                                 <tr key={product.id} className={index % 2 === 0 ? "bg-gray-50" : ""}>
                                   <td className="px-3 py-2">
@@ -693,9 +637,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                                         }
                                       }}
                                       placeholder="Qty"
-                                      className={`w-16 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                        product.isExisting ? "bg-gray-100 text-gray-700 cursor-not-allowed" : ""
-                                      }`}
+                                      className={`w-16 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${product.isExisting ? "bg-gray-100 text-gray-700 cursor-not-allowed" : ""}`}
                                       readOnly={product.isExisting} // Make qty read-only for existing items
                                     />
                                   </td>

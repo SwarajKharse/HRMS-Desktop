@@ -8,7 +8,7 @@ import { useAuth } from "../../contexts/AuthContext"
 import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService" // Adjusted path
 import ProjectLeadDetails from "./ProjectLeadDetails"
-import BOQEditComponent from "./BOQEditComponent"
+import BOQMTREditPurchase from "./BOQMTREditPurchase"
 import ProjectProcurement from "./ProjectProcurement" // Changed from ProjectInitiationIntegration
 
 function NewProjects() {
@@ -382,9 +382,9 @@ function NewProjects() {
                             <button
                               className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
                               onClick={(e) => handleProjectInitiationClick(e, project)}
-                              title="Project Initiation"
+                              title="Project Procurement"
                             >
-                              Project Initiation
+                              Project Procurement
                             </button>
                           </div>
                         </td>
@@ -560,7 +560,7 @@ function NewProjects() {
           />
         )}
         {showBOQEdit && selectedProject && (
-          <BOQEditComponent
+          <BOQMTREditPurchase
             projectId={selectedProject.id}
             projectName={selectedProject.project_name}
             existingBOQ={selectedProject.boq}
