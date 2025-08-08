@@ -21,7 +21,7 @@ import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
 import { leadService } from "../../services/leadService"
 
-function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose, currentUserId }) {
+function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose, currentUserId }) {
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [boqProducts, setBOQProducts] = useState([])
   const [availableSkillsets, setAvailableSkillsets] = useState([])
@@ -1343,7 +1343,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           total: incomingItem.total,
           categoryInfo: incomingItem.categoryInfo,
           // Default approval statuses for new items
-          pmApprovalStatus: "APPROVED",
+          pmApprovalStatus: "PENDING",
           salestlApprovalStatus: "PENDING",
           pmApprovalRemarks: "",
           salestlApprovalRemarks: "",
@@ -2105,4 +2105,4 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
     </motion.div>
   )
 }
-export default BOQEditComponent
+export default SiteEngineerBOQEditComponent

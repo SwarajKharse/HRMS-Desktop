@@ -1,22 +1,24 @@
-"use client"
-
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { FiX, FiUpload, FiFile, FiExternalLink, FiAlertCircle, FiCheck } from "react-icons/fi"
-import { authService } from "../../services/authService"
-import { leadService } from "../../services/leadService"
-import { useAuth } from "../../contexts/AuthContext"
+import { authService } from "../../services/authService" // Assuming path is correct
+import { leadService } from "../../services/leadService" // Assuming path is correct
+import { useAuth } from "../../contexts/AuthContext" // Assuming path is correct
 import { projectService } from "../../services/projectService" // This will be our mock service
-import ProductBOQSelector from "../Projects/ProductBOQSelector"
+import ProductBOQSelector from "../Projects/ProductBOQSelector" // Assuming path is correct
 
 function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
   const fileInputRef = useRef(null)
+  const modalRef = useRef(null) // Ref for the main modal container
+
   let userId = ""
   if (user) {
     userId = user.userId
   }
+
   const allIds = lead.lead_proposal_type !== null ? lead.lead_proposal_type.map((item) => item.id) : []
+
   const [formData, setFormData] = useState({
     ...lead,
     amc_or_project: lead.amc_or_project,
@@ -39,7 +41,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const [checkInSelfieUploaded, setCheckInSelfieUploaded] = useState(lead.check_in_selfie_url ? true : false)
   const [checkInSelfieLocationURL, setCheckInSelfieLocation] = useState("")
   const [checkOutSelfieLocation, setCheckOutSelfieLocation] = useState("")
-  // In the LeadEditForm component, add a new state for storing uploaded documents
   const [uploadedDocuments, setUploadedDocuments] = useState([])
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
   const [poUpload, setPoUploads] = useState(false)
@@ -49,25 +50,36 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const [isEditingProjectTitle, setIsEditingProjectTitle] = useState(false)
   const [editedProjectTitle, setEditedProjectTitle] = useState("")
 
-  useEffect(() => {
-    checkExistingProject()
-  }, [lead.id])
-
   const [project, setProject] = useState({
     project_name: "",
     custom_project_name: "",
   })
   const [showCustomInput, setShowCustomInput] = useState(false)
-  // Add state for BOQ data
-  const [boqData, setBOQData] = useState(null) // This will hold the BOQRequestDTO structure
+  const [boqData, setBOQData] = useState(null)
   const [showBOQSelector, setShowBOQSelector] = useState(false)
-  const [existingBOQData, setExistingBOQData] = useState(null) // This will hold the mapped existing BOQ data for the selector
+  const [existingBOQData, setExistingBOQData] = useState(null)
 
   // --- DEBUG LOG ---
   console.log("SalesTLHandOverForm Render - lead.salestl_approval_status:", lead.salestl_approval_status)
   // --- END DEBUG LOG ---
 
-  // Add a function to fetch uploaded documents for the lead
+  // Effect for main modal click outside
+  useEffect(() => {
+    function handleClickOutsideModal(event) {
+      if (modalRef.current && !modalRef.current.contains(event.target)) {
+        onClose() // Close the main modal
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutsideModal)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutsideModal)
+    }
+  }, [onClose]) // Depend on onClose to avoid stale closures
+
+  useEffect(() => {
+    checkExistingProject()
+  }, [lead.id])
+
   const fetchUploadedDocuments = async () => {
     if (lead && lead.id) {
       try {
@@ -82,7 +94,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
-  // Add a function to fetch uploaded documents for the lead
   const fetchUploadedPOs = async () => {
     if (lead && lead.id) {
       try {
@@ -97,7 +108,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
-  // Add useEffect to fetch documents when the component mounts or lead changes
   useEffect(() => {
     if ((activeTab === "sse-inprogress-leads" || activeTab === "assigned-leads") && lead && lead.id) {
       fetchUploadedDocuments()
@@ -107,7 +117,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }, [activeTab, lead])
 
-  // Initialize form data when employee prop changes
   const Toggle = ({ checked, onChange, size = "small" }) => {
     const baseClasses =
       "relative inline-flex items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -133,7 +142,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
 
   const [showProposalTypeDropdown, setShowProposalTypeDropdown] = useState(false)
 
-  // Add click outside handler to close dropdown
   useEffect(() => {
     function handleClickOutside(event) {
       const dropdown = document.getElementById("product-type-dropdown")
@@ -195,28 +203,37 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
           project_name: projectData.projectName,
         }))
         setEditedProjectTitle(projectData.projectName)
-        // If project has BOQ, load it and store it separately
         if (projectData.hasExistingBOQ && projectData.boq) {
           const existingBOQ = {
-            project_id: projectData.projectId, // Keep this if the DTO expects it
+            project_id: projectData.projectId,
             items: projectData.boq.items.map((item) => ({
               id: item.id,
-              productId: item.product.id, // Corrected to camelCase as per BOQRequestDTO
-              product: item.product, // Keep for display/reference in frontend
+              productId: item.product.id,
+              product: item.product,
               qty: item.totalQty || item.qty,
-              totalQty: item.totalQty || item.qty, // Keep for consistency if needed
+              totalQty: item.totalQty || item.qty,
               make: item.make,
               uom: item.uom,
-              supplyRate: item.supply_rate, // Corrected to camelCase
-              installationRate: item.installation_rate, // Corrected to camelCase
-              supplyAmount: item.supply_amount, // Corrected to camelCase
-              installationAmount: item.installation_amount, // Corrected to camelCase
-              total: item.total, // Corrected to camelCase
-              leadProductTypeId: item.leadProductType ? item.leadProductType.id : null, // Added leadProductTypeId
+              supplyRate: item.supplyRate,
+              installationRate: item.installationRate,
+              supplyAmount: item.supplyAmount,
+              installationAmount: item.installationAmount,
+              total: item.total,
+              leadProductTypeId: item.leadProductType
+                ? item.leadProductType.id
+                : item.product.categoryId
+                ? item.product.categoryId.id
+                : null,
+              pmApprovalStatus: item.pmApprovalStatus,
+              salestlApprovalStatus: item.salestlApprovalStatus,
+              pmApprovalRemarks: item.pmApprovalRemarks,
+              salestlApprovalRemarks: item.salestlApprovalRemarks,
+              pmApprovalDate: item.pmApprovalDate,
+              salestlApprovalDate: item.salestlApprovalDate,
             })),
           }
           setExistingBOQData(existingBOQ)
-          setBOQData(existingBOQ) // Also set the main BOQ data state
+          setBOQData(existingBOQ)
           console.log("Loaded existing BOQ data (frontend mapped):", existingBOQ)
         }
       }
@@ -233,7 +250,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     try {
       setLoading(true)
       await projectService.updateProjectTitle(existingProject.projectId, editedProjectTitle)
-      // Update local state
       setExistingProject((prev) => ({
         ...prev,
         projectName: editedProjectTitle,
@@ -265,16 +281,14 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
-  // Handle BOQ data save
   const handleBOQSave = (boqDataFromSelector, wasSavedToBackend = false) => {
     console.log("BOQ Data received from selector:", boqDataFromSelector)
-    setBOQData(boqDataFromSelector) // boqDataFromSelector should be the full BOQRequestDTO object
+    setBOQData(boqDataFromSelector)
     setShowBOQSelector(false)
     if (wasSavedToBackend) {
       setSuccessMessage("BOQ saved successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
-      // Refresh the existing project data to get updated BOQ
-      checkExistingProject()
+      checkExistingProject() // Re-fetch project data to ensure latest BOQ and project details are loaded
     }
     console.log("BOQ Data saved:", boqDataFromSelector)
   }
@@ -286,11 +300,9 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       if (!existingProject || !existingProject.projectId) {
         throw new Error("Project not found for BOQ status update.")
       }
-      await projectService.updateBOQStatus(existingProject.projectId, status, remarks) // Pass remarks here
       setSuccessMessage(`BOQ status updated to ${status === "1" ? "Approved" : "Rejected"} successfully!`)
       setTimeout(() => setSuccessMessage(null), 3000)
-      // Refresh lead data to reflect new status
-      await onSubmit() // This will likely re-fetch the lead and close the modal
+      await onSubmit()
       onClose()
     } catch (err) {
       console.error("Error updating BOQ status:", err)
@@ -305,13 +317,14 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     e.preventDefault()
     setLoading(true)
     setError("")
+
     const finalProjectName = existingProject
       ? existingProject.projectName
       : project.project_name === "other"
-        ? project.custom_project_name
-        : project.project_name
+      ? project.custom_project_name
+      : project.project_name
+
     try {
-      // Validate required fields
       if (formData.amc_or_project === "project") {
         if (!finalProjectName || finalProjectName.trim() === "") {
           throw new Error("Please select or enter a project name")
@@ -320,29 +333,57 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
           throw new Error("Please create a BOQ with at least one item for the project")
         }
       }
-      const processedData = {
+
+      // Construct the payload for the backend, preserving existing project data
+      const payloadForBackend = {
+        // Start with existing project data if available, mapping DTO names to model names
+        ...(existingProject ? {
+            id: existingProject.projectId, // Crucial for updating an existing entity
+            project_name: existingProject.projectName,
+            project_status: existingProject.projectStatus,
+            handover_from_sales: existingProject.handoverFromSales,
+            date_of_handover_from_sales: existingProject.dateOfHandoverFromSales,
+            date_of_into_call_by_se: existingProject.dateOfIntoCallBySe,
+            date_of_kick_of_meeting: existingProject.dateOfKickOfMeeting,
+            project_initiation_meet_date: existingProject.projectInitiationMeetDate,
+            projectInitiationDate: existingProject.projectInitiationDate, // Direct match
+            numberOfWeeks: existingProject.numberOfWeeks, // Direct match
+            execution_team: existingProject.executionTeam,
+            handover_file_status: existingProject.handover_file_status,
+            form_a_noc_status: existingProject.form_a_noc_status,
+            approval_from_fm: existingProject.approval_from_fm,
+            payment_approval_date_by_fm: existingProject.payment_approval_date_by_fm,
+            project_completion_eta: existingProject.project_completion_eta,
+            project_completion_date: existingProject.project_completion_date,
+            approval_from_pm: existingProject.approvalFromPm,
+            // Nested employee objects
+            sales_tl: existingProject.salesTl ? { id: existingProject.salesTl.id } : null,
+            project_manager: existingProject.projectManager ? { id: existingProject.projectManager.id } : null,
+            site_engineer: existingProject.siteEngineer ? { id: existingProject.siteEngineer.id } : null,
+            // createdAt and updatedAt are handled by backend annotations
+        } : {}), // If no existing project, start with an empty object
+
+        // Override with values from the form's current state
         amc_or_project: formData.amc_or_project,
-        project_name: finalProjectName,
+        project_name: finalProjectName, // This will override existingProject.projectName if it was set
         employee_updatedby: {
-          id: userId,
+            id: userId,
         },
       }
-      console.log("Processed Data is ", processedData)
-      console.log("BOQ Data to be saved:", boqData)
-      console.log("Lead ID IS   " + lead.id)
-      // Create or update project first - using the original working API call pattern
+
+      console.log("Payload to backend:", payloadForBackend)
+
       const projectResponse = await projectService.createOrUpdateProject(
-        processedData,
+        payloadForBackend, // Use the comprehensive payload
         formData.amc_or_project,
         lead.id,
       )
       console.log("Project creation response:", projectResponse)
-      // If BOQ data exists and project was created/updated successfully, save BOQ
+
       if (formData.amc_or_project === "project" && boqData && projectResponse && projectResponse.projectId) {
         try {
           console.log("Saving BOQ for project ID:", projectResponse.projectId)
           console.log("BOQ data being saved:", boqData)
-          // Pass the entire boqData object as it matches BOQRequestDTO
           await projectService.createOrUpdateBOQ(projectResponse.projectId, boqData)
           console.log("BOQ saved successfully")
           setSuccessMessage("Project and BOQ saved successfully")
@@ -357,6 +398,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       } else {
         setSuccessMessage("Lead handover successful")
       }
+
       setTimeout(() => setSuccessMessage(null), 3000)
       await onSubmit()
       onClose()
@@ -374,7 +416,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
-  // Simple table header and cell components
   const TableHeader = ({ children }) => (
     <th className="px-2 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b flex-wrap">
       {children}
@@ -384,11 +425,9 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const matchingLabels = (id, producttypelist) => {
     let newlabel = ""
     if (id !== null && id !== "") {
-      // Find the matching item instead of mapping through all items
       const matchingItem = producttypelist.find((item) => item.id === id.id)
-      // If a matching item is found, use its label
       if (matchingItem) {
-        newlabel = matchingItem.label.replace(/,/g, "") // Remove all commas
+        newlabel = matchingItem.label.replace(/,/g, "")
       }
     }
     return newlabel
@@ -401,14 +440,14 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
         setProject((prev) => ({
           ...prev,
           project_name: value,
-          custom_project_name: "", // Reset custom input when switching to other
+          custom_project_name: "",
         }))
       } else {
         setShowCustomInput(false)
         setProject((prev) => ({
           ...prev,
           project_name: value,
-          custom_project_name: "", // Clear custom input when not using other
+          custom_project_name: "",
         }))
       }
     } else if (field === "amc_or_project") {
@@ -416,7 +455,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
         ...formData,
         amc_or_project: value,
       })
-      // Reset BOQ data when switching between AMC and Project
       if (value !== "project") {
         setBOQData(null)
         setShowBOQSelector(false)
@@ -431,7 +469,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
-  // File input component
   const FileInput = ({ label, name, onChange, accept = "image/*", required = false, reference = null }) => (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-gray-700">{label}</label>
@@ -460,14 +497,14 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      ref={modalRef} // Attach ref to the main modal container
     >
       <motion.div
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.95 }}
-        className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto" /* Changed max-w-4xl to max-w-6xl */
+        className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto"
       >
-        {/* Error Message */}
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -492,7 +529,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold">HandOver Lead</h2>
           <div className="flex justify-end">
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+            <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
               <FiX size={20} />
             </button>
           </div>
@@ -520,7 +557,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Product Type : {"  "}
+                  Product Type:{" "}
                   {lead.lead_product_type !== null
                     ? lead.lead_product_type.map((country, itr) => {
                         const ptlabel = matchingLabels(country, producttypelist).toString()
@@ -542,7 +579,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
               {lead.employee !== null && lead.employee.firstName !== null ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Created By :{"  " + lead.employee.firstName + "  " + lead.employee.lastName}
+                    Created By :{" " + lead.employee.firstName + " " + lead.employee.lastName}
                   </label>
                 </div>
               ) : null}
@@ -877,8 +914,8 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                       {formData.salestl_shared_status === "1"
                         ? "Yes"
                         : formData.salestl_shared_status === "0"
-                          ? "No"
-                          : "N/A"}
+                        ? "No"
+                        : "N/A"}
                     </label>
                   </div>
                 ) : null}
@@ -939,8 +976,9 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
           <div className="space-y-4 rounded-lg bg-white border p-4">
             <h3 className="font-semibold text-lg border-b pb-2">HandOver Details</h3>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Project Or AMC</label>
+              <label htmlFor="amc-or-project-select" className="block text-xs font-medium text-gray-700 mb-1">Project Or AMC</label>
               <select
+                id="amc-or-project-select" // Added id for accessibility
                 name="amc_or_project"
                 value={formData.amc_or_project}
                 onChange={(e) => handleTypeChange("amc_or_project", e.target.value)}
@@ -954,7 +992,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
             {formData.amc_or_project === "project" && (
               <>
                 {existingProject ? (
-                  // Show existing project with edit option
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Existing Project</label>
                     <div className="flex items-center gap-2">
@@ -1008,10 +1045,10 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                     </div>
                   </div>
                 ) : (
-                  // Show new project creation form
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Project Name</label>
+                    <label htmlFor="project-name-select" className="block text-xs font-medium text-gray-700 mb-1">Project Name</label>
                     <select
+                      id="project-name-select" // Added id for accessibility
                       name="project_name"
                       value={project.project_name}
                       onChange={(e) => handleTypeChange("project_name", e.target.value)}
@@ -1059,6 +1096,9 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                       leadProductTypes={producttypelist}
                       existingBOQ={existingBOQData}
                       isEditMode={existingProject && existingProject.hasExistingBOQ}
+                      currentUserId={userId}
+                      projectSalesTlId={lead.employee_assigned_to_sales_tl?.id}
+                      onBOQItemStatusUpdateSuccess={checkExistingProject} // Pass the refresh function
                     />
                   )}
                   {/* Show BOQ Summary if data exists */}
@@ -1080,10 +1120,9 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
                         {boqData
                           ? `${boqData.items.length} product(s) in BOQ`
                           : existingProject && existingProject.boq
-                            ? `${existingProject.boq.items.length} product(s) in BOQ`
-                            : "BOQ data available"}
+                          ? `${existingProject.boq.items.length} product(s) in BOQ`
+                          : "BOQ data available"}
                       </div>
-                      {/* Show BOQ items preview */}
                       {boqData && boqData.items && (
                         <div className="mt-2 space-y-1">
                           {boqData.items.slice(0, 3).map((item, index) => (
