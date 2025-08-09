@@ -13,7 +13,11 @@ import {
   HiDocumentAdd,
   HiViewList 
 } from 'react-icons/hi';
+import { HiOutlineBuildingStorefront, HiMiniShoppingBag  } from "react-icons/hi2";
+import { GrProjects } from "react-icons/gr";
 import { usePermissions } from "../contexts/PermissionsContext"
+import { RiProductHuntLine } from "react-icons/ri";
+
 
 import { FaUsers } from "react-icons/fa";
 import { useEffect } from 'react';
@@ -52,6 +56,22 @@ function Sidebar({logo}) {
 
     if (permissions?.webLeadsListing) {
       updatedNavItems.push({ icon: HiViewList, label: 'Leads', path: '/leads' });
+    }
+
+    if (permissions?.webProject) {
+      updatedNavItems.push({ icon: GrProjects, label: 'Projects', path: '/projects' });
+    }
+
+    if (permissions?.webStore) {
+      updatedNavItems.push({ icon: HiOutlineBuildingStorefront, label: 'Store', path: '/store' });
+    }
+
+    if (permissions?.webPurchase) {
+      updatedNavItems.push({ icon: HiMiniShoppingBag, label: 'Purchase', path: '/purchase' });
+    }
+
+    if (permissions?.webProductManagement) {
+      updatedNavItems.push({ icon: RiProductHuntLine, label: 'Product Management', path: '/product-management' });
     }
     setNavItems(updatedNavItems);
   }, [permissions]);

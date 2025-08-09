@@ -32,6 +32,10 @@ import EmployeePayrollSettings from "./pages/settings/EmployeePayrollSettings"
 import OrganizationPayrollSettings from "./pages/settings/OrganizationPayrollSettings"
 import AddLead from './pages/AddLead';
 import LeadsLising from './pages/LeadsListing';
+import Projects from './pages/Projects';
+import Store from './pages/Store';
+import Purchase from './pages/Purchase';
+import ProductManagement from './pages/ProductManagement';
 
 function App() {
   return (
@@ -159,6 +163,29 @@ function App() {
                 </ProtectedPermissionRoute>
               } />
 
+              <Route path="/projects" element={
+                  <Layout>
+                    <Projects />
+                  </Layout>
+              } />
+
+              <Route path="/store" element={
+                  <Layout>
+                    <Store />
+                  </Layout>
+              } />
+
+              <Route path="/purchase" element={
+                  <Layout>
+                    <Purchase />
+                  </Layout>
+              } />
+
+              <Route path="/product-management" element={
+                  <Layout>
+                    <ProductManagement />
+                  </Layout>
+              } />    
               <Route
                 path="/settings"
                 element={
