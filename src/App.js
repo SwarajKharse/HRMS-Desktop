@@ -164,27 +164,35 @@ function App() {
               } />
 
               <Route path="/projects" element={
+                <ProtectedPermissionRoute permissionKey="webProject">
                   <Layout>
                     <Projects />
                   </Layout>
+                </ProtectedPermissionRoute>
               } />
 
               <Route path="/store" element={
+                <ProtectedPermissionRoute permissionKey="webStore">
                   <Layout>
                     <Store />
                   </Layout>
+                </ProtectedPermissionRoute>
               } />
 
               <Route path="/purchase" element={
+                <ProtectedPermissionRoute permissionKey="webPurchase">
                   <Layout>
                     <Purchase />
                   </Layout>
+                </ProtectedPermissionRoute>
               } />
 
               <Route path="/product-management" element={
+                <ProtectedPermissionRoute permissionKey="webProductManagement">
                   <Layout>
                     <ProductManagement />
                   </Layout>
+                </ProtectedPermissionRoute>
               } />    
               <Route
                 path="/settings"
