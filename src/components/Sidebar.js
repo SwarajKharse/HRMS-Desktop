@@ -76,6 +76,7 @@ function Sidebar({logo}) {
     setNavItems(updatedNavItems);
   }, [permissions]);
 
+  
   const sidebarVariants = {
     initial: {
       width: "100px",
