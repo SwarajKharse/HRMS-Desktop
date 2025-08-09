@@ -5,9 +5,13 @@ import { motion, AnimatePresence } from "framer-motion"
 import ImportCategory from "../components/Store/ImportCategory"
 import ImportSubCategory from "../components/Store/ImportSubCategory"
 import { TiFlowChildren } from "react-icons/ti";
-import { TbCategoryPlus, TbBrandProducthunt  } from "react-icons/tb";
+import { TbCategoryPlus, TbBrandProducthunt } from "react-icons/tb";
+import { GiSkills } from "react-icons/gi";
+import { BsTools } from "react-icons/bs";
 import { useAuth } from "../contexts/AuthContext"
 import ProductList from "../components/Store/ProductList"
+import SkillSetList from "../components/Store/SkillSetList"
+import ToolsList from "../components/Store/ToolsList"
 
 function ProductManagement() {
   const { employee } = useAuth()
@@ -17,25 +21,24 @@ function ProductManagement() {
   // Define available tabs based on employee designation
   const getAvailableTabs = () => {
     const allTabs = [
-      /* {
-        id: "import-product-category",
-        label: "Import Product Categories",
-        icon: TbCategoryPlus,
-        component: ImportCategory,
-      },
-
-      {
-        id: "import-product-sub-category",
-        label: "Import Product Sub Categories",
-        icon: TiFlowChildren,
-        component: ImportSubCategory,
-      }, */
-
       {
         id: "import-products",
         label: "Import Products",
         icon: TbBrandProducthunt,
         component: ProductList,
+      },
+      {
+        id: "import-skillset",
+        label: "Import SkillSet",
+        icon: GiSkills,
+        component: SkillSetList,
+      },
+
+      {
+        id: "import-tools",
+        label: "Import Tools",
+        icon: BsTools,
+        component: ToolsList,
       }
     ]
 

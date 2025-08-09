@@ -1,6 +1,5 @@
-"use client"
-
 import axios from "axios"
+
 const BASE_URL = `${process.env.REACT_APP_API_URL}/store`
 
 const getAuthHeaders = () => {
@@ -12,8 +11,7 @@ const getAuthHeaders = () => {
 }
 
 export const storeService = {
-  /************** Product Categories Start  *************/
-
+  /************** Product Categories Start  *************/
   exportCategories: async () => {
     try {
       const response = await axios.get(`${BASE_URL}/exportcategories`, {
@@ -31,7 +29,6 @@ export const storeService = {
       throw error
     }
   },
-
   importCategories: async (file) => {
     try {
       const formData = new FormData()
@@ -46,7 +43,6 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
-
   getAllCategories: async () => {
     try {
       const response = await axios.get(`${BASE_URL}/getallcategories`, getAuthHeaders())
@@ -55,11 +51,8 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
-
-  /************** Product Categories End  *************/
-
-  /************** Product Sub Categories Start  *************/
-
+  /************** Product Categories End  *************/
+  /************** Product Sub Categories Start  *************/
   exportSubCategories: async () => {
     try {
       const response = await axios.get(`${BASE_URL}/exportsubcategories`, {
@@ -77,7 +70,6 @@ export const storeService = {
       throw error
     }
   },
-
   importSubCategories: async (file) => {
     try {
       const formData = new FormData()
@@ -92,11 +84,9 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
-
   getSubCategories: async (page = 0, size = 10, search = "") => {
     try {
       console.log("Fetching subcategories with params:", { page, size, search })
-
       const response = await axios.get(`${BASE_URL}/getsubcategories`, {
         params: {
           page,
@@ -105,18 +95,14 @@ export const storeService = {
         },
         ...getAuthHeaders(),
       })
-
       return response
     } catch (error) {
       console.error("Error in getSubCategories:", error)
       throw error
     }
   },
-
-  /************** Product Sub Categories End  **********************/
-
-  /************** Product List start  **********************/
-
+  /************** Product Sub Categories End  **********************/
+  /************** Product List start  **********************/
   getProducts: async (page = 0, size = 10, search = "", filters = {}) => {
     try {
       const response = await axios.get(`${BASE_URL}/getproducts`, {
@@ -130,14 +116,12 @@ export const storeService = {
         },
         ...getAuthHeaders(),
       })
-
       return response
     } catch (error) {
       console.error("Error in getProducts:", error)
       throw error
     }
   },
-
   exportProducts: async () => {
     try {
       const response = await axios.get(`${BASE_URL}/exportproducts`, {
@@ -155,15 +139,12 @@ export const storeService = {
       throw error
     }
   },
-
   importProducts: async (file) => {
     try {
       const formData = new FormData()
       formData.append("file", file)
-
       // Log the file being sent
       console.log("Importing file:", file.name, "Size:", file.size)
-
       const response = await axios.post(`${BASE_URL}/importproducts`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -175,12 +156,10 @@ export const storeService = {
           console.log(`Upload progress: ${percentCompleted}%`)
         },
       })
-
       console.log("Import response:", response)
       return response.data
     } catch (error) {
       console.error("Import error details:", error)
-
       // Provide more detailed error information
       if (error.response) {
         // The request was made and the server responded with a status code
@@ -208,59 +187,149 @@ export const storeService = {
       }
     }
   },
-
   getProductsList: async () => {
     try {
       const response = await axios.get(`${BASE_URL}/getallproducts`, {
         params: {},
         ...getAuthHeaders(),
       })
-
       return response
     } catch (error) {
       console.error("Error in getProducts:", error)
       throw error
     }
   },
-
-  /************** Product List End  **********************/
-
-  /************** SkillSet List  **********************/
-
-  getSkillSetList: async () => {
+  /************** Product List End  **********************/
+  /************** SkillSet List  **********************/
+  getSkillSets: async (page = 0, size = 10, search = "") => {
     try {
-      const response = await axios.get(`${BASE_URL}/getallskillset`, {
-        params: {},
+      const response = await axios.get(`${BASE_URL}/getskillsets`, {
+        params: {
+          page,
+          size,
+          search: search || "",
+        },
         ...getAuthHeaders(),
       })
-
       return response
     } catch (error) {
-      console.error("Error in getSkillSetList:", error)
+      console.error("Error in getSkillSets:", error)
       throw error
     }
   },
-
-  /************** SkillSet List End  ******************/
-
-  /************** Tools List  **********************/
-
-  getToolsList: async () => {
+  createSkillSet: async (data) => {
     try {
-      const response = await axios.get(`${BASE_URL}/getalltools`, {
-        params: {},
-        ...getAuthHeaders(),
-      })
-
-      return response
+      const response = await axios.post(`${BASE_URL}/createskillset`, data, getAuthHeaders())
+      return response.data
     } catch (error) {
-      console.error("Error in getToolsList:", error)
+      throw error.response?.data || error.message
+    }
+  },
+  updateSkillSet: async (id, data) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/updateskillset/${id}`, data, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+  exportSkillSets: async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/exportskillsets`, {
+        ...getAuthHeaders(),
+        responseType: "blob",
+      })
+      return response.data
+    } catch (error) {
+      if (error.response) {
+        throw {
+          status: error.response.status,
+          message: error.response.status === 403 ? "Permission denied" : "Export failed",
+        }
+      }
       throw error
     }
   },
-
-  /************** Tools List End  ******************/
-
+  importSkillSets: async (file) => {
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const response = await axios.post(`${BASE_URL}/importskillsets`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+  /************** SkillSet List End  ******************/
+  /************** Tools List  **********************/
+  getTools: async (page = 0, size = 10, search = "") => {
+    try {
+      const response = await axios.get(`${BASE_URL}/gettools`, {
+        params: {
+          page,
+          size,
+          search: search || "",
+        },
+        ...getAuthHeaders(),
+      })
+      return response
+    } catch (error) {
+      console.error("Error in getTools:", error)
+      throw error
+    }
+  },
+  createTool: async (data) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/createtoool`, data, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+  updateTool: async (id, data) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/updatetool/${id}`, data, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+  exportTools: async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/exporttools`, {
+        ...getAuthHeaders(),
+        responseType: "blob",
+      })
+      return response.data
+    } catch (error) {
+      if (error.response) {
+        throw {
+          status: error.response.status,
+          message: error.response.status === 403 ? "Permission denied" : "Export failed",
+        }
+      }
+      throw error
+    }
+  },
+  importTools: async (file) => {
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const response = await axios.post(`${BASE_URL}/importtools`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+  /************** Tools List End  ******************/
   getAllMainGroups: async () => {
     try {
       const response = await axios.get(`${BASE_URL}/getallmaingroups`, getAuthHeaders())
@@ -270,7 +339,6 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
-
   createMainGroup: async (data) => {
     try {
       const response = await axios.post(`${BASE_URL}/createmaingroup`, data, getAuthHeaders())
@@ -279,7 +347,6 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
-
   // Categories by Main Group
   getCategoriesByMainGroup: async (mainGroupId) => {
     try {
@@ -289,7 +356,6 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
-
   createCategory: async (data) => {
     try {
       const response = await axios.post(`${BASE_URL}/createcategory`, data, getAuthHeaders())
@@ -298,7 +364,6 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
-
   // Subcategories by Category
   getSubcategoriesByCategory: async (categoryId) => {
     try {
@@ -308,7 +373,6 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
-
   createSubcategory: async (data) => {
     try {
       const response = await axios.post(`${BASE_URL}/createsubcategory`, data, getAuthHeaders())
@@ -317,7 +381,6 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
-
   // Create Product
   createProduct: async (data) => {
     try {
@@ -327,7 +390,6 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
-
   updateProduct: async (productId, data) => {
     try {
       const response = await axios.put(`${BASE_URL}/updateproduct/${productId}`, data, getAuthHeaders())

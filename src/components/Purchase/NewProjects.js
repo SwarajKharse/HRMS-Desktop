@@ -390,13 +390,14 @@ function NewProjects() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
-                            <button
+                            {/* <button
                               className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
                               onClick={(e) => handleBOQEdit(e, project)}
                               title="Edit BOQ"
                             >
                               BOQ
-                            </button>
+                            </button> */}
+                            BOQ
                           </div>
                         </td>
                         <td className="px-6 py-4">

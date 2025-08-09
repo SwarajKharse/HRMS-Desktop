@@ -1,4 +1,5 @@
 import axios from "axios"
+import { authService } from "./authService"
 
 const API_URL = `${process.env.REACT_APP_API_URL}`
 
@@ -7,7 +8,8 @@ const getAuthHeaders = () => {
     headers: {
       "Content-Type": "application/json",
       // Add authorization header if your authService provides a token
-      // 'Authorization': `Bearer ${authService.getToken()}`,
+      // FIX 1: Uncomment this line to send the authorization token
+      'Authorization': `Bearer ${authService.getToken()}`,
     },
   }
 }
@@ -78,19 +80,20 @@ export const projectService = {
       throw error
     }
   },
-  updateBOQItemApprovalStatus: async (boqItemId, approvalType, status, remarks) => {
+  // MODIFIED: Corrected to pass approvalDetails as the request body
+  // Removed redundant 'status' and 'remarks' from parameters as they are part of approvalDetails
+  async updateBOQItemApprovalStatus(boqItemId, approvalDetails) {
     try {
-      const response = await axios.put(`${API_URL}/projects/boqItem/${boqItemId}/approval`, null, {
-        ...getAuthHeaders(),
-        params: {
-          approvalType,
-          status,
-          remarks,
-        },
-      })
+      console.log("Updating approval status for BOQ item:", boqItemId)
+      console.log("Approval Details payload:", JSON.stringify(approvalDetails, null, 2))
+      const response = await axios.put(
+        `${API_URL}/projects/boqItem/${boqItemId}/approval`,
+        approvalDetails, // This is the object containing approvalType, statusValue, remarks
+        getAuthHeaders(),
+      )
       return response.data
     } catch (error) {
-      console.error("Error updating BOQ Item approval status:", error.response ? error.response.data : error.message)
+      console.error("Error updating approval status:", error.response ? error.response.data : error.message)
       throw error
     }
   },
@@ -106,7 +109,6 @@ export const projectService = {
       throw error
     }
   },
-  // Get project details (now returns ProjectResponseDTO without plan data maps)
   getProjectDetails: async (projectId) => {
     try {
       const response = await axios.get(`${API_URL}/projects/${projectId}/project`, {
@@ -118,7 +120,6 @@ export const projectService = {
       throw error
     }
   },
-  // Unified save function for all plans
   saveProjectPlans: async (projectId, planData) => {
     try {
       const response = await axios.post(`${API_URL}/projects/${projectId}/plans`, planData, getAuthHeaders())
@@ -131,7 +132,6 @@ export const projectService = {
       throw error
     }
   },
-  // Unified fetch function for all plans
   getProjectPlansByProjectId: async (projectId) => {
     try {
       const response = await axios.get(`${API_URL}/projects/${projectId}/plans`, getAuthHeaders())
@@ -141,7 +141,6 @@ export const projectService = {
       throw error
     }
   },
-  // New unified fetch function for project plan history
   async getProjectPlanHistory(projectId, planType) {
     const response = await axios.get(
       `${API_URL}/projects/${projectId}/plans/history?planType=${planType}`,
@@ -199,7 +198,6 @@ export const projectService = {
   },
   async updateProjectDetails(projectId, details) {
     try {
-      // Corrected: Pass 'details' directly as the request body for axios.put
       const response = await axios.put(`${API_URL}/projects/${projectId}/update-details`, details, getAuthHeaders())
       return response.data
     } catch (error) {

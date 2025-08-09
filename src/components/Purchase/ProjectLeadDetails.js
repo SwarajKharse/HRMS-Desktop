@@ -2,15 +2,40 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FiX } from "react-icons/fi"
+import { leadService } from "../../services/leadService"
+import { projectService } from "../../services/projectService"
+import { useAuth } from "../../contexts/AuthContext"
 
-
-// import { authService } from "../../services/authService"
- import { leadService } from "../../services/leadService"
- import { projectService } from "../../services/projectService"
-// import { useAuth } from "../../contexts/AuthContext"
-
-
-const useAuth = () => ({ user: { userId: "user123", orgId: "org456" } })
+// Moved ExpandableSection component definition outside ProjectLeadDetails
+const ExpandableSection = ({ title, isExpanded, onToggle, children, bgColor, borderColor, headerTextColor }) => (
+  <div className={`rounded-lg border-2 ${borderColor} overflow-hidden shadow-sm`}>
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`w-full px-6 py-4 ${bgColor} ${headerTextColor} font-semibold text-lg flex justify-between items-center hover:opacity-90 transition-opacity`}
+    >
+      <span>{title}</span>
+      <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </motion.div>
+    </button>
+    <AnimatePresence>
+      {isExpanded && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="overflow-hidden"
+        >
+          <div className="p-6 bg-white">{children}</div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </div>
+)
 
 function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
@@ -23,106 +48,163 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   })
 
   const userId = user ? user.userId : ""
-
   const [lead, setLead] = useState(null) // Initialize with null to indicate no data yet
-  const [departments, setDepartments] = useState([]) // Not used in original code, but kept
-  const [designations, setDesignations] = useState([]) // Not used in original code, but kept
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(true) // State to track initial data loading
-  const [managerslist, setManagerslist] = useState([]) // Not used in original code, but kept
-  const [ssedata, setSSEList] = useState([]) // Not used in original code, but kept
-  const [bdmdata, setBDMList] = useState([]) // Not used in original code, but kept
+  const [managerslist, setManagerslist] = useState([])
+  const [seData, setSEList] = useState([])
   const [sourcelist, setSourcelist] = useState([])
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
 
-  // Initialize formData and projectData with default empty structures
-  // These will be updated once 'lead' data is fetched in the second useEffect
-  const [formData, setFormData] = useState({
-    proposal_type: [],
-    lead_proposal_type: [],
-    employee_updatedby: {
-      id: userId,
-    },
-  })
-
+  // Initialize projectData with a comprehensive structure
   const [projectData, setProjectData] = useState({
     projectName: "",
-    projectDescription: "",
-    projectBudget: "",
-    projectTimeline: "",
     projectStatus: "planning",
-    projectManager: "",
-    estimatedValue: "",
-    actualValue: "",
-    startDate: "",
-    endDate: "",
+    projectManager: "", // Will store ID
+    siteEngineer: "", // Will store ID
+    // New fields added here (using snake_case to match Java Project model)
+    handover_file_status: "",
+    form_a_noc_status: "",
+    approval_from_fm: "",
+    payment_approval_date_by_fm: "",
+    project_completion_eta: "",
+    project_completion_date: "",
+    // Ensure employee_updatedby is always present for backend
+    employee_updatedby: { id: userId },
   })
 
-  // Effect to fetch initial data (lead details, sources, types)
+  // Effect to fetch all initial data (lead details, project details, managers, SEs)
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchAllInitialData = async () => {
       setDataLoading(true)
       setError("")
       try {
-        console.log("Fetching lead details for leadId:", leadId)
-        const [leadDetails, leadSource, leadType, leadProductType] = await Promise.all([
+        const [
+          leadDetails,
+          projectdetailsResponse, // This is the ProjectResponseDTO from backend
+          leadSource,
+          leadType,
+          leadProductType,
+          managers, // Fetched managers list
+          siteEngineers, // Fetched site engineers list
+        ] = await Promise.all([
           projectService.getLeadByLeadId(leadId),
+          projectService.getProjectByLeadId(leadId),
           leadService.getLeadSourceList(),
           leadService.getLeadTypeList(),
           leadService.getLeadProductTypeList(),
+          projectService.getProjectManagerList(),
+          projectService.getSiteEngineerList(),
         ])
+
         setLead(leadDetails)
         setSourcelist(leadSource)
         setTypelist(leadType)
         setProductTypelist(leadProductType)
-        console.log("Fetched lead details:", leadDetails)
+        setManagerslist(managers) // Set managers list
+        setSEList(siteEngineers) // Set site engineers list
+
+        // Initialize projectData based on fetched projectdetailsResponse
+        let initialProjectManager = projectdetailsResponse.projectManager?.id
+          ? Number.parseInt(projectdetailsResponse.projectManager.id, 10)
+          : ""
+        const initialSiteEngineer = projectdetailsResponse.siteEngineer?.id
+          ? Number.parseInt(projectdetailsResponse.siteEngineer.id, 10)
+          : ""
+        let initialProjectName = ""
+        let initialProjectStatus = "planning"
+        // Initialize new fields
+        let initialHandoverFileStatus = ""
+        let initialFormANOCStatus = ""
+        let initialApprovalFromFM = ""
+        let initialPaymentApprovalDateByFM = ""
+        let initialProjectCompletionETA = ""
+        let initialProjectCompletionDate = ""
+
+        if (projectdetailsResponse) {
+          // If project exists, use its values
+          initialProjectName = projectdetailsResponse.projectName || ""
+          initialProjectStatus = projectdetailsResponse.projectStatus || "planning"
+          // Note: These new fields are not present in the current ProjectResponseDTO
+          // If you want them to be pre-filled, you'll need to update your Spring Boot ProjectResponseDTO.
+          // For now, they will remain empty on initial load unless explicitly set by the user.
+          initialHandoverFileStatus = projectdetailsResponse.handover_file_status || ""
+          initialFormANOCStatus = projectdetailsResponse.form_a_noc_status || ""
+          initialApprovalFromFM = projectdetailsResponse.approval_from_fm || ""
+          initialPaymentApprovalDateByFM = projectdetailsResponse.payment_approval_date_by_fm || ""
+          initialProjectCompletionETA = projectdetailsResponse.project_completion_eta || ""
+          initialProjectCompletionDate = projectdetailsResponse.project_completion_date || ""
+        }
+
+        // Override initialProjectManager if current user is a manager and no manager is assigned
+        // This logic should apply *after* trying to get it from fetched projectdetailsResponse
+        if (!initialProjectManager && managers.some((manager) => manager.id === userId)) {
+          initialProjectManager = userId
+        }
+
+        // Set the projectData state with all initialized values
+        setProjectData({
+          projectName: initialProjectName,
+          projectStatus: initialProjectStatus,
+          projectManager: initialProjectManager,
+          siteEngineer: initialSiteEngineer,
+          // New fields
+          handover_file_status: initialHandoverFileStatus,
+          form_a_noc_status: initialFormANOCStatus,
+          approval_from_fm: initialApprovalFromFM,
+          payment_approval_date_by_fm: initialPaymentApprovalDateByFM,
+          project_completion_eta: initialProjectCompletionETA,
+          project_completion_date: initialProjectCompletionDate,
+          employee_updatedby: { id: userId }, // Always ensure this is the current user
+        })
       } catch (err) {
-        setError("Failed to load lead details or related lists.")
+        setError("Failed to load project details or related lists.")
         console.error(err)
-        setLead(null) // Set lead to null on error to show error message
+        setLead(null)
+        // Ensure projectData is reset to defaults or minimal on error
+        setProjectData({
+          projectName: "",
+          projectStatus: "planning",
+          projectManager: "",
+          siteEngineer: "",
+          // New fields reset on error
+          handover_file_status: "",
+          form_a_noc_status: "",
+          approval_from_fm: "",
+          payment_approval_date_by_fm: "",
+          project_completion_eta: "",
+          project_completion_date: "",
+          employee_updatedby: { id: userId },
+        })
       } finally {
         setDataLoading(false)
       }
     }
 
     if (leadId) {
-      // Only fetch if leadId is provided
-      fetchInitialData()
+      fetchAllInitialData()
     } else {
-      setDataLoading(false) // If no leadId, stop loading and show no data
+      setDataLoading(false)
       setLead(null)
-    }
-  }, [leadId, user?.orgId]) // Add leadId to dependencies. Use optional chaining for user.orgId
-
-  // Effect to update formData and projectData when lead changes
-  useEffect(() => {
-    if (lead) {
-      setFormData((prev) => ({
-        ...prev,
-        ...lead, // Spread lead properties to update formData
-        proposal_type: lead.proposal_type || [], // Ensure it's an array
-        lead_proposal_type: lead.lead_proposal_type || [], // Ensure it's an array
-        employee_updatedby: {
-          id: userId,
-        },
-      }))
+      // If no leadId, ensure projectData is also reset to defaults
       setProjectData({
-        projectName: lead.project_name || "",
-        projectDescription: lead.project_description || "",
-        projectBudget: lead.project_budget || "",
-        projectTimeline: lead.project_timeline || "",
-        projectStatus: lead.project_status || "planning",
-        projectManager: lead.project_manager || "",
-        siteEngineer: lead.site_engineer || "",
-        estimatedValue: lead.estimated_value || "",
-        actualValue: lead.actual_value || "",
-        startDate: lead.start_date || "",
-        endDate: lead.end_date || "",
+        projectName: "",
+        projectStatus: "planning",
+        projectManager: "",
+        siteEngineer: "",
+        // New fields reset on no leadId
+        handover_file_status: "",
+        form_a_noc_status: "",
+        approval_from_fm: "",
+        payment_approval_date_by_fm: "",
+        project_completion_eta: "",
+        project_completion_date: "",
+        employee_updatedby: { id: userId },
       })
     }
-  }, [lead, userId]) // Depend on lead and userId
+  }, [leadId, userId]) // Dependencies: leadId and userId. managerslist and seData are fetched inside.
 
   // Toggle section expansion
   const toggleSection = (section) => {
@@ -136,20 +218,48 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     e.preventDefault()
     setLoading(true)
     setError("")
+
+    if (!leadId) {
+      setError("Lead ID is missing. Cannot update project.")
+      setLoading(false)
+      return
+    }
+
+    // Construct the payload explicitly to avoid sending redundant fields
+    const payload = {
+      projectName: projectData.projectName,
+      projectStatus: projectData.projectStatus,
+      handover_file_status: projectData.handover_file_status,
+      form_a_noc_status: projectData.form_a_noc_status,
+      approval_from_fm: projectData.approval_from_fm,
+      payment_approval_date_by_fm: projectData.payment_approval_date_by_fm,
+      project_completion_eta: projectData.project_completion_eta,
+      project_completion_date: projectData.project_completion_date,
+      employee_updatedby: { id: user?.userId }, // Always send current user ID for updated_by
+    }
+
+    // Add project_manager and site_engineer as objects with numeric IDs if their IDs are present
+    if (projectData.projectManager) {
+      payload.project_manager = { id: Number.parseInt(projectData.projectManager, 10) }
+    } else {
+      payload.project_manager = null // Send null if no manager is selected
+    }
+
+    if (projectData.siteEngineer) {
+      payload.site_engineer = { id: Number.parseInt(projectData.siteEngineer, 10) }
+    } else {
+      payload.site_engineer = null // Send null if no engineer is selected
+    }
+
+    console.log("Payload being sent to backend:", payload)
+    console.log("Project Name in payload:", payload.projectName)
+
     try {
-      const processedData = {
-        ...formData,
-        ...projectData,
-        employee_updatedby: {
-          id: userId,
-        },
-      }
-      
-      await onSubmit(processedData)
+      await projectService.createOrUpdateProject(payload, "project", leadId) // Use 'payload'
       onClose()
     } catch (err) {
       console.log(err)
-      setError(err.message || "Failed to update lead")
+      setError(err.message || "Failed to update project")
       window.scrollTo(0, 0)
     } finally {
       setLoading(false)
@@ -176,37 +286,6 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     <th className="px-2 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b flex-wrap">
       {children}
     </th>
-  )
-
-  // Expandable Section Component
-  const ExpandableSection = ({ title, isExpanded, onToggle, children, bgColor, borderColor, headerTextColor }) => (
-    <div className={`rounded-lg border-2 ${borderColor} overflow-hidden shadow-sm`}>
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`w-full px-6 py-4 ${bgColor} ${headerTextColor} font-semibold text-lg flex justify-between items-center hover:opacity-90 transition-opacity`}
-      >
-        <span>{title}</span>
-        <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </motion.div>
-      </button>
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="overflow-hidden"
-          >
-            <div className="p-6 bg-white">{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
   )
 
   // Show loading spinner while data is being fetched
@@ -291,6 +370,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{error}</div>}
+
           {/* Lead Details Section */}
           <ExpandableSection
             title="Lead Details"
@@ -320,6 +400,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                   </div>
                 ) : null}
               </div>
+
               {/* Additional Details */}
               {lead.client_name && lead.project_location && lead.office_location && (
                 <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -384,6 +465,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                 </div>
               )}
               {/* Addition Details Section End */}
+
               {/* Middle Man Details */}
               {lead.middle_man_client_name && lead.middle_man_project_location && lead.middle_man_office_location && (
                 <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -448,6 +530,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                 </div>
               )}
               {/* Middle Man End */}
+
               {/* Architect Firm Details Section */}
               {lead.architect_client_name && lead.architect_project_location && lead.architect_office_location && (
                 <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -512,6 +595,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                 </div>
               )}
               {/* Architect Firm Details Section End */}
+
               {/* MEP Firm Details Section */}
               {lead.mep_client_name && lead.mep_project_location && lead.mep_office_location && (
                 <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -576,6 +660,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                 </div>
               )}
               {/* MEP Firm Details Section End */}
+
               {/* PMC Firm Details Section */}
               {lead.pmc_client_name && lead.pmc_project_location && lead.pmc_office_location && (
                 <div className="space-y-4 rounded-lg bg-white border p-4">
@@ -642,6 +727,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
               {/* PMC Firm Details End */}
             </div>
           </ExpandableSection>
+
           {/* Project Details Section */}
           <ExpandableSection
             title="Project Details"
@@ -653,38 +739,166 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
           >
             <div className="space-y-6">
               {/* Project Information */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2">
-                  Assign Project Manager <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="project_manager"
-                  value={projectData.projectManager} // Bind to projectData state
-                  onChange={(e) => setProjectData({ ...projectData, projectManager: e.target.value })}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Engineer</option>
-                  {/* You would map over your ssedata (Site Engineer data) here */}
-                  <option value="4">Gahininath Maske</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2">
-                  Assign Site Engineer <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="project_manager"
-                  value={projectData.siteEngineer} // Bind to projectData state
-                  onChange={(e) => setProjectData({ ...projectData, siteEngineer: e.target.value })}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Engineer</option>
-                  {/* You would map over your ssedata (Site Engineer data) here */}
-                  <option value="4">Gahininath Maske</option>
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2">
+                    Assign Project Manager <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="project_manager"
+                    value={projectData.projectManager} // Bind to projectData.projectManager
+                    onChange={(e) =>
+                      setProjectData({ ...projectData, projectManager: Number.parseInt(e.target.value, 10) })
+                    }
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  >
+                    <option value="">Select Project Manager</option>
+                    {managerslist.map((manager, i) => {
+                      return (
+                        <option key={i} value={manager.id}>
+                          {manager.firstName + " " + manager.lastName}
+                        </option>
+                      )
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2">
+                    Assign Site Engineer <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="site_engineer"
+                    value={projectData.siteEngineer} // Bind to projectData.siteEngineer
+                    onChange={(e) =>
+                      setProjectData({ ...projectData, siteEngineer: Number.parseInt(e.target.value, 10) })
+                    }
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  >
+                    <option value="">Select Engineer</option>
+                    {seData.map((engineer, i) => {
+                      return (
+                        <option key={i} value={engineer.id}>
+                          {engineer.firstName + " " + engineer.lastName}
+                        </option>
+                      )
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="projectName" className="block text-sm font-medium text-gray-700">
+                    Project Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="projectName"
+                    name="projectName"
+                    value={projectData.projectName}
+                    onChange={(e) => setProjectData({ ...projectData, projectName: e.target.value })}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    required // Add required attribute for client-side validation
+                  />
+                </div>
+
+                {/* New fields added here */}
+                <div>
+                  <label htmlFor="handover_file_status" className="block text-sm font-medium text-gray-700">
+                    Handover File Status
+                  </label>
+                  <select
+                    id="handover_file_status"
+                    name="handover_file_status"
+                    value={projectData.handover_file_status}
+                    onChange={(e) => setProjectData({ ...projectData, handover_file_status: e.target.value })}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  >
+                    <option value="">Select Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Not Applicable">Not Applicable</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="form_a_noc_status" className="block text-sm font-medium text-gray-700">
+                    Form A NOC Status
+                  </label>
+                  <select
+                    id="form_a_noc_status"
+                    name="form_a_noc_status"
+                    value={projectData.form_a_noc_status}
+                    onChange={(e) => setProjectData({ ...projectData, form_a_noc_status: e.target.value })}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  >
+                    <option value="">Select Status</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Received">Received</option>
+                    <option value="Not Applicable">Not Applicable</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="approval_from_fm" className="block text-sm font-medium text-gray-700">
+                    Approval from FM
+                  </label>
+                  <select
+                    id="approval_from_fm"
+                    name="approval_from_fm"
+                    value={projectData.approval_from_fm}
+                    onChange={(e) => setProjectData({ ...projectData, approval_from_fm: e.target.value })}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  >
+                    <option value="">Select Approval</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="payment_approval_date_by_fm" className="block text-sm font-medium text-gray-700">
+                    Payment Approval Date by FM
+                  </label>
+                  <input
+                    type="date"
+                    id="payment_approval_date_by_fm"
+                    name="payment_approval_date_by_fm"
+                    value={projectData.payment_approval_date_by_fm}
+                    onChange={(e) => setProjectData({ ...projectData, payment_approval_date_by_fm: e.target.value })}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="project_completion_eta" className="block text-sm font-medium text-gray-700">
+                    Project Completion ETA
+                  </label>
+                  <input
+                    type="date"
+                    id="project_completion_eta"
+                    name="project_completion_eta"
+                    value={projectData.project_completion_eta}
+                    onChange={(e) => setProjectData({ ...projectData, project_completion_eta: e.target.value })}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="project_completion_date" className="block text-sm font-medium text-gray-700">
+                    Project Completion Date
+                  </label>
+                  <input
+                    type="date"
+                    id="project_completion_date"
+                    name="project_completion_date"
+                    value={projectData.project_completion_date}
+                    onChange={(e) => setProjectData({ ...projectData, project_completion_date: e.target.value })}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  />
+                </div>
               </div>
             </div>
           </ExpandableSection>
+
           {/* Action Buttons */}
           <div className="flex justify-end space-x-4 pt-4 border-t">
             <button
@@ -695,7 +909,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
             >
               Cancel
             </button>
-            {(activeTab === "unassigned-leads" ||
+            {/* {(activeTab === "unassigned-leads" ||
               activeTab === "sse-new-leads" ||
               activeTab === "assign-leads-to-bdm" ||
               (activeTab === "assigned-leads" && lead && lead.need_of_field_visit !== null) ||
@@ -716,7 +930,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                   "Update Project"
                 )}
               </button>
-            )}
+            )} */}
           </div>
         </form>
       </motion.div>
