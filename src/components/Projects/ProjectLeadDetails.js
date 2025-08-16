@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { FiX } from "react-icons/fi"
+import { FiX, FiUpload, FiFile, FiTrash2, FiEdit3 } from "react-icons/fi"
 import { leadService } from "../../services/leadService"
 import { projectService } from "../../services/projectService"
 import { useAuth } from "../../contexts/AuthContext"
@@ -40,6 +40,8 @@ const ExpandableSection = ({ title, isExpanded, onToggle, children, bgColor, bor
 function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
   const fileInputRef = useRef(null)
+  const salesHandoverFileInputRef = useRef(null)
+  const kickoffMeetingFileInputRef = useRef(null)
 
   // Expandable sections state
   const [expandedSections, setExpandedSections] = useState({
@@ -58,6 +60,15 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
 
+  const [documentUploading, setDocumentUploading] = useState({
+    salesHandover: false,
+    kickoffMeeting: false,
+  })
+  const [projectDocuments, setProjectDocuments] = useState({
+    salesHandover: null,
+    kickoffMeeting: null,
+  })
+
   // Initialize projectData with a comprehensive structure
   const [projectData, setProjectData] = useState({
     projectName: "",
@@ -75,36 +86,149 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     employee_updatedby: { id: userId },
   })
 
+  const handleDocumentView = (fileUrl) => {
+    if (fileUrl) {
+      console.log("[v0] Opening document:", fileUrl)
+      // Use backend proxy to serve PDF with proper headers to prevent auto-download
+      const proxyUrl = `${encodeURIComponent(fileUrl)}`
+      window.open(fileUrl, "_blank", "noopener,noreferrer")
+    }
+  }
+
+  const handleDocumentUpdate = (documentType) => {
+    if (documentType === "Sales Handover" && salesHandoverFileInputRef.current) {
+      salesHandoverFileInputRef.current.click()
+    } else if (documentType === "Kick off Meeting" && kickoffMeetingFileInputRef.current) {
+      kickoffMeetingFileInputRef.current.click()
+    }
+  }
+
+  const fetchProjectDocuments = async (projectId) => {
+    console.log("[v0] Fetching documents for project ID:", projectId)
+    try {
+      const documents = await projectService.getProjectDocuments(projectId)
+      console.log("[v0] Fetched documents:", documents)
+
+      const salesHandover = documents.find(
+        (doc) => doc.document_type === "Sales Handover" || doc.documentType === "Sales Handover",
+      )
+      const kickoffMeeting = documents.find(
+        (doc) => doc.document_type === "Kick off Meeting" || doc.documentType === "Kick off Meeting",
+      )
+
+      console.log("[v0] Sales Handover document:", salesHandover)
+      console.log("[v0] Kick off Meeting document:", kickoffMeeting)
+
+      setProjectDocuments({
+        salesHandover: salesHandover || null,
+        kickoffMeeting: kickoffMeeting || null,
+      })
+    } catch (error) {
+      console.error("[v0] Error fetching project documents:", error)
+      setProjectDocuments({
+        salesHandover: null,
+        kickoffMeeting: null,
+      })
+    }
+  }
+
+  const handleDocumentUpload = async (file, documentType) => {
+    if (!file) return
+
+    const fileExtension = file.name.split(".").pop().toLowerCase()
+    if (fileExtension !== "pdf") {
+      setError("Only PDF files are allowed")
+      return
+    }
+
+    const uploadKey = documentType === "Sales Handover" ? "salesHandover" : "kickoffMeeting"
+
+    setDocumentUploading((prev) => ({ ...prev, [uploadKey]: true }))
+    setError("")
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("documentType", documentType)
+      formData.append("leadId", leadId)
+
+      const response = await projectService.uploadProjectDocument(formData)
+
+      setProjectDocuments((prev) => ({
+        ...prev,
+        [uploadKey]: response,
+      }))
+
+      // Clear the file input
+      if (documentType === "Sales Handover" && salesHandoverFileInputRef.current) {
+        salesHandoverFileInputRef.current.value = ""
+      } else if (documentType === "Kick off Meeting" && kickoffMeetingFileInputRef.current) {
+        kickoffMeetingFileInputRef.current.value = ""
+      }
+    } catch (error) {
+      console.error("Error uploading document:", error)
+      setError(`Failed to upload ${documentType}: ${error.message}`)
+    } finally {
+      setDocumentUploading((prev) => ({ ...prev, [uploadKey]: false }))
+    }
+  }
+
+  const handleDocumentRemove = async (documentType) => {
+    const uploadKey = documentType === "Sales Handover" ? "salesHandover" : "kickoffMeeting"
+    const document = projectDocuments[uploadKey]
+
+    if (!document) return
+
+    try {
+      await projectService.deleteProjectDocument(document.id)
+      setProjectDocuments((prev) => ({
+        ...prev,
+        [uploadKey]: null,
+      }))
+    } catch (error) {
+      console.error("Error removing document:", error)
+      setError(`Failed to remove ${documentType}: ${error.message}`)
+    }
+  }
+
   // Effect to fetch all initial data (lead details, project details, managers, SEs)
   useEffect(() => {
     const fetchAllInitialData = async () => {
       setDataLoading(true)
       setError("")
       try {
-        const [
-          leadDetails,
-          projectdetailsResponse, // This is the ProjectResponseDTO from backend
-          leadSource,
-          leadType,
-          leadProductType,
-          managers, // Fetched managers list
-          siteEngineers, // Fetched site engineers list
-        ] = await Promise.all([
-          projectService.getLeadByLeadId(leadId),
-          projectService.getProjectByLeadId(leadId),
-          leadService.getLeadSourceList(),
-          leadService.getLeadTypeList(),
-          leadService.getLeadProductTypeList(),
-          projectService.getProjectManagerList(),
-          projectService.getSiteEngineerList(),
-        ])
+        console.log("[v0] Starting to fetch initial data for leadId:", leadId)
+
+        const [leadDetails, projectdetailsResponse, leadSource, leadType, leadProductType, managers, siteEngineers] =
+          await Promise.all([
+            projectService.getLeadByLeadId(leadId),
+            projectService.getProjectByLeadId(leadId),
+            leadService.getLeadSourceList(),
+            leadService.getLeadTypeList(),
+            leadService.getLeadProductTypeList(),
+            projectService.getProjectManagerList(),
+            projectService.getSiteEngineerList(),
+          ])
+
+        console.log("[v0] Project details response:", projectdetailsResponse)
 
         setLead(leadDetails)
         setSourcelist(leadSource)
         setTypelist(leadType)
         setProductTypelist(leadProductType)
-        setManagerslist(managers) // Set managers list
-        setSEList(siteEngineers) // Set site engineers list
+        setManagerslist(managers)
+        setSEList(siteEngineers)
+
+        if (projectdetailsResponse) {
+          const projectId = projectdetailsResponse.projectId || projectdetailsResponse.id
+          console.log("[v0] Using project ID for documents:", projectId)
+
+          if (projectId) {
+            await fetchProjectDocuments(projectId)
+          } else {
+            console.warn("[v0] No project ID found in response")
+          }
+        }
 
         // Initialize projectData based on fetched projectdetailsResponse
         let initialProjectManager = projectdetailsResponse.projectManager?.id
@@ -227,12 +351,12 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
 
     // Construct the payload explicitly to avoid sending redundant fields
     const payload = {
-      projectName: projectData.projectName,
+      //projectName: projectData.projectName,
       projectStatus: projectData.projectStatus,
       handover_file_status: projectData.handover_file_status,
       form_a_noc_status: projectData.form_a_noc_status,
-      approval_from_fm: projectData.approval_from_fm,
-      payment_approval_date_by_fm: projectData.payment_approval_date_by_fm,
+      //approval_from_fm: projectData.approval_from_fm,
+      //payment_approval_date_by_fm: projectData.payment_approval_date_by_fm,
       project_completion_eta: projectData.project_completion_eta,
       project_completion_date: projectData.project_completion_date,
       employee_updatedby: { id: user?.userId }, // Always send current user ID for updated_by
@@ -286,6 +410,85 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     <th className="px-2 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b flex-wrap">
       {children}
     </th>
+  )
+
+  const DocumentUploadSection = ({ title, documentType, document, isUploading, fileInputRef }) => (
+    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+      <h4 className="font-medium text-gray-900 mb-3">{title}</h4>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".pdf"
+        onChange={(e) => handleDocumentUpload(e.target.files[0], documentType)}
+        className="hidden"
+      />
+
+      {document ? (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
+            <div className="flex items-center space-x-3">
+              <FiFile className="text-red-500" size={20} />
+              <div>
+                <p className="text-sm font-medium text-gray-900">{document.fileName}</p>
+                <p className="text-xs text-gray-500">
+                  Uploaded on {new Date(document.uploadedAt || Date.now()).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => handleDocumentView(document.fileUrl)}
+                className="p-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                title="View PDF"
+              >
+                <FiFile size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDocumentUpdate(documentType)}
+                className="p-2 text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                title="Update Document"
+              >
+                <FiEdit3 size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDocumentRemove(documentType)}
+                className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                title="Remove Document"
+              >
+                <FiTrash2 size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-8">
+          <FiUpload className="mx-auto text-gray-400 mb-4" size={48} />
+          <p className="text-sm text-gray-600 mb-4">No {title.toLowerCase()} uploaded</p>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {isUploading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                Uploading...
+              </>
+            ) : (
+              <>
+                <FiUpload className="mr-2" size={16} />
+                Upload PDF
+              </>
+            )}
+          </button>
+        </div>
+      )}
+    </div>
   )
 
   // Show loading spinner while data is being fetched
@@ -487,8 +690,8 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                       </label>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                    {lead.middleManDetails && lead.middleManDetails.length > 0 && (
+                  {lead.middleManDetails && lead.middleManDetails.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead>
                           <tr>
@@ -525,8 +728,8 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                           ))}
                         </tbody>
                       </table>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
               {/* Middle Man End */}
@@ -785,18 +988,8 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="projectName" className="block text-sm font-medium text-gray-700">
-                    Project Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="projectName"
-                    name="projectName"
-                    value={projectData.projectName}
-                    onChange={(e) => setProjectData({ ...projectData, projectName: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                    required // Add required attribute for client-side validation
-                  />
+                  <label className="block text-sm font-medium text-gray-700">Project Name</label>
+                  <label className="block text-md font-medium text-gray-700">{projectData.projectName}</label>
                 </div>
 
                 {/* New fields added here */}
@@ -837,38 +1030,6 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                 </div>
 
                 <div>
-                  <label htmlFor="approval_from_fm" className="block text-sm font-medium text-gray-700">
-                    Approval from FM
-                  </label>
-                  <select
-                    id="approval_from_fm"
-                    name="approval_from_fm"
-                    value={projectData.approval_from_fm}
-                    onChange={(e) => setProjectData({ ...projectData, approval_from_fm: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                  >
-                    <option value="">Select Approval</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="payment_approval_date_by_fm" className="block text-sm font-medium text-gray-700">
-                    Payment Approval Date by FM
-                  </label>
-                  <input
-                    type="date"
-                    id="payment_approval_date_by_fm"
-                    name="payment_approval_date_by_fm"
-                    value={projectData.payment_approval_date_by_fm}
-                    onChange={(e) => setProjectData({ ...projectData, payment_approval_date_by_fm: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                  />
-                </div>
-
-                <div>
                   <label htmlFor="project_completion_eta" className="block text-sm font-medium text-gray-700">
                     Project Completion ETA
                   </label>
@@ -893,6 +1054,27 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                     value={projectData.project_completion_date}
                     onChange={(e) => setProjectData({ ...projectData, project_completion_date: e.target.value })}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  />
+                </div>
+              </div>
+
+              <div className="border-t pt-6 mt-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Project Documents</h3>
+                <div className="space-y-6">
+                  <DocumentUploadSection
+                    title="Sales Handover Document"
+                    documentType="Sales Handover"
+                    document={projectDocuments.salesHandover}
+                    isUploading={documentUploading.salesHandover}
+                    fileInputRef={salesHandoverFileInputRef}
+                  />
+
+                  <DocumentUploadSection
+                    title="Kick off Meeting Document"
+                    documentType="Kick off Meeting"
+                    document={projectDocuments.kickoffMeeting}
+                    isUploading={documentUploading.kickoffMeeting}
+                    fileInputRef={kickoffMeetingFileInputRef}
                   />
                 </div>
               </div>

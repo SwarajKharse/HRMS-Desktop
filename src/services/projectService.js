@@ -14,6 +14,14 @@ const getAuthHeaders = () => {
   }
 }
 
+const getAuthHeadersForFormData = () => {
+  return {
+    headers: {
+      Authorization: `Bearer ${authService.getToken()}`,
+    },
+  }
+}
+
 export const projectService = {
   createOrUpdateProject: async (projectData, amc_or_project, leadId) => {
     try {
@@ -223,4 +231,64 @@ export const projectService = {
       throw error
     }
   },
+
+  async getProjectDocuments(projectId) {
+    try {
+      console.log("[v0] Fetching documents for project ID:", projectId)
+      const response = await fetch(`${API_URL}/projects/${projectId}/documents`, {
+        method: "GET",
+        ...getAuthHeaders(),
+      })
+      if (!response.ok) {
+        console.error("[v0] Failed to fetch documents, status:", response.status)
+        throw new Error("Failed to fetch documents")
+      }
+      const documents = await response.json()
+      console.log("[v0] Service received documents:", documents)
+      return documents
+    } catch (error) {
+      console.error("Error fetching project documents:", error)
+      return []
+    }
+  },
+
+  async uploadProjectDocument(formData) {
+    try {
+      const response = await fetch(`${API_URL}/projects/upload-project-document`, {
+        method: "POST",
+        body: formData,
+        ...getAuthHeadersForFormData(),
+      })
+
+      if (!response.ok) throw new Error("Failed to upload document")
+      return await response.json()
+    } catch (error) {
+      console.error("Error uploading document:", error)
+      throw error
+    }
+  },
+
+  async uploadImageToS3(file, documentType, leadId) {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("documentType", documentType)
+    formData.append("leadId", leadId)
+
+    return await this.uploadProjectDocument(formData)
+  },
+
+  async deleteProjectDocument(documentId, fileUrl) {
+    try {
+      const response = await fetch(`${API_URL}/projects/documents/${documentId}`, {
+        method: "DELETE",
+        ...getAuthHeaders(),
+      })
+      if (!response.ok) throw new Error("Failed to delete document")
+      return true
+    } catch (error) {
+      console.error("Error deleting document:", error)
+      throw error
+    }
+  }
+
 }
