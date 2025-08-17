@@ -9,7 +9,7 @@ const getAuthHeaders = () => {
       "Content-Type": "application/json",
       // Add authorization header if your authService provides a token
       // FIX 1: Uncomment this line to send the authorization token
-      'Authorization': `Bearer ${authService.getToken()}`,
+      Authorization: `Bearer ${authService.getToken()}`,
     },
   }
 }
@@ -289,6 +289,19 @@ export const projectService = {
       console.error("Error deleting document:", error)
       throw error
     }
-  }
+  },
 
+  async saveProjectPlanHistory(projectId, historyEntry) {
+    try {
+      const response = await axios.post(
+        `${API_URL}/projects/${projectId}/plans/history`,
+        historyEntry,
+        getAuthHeaders(),
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error saving project plan history:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
 }

@@ -15,6 +15,7 @@ function ProjectProcurement({ project, onClose, onSave }) {
   const [procurementPlan, setProcurementPlan] = useState({})
   const [dispatchPlan, setDispatchPlan] = useState({})
   const [procurementHistory, setProcurementHistory] = useState({})
+  const [installationHistory, setInstallationHistory] = useState({})
 
   // New state for conditional rendering of initial setup form
   const [showInitialSetup, setShowInitialSetup] = useState(true)
@@ -103,6 +104,7 @@ function ProjectProcurement({ project, onClose, onSave }) {
         const boqData = await projectService.getBOQByProjectId(project.id)
         const existingPlans = await projectService.getProjectPlansByProjectId(project.id)
         const historyData = await projectService.getProjectPlanHistory(project.id, "PROCUREMENT")
+        const installationHistoryData = await projectService.getProjectPlanHistory(project.id, "INSTALLATION")
 
         const combinedItems = []
         ;(boqData.items || []).forEach((item) => {
@@ -163,7 +165,7 @@ function ProjectProcurement({ project, onClose, onSave }) {
             const key = planItem.boqItemId ? `boq-${planItem.boqItemId}` : `cat-${planItem.boqCategoryItemId}`
             switch (planItem.planType) {
               case "INSTALLATION":
-                installationInit[key] = planItem.weekNumber
+                installationInit[key] = planItem.weekNumber || null
                 break
               case "PROCUREMENT":
                 procurementInit[key] = {
@@ -206,6 +208,28 @@ function ProjectProcurement({ project, onClose, onSave }) {
           })
         }
         setProcurementHistory(procurementHistoryMap)
+
+        const installationHistoryMap = {}
+        if (installationHistoryData && Array.isArray(installationHistoryData)) {
+          installationHistoryData.forEach((historyItem) => {
+            if (historyItem.planType === "INSTALLATION") {
+              const key = historyItem.boqItemId
+                ? `boq-${historyItem.boqItemId}`
+                : `cat-${historyItem.boqCategoryItemId}`
+              if (!installationHistoryMap[key]) {
+                installationHistoryMap[key] = []
+              }
+              installationHistoryMap[key].push(historyItem)
+            }
+          })
+          Object.keys(installationHistoryMap).forEach((key) => {
+            installationHistoryMap[key].sort(
+              (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+            )
+          })
+        }
+        setInstallationHistory(installationHistoryMap)
+
         setLoading(false)
       } catch (error) {
         console.error("Error fetching data:", error)
@@ -243,6 +267,7 @@ function ProjectProcurement({ project, onClose, onSave }) {
       const boqData = await projectService.getBOQByProjectId(project.id)
       const existingPlans = await projectService.getProjectPlansByProjectId(project.id)
       const historyData = await projectService.getProjectPlanHistory(project.id, "PROCUREMENT")
+      const installationHistoryData = await projectService.getProjectPlanHistory(project.id, "INSTALLATION")
 
       const combinedItems = []
       ;(boqData.items || []).forEach((item) => {
@@ -303,7 +328,7 @@ function ProjectProcurement({ project, onClose, onSave }) {
           const key = planItem.boqItemId ? `boq-${planItem.boqItemId}` : `cat-${planItem.boqCategoryItemId}`
           switch (planItem.planType) {
             case "INSTALLATION":
-              installationInit[key] = planItem.weekNumber
+              installationInit[key] = planItem.weekNumber || null
               break
             case "PROCUREMENT":
               procurementInit[key] = {
@@ -343,6 +368,25 @@ function ProjectProcurement({ project, onClose, onSave }) {
       }
       setProcurementHistory(procurementHistoryMap)
 
+      const installationHistoryMap = {}
+      if (installationHistoryData && Array.isArray(installationHistoryData)) {
+        installationHistoryData.forEach((historyItem) => {
+          if (historyItem.planType === "INSTALLATION") {
+            const key = historyItem.boqItemId ? `boq-${historyItem.boqItemId}` : `cat-${historyItem.boqCategoryItemId}`
+            if (!installationHistoryMap[key]) {
+              installationHistoryMap[key] = []
+            }
+            installationHistoryMap[key].push(historyItem)
+          }
+        })
+        Object.keys(installationHistoryMap).forEach((key) => {
+          installationHistoryMap[key].sort(
+            (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+          )
+        })
+      }
+      setInstallationHistory(installationHistoryMap)
+
       onSave({
         ...project,
         projectInitiationDate: updatedProjectDetails.projectInitiationDate,
@@ -356,92 +400,79 @@ function ProjectProcurement({ project, onClose, onSave }) {
     }
   }
 
-  const handleInstallationChange = (itemKey, weekNumber) => {
-    setInstallationPlan((prev) => ({
-      ...prev,
-      [itemKey]: Number.parseInt(weekNumber),
-    }))
-    const selectedWeek = weeks.find((week) => week.weekNumber === Number.parseInt(weekNumber))
-    if (selectedWeek) {
-      const procurementDateCalc = new Date(selectedWeek.startDate)
-      const newProcurementDateString = toISODateString(procurementDateCalc)
-      setProcurementPlan((prev) => {
-        const newProcurementPlan = {
-          ...prev,
-          [itemKey]: {
-            ...prev[itemKey],
-            date: newProcurementDateString,
-          },
-        }
-        updateDispatchDate(itemKey, procurementDateCalc, newProcurementPlan[itemKey]?.leadTime || 0)
-        return newProcurementPlan
-      })
-    } else {
-      setProcurementPlan((prev) => {
-        const newProcurementPlan = {
-          ...prev,
-          [itemKey]: {
-            ...prev[itemKey],
-            date: null,
-          },
-        }
-        updateDispatchDate(itemKey, null, newProcurementPlan[itemKey]?.leadTime || 0)
-        return newProcurementPlan
-      })
+  const saveHistory = async (itemKey, planType, oldValue, newValue) => {
+    try {
+      const item = boqItems.find((boqItem) => boqItem.id === itemKey)
+      if (!item) return
+
+      const historyEntry = {
+        boqItemId: item.boqItemId,
+        boqCategoryItemId: item.boqCategoryItemId,
+        planType: planType,
+        weekNumber: planType === "INSTALLATION" ? newValue : null,
+        planDate: planType === "PROCUREMENT" ? newValue.date : null,
+        leadTime: planType === "PROCUREMENT" ? newValue.leadTime : null,
+        version: Date.now(),
+        recordedAt: new Date().toISOString(),
+      }
+
+      await projectService.saveProjectPlanHistory(project.id, historyEntry)
+    } catch (error) {
+      console.error("Error saving plan history:", error)
     }
   }
 
-  const handleProcurementDateChange = (itemKey, dateString) => {
-    setProcurementPlan((prev) => {
-      const newProcurementPlan = {
+  const handleInstallationChange = async (itemKey, weekNumber) => {
+    const oldValue = installationPlan[itemKey]
+    const newValue = Number.parseInt(weekNumber)
+
+    if (oldValue !== newValue) {
+      await saveHistory(itemKey, "INSTALLATION", oldValue, newValue)
+    }
+
+    setInstallationPlan((prev) => ({
+      ...prev,
+      [itemKey]: newValue,
+    }))
+    const selectedWeek = weeks.find((week) => week.weekNumber === newValue)
+    if (selectedWeek) {
+      const procurementDateCalc = new Date(selectedWeek.startDate)
+      const newProcurementDateString = toISODateString(procurementDateCalc)
+      setProcurementPlan((prev) => ({
         ...prev,
         [itemKey]: {
           ...prev[itemKey],
-          date: dateString,
+          date: newProcurementDateString,
         },
-      }
-      const procurementDate = dateString ? new Date(dateString) : null
-      updateDispatchDate(itemKey, procurementDate, newProcurementPlan[itemKey]?.leadTime || 0)
-      return newProcurementPlan
-    })
-  }
-
-  const handleProcurementLeadTimeChange = (itemKey, leadTime) => {
-    const newLeadTime = Number.parseInt(leadTime) || 0
-    setProcurementPlan((prev) => {
-      const newProcurementPlan = {
-        ...prev,
-        [itemKey]: {
-          ...prev[itemKey],
-          leadTime: newLeadTime,
-        },
-      }
-      const procurementDateString = newProcurementPlan[itemKey]?.date
-      const procurementDate = procurementDateString ? new Date(procurementDateString) : null
-      updateDispatchDate(itemKey, procurementDate, newLeadTime)
-      return newProcurementPlan
-    })
-  }
-
-  const updateDispatchDate = (itemKey, procurementDateParam, leadTimeDays) => {
-    if (!procurementDateParam) {
-      setDispatchPlan((prev) => ({
+      }))
+    } else {
+      setProcurementPlan((prev) => ({
         ...prev,
         [itemKey]: {
           ...prev[itemKey],
           date: null,
         },
       }))
-      return
     }
-    const dispatchDateCalc = new Date(procurementDateParam)
-    dispatchDateCalc.setDate(dispatchDateCalc.getDate() + leadTimeDays)
-    const newDispatchDateString = toISODateString(dispatchDateCalc)
-    setDispatchPlan((prev) => ({
+  }
+
+  const handleProcurementDateChange = (itemKey, dateString) => {
+    setProcurementPlan((prev) => ({
       ...prev,
       [itemKey]: {
         ...prev[itemKey],
-        date: newDispatchDateString,
+        date: dateString,
+      },
+    }))
+  }
+
+  const handleProcurementLeadTimeChange = (itemKey, leadTime) => {
+    const newLeadTime = Number.parseInt(leadTime) || 0
+    setProcurementPlan((prev) => ({
+      ...prev,
+      [itemKey]: {
+        ...prev[itemKey],
+        leadTime: newLeadTime,
       },
     }))
   }
@@ -658,19 +689,41 @@ function ProjectProcurement({ project, onClose, onSave }) {
                         </td>
                         {/* Installation Plan Column */}
                         <td className="px-4 py-4 align-top">
-                          <select
-                            value={installationPlan[item.id] || ""}
-                            onChange={(e) => handleInstallationChange(item.id, e.target.value)}
-                            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                            disabled // Disabled as per request
-                          >
-                            <option value="">Select Week</option>
-                            {weeks.map((week) => (
-                              <option key={week.weekNumber} value={week.weekNumber}>
-                                {week.label}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="space-y-2">
+                            <select
+                              value={installationPlan[item.id] ? String(installationPlan[item.id]) : ""}
+                              onChange={(e) => handleInstallationChange(item.id, e.target.value)}
+                              className="block w-full rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700 shadow-sm focus:outline-none"
+                              disabled
+                            >
+                              <option value="">Select Week</option>
+                              {weeks.map((week) => (
+                                <option key={week.weekNumber} value={week.weekNumber}>
+                                  {week.label}
+                                </option>
+                              ))}
+                            </select>
+                            {installationHistory[item.id] && installationHistory[item.id].length > 0 && (
+                              <div className="mt-2 rounded-md bg-gray-50 p-2 text-xs text-gray-600">
+                                <h4 className="mb-1 font-semibold">History:</h4>
+                                <div className="max-h-24 overflow-y-auto">
+                                  {installationHistory[item.id].map((historyItem, index) => (
+                                    <div
+                                      key={index}
+                                      className="mb-1 border-b border-gray-200 pb-1 last:mb-0 last:border-b-0"
+                                    >
+                                      <div>Week: {historyItem.weekNumber}</div>
+                                      <div>
+                                        Version: {historyItem.version} (Recorded:{" "}
+                                        {formatDate(new Date(historyItem.recordedAt))}
+                                        {` ${new Date(historyItem.recordedAt).toLocaleTimeString()}`})
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         {/* Procurement Plan Column */}
                         <td className="px-4 py-4 align-top">
@@ -681,7 +734,7 @@ function ProjectProcurement({ project, onClose, onSave }) {
                                 type="date"
                                 value={procurementPlan[item.id]?.date || ""}
                                 onChange={(e) => handleProcurementDateChange(item.id, e.target.value)}
-                                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
                             <div>
@@ -691,7 +744,7 @@ function ProjectProcurement({ project, onClose, onSave }) {
                                 min="0"
                                 value={procurementPlan[item.id]?.leadTime || ""}
                                 onChange={(e) => handleProcurementLeadTimeChange(item.id, e.target.value)}
-                                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
                             {/* Procurement Plan History */}
