@@ -2,7 +2,28 @@
 
 import { FiX, FiEdit3 } from "react-icons/fi"
 
-function MaterialRequisitionList({ materialRequisitions, onRemove, onEdit }) {
+const ApprovalStatusBadge = ({ status, type = "PM" }) => {
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "APPROVED":
+        return "bg-green-100 text-green-800"
+      case "PENDING":
+        return "bg-yellow-100 text-yellow-800"
+      case "REJECTED":
+        return "bg-red-100 text-red-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded ${getStatusColor(status)}`}>
+      {type}: {status}
+    </span>
+  )
+}
+
+function MaterialRequisitionList({ materialRequisitions, onRemove, onEdit, currentUserId, projectManagerId }) {
   if (!materialRequisitions || materialRequisitions.length === 0) {
     return <div className="text-center text-gray-500 py-2 text-sm">No material requisitions added yet</div>
   }
@@ -18,6 +39,14 @@ function MaterialRequisitionList({ materialRequisitions, onRemove, onEdit }) {
       default:
         return "bg-gray-100 text-gray-800"
     }
+  }
+
+  const getPMApprovalStatus = (mtr) => {
+    if (mtr.pmApprovalStatus) {
+      return mtr.pmApprovalStatus
+    }
+    // Auto-determine status based on current user and project manager
+    return currentUserId === projectManagerId ? "APPROVED" : "PENDING"
   }
 
   return (
@@ -38,6 +67,7 @@ function MaterialRequisitionList({ materialRequisitions, onRemove, onEdit }) {
                     {mtr.priority}
                   </span>
                 )}
+                <ApprovalStatusBadge status={getPMApprovalStatus(mtr)} type="PM" />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                 <div>

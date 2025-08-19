@@ -304,4 +304,31 @@ export const projectService = {
       throw error
     }
   },
+
+  async getProjectById(projectId) {
+    try {
+      /* const response = await axios.get(`/api/projects/${projectId}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      return await response.json() */
+
+      const response = await axios.get(
+        `${API_URL}/projects/${projectId}/project`,
+        getAuthHeaders(),
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error fetching project:", error)
+      throw error
+    }
+  }
 }
