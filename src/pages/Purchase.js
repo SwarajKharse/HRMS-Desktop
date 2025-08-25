@@ -3,8 +3,13 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import NewProjects from "../components/Purchase/NewProjects"
+import MaterialRequisitionPurchase from "../components/Purchase/MaterialRequisitionPurchase"
+import ComparisionSheetPurchaser from "../components/Purchase/PurchaserComponents/ComparisionSheetPurchaser"
+import POUploadPurchaser from "../components/Purchase/PurchaserComponents/POUploadPurchaser"
 import { GrWorkshop } from "react-icons/gr"
 import { useAuth } from "../contexts/AuthContext"
+
+
 
 function Projects() {
   const { employee } = useAuth()
@@ -19,6 +24,24 @@ function Projects() {
         label: "Projects",
         icon: GrWorkshop,
         component: NewProjects,
+      },
+      {
+        id: "material-requisition-purchase",
+        label: "Material Requisitions",
+        icon: GrWorkshop,
+        component: MaterialRequisitionPurchase,
+      },
+      {
+        id: "comparision-sheet-purchaser",
+        label: "Comparision Sheet",
+        icon: GrWorkshop,
+        component: ComparisionSheetPurchaser,
+      },
+      {
+        id: "po-upload-purchaser",
+        label: "PO Upload",
+        icon: GrWorkshop,
+        component: POUploadPurchaser,
       }
     ]
 
@@ -26,19 +49,28 @@ function Projects() {
     const designation = employee.designation.name.replace(/\s+/g, "-").toLowerCase() || ""
 
     // Filter tabs based on designation
-   /*  if (designation.includes("director")) {
-      return allTabs // Admin/Manager can see all tabs
-    } else if (designation.includes("sales-team-leader") || designation.includes("leader")) {
-      return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]] // BDM can see unassigned and BDM assigne
-    } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
-      return [allTabs[3], allTabs[4], allTabs[5]] // SSE can see unassigned and SSE assigned
-    } else if (designation.includes("bdm") || designation.includes("business") || designation.includes("development")) {
-      return [allTabs[6]] // BDM can see unassigned and BDM assigned
+    /*  if (designation.includes("director")) {
+       return allTabs // Admin/Manager can see all tabs
+     } else if (designation.includes("sales-team-leader") || designation.includes("leader")) {
+       return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]] // BDM can see unassigned and BDM assigne
+     } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
+       return [allTabs[3], allTabs[4], allTabs[5]] // SSE can see unassigned and SSE assigned
+     } else if (designation.includes("bdm") || designation.includes("business") || designation.includes("development")) {
+       return [allTabs[6]] // BDM can see unassigned and BDM assigned
+     } else {
+       return [allTabs[0]] // Default to just unassigned leads
+     } */
+
+
+
+    if (designation.includes("ass.-purchase-manager")) {
+      return [allTabs[2], allTabs[3]] // BDM can see unassigned and BDM assigne
+    } else if (designation.includes(" purchase-manager")) {
+      return [allTabs[0], allTabs[1]]
     } else {
-      return [allTabs[0]] // Default to just unassigned leads
-    } */
-    
-    return allTabs
+      return []
+    }
+
   }
 
   const availableTabs = getAvailableTabs()
@@ -106,10 +138,9 @@ function Projects() {
                   ref={isActive ? activeTabRef : null}
                   onClick={() => handleTabClick(tab.id)}
                   className={`py-3 px-3 sm:px-4 border-b-2 font-medium text-sm flex items-center transition-colors duration-200
-                    ${
-                      isActive
-                        ? "border-blue-500 text-blue-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ${isActive
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }`}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />

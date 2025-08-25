@@ -15,6 +15,7 @@ function ProjectDispatch({ project, onClose, onSave }) {
   const [procurementPlan, setProcurementPlan] = useState({})
   const [dispatchPlan, setDispatchPlan] = useState({})
   const [dispatchHistory, setDispatchHistory] = useState({})
+  const [installationHistory, setInstallationHistory] = useState({})
 
   // New state for conditional rendering of initial setup form
   const [showInitialSetup, setShowInitialSetup] = useState(true)
@@ -66,6 +67,29 @@ function ProjectDispatch({ project, onClose, onSave }) {
     setWeeks(weeksList)
   }
 
+  const saveHistory = async (itemKey, planType, oldValue, newValue) => {
+    try {
+      const item = boqItems.find((item) => item.id === itemKey)
+      if (!item) return
+
+      const historyEntry = {
+        projectId: project.id,
+        boqItemId: item.boqItemId,
+        boqCategoryItemId: item.boqCategoryItemId,
+        planType: planType,
+        weekNumber: planType === "INSTALLATION" ? oldValue : null,
+        planDate: planType === "DISPATCH" ? oldValue?.date : null,
+        leadTime: planType === "DISPATCH" ? oldValue?.leadTime : null,
+        version: 1, // Backend will handle version incrementing
+        recordedAt: new Date().toISOString(),
+      }
+
+      await projectService.saveProjectPlanHistory(project.id, historyEntry)
+    } catch (error) {
+      console.error("Error saving history:", error)
+    }
+  }
+
   // Fetch BOQ items and project details
   useEffect(() => {
     const fetchData = async () => {
@@ -102,7 +126,8 @@ function ProjectDispatch({ project, onClose, onSave }) {
 
         const boqData = await projectService.getBOQByProjectId(project.id)
         const existingPlans = await projectService.getProjectPlansByProjectId(project.id)
-        const historyData = await projectService.getProjectPlanHistory(project.id, "DISPATCH")
+        const dispatchHistoryData = await projectService.getProjectPlanHistory(project.id, "DISPATCH")
+        const installationHistoryData = await projectService.getProjectPlanHistory(project.id, "INSTALLATION")
 
         const combinedItems = []
         ;(boqData.items || []).forEach((item) => {
@@ -163,7 +188,7 @@ function ProjectDispatch({ project, onClose, onSave }) {
             const key = planItem.boqItemId ? `boq-${planItem.boqItemId}` : `cat-${planItem.boqCategoryItemId}`
             switch (planItem.planType) {
               case "INSTALLATION":
-                installationInit[key] = planItem.weekNumber
+                installationInit[key] = planItem.weekNumber || null
                 break
               case "PROCUREMENT":
                 procurementInit[key] = {
@@ -187,8 +212,8 @@ function ProjectDispatch({ project, onClose, onSave }) {
         setDispatchPlan(dispatchInit)
 
         const dispatchHistoryMap = {}
-        if (historyData && Array.isArray(historyData)) {
-          historyData.forEach((historyItem) => {
+        if (dispatchHistoryData && Array.isArray(dispatchHistoryData)) {
+          dispatchHistoryData.forEach((historyItem) => {
             const key = historyItem.boqItemId ? `boq-${historyItem.boqItemId}` : `cat-${historyItem.boqCategoryItemId}`
             if (!dispatchHistoryMap[key]) {
               dispatchHistoryMap[key] = []
@@ -200,6 +225,24 @@ function ProjectDispatch({ project, onClose, onSave }) {
           })
         }
         setDispatchHistory(dispatchHistoryMap)
+
+        const installationHistoryMap = {}
+        if (installationHistoryData && Array.isArray(installationHistoryData)) {
+          installationHistoryData.forEach((historyItem) => {
+            const key = historyItem.boqItemId ? `boq-${historyItem.boqItemId}` : `cat-${historyItem.boqCategoryItemId}`
+            if (!installationHistoryMap[key]) {
+              installationHistoryMap[key] = []
+            }
+            installationHistoryMap[key].push(historyItem)
+          })
+          Object.keys(installationHistoryMap).forEach((key) => {
+            installationHistoryMap[key].sort(
+              (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime(),
+            )
+          })
+        }
+        setInstallationHistory(installationHistoryMap)
+
         setLoading(false)
       } catch (error) {
         console.error("Error fetching data:", error)
@@ -299,7 +342,7 @@ function ProjectDispatch({ project, onClose, onSave }) {
           const key = planItem.boqItemId ? `boq-${planItem.boqItemId}` : `cat-${planItem.boqCategoryItemId}`
           switch (planItem.planType) {
             case "INSTALLATION":
-              installationInit[key] = planItem.weekNumber
+              installationInit[key] = planItem.weekNumber || null
               break
             case "PROCUREMENT":
               procurementInit[key] = {
@@ -350,74 +393,71 @@ function ProjectDispatch({ project, onClose, onSave }) {
     }
   }
 
-  const handleInstallationChange = (itemKey, weekNumber) => {
+  const handleInstallationChange = async (itemKey, weekNumber) => {
+    const oldValue = installationPlan[itemKey]
+    const newValue = Number.parseInt(weekNumber)
+
+    // Save history before making changes
+    if (oldValue !== undefined && oldValue !== newValue) {
+      await saveHistory(itemKey, "INSTALLATION", oldValue, newValue)
+    }
+
     setInstallationPlan((prev) => ({
       ...prev,
-      [itemKey]: Number.parseInt(weekNumber),
+      [itemKey]: newValue,
     }))
-    const selectedWeek = weeks.find((week) => week.weekNumber === Number.parseInt(weekNumber))
+
+    const selectedWeek = weeks.find((week) => week.weekNumber === newValue)
     if (selectedWeek) {
       const procurementDateCalc = new Date(selectedWeek.startDate)
       const newProcurementDateString = toISODateString(procurementDateCalc)
-      setProcurementPlan((prev) => {
-        const newProcurementPlan = {
-          ...prev,
-          [itemKey]: {
-            ...prev[itemKey],
-            date: newProcurementDateString,
-          },
-        }
-        updateDispatchDate(itemKey, procurementDateCalc, newProcurementPlan[itemKey]?.leadTime || 0)
-        return newProcurementPlan
-      })
+      setProcurementPlan((prev) => ({
+        ...prev,
+        [itemKey]: {
+          ...prev[itemKey],
+          date: newProcurementDateString,
+        },
+      }))
     } else {
-      setProcurementPlan((prev) => {
-        const newProcurementPlan = {
-          ...prev,
-          [itemKey]: {
-            ...prev[itemKey],
-            date: null,
-          },
-        }
-        updateDispatchDate(itemKey, null, newProcurementPlan[itemKey]?.leadTime || 0)
-        return newProcurementPlan
-      })
+      setProcurementPlan((prev) => ({
+        ...prev,
+        [itemKey]: {
+          ...prev[itemKey],
+          date: null,
+        },
+      }))
     }
   }
 
   const handleProcurementDateChange = (itemKey, dateString) => {
-    setProcurementPlan((prev) => {
-      const newProcurementPlan = {
-        ...prev,
-        [itemKey]: {
-          ...prev[itemKey],
-          date: dateString,
-        },
-      }
-      const procurementDate = dateString ? new Date(dateString) : null
-      updateDispatchDate(itemKey, procurementDate, newProcurementPlan[itemKey]?.leadTime || 0)
-      return newProcurementPlan
-    })
+    setProcurementPlan((prev) => ({
+      ...prev,
+      [itemKey]: {
+        ...prev[itemKey],
+        date: dateString,
+      },
+    }))
   }
 
   const handleProcurementLeadTimeChange = (itemKey, leadTime) => {
     const newLeadTime = Number.parseInt(leadTime) || 0
-    setProcurementPlan((prev) => {
-      const newProcurementPlan = {
-        ...prev,
-        [itemKey]: {
-          ...prev[itemKey],
-          leadTime: newLeadTime,
-        },
-      }
-      const procurementDateString = newProcurementPlan[itemKey]?.date
-      const procurementDate = procurementDateString ? new Date(procurementDateString) : null
-      updateDispatchDate(itemKey, procurementDate, newLeadTime)
-      return newProcurementPlan
-    })
+    setProcurementPlan((prev) => ({
+      ...prev,
+      [itemKey]: {
+        ...prev[itemKey],
+        leadTime: newLeadTime,
+      },
+    }))
   }
 
-  const handleDispatchDateChange = (itemKey, dateString) => {
+  const handleDispatchDateChange = async (itemKey, dateString) => {
+    const oldValue = dispatchPlan[itemKey]
+
+    // Save history before making changes
+    if (oldValue?.date && oldValue.date !== dateString) {
+      await saveHistory(itemKey, "DISPATCH", oldValue, { ...oldValue, date: dateString })
+    }
+
     setDispatchPlan((prev) => ({
       ...prev,
       [itemKey]: {
@@ -427,36 +467,20 @@ function ProjectDispatch({ project, onClose, onSave }) {
     }))
   }
 
-  const handleDispatchLeadTimeChange = (itemKey, leadTime) => {
+  const handleDispatchLeadTimeChange = async (itemKey, leadTime) => {
     const newLeadTime = Number.parseInt(leadTime) || 0
+    const oldValue = dispatchPlan[itemKey]
+
+    // Save history before making changes
+    if (oldValue?.leadTime !== undefined && oldValue.leadTime !== newLeadTime) {
+      await saveHistory(itemKey, "DISPATCH", oldValue, { ...oldValue, leadTime: newLeadTime })
+    }
+
     setDispatchPlan((prev) => ({
       ...prev,
       [itemKey]: {
         ...prev[itemKey],
         leadTime: newLeadTime,
-      },
-    }))
-  }
-
-  const updateDispatchDate = (itemKey, procurementDateParam, leadTimeDays) => {
-    if (!procurementDateParam) {
-      setDispatchPlan((prev) => ({
-        ...prev,
-        [itemKey]: {
-          ...prev[itemKey],
-          date: null,
-        },
-      }))
-      return
-    }
-    const dispatchDateCalc = new Date(procurementDateParam)
-    dispatchDateCalc.setDate(dispatchDateCalc.getDate() + leadTimeDays)
-    const newDispatchDateString = toISODateString(dispatchDateCalc)
-    setDispatchPlan((prev) => ({
-      ...prev,
-      [itemKey]: {
-        ...prev[itemKey],
-        date: newDispatchDateString,
       },
     }))
   }
@@ -671,13 +695,12 @@ function ProjectDispatch({ project, onClose, onSave }) {
                           <div className="text-xs text-gray-500">Category: {item.mainCategory}</div>
                           <div className="text-xs font-semibold text-purple-700">{item.type}</div>
                         </td>
-                        {/* Installation Plan Column (Disabled) */}
                         <td className="px-4 py-4 align-top">
                           <select
-                            value={installationPlan[item.id] || ""}
+                            value={installationPlan[item.id] ? String(installationPlan[item.id]) : ""}
                             onChange={(e) => handleInstallationChange(item.id, e.target.value)}
-                            className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                            disabled // Disabled as per request
+                            className="block w-full rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700 shadow-sm focus:outline-none"
+                            disabled
                           >
                             <option value="">Select Week</option>
                             {weeks.map((week) => (
@@ -686,6 +709,26 @@ function ProjectDispatch({ project, onClose, onSave }) {
                               </option>
                             ))}
                           </select>
+                          {installationHistory[item.id] && installationHistory[item.id].length > 0 && (
+                            <div className="mt-2 rounded-md bg-gray-50 p-2 text-xs text-gray-600">
+                              <h4 className="mb-1 font-semibold">History:</h4>
+                              <div className="max-h-24 overflow-y-auto">
+                                {installationHistory[item.id].map((historyItem, index) => (
+                                  <div
+                                    key={index}
+                                    className="mb-1 border-b border-gray-200 pb-1 last:mb-0 last:border-b-0"
+                                  >
+                                    <div>Week: {historyItem.weekNumber}</div>
+                                    <div>
+                                      Version: {historyItem.version} (Recorded:{" "}
+                                      {formatDate(new Date(historyItem.recordedAt))}{" "}
+                                      {new Date(historyItem.recordedAt).toLocaleTimeString()})
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </td>
                         {/* Procurement Plan Column (Disabled) */}
                         <td className="px-4 py-4 align-top">
@@ -697,7 +740,7 @@ function ProjectDispatch({ project, onClose, onSave }) {
                                 value={procurementPlan[item.id]?.date || ""}
                                 onChange={(e) => handleProcurementDateChange(item.id, e.target.value)}
                                 className="block w-full rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700 shadow-sm focus:outline-none"
-                                disabled // Disabled as per request
+                                disabled
                               />
                             </div>
                             <div>
@@ -708,7 +751,7 @@ function ProjectDispatch({ project, onClose, onSave }) {
                                 value={procurementPlan[item.id]?.leadTime || ""}
                                 onChange={(e) => handleProcurementLeadTimeChange(item.id, e.target.value)}
                                 className="block w-full rounded-md border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-700 shadow-sm focus:outline-none"
-                                disabled // Disabled as per request
+                                disabled
                               />
                             </div>
                           </div>
@@ -721,9 +764,8 @@ function ProjectDispatch({ project, onClose, onSave }) {
                               <input
                                 type="date"
                                 value={dispatchPlan[item.id]?.date || ""}
-                                onChange={(e) => handleDispatchDateChange(item.id, e.target.value)} // Re-enabled
-                                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                                // Removed disabled attribute
+                                onChange={(e) => handleDispatchDateChange(item.id, e.target.value)}
+                                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
                             <div>
@@ -732,9 +774,8 @@ function ProjectDispatch({ project, onClose, onSave }) {
                                 type="number"
                                 min="0"
                                 value={dispatchPlan[item.id]?.leadTime || ""}
-                                onChange={(e) => handleDispatchLeadTimeChange(item.id, e.target.value)} // Re-enabled
-                                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
-                                // Removed disabled attribute
+                                onChange={(e) => handleDispatchLeadTimeChange(item.id, e.target.value)}
+                                className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                               />
                             </div>
                             {/* Dispatch Plan History */}
@@ -752,8 +793,8 @@ function ProjectDispatch({ project, onClose, onSave }) {
                                       </div>
                                       <div>
                                         Version: {historyItem.version} (Recorded:{" "}
-                                        {formatDate(new Date(historyItem.recordedAt))}
-                                        {` ${new Date(historyItem.recordedAt).toLocaleTimeString()}`})
+                                        {formatDate(new Date(historyItem.recordedAt))}{" "}
+                                        {new Date(historyItem.recordedAt).toLocaleTimeString()})
                                       </div>
                                     </div>
                                   ))}
