@@ -62,10 +62,11 @@ function Projects() {
      } */
 
 
+    
 
     if (designation.includes("ass.-purchase-manager")) {
       return [allTabs[2], allTabs[3]] // BDM can see unassigned and BDM assigne
-    } else if (designation.includes(" purchase-manager")) {
+    } else if (designation.includes("purchase-manager")) {
       return [allTabs[0], allTabs[1]]
     } else {
       return []

@@ -55,4 +55,53 @@ export const comparisonSheetService = {
       throw error
     }
   },
+
+  // Get employees by designation (purchasers have designation ID = 1)
+  getPurchasers: async () => {
+    try {
+      const response = await axios.get(`${API_URL}/material-requisitions/employees/purchasers`, {
+        ...getAuthHeaders(),
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error fetching purchasers:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+  // Get employees by designation ID
+  getEmployeesByDesignation: async (designationId) => {
+    try {
+      const response = await axios.get(`${API_URL}/material-requisitions/employees/purchasers`, {
+        ...getAuthHeaders(),
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error fetching employees by designation:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+  // Assign purchaser to MTR
+  assignPurchaser: async (mtrId, purchaserId) => {
+    try {
+      const currentUserId = 1 // TODO: Get from authentication context
+
+      const response = await axios.put(
+        `${API_URL}/material-requisitions/${mtrId}/assign-purchaser`,
+        {},
+        {
+          ...getAuthHeaders(),
+          params: {
+            purchaserId: purchaserId,
+            currentUserId: currentUserId,
+          },
+        },
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error assigning purchaser:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
 }

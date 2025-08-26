@@ -2,9 +2,9 @@
 import { useState, useEffect, useCallback } from "react"
 import { materialRequisitionService } from "../../../services/materialRequisitionService" // Ensure this path is correct
 import { comparisonSheetService } from "../../../services/comparisonSheetService" // Added import for comparison sheet service
-import { FiSave, FiX, FiEdit3 } from "react-icons/fi" // Added FiEdit3 for edit icon
-import MTRDetailsModal from "./ComparisionSheetModal" // Import the new modal component
-import { MdOutlineCompare } from "react-icons/md";
+import { FiSave, FiX, FiEdit3, FiBarChart2 } from "react-icons/fi" // Changed FiBarChart3 to FiBarChart2 as FiBarChart3 doesn't exist
+import { useAuth } from "../../../contexts/AuthContext"
+import ComparisionSheetModal from "./ComparisionSheetModal" // Added import for ComparisionSheetModal
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -22,19 +22,20 @@ export default function ComparisionSheetPurchaser() {
   const [pageSize, setPageSize] = useState(10) // Default page size
   const [filters, setFilters] = useState({
     itemName: "",
+    projectName: "", // Added project name filter
     status: "All",
     priority: "All",
     mtrDateFrom: "",
     mtrDateTo: "",
   })
 
-  // State for inline editing
-  const [editingMtrId, setEditingMtrId] = useState(null)
-  const [editedMtrData, setEditedMtrData] = useState({})
+  const { user } = useAuth()
+  let userId = 1
+  if (user) {
+    userId = user.userId
+  }
 
-  // State for view details modal
-  const [showDetailsModal, setShowDetailsModal] = useState(false)
-  const [selectedMTRForDetails, setSelectedMTRForDetails] = useState(null)
+  const [currentUserId] = useState(userId) // This should come from authentication context
 
   const fetchMaterialRequisitions = useCallback(async () => {
     setLoading(true)
@@ -43,7 +44,9 @@ export default function ComparisionSheetPurchaser() {
       const queryParams = new URLSearchParams({
         page: currentPage,
         size: pageSize,
+        assignedPurchaser: currentUserId, // Filter by current user as assigned purchaser
         ...(filters.itemName && { itemName: filters.itemName }),
+        ...(filters.projectName && { projectName: filters.projectName }), // Added project name filter
         ...(filters.status !== "All" && { status: filters.status }),
         ...(filters.priority !== "All" && { priority: filters.priority }),
         ...(filters.mtrDateFrom && { mtrDateFrom: filters.mtrDateFrom }),
@@ -73,11 +76,13 @@ export default function ComparisionSheetPurchaser() {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, pageSize, filters])
+  }, [currentPage, pageSize, filters, currentUserId])
 
-  useEffect(() => {
-    fetchMaterialRequisitions()
-  }, [fetchMaterialRequisitions])
+  const [editingMtrId, setEditingMtrId] = useState(null)
+  const [editedMtrData, setEditedMtrData] = useState({})
+
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedMTRForDetails, setSelectedMTRForDetails] = useState(null)
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target
@@ -170,7 +175,6 @@ export default function ComparisionSheetPurchaser() {
     return items
   }
 
-  // This function will now be explicitly called by the edit icon
   const handleEditClick = (e, mtr) => {
     e.stopPropagation() // Prevent row click from also triggering
     setEditingMtrId(mtr.id)
@@ -244,7 +248,6 @@ export default function ComparisionSheetPurchaser() {
       console.log("[v0] Saving comparison sheet data:", comparisonData)
       const result = await comparisonSheetService.saveComparisonSheet(comparisonData)
       console.log("[v0] Comparison sheet saved successfully:", result)
-      alert("Comparison sheet saved successfully!")
       return result
     } catch (error) {
       console.error("[v0] Error saving comparison sheet:", error)
@@ -252,11 +255,21 @@ export default function ComparisionSheetPurchaser() {
     }
   }
 
+  const handleMTRUpdate = (updatedMTR) => {
+    setRequisitions((prev) => prev.map((req) => (req.id === updatedMTR.id ? { ...req, ...updatedMTR } : req)))
+  }
+
+  useEffect(() => {
+    fetchMaterialRequisitions()
+  }, [fetchMaterialRequisitions])
+
   return (
     <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
       <div className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-lg">
         <div className="flex flex-col space-y-1.5 p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">Material Requisitions</h2>
+          <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">
+            My Assigned Material Requisitions
+          </h2>
         </div>
         <div className="p-6 pt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -272,6 +285,22 @@ export default function ComparisionSheetPurchaser() {
                 name="itemName"
                 placeholder="Filter by item name"
                 value={filters.itemName}
+                onChange={handleFilterChange}
+                className="flex h-10 w-full rounded-md border border-blue-300 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="projectName"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 block mb-1 text-blue-800"
+              >
+                Project Name
+              </label>
+              <input
+                id="projectName"
+                name="projectName"
+                placeholder="Filter by project name"
+                value={filters.projectName}
                 onChange={handleFilterChange}
                 className="flex h-10 w-full rounded-md border border-blue-300 bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
@@ -475,7 +504,7 @@ export default function ComparisionSheetPurchaser() {
                                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 h-9 px-3 py-1"
                                 title="Create Comparison Sheet"
                               >
-                                <MdOutlineCompare size={16} />
+                                <FiBarChart2 size={16} /> {/* Updated icon reference */}
                               </button>
                             </div>
                           )}
@@ -542,10 +571,13 @@ export default function ComparisionSheetPurchaser() {
           )}
         </div>
       </div>
-      {showDetailsModal && (
-        <MTRDetailsModal
+      {showDetailsModal && selectedMTRForDetails && (
+        <ComparisionSheetModal
           mtr={selectedMTRForDetails}
-          onClose={() => setShowDetailsModal(false)}
+          onClose={() => {
+            setShowDetailsModal(false)
+            setSelectedMTRForDetails(null)
+          }}
           onSave={handleSaveComparisonSheet}
         />
       )}
