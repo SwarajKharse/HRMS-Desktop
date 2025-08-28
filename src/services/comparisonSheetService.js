@@ -1,106 +1,141 @@
 import axios from "axios"
 
-const API_URL = `${process.env.REACT_APP_API_URL}`
-
-const getAuthHeaders = () => {
-  return {
-    headers: {
-      "Content-Type": "application/json",
-      // Add authentication headers as needed
-      // "Authorization": `Bearer ${localStorage.getItem("authToken")}`,
-    },
-  }
-}
+const API_BASE_URL = `${process.env.REACT_APP_API_URL}` || "https://your-api-base-url.com"
 
 export const comparisonSheetService = {
-  // Save comparison sheet data
-  saveComparisonSheet: async (comparisonData) => {
+  updateMaterialRequisition: async (mtrId, payload) => {
     try {
-      const currentUserId = 1 // TODO: Get from authentication context
-
-      const response = await axios.post(
-        `${API_URL}/material-requisitions/comparison-sheet`,
-        {
-          boqMtrId: comparisonData.boqMtrId,
-          items: comparisonData.items,
-          selectedVendor: comparisonData.selectedVendor,
-          createdBy: comparisonData.createdBy || currentUserId.toString(),
-        },
-        {
-          ...getAuthHeaders(),
-          params: {
-            currentUserId: currentUserId,
-          },
-        },
-      )
+      const response = await axios.put(`${API_BASE_URL}/material-requisitions/${mtrId}`, payload)
       return response.data
     } catch (error) {
-      console.error("Error saving comparison sheet:", error.response ? error.response.data : error.message)
+      console.error("Error updating material requisition:", error)
       throw error
     }
   },
 
-  // Get comparison sheet for MTR
-  getComparisonSheet: async (mtrId) => {
+  getMaterialRequisitionById: async (mtrId) => {
     try {
-      const response = await axios.get(`${API_URL}/material-requisitions/${mtrId}/comparison-sheets`, {
-        ...getAuthHeaders(),
-      })
-      return response.data || []
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/${mtrId}/with-comparison-sheet`)
+      return response.data
     } catch (error) {
-      if (error.response && error.response.status === 404) {
-        return []
-      }
-      console.error("Error fetching comparison sheet:", error.response ? error.response.data : error.message)
+      console.error("Error fetching material requisition with comparison sheet:", error)
       throw error
     }
   },
 
-  // Get employees by designation (purchasers have designation ID = 1)
+  getMaterialRequisitions: async (filters = {}) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions`, {
+        params: filters,
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error fetching material requisitions:", error)
+      throw error
+    }
+  },
+
+  getPMApprovedMaterialRequisitions: async (filters = {}) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/pm-approved`, {
+        params: filters,
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error fetching PM approved material requisitions:", error)
+      throw error
+    }
+  },
+
+  updatePMApprovalStatus: async (mtrId, status, remarks = "") => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/material-requisitions/${mtrId}/pm-approval`, null, {
+        params: {
+          status: status,
+          remarks: remarks,
+          currentUserId: 1,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error updating PM approval status:", error)
+      throw error
+    }
+  },
+
   getPurchasers: async () => {
     try {
-      const response = await axios.get(`${API_URL}/material-requisitions/employees/purchasers`, {
-        ...getAuthHeaders(),
-      })
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/employees/purchasers`)
       return response.data
     } catch (error) {
-      console.error("Error fetching purchasers:", error.response ? error.response.data : error.message)
+      console.error("Error fetching purchasers:", error)
       throw error
     }
   },
 
-  // Get employees by designation ID
-  getEmployeesByDesignation: async (designationId) => {
-    try {
-      const response = await axios.get(`${API_URL}/material-requisitions/employees/purchasers`, {
-        ...getAuthHeaders(),
-      })
-      return response.data
-    } catch (error) {
-      console.error("Error fetching employees by designation:", error.response ? error.response.data : error.message)
-      throw error
-    }
-  },
-
-  // Assign purchaser to MTR
   assignPurchaser: async (mtrId, purchaserId) => {
     try {
-      const currentUserId = 1 // TODO: Get from authentication context
+      const response = await axios.put(`${API_BASE_URL}/material-requisitions/${mtrId}/assign-purchaser`, null, {
+        params: {
+          purchaserId: purchaserId,
+          currentUserId: 1,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error assigning purchaser:", error)
+      throw error
+    }
+  },
 
+  getComparisonSheet: async (mtrId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/${mtrId}/comparison-sheets`)
+      return response.data
+    } catch (error) {
+      console.error("Error fetching comparison sheet:", error)
+      throw error
+    }
+  },
+
+  saveComparisonSheet: async (comparisonData) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/material-requisitions/comparison-sheet`, comparisonData, {
+        params: {
+          currentUserId: 1,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error saving comparison sheet:", error)
+      throw error
+    }
+  },
+
+  updateSelectedVendor: async (comparisonSheetId, selectedVendor) => {
+    try {
       const response = await axios.put(
-        `${API_URL}/material-requisitions/${mtrId}/assign-purchaser`,
-        {},
+        `${API_BASE_URL}/material-requisitions/comparison-sheet/${comparisonSheetId}/select-vendor`,
+        null,
         {
-          ...getAuthHeaders(),
           params: {
-            purchaserId: purchaserId,
-            currentUserId: currentUserId,
+            selectedVendor: selectedVendor,
           },
         },
       )
       return response.data
     } catch (error) {
-      console.error("Error assigning purchaser:", error.response ? error.response.data : error.message)
+      console.error("Error updating selected vendor:", error)
+      throw error
+    }
+  },
+
+  getComparisonSheetById: async (id) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/comparison-sheet/${id}`)
+      return response.data
+    } catch (error) {
+      console.error("Error fetching comparison sheet by ID:", error)
       throw error
     }
   },

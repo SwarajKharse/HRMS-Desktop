@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { FiX, FiSave } from "react-icons/fi"
+import { FiX, FiSave, FiCheck, FiXCircle } from "react-icons/fi"
 import { motion } from "framer-motion"
 import { comparisonSheetService } from "../../services/comparisonSheetService"
 
@@ -18,17 +18,65 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
 
+  const [mtrData, setMtrData] = useState(mtr)
+  const [mtrLoading, setMtrLoading] = useState(false)
+  const [selectedVendorDetails, setSelectedVendorDetails] = useState(null)
+
+  const [pmApprovalStatus, setPmApprovalStatus] = useState(mtr?.pmApprovalStatus || "PENDING")
+  const [pmApprovalRemarks, setPmApprovalRemarks] = useState(mtr?.pmApprovalRemarks || "")
+  const [pmApprovalLoading, setPmApprovalLoading] = useState(false)
+
   useEffect(() => {
-    fetchPurchasers()
+    const loadPurchasers = async () => {
+      try {
+        const purchaserList = await comparisonSheetService.getPurchasers()
+        setPurchasers(purchaserList)
+      } catch (error) {
+        console.error("Error fetching purchasers:", error)
+      }
+    }
+
+    loadPurchasers()
+    fetchMTRData()
   }, [])
 
-  const fetchPurchasers = async () => {
+  const fetchMTRData = async () => {
+    if (!mtr?.id) return
+
+    setMtrLoading(true)
     try {
-      const purchasersList = await comparisonSheetService.getPurchasers()
-      setPurchasers(purchasersList)
+      const mtrWithComparisonSheet = await comparisonSheetService.getMaterialRequisitionById(mtr.id)
+      setMtrData(mtrWithComparisonSheet)
+
+      if (mtrWithComparisonSheet.selectedVendor && mtrWithComparisonSheet.comparisonSheetId) {
+        await fetchSelectedVendorDetails(
+          mtrWithComparisonSheet.comparisonSheetId,
+          mtrWithComparisonSheet.selectedVendor,
+        )
+      }
     } catch (error) {
-      console.error("Error fetching purchasers:", error)
-      setError("Failed to load purchasers")
+      console.error("Error fetching MTR data:", error)
+    } finally {
+      setMtrLoading(false)
+    }
+  }
+
+  const fetchSelectedVendorDetails = async (comparisonSheetId, selectedVendorName) => {
+    try {
+      const comparisonSheetData = await comparisonSheetService.getComparisonSheet(mtr.id)
+      if (comparisonSheetData && comparisonSheetData.length > 0) {
+        const latestComparisonSheet = comparisonSheetData[comparisonSheetData.length - 1]
+        if (latestComparisonSheet.comparisonItems) {
+          const vendorDetails = latestComparisonSheet.comparisonItems.find(
+            (item) => item.vendorName === selectedVendorName,
+          )
+          if (vendorDetails) {
+            setSelectedVendorDetails(vendorDetails)
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching selected vendor details:", error)
     }
   }
 
@@ -43,12 +91,12 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
     setSuccess("")
 
     try {
-      await comparisonSheetService.assignPurchaser(mtr.id, Number.parseInt(selectedPurchaser))
+      await comparisonSheetService.assignPurchaser(mtrData.id, Number.parseInt(selectedPurchaser))
       setSuccess("Purchaser assigned successfully!")
 
       // Call parent onSave if provided
       if (onSave) {
-        onSave({ ...mtr, assignedPurchaser: Number.parseInt(selectedPurchaser) })
+        onSave({ ...mtrData, assignedPurchaser: Number.parseInt(selectedPurchaser) })
       }
     } catch (error) {
       console.error("Error assigning purchaser:", error)
@@ -58,7 +106,38 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
     }
   }
 
-  if (!mtr) return null
+  const handleSavePMApproval = async () => {
+    if (!pmApprovalStatus || pmApprovalStatus === "PENDING") {
+      setError("Please select an approval status")
+      return
+    }
+
+    setPmApprovalLoading(true)
+    setError("")
+    setSuccess("")
+
+    try {
+      await comparisonSheetService.updatePMApprovalStatus(mtrData.id, pmApprovalStatus, pmApprovalRemarks)
+      setSuccess("PM approval status updated successfully!")
+
+      // Call parent onSave if provided
+      if (onSave) {
+        onSave({
+          ...mtrData,
+          pmApprovalStatus,
+          pmApprovalRemarks,
+          pmApprovalDate: new Date().toISOString(),
+        })
+      }
+    } catch (error) {
+      console.error("Error updating PM approval:", error)
+      setError("Failed to update PM approval status. Please try again.")
+    } finally {
+      setPmApprovalLoading(false)
+    }
+  }
+
+  if (!mtrData) return null
 
   return (
     <motion.div
@@ -91,47 +170,47 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <p className="text-sm font-medium text-gray-600">MTR Code:</p>
-              <p className="font-semibold">{mtr.mtrCode || "N/A"}</p>
+              <p className="font-semibold">{mtrData.mtrCode || "N/A"}</p>
             </div>
             <div className="col-span-2">
               <p className="text-sm font-medium text-gray-600">Product Name:</p>
-              <p className="font-semibold">{mtr.productName || "N/A"}</p>
+              <p className="font-semibold">{mtrData.productName || "N/A"}</p>
             </div>
             <div className="col-span-2">
               <p className="text-sm font-medium text-gray-600">Project Name:</p>
-              <p className="font-semibold">{mtr.projectName || "N/A"}</p>
+              <p className="font-semibold">{mtrData.projectName || "N/A"}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">MTR Qty:</p>
-              <p>{mtr.mtrQty}</p>
+              <p>{mtrData.mtrQty}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Stock Allotted:</p>
-              <p>{mtr.stockAlloted}</p>
+              <p>{mtrData.stockAlloted}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Purchase MTR:</p>
-              <p>{mtr.purchaseMTR}</p>
+              <p>{mtrData.purchaseMTR}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">DC Qty:</p>
-              <p>{mtr.dcQty}</p>
+              <p>{mtrData.dcQty}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">MTR Date:</p>
-              <p>{formatDate(mtr.mtrDate)}</p>
+              <p>{formatDate(mtrData.mtrDate)}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Expected Delivery:</p>
-              <p>{formatDate(mtr.expectedDeliveryDate)}</p>
+              <p>{formatDate(mtrData.expectedDeliveryDate)}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Priority:</p>
-              <p>{mtr.priority}</p>
+              <p>{mtrData.priority}</p>
             </div>
             <div className="col-span-2">
               <p className="text-sm font-medium text-gray-600">Status:</p>
-              <p>{mtr.status}</p>
+              <p>{mtrData.status}</p>
             </div>
 
             <div className="col-span-2 mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -164,17 +243,121 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
               </div>
             </div>
 
+            {mtrData.selectedVendor && (
+              <div className="col-span-2 mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h4 className="text-md font-semibold text-gray-800 mb-3">Selected Vendor & PM Approval</h4>
+
+                <div className="mb-4 p-3 bg-white rounded border">
+                  <p className="text-sm font-medium text-gray-700 mb-2">Selected Vendor Details:</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <p className="text-xs font-medium text-gray-600">Vendor Name:</p>
+                      <p className="font-semibold text-blue-600">{mtrData.selectedVendor}</p>
+                    </div>
+                    {selectedVendorDetails && (
+                      <>
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">Rate:</p>
+                          <p className="font-semibold text-green-600">₹{selectedVendorDetails.rate}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">Value:</p>
+                          <p className="font-semibold text-green-600">₹{selectedVendorDetails.value}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-600">Lead Time:</p>
+                          <p className="font-semibold text-orange-600">{selectedVendorDetails.leadTime || "N/A"}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  {!selectedVendorDetails && mtrLoading && (
+                    <p className="text-sm text-gray-500 mt-2">Loading vendor details...</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Current Approval Status:</p>
+                    <div className="flex items-center gap-2">
+                      {mtrData.pmApprovalStatus === "APPROVED" && <FiCheck className="text-green-600" />}
+                      {mtrData.pmApprovalStatus === "REJECTED" && <FiXCircle className="text-red-600" />}
+                      <span
+                        className={`font-semibold ${
+                          mtrData.pmApprovalStatus === "APPROVED"
+                            ? "text-green-600"
+                            : mtrData.pmApprovalStatus === "REJECTED"
+                              ? "text-red-600"
+                              : "text-yellow-600"
+                        }`}
+                      >
+                        {mtrData.pmApprovalStatus || "PENDING"}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Approval Date:</p>
+                    <p>{formatDate(mtrData.pmApprovalDate)}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Update Approval Status:</label>
+                    <select
+                      value={pmApprovalStatus}
+                      onChange={(e) => setPmApprovalStatus(e.target.value)}
+                      className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={pmApprovalLoading}
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="APPROVED">Approved</option>
+                      <option value="REJECTED">Rejected</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Remarks:</label>
+                    <textarea
+                      value={pmApprovalRemarks}
+                      onChange={(e) => setPmApprovalRemarks(e.target.value)}
+                      placeholder="Enter approval remarks for selected vendor..."
+                      rows={3}
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      disabled={pmApprovalLoading}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSavePMApproval}
+                    disabled={pmApprovalLoading || pmApprovalStatus === "PENDING"}
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed h-10 px-4 py-2 gap-2"
+                  >
+                    <FiSave size={16} />
+                    {pmApprovalLoading ? "Saving..." : "Update Vendor Approval"}
+                  </button>
+                </div>
+
+                {mtrData.pmApprovalRemarks && (
+                  <div className="mt-3 p-3 bg-white rounded border">
+                    <p className="text-sm font-medium text-gray-700">Previous Remarks:</p>
+                    <p className="text-sm text-gray-700">{mtrData.pmApprovalRemarks}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="col-span-2">
               <p className="text-sm font-medium text-gray-600">Remarks:</p>
-              <p className="break-words">{mtr.remarks || "N/A"}</p>
+              <p className="break-words">{mtrData.remarks || "N/A"}</p>
             </div>
             <div className="col-span-2">
               <p className="text-sm font-medium text-gray-600">Created At:</p>
-              <p>{formatDate(mtr.createdAt)}</p>
+              <p>{formatDate(mtrData.createdAt)}</p>
             </div>
             <div className="col-span-2">
               <p className="text-sm font-medium text-gray-600">Last Updated:</p>
-              <p>{formatDate(mtr.updatedAt)}</p>
+              <p>{formatDate(mtrData.updatedAt)}</p>
             </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { FiX, FiChevronDown, FiChevronUp, FiPlus, FiTrash2 } from "react-icons/fi"
+import { FiX, FiChevronDown, FiChevronUp, FiPlus, FiTrash2, FiCheck, FiXCircle } from "react-icons/fi"
 import { motion, AnimatePresence } from "framer-motion"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
 
@@ -309,7 +309,42 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
                           <p className="font-medium text-blue-600">Expected Delivery:</p>
                           <p>{formatDate(mtr.expectedDeliveryDate)}</p>
                         </div>
+                        <div>
+                          <p className="font-medium text-blue-600">PM Approval:</p>
+                          <div className="flex items-center gap-2">
+                            {mtr.boqMtr?.pmApprovalStatus === "APPROVED" && <FiCheck className="text-green-600" />}
+                            {mtr.boqMtr?.pmApprovalStatus === "REJECTED" && <FiXCircle className="text-red-600" />}
+                            <span
+                              className={`font-semibold ${
+                                mtr.boqMtr?.pmApprovalStatus === "APPROVED"
+                                  ? "text-green-600"
+                                  : mtr.boqMtr?.pmApprovalStatus === "REJECTED"
+                                    ? "text-red-600"
+                                    : "text-yellow-600"
+                              }`}
+                            >
+                              {mtr.boqMtr?.pmApprovalStatus || "PENDING"}
+                            </span>
+                          </div>
+                        </div>
                       </div>
+
+                      {mtr.boqMtr?.pmApprovalStatus && mtr.boqMtr.pmApprovalStatus !== "PENDING" && (
+                        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="font-medium text-gray-600">Approval Date:</p>
+                              <p>{formatDate(mtr.boqMtr?.pmApprovalDate)}</p>
+                            </div>
+                            {mtr.boqMtr?.pmApprovalRemarks && (
+                              <div className="col-span-2">
+                                <p className="font-medium text-gray-600">PM Remarks:</p>
+                                <p className="text-gray-700">{mtr.boqMtr.pmApprovalRemarks}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -437,10 +472,22 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
                       {/* Vendor Selection */}
                       <div className="mt-6">
                         <label className="block text-sm font-medium text-amber-700 mb-2">Select Vendor for MTR:</label>
+                        {mtr.boqMtr?.pmApprovalStatus === "APPROVED" && (
+                          <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                            <p className="text-sm text-green-700 font-medium">
+                              ✓ Vendor selection is locked - PM has approved the selected vendor
+                            </p>
+                          </div>
+                        )}
                         <select
                           value={selectedVendor}
                           onChange={(e) => setSelectedVendor(e.target.value)}
-                          className="w-full max-w-md px-3 py-2 border border-amber-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          disabled={mtr.boqMtr?.pmApprovalStatus === "APPROVED"}
+                          className={`w-full max-w-md px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                            mtr.boqMtr?.pmApprovalStatus === "APPROVED"
+                              ? "border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
+                              : "border-amber-300 focus:ring-amber-500"
+                          }`}
                         >
                           <option value="">-- Select Vendor --</option>
                           {vendorOptions.map((vendor, index) => (
@@ -465,10 +512,14 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
           </button>
           <button
             onClick={handleSave}
-            disabled={loading}
+            disabled={loading || mtr.boqMtr?.pmApprovalStatus === "APPROVED"}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? "Saving..." : "Save Comparison Sheet"}
+            {mtr.boqMtr?.pmApprovalStatus === "APPROVED"
+              ? "Vendor Approved - Cannot Modify"
+              : loading
+                ? "Saving..."
+                : "Save Comparison Sheet"}
           </button>
         </div>
       </motion.div>

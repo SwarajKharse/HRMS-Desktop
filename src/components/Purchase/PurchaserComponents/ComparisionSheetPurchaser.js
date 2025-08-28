@@ -1,10 +1,9 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
-import { materialRequisitionService } from "../../../services/materialRequisitionService" // Ensure this path is correct
-import { comparisonSheetService } from "../../../services/comparisonSheetService" // Added import for comparison sheet service
-import { FiSave, FiX, FiEdit3, FiBarChart2 } from "react-icons/fi" // Changed FiBarChart3 to FiBarChart2 as FiBarChart3 doesn't exist
+import { comparisonSheetService } from "../../../services/comparisonSheetService"
+import { FiSave, FiX, FiEdit3, FiBarChart2 } from "react-icons/fi"
 import { useAuth } from "../../../contexts/AuthContext"
-import ComparisionSheetModal from "./ComparisionSheetModal" // Added import for ComparisionSheetModal
+import ComparisionSheetModal from "./ComparisionSheetModal"
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -17,12 +16,12 @@ export default function ComparisionSheetPurchaser() {
   const [requisitions, setRequisitions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [currentPage, setCurrentPage] = useState(0) // Backend is 0-indexed
+  const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
-  const [pageSize, setPageSize] = useState(10) // Default page size
+  const [pageSize, setPageSize] = useState(10)
   const [filters, setFilters] = useState({
     itemName: "",
-    projectName: "", // Added project name filter
+    projectName: "",
     status: "All",
     priority: "All",
     mtrDateFrom: "",
@@ -35,25 +34,26 @@ export default function ComparisionSheetPurchaser() {
     userId = user.userId
   }
 
-  const [currentUserId] = useState(userId) // This should come from authentication context
+  const [currentUserId] = useState(userId)
 
   const fetchMaterialRequisitions = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const queryParams = new URLSearchParams({
+      const requisitionFilters = {
         page: currentPage,
         size: pageSize,
-        assignedPurchaser: currentUserId, // Filter by current user as assigned purchaser
+        assignedPurchaser: currentUserId,
+        pmApprovalStatus: "APPROVED",
         ...(filters.itemName && { itemName: filters.itemName }),
-        ...(filters.projectName && { projectName: filters.projectName }), // Added project name filter
+        ...(filters.projectName && { projectName: filters.projectName }),
         ...(filters.status !== "All" && { status: filters.status }),
         ...(filters.priority !== "All" && { priority: filters.priority }),
         ...(filters.mtrDateFrom && { mtrDateFrom: filters.mtrDateFrom }),
         ...(filters.mtrDateTo && { mtrDateTo: filters.mtrDateTo }),
-      }).toString()
+      }
 
-      const data = await materialRequisitionService.fetchMaterialRequisitions(queryParams)
+      const data = await comparisonSheetService.getPMApprovedMaterialRequisitions(requisitionFilters)
       console.log("API Response Data:", data)
 
       const formattedRequisitions = (data.content || []).map((req) => {
@@ -94,7 +94,7 @@ export default function ComparisionSheetPurchaser() {
   }
 
   const handleApplyFilters = () => {
-    setCurrentPage(0) // Reset to first page when applying new filters
+    setCurrentPage(0)
   }
 
   const handlePageChange = (page) => {
@@ -176,13 +176,13 @@ export default function ComparisionSheetPurchaser() {
   }
 
   const handleEditClick = (e, mtr) => {
-    e.stopPropagation() // Prevent row click from also triggering
+    e.stopPropagation()
     setEditingMtrId(mtr.id)
-    setEditedMtrData({ ...mtr }) // Copy current MTR data for editing
+    setEditedMtrData({ ...mtr })
   }
 
   const handleCancelClick = (e) => {
-    e.stopPropagation() // Prevent row click from re-triggering edit mode
+    e.stopPropagation()
     setEditingMtrId(null)
     setEditedMtrData({})
   }
@@ -191,7 +191,6 @@ export default function ComparisionSheetPurchaser() {
     const { value } = e.target
     setEditedMtrData((prev) => {
       const newData = { ...prev, [field]: value }
-      // Recalculate Purchase MTR
       if (field === "mtrQty" || field === "stockAlloted") {
         const mtrQty = Number.parseFloat(newData.mtrQty || 0)
         const stockAlloted = Number.parseFloat(newData.stockAlloted || 0)
@@ -202,19 +201,15 @@ export default function ComparisionSheetPurchaser() {
   }
 
   const handleSaveClick = async (e, mtrId) => {
-    e.stopPropagation() // Prevent row click from re-triggering edit mode
+    e.stopPropagation()
     setLoading(true)
     setError(null)
     try {
-      // Prepare payload with only editable fields and calculated purchaseMTR
       const payload = {
-        // MTR Qty is read-only, so send its original value
         mtrQty: Number.parseFloat(editedMtrData.mtrQty),
         stockAlloted: Number.parseFloat(editedMtrData.stockAlloted),
-        // Purchase MTR is calculated, send the calculated value
         purchaseMTR: Number.parseFloat(editedMtrData.purchaseMTR),
         dcQty: Number.parseFloat(editedMtrData.dcQty),
-        // Other fields are read-only, send their original values
         remarks: editedMtrData.remarks,
         expectedDeliveryDate: editedMtrData.expectedDeliveryDate,
         priority: editedMtrData.priority,
@@ -222,9 +217,8 @@ export default function ComparisionSheetPurchaser() {
         status: editedMtrData.status,
       }
 
-      await materialRequisitionService.updateMaterialRequisition(mtrId, payload)
+      await comparisonSheetService.updateMaterialRequisition(mtrId, payload)
 
-      // Update the local state with the saved data
       setRequisitions((prev) => prev.map((req) => (req.id === mtrId ? { ...req, ...editedMtrData } : req)))
       setEditingMtrId(null)
       setEditedMtrData({})
@@ -237,10 +231,32 @@ export default function ComparisionSheetPurchaser() {
     }
   }
 
-  const handleViewDetailsClick = (e, mtr) => {
-    e.stopPropagation() // Prevent row click from triggering edit mode
-    setSelectedMTRForDetails(mtr)
-    setShowDetailsModal(true)
+  const handleViewDetailsClick = async (e, mtr) => {
+    e.stopPropagation()
+
+    try {
+      // Fetch complete MTR data with PM approval status
+      const completeData = await comparisonSheetService.getMaterialRequisitionById(mtr.id)
+      console.log("[v0] Complete MTR data with PM approval:", completeData)
+
+      // Create enhanced MTR object with PM approval data
+      const enhancedMTR = {
+        ...mtr,
+        boqMtr: {
+          pmApprovalStatus: completeData.pmApprovalStatus,
+          pmApprovalDate: completeData.pmApprovalDate,
+          pmApprovalRemarks: completeData.pmApprovalRemarks,
+        },
+      }
+
+      setSelectedMTRForDetails(enhancedMTR)
+      setShowDetailsModal(true)
+    } catch (error) {
+      console.error("[v0] Error fetching complete MTR data:", error)
+      // Fallback to original MTR data if fetch fails
+      setSelectedMTRForDetails(mtr)
+      setShowDetailsModal(true)
+    }
   }
 
   const handleSaveComparisonSheet = async (comparisonData) => {
@@ -270,6 +286,7 @@ export default function ComparisionSheetPurchaser() {
           <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">
             My Assigned Material Requisitions
           </h2>
+          {/* <p className="text-sm text-gray-600">Only showing MTRs that have been approved by Project Manager</p> */}
         </div>
         <div className="p-6 pt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -393,7 +410,7 @@ export default function ComparisionSheetPurchaser() {
           ) : error ? (
             <div className="text-center py-8 text-red-600">{error}</div>
           ) : requisitions.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No material requisitions found.</div>
+            <div className="text-center py-8 text-gray-500">No PM approved material requisitions found.</div>
           ) : (
             <>
               <div className="relative w-full overflow-auto rounded-lg border border-gray-200 shadow-sm">
@@ -426,7 +443,7 @@ export default function ComparisionSheetPurchaser() {
                               type="number"
                               step="0.01"
                               value={editedMtrData.mtrQty}
-                              readOnly // MTR Qty is now read-only
+                              readOnly
                               className="w-24 p-1 border rounded bg-gray-100 text-gray-600 focus:outline-none"
                             />
                           ) : (
@@ -459,19 +476,6 @@ export default function ComparisionSheetPurchaser() {
                             req.purchaseMTR
                           )}
                         </td>
-                        {/* <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.dcQty}
-                              onChange={(e) => handleInputChange(e, "dcQty")}
-                              className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            />
-                          ) : (
-                            req.dcQty
-                          )}
-                        </td> */}
                         <td className="p-4 align-middle">
                           {editingMtrId === req.id ? (
                             <div className="flex gap-2">
@@ -504,7 +508,7 @@ export default function ComparisionSheetPurchaser() {
                                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 h-9 px-3 py-1"
                                 title="Create Comparison Sheet"
                               >
-                                <FiBarChart2 size={16} /> {/* Updated icon reference */}
+                                <FiBarChart2 size={16} />
                               </button>
                             </div>
                           )}
