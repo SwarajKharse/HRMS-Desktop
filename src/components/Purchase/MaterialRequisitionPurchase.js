@@ -1,14 +1,100 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
-import { materialRequisitionService } from "../../services/materialRequisitionService" // Ensure this path is correct
-import { FiSave, FiX, FiEye, FiEdit3 } from "react-icons/fi" // Added FiEdit3 for edit icon
-import MTRDetailsModal from "./MTRDetailsModal" // Import the new modal component
+import { materialRequisitionService } from "../../services/materialRequisitionService"
+import { FiSave, FiX, FiEye, FiEdit3, FiUpload } from "react-icons/fi"
+import MTRDetailsModal from "./MTRDetailsModal"
+
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
   if (!dateString) return ""
   const date = new Date(dateString)
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+}
+
+const getWorkflowStatus = (req) => {
+
+  console.log("req")
+  console.log(JSON.stringify(req))
+
+  const { status, assignedPurchaser, projectManagerStatus, purchaseMTR, poUploaded, pmApprovalStatus } = req
+
+  // If no purchase is needed (purchaseMTR is 0)
+  if (purchaseMTR === 0) {
+    return {
+      text: "No Purchase Required",
+      color: "text-blue-600 bg-blue-50",
+    }
+  }
+
+  // If purchaser is not assigned
+  if (!assignedPurchaser) {
+    return {
+      text: "Purchaser Not Assigned",
+      color: "text-red-600 bg-red-50",
+    }
+  }
+
+  // If PO is uploaded and pending approval
+  if (poUploaded && !status?.includes("PO_APPROVED")) {
+    return {
+      text: "PO uploaded, Approval on PO pending",
+      color: "text-orange-600 bg-orange-50",
+    }
+  }
+
+  // If vendor is approved but no PO uploaded yet
+  if (pmApprovalStatus === "APPROVED" || projectManagerStatus === "APPROVED") {
+    return {
+      text: "Vendor Approved",
+      color: "text-green-600 bg-green-50",
+    }
+  }
+
+  // If purchaser is assigned but no project manager approval
+  if (assignedPurchaser && !projectManagerStatus) {
+    return {
+      text: "Purchaser Assigned - Approval Pending",
+      color: "text-yellow-600 bg-yellow-50",
+    }
+  }
+
+  // If project manager has rejected
+  if (projectManagerStatus === "REJECTED") {
+    return {
+      text: "Rejected by Project Manager",
+      color: "text-red-600 bg-red-50",
+    }
+  }
+
+  // Default status based on general status
+  switch (status) {
+    case "APPROVED":
+      return {
+        text: "Approved",
+        color: "text-green-600 bg-green-50",
+      }
+    case "REJECTED":
+      return {
+        text: "Rejected",
+        color: "text-red-600 bg-red-50",
+      }
+    case "Completed":
+      return {
+        text: "Completed",
+        color: "text-green-600 bg-green-50",
+      }
+    case "Partially Filled":
+      return {
+        text: "Partially Filled",
+        color: "text-orange-600 bg-orange-50",
+      }
+    default:
+      return {
+        text: "Pending",
+        color: "text-gray-600 bg-gray-50",
+      }
+  }
 }
 
 export default function MaterialRequisitionPurchase() {
@@ -33,6 +119,9 @@ export default function MaterialRequisitionPurchase() {
   // State for view details modal
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedMTRForDetails, setSelectedMTRForDetails] = useState(null)
+
+  // State for PO upload modal
+  const [showPOUploadModal, setShowPOUploadModal] = useState(false)
 
   const fetchMaterialRequisitions = useCallback(async () => {
     setLoading(true)
@@ -241,7 +330,19 @@ export default function MaterialRequisitionPurchase() {
     <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
       <div className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-lg">
         <div className="flex flex-col space-y-1.5 p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">Material Requisitions</h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">Material Requisitions</h2>
+          </div>
+          {/* <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">Material Requisitions</h2>
+            <button
+              onClick={() => setShowPOUploadModal(true)}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 gap-2"
+            >
+              <FiUpload size={16} />
+              Upload PO
+            </button>
+          </div> */}
         </div>
         <div className="p-6 pt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -363,6 +464,7 @@ export default function MaterialRequisitionPurchase() {
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Stock Allotted</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Purchase MTR</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">DC Qty</th>
+                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Status</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
@@ -428,6 +530,18 @@ export default function MaterialRequisitionPurchase() {
                           ) : (
                             req.dcQty
                           )}
+                        </td>
+                        <td className="p-4 align-middle">
+                          {(() => {
+                            const statusInfo = getWorkflowStatus(req)
+                            return (
+                              <span
+                                className={`inline-flex items-center px-3 py-1 text-xs font-medium ${statusInfo.color}`}
+                              >
+                                {statusInfo.text}
+                              </span>
+                            )
+                          })()}
                         </td>
                         <td className="p-4 align-middle">
                           {editingMtrId === req.id ? (
@@ -529,6 +643,15 @@ export default function MaterialRequisitionPurchase() {
         </div>
       </div>
       {showDetailsModal && <MTRDetailsModal mtr={selectedMTRForDetails} onClose={() => setShowDetailsModal(false)} />}
+      {/* {showPOUploadModal && (
+        <POUploadModal
+          onClose={() => setShowPOUploadModal(false)}
+          onSuccess={() => {
+            setShowPOUploadModal(false)
+            fetchMaterialRequisitions() // Refresh the list after successful upload
+          }}
+        />
+      )} */}
     </div>
   )
 }

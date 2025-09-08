@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { FiX, FiChevronDown, FiChevronUp, FiPlus, FiTrash2, FiCheck, FiXCircle } from "react-icons/fi"
 import { motion, AnimatePresence } from "framer-motion"
+import VendorDropdown from "./VendorDropdown"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
 
 // Helper function to format dates for display
@@ -27,52 +28,49 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
   const [success, setSuccess] = useState("")
 
   useEffect(() => {
-    const fetchExistingData = async () => {
-      if (!mtr?.id) return
+    const loadComparisonSheetData = async () => {
+      if (!mtr?.id) {
+        console.log("[v0] No MTR ID available")
+        return
+      }
 
       setIsLoadingData(true)
-      setError("")
       try {
-        const existingDataArray = await comparisonSheetService.getComparisonSheet(mtr.id)
-        console.log("[v0] Raw API response:", JSON.stringify(existingDataArray, null, 2))
-        console.log("[v0] Response type:", typeof existingDataArray)
-        console.log("[v0] Is array:", Array.isArray(existingDataArray))
+        console.log("[v0] Fetching MTR with comparison sheet data for ID:", mtr.id)
 
-        let parsedData = existingDataArray
-        if (typeof existingDataArray === "string") {
-          try {
-            parsedData = JSON.parse(existingDataArray)
-            console.log("[v0] Parsed JSON data:", JSON.stringify(parsedData, null, 2))
-          } catch (parseError) {
-            console.error("[v0] Error parsing JSON:", parseError)
-            setError("Error parsing comparison sheet data")
-            return
-          }
-        }
+        // Fetch the complete MTR data with comparison sheet information
+        const mtrWithComparisonData = await comparisonSheetService.getMTRWithComparisonSheet(mtr.id)
+        console.log("[v0] MTR with comparison sheet data:", mtrWithComparisonData)
 
-        if (parsedData && parsedData.length > 0) {
-          const existingData = parsedData[parsedData.length - 1]
-          console.log("[v0] Selected comparison sheet:", JSON.stringify(existingData, null, 2))
-          console.log("[v0] ComparisonItems:", existingData.comparisonItems)
-          console.log("[v0] ComparisonItems length:", existingData.comparisonItems?.length)
+        // Check if comparison sheet exists and load the data
+        if (mtrWithComparisonData.comparisonSheetId && mtrWithComparisonData.comparisonSheetCreated) {
+          console.log("[v0] Loading comparison sheet data for ID:", mtrWithComparisonData.comparisonSheetId)
+          const comparisonSheetData = await comparisonSheetService.getComparisonSheetById(
+            mtrWithComparisonData.comparisonSheetId,
+          )
 
-          if (existingData.comparisonItems && existingData.comparisonItems.length > 0) {
-            console.log("[v0] First comparison item:", JSON.stringify(existingData.comparisonItems[0], null, 2))
+          console.log("[v0] Raw API response:", comparisonSheetData)
+          console.log("[v0] API response comparisonItems:", comparisonSheetData?.comparisonItems)
 
-            const loadedComparisons = existingData.comparisonItems.map((item, index) => {
-              console.log(`[v0] Processing item ${index}:`, JSON.stringify(item, null, 2))
-              const mapped = {
-                id: index + 1,
-                vendorName: item.vendorName || "",
-                qty: item.quantity || mtr?.purchaseMTR || 0, // Backend uses 'quantity', frontend uses 'qty'
-                rate: item.rate || 0,
-                value: item.value || 0,
-                leadTime: item.leadTime || "",
-              }
-              console.log(`[v0] Mapped item ${index}:`, JSON.stringify(mapped, null, 2))
-              return mapped
-            })
+          // Update comparisons with loaded data
+          if (
+            comparisonSheetData &&
+            comparisonSheetData.comparisonItems &&
+            comparisonSheetData.comparisonItems.length > 0
+          ) {
+            console.log("[v0] Processing comparison items:", comparisonSheetData.comparisonItems)
+            const loadedComparisons = comparisonSheetData.comparisonItems.map((item, index) => ({
+              id: index + 1,
+              vendorName: item.vendor?.vendorName || "", // Access vendor name through vendor object
+              qty: item.quantity || mtr?.purchaseMTR || 0, // Use quantity instead of qty
+              rate: item.rate || 0,
+              value: item.value || 0,
+              leadTime: item.leadTime || "",
+            }))
 
+            console.log("[v0] Loaded comparisons:", loadedComparisons)
+
+            // Ensure we have at least 3 rows
             while (loadedComparisons.length < 3) {
               loadedComparisons.push({
                 id: loadedComparisons.length + 1,
@@ -84,31 +82,34 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
               })
             }
 
-            console.log("[v0] Final loaded comparisons:", JSON.stringify(loadedComparisons, null, 2))
+            console.log("[v0] Final comparisons to set:", loadedComparisons)
             setComparisons(loadedComparisons)
           } else {
-            console.log("[v0] No comparison items found or empty array")
+            console.log("[v0] No comparison items found in API response")
           }
 
-          if (existingData.selectedVendor) {
-            console.log("[v0] Setting selected vendor:", existingData.selectedVendor)
-            setSelectedVendor(existingData.selectedVendor)
-          } else {
-            console.log("[v0] No selected vendor found")
+          if (comparisonSheetData.selectedVendor) {
+            const selectedVendorName =
+              typeof comparisonSheetData.selectedVendor === "string"
+                ? comparisonSheetData.selectedVendor
+                : comparisonSheetData.selectedVendor.vendorName
+            console.log("[v0] Setting selected vendor:", selectedVendorName)
+            setSelectedVendor(selectedVendorName)
           }
         } else {
-          console.log("[v0] No existing data found or empty array")
+          console.log("[v0] No comparison sheet data found for this MTR")
         }
       } catch (error) {
-        console.error("[v0] Error fetching existing comparison sheet:", error)
-        setError("Failed to load existing comparison data")
+        console.error("[v0] Error loading comparison sheet data:", error)
+        console.error("[v0] Error details:", error.message, error.stack)
+        setError("Error loading comparison sheet data")
       } finally {
         setIsLoadingData(false)
       }
     }
 
-    fetchExistingData()
-  }, [mtr?.id, mtr?.purchaseMTR])
+    loadComparisonSheetData()
+  }, [mtr?.id]) // Updated dependency to only watch for MTR ID changes
 
   const updateComparison = (id, field, value) => {
     setComparisons((prev) =>
@@ -241,266 +242,277 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
             </div>
           </div>
         ) : (
-          <div className="flex-1 overflow-auto">
-            {/* Material Requisition Details - Collapsible */}
-            <div className="border-b border-blue-200">
-              <button
-                onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-              >
-                <h4 className="text-md font-semibold text-blue-600">Material Requisition Details</h4>
-                {isDetailsExpanded ? (
-                  <FiChevronUp className="w-5 h-5 text-blue-600" />
-                ) : (
-                  <FiChevronDown className="w-5 h-5 text-blue-600" />
-                )}
-              </button>
+          <div className="flex-1 overflow-y-auto">
+            <div className="min-h-0">
+              {/* Material Requisition Details - Collapsible */}
+              <div className="border-b border-blue-200">
+                <button
+                  onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                >
+                  <h4 className="text-md font-semibold text-blue-600">Material Requisition Details</h4>
+                  {isDetailsExpanded ? (
+                    <FiChevronUp className="w-5 h-5 text-blue-600" />
+                  ) : (
+                    <FiChevronDown className="w-5 h-5 text-blue-600" />
+                  )}
+                </button>
 
-              <AnimatePresence>
-                {isDetailsExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="p-4 pt-0 border-l-4 border-blue-400">
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <p className="font-medium text-blue-600">MTR Code:</p>
-                          <p className="font-semibold">{mtr.mtrCode || "N/A"}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-blue-600">Product Name:</p>
-                          <p className="font-semibold">{mtr.productName || "N/A"}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-blue-600">Project Name:</p>
-                          <p className="font-semibold">{mtr.projectName || "N/A"}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-blue-600">MTR Qty:</p>
-                          <p>{mtr.mtrQty}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-blue-600">Purchase MTR:</p>
-                          <p className="font-semibold text-blue-600">{mtr.purchaseMTR}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-blue-600">Priority:</p>
-                          <p
-                            className={`font-medium ${
-                              mtr.priority === "HIGH"
-                                ? "text-red-600"
-                                : mtr.priority === "MEDIUM"
-                                  ? "text-yellow-600"
-                                  : "text-green-600"
-                            }`}
-                          >
-                            {mtr.priority}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-blue-600">Status:</p>
-                          <p>{mtr.status}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-blue-600">Expected Delivery:</p>
-                          <p>{formatDate(mtr.expectedDeliveryDate)}</p>
-                        </div>
-                        <div>
-                          <p className="font-medium text-blue-600">PM Approval:</p>
-                          <div className="flex items-center gap-2">
-                            {mtr.boqMtr?.pmApprovalStatus === "APPROVED" && <FiCheck className="text-green-600" />}
-                            {mtr.boqMtr?.pmApprovalStatus === "REJECTED" && <FiXCircle className="text-red-600" />}
-                            <span
-                              className={`font-semibold ${
-                                mtr.boqMtr?.pmApprovalStatus === "APPROVED"
-                                  ? "text-green-600"
-                                  : mtr.boqMtr?.pmApprovalStatus === "REJECTED"
-                                    ? "text-red-600"
-                                    : "text-yellow-600"
+                <AnimatePresence>
+                  {isDetailsExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-4 pt-0 border-l-4 border-blue-400">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <p className="font-medium text-blue-600">MTR Code:</p>
+                            <p className="font-semibold">{mtr.mtrCode || "N/A"}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-600">Product Name:</p>
+                            <p className="font-semibold">{mtr.productName || "N/A"}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-600">Project Name:</p>
+                            <p className="font-semibold">{mtr.projectName || "N/A"}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-600">MTR Qty:</p>
+                            <p>{mtr.mtrQty}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-600">Purchase MTR:</p>
+                            <p className="font-semibold text-blue-600">{mtr.purchaseMTR}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-600">Priority:</p>
+                            <p
+                              className={`font-medium ${
+                                mtr.priority === "HIGH"
+                                  ? "text-red-600"
+                                  : mtr.priority === "MEDIUM"
+                                    ? "text-yellow-600"
+                                    : "text-green-600"
                               }`}
                             >
-                              {mtr.boqMtr?.pmApprovalStatus || "PENDING"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {mtr.boqMtr?.pmApprovalStatus && mtr.boqMtr.pmApprovalStatus !== "PENDING" && (
-                        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p className="font-medium text-gray-600">Approval Date:</p>
-                              <p>{formatDate(mtr.boqMtr?.pmApprovalDate)}</p>
-                            </div>
-                            {mtr.boqMtr?.pmApprovalRemarks && (
-                              <div className="col-span-2">
-                                <p className="font-medium text-gray-600">PM Remarks:</p>
-                                <p className="text-gray-700">{mtr.boqMtr.pmApprovalRemarks}</p>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Comparison Sheet - Collapsible */}
-            <div className="border-b border-amber-200">
-              <button
-                onClick={() => setIsComparisonExpanded(!isComparisonExpanded)}
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-              >
-                <h4 className="text-md font-semibold text-amber-700">Vendor Comparison Sheet</h4>
-                {isComparisonExpanded ? (
-                  <FiChevronUp className="w-5 h-5 text-amber-600" />
-                ) : (
-                  <FiChevronDown className="w-5 h-5 text-amber-600" />
-                )}
-              </button>
-
-              <AnimatePresence>
-                {isComparisonExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="p-6 border-l-4 border-amber-400">
-                      <div className="flex items-center justify-between mb-4">
-                        <h5 className="text-lg font-semibold text-amber-700">Vendor Comparisons</h5>
-                        <button
-                          onClick={addComparison}
-                          className="flex items-center gap-2 px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
-                        >
-                          <FiPlus className="w-4 h-4" />
-                          Add More
-                        </button>
-                      </div>
-
-                      {/* Comparison Table */}
-                      <div className="overflow-x-auto">
-                        <table className="w-full border border-gray-200 rounded-lg">
-                          <thead className="bg-gray-50">
-                            <tr>
-                              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
-                                Vendor Name
-                              </th>
-                              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Qty</th>
-                              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Rate</th>
-                              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Value</th>
-                              <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
-                                Lead Time
-                              </th>
-                              <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 border-b">
-                                Action
-                              </th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {comparisons.map((comparison, index) => (
-                              <tr key={comparison.id} className="border-b hover:bg-gray-50">
-                                <td className="px-4 py-3">
-                                  <input
-                                    type="text"
-                                    value={comparison.vendorName}
-                                    onChange={(e) => updateComparison(comparison.id, "vendorName", e.target.value)}
-                                    placeholder="Enter vendor name"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input
-                                    type="number"
-                                    value={comparison.qty}
-                                    onChange={(e) => updateComparison(comparison.id, "qty", e.target.value)}
-                                    step="0.01"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input
-                                    type="number"
-                                    value={comparison.rate}
-                                    onChange={(e) => updateComparison(comparison.id, "rate", e.target.value)}
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input
-                                    type="number"
-                                    value={comparison.value.toFixed(2)}
-                                    readOnly
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
-                                  />
-                                </td>
-                                <td className="px-4 py-3">
-                                  <input
-                                    type="text"
-                                    value={comparison.leadTime}
-                                    onChange={(e) => updateComparison(comparison.id, "leadTime", e.target.value)}
-                                    placeholder="e.g., 7 days"
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                  {comparisons.length > 3 && (
-                                    <button
-                                      onClick={() => removeComparison(comparison.id)}
-                                      className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                    >
-                                      <FiTrash2 className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Vendor Selection */}
-                      <div className="mt-6">
-                        <label className="block text-sm font-medium text-amber-700 mb-2">Select Vendor for MTR:</label>
-                        {mtr.boqMtr?.pmApprovalStatus === "APPROVED" && (
-                          <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-md">
-                            <p className="text-sm text-green-700 font-medium">
-                              ✓ Vendor selection is locked - PM has approved the selected vendor
+                              {mtr.priority}
                             </p>
                           </div>
+                          <div>
+                            <p className="font-medium text-blue-600">Status:</p>
+                            <p>{mtr.status}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-600">Expected Delivery:</p>
+                            <p>{formatDate(mtr.expectedDeliveryDate)}</p>
+                          </div>
+                          <div>
+                            <p className="font-medium text-blue-600">PM Approval:</p>
+                            <div className="flex items-center gap-2">
+                              {mtr.boqMtr?.pmApprovalStatus === "APPROVED" && <FiCheck className="text-green-600" />}
+                              {mtr.boqMtr?.pmApprovalStatus === "REJECTED" && <FiXCircle className="text-red-600" />}
+                              <span
+                                className={`font-semibold ${
+                                  mtr.boqMtr?.pmApprovalStatus === "APPROVED"
+                                    ? "text-green-600"
+                                    : mtr.boqMtr?.pmApprovalStatus === "REJECTED"
+                                      ? "text-red-600"
+                                      : "text-yellow-600"
+                                }`}
+                              >
+                                {mtr.boqMtr?.pmApprovalStatus || "PENDING"}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {mtr.boqMtr?.pmApprovalStatus && mtr.boqMtr.pmApprovalStatus !== "PENDING" && (
+                          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <p className="font-medium text-gray-600">Approval Date:</p>
+                                <p>{formatDate(mtr.boqMtr?.pmApprovalDate)}</p>
+                              </div>
+                              {mtr.boqMtr?.pmApprovalRemarks && (
+                                <div className="col-span-2">
+                                  <p className="font-medium text-gray-600">PM Remarks:</p>
+                                  <p className="text-gray-700">{mtr.boqMtr.pmApprovalRemarks}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         )}
-                        <select
-                          value={selectedVendor}
-                          onChange={(e) => setSelectedVendor(e.target.value)}
-                          disabled={mtr.boqMtr?.pmApprovalStatus === "APPROVED"}
-                          className={`w-full max-w-md px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                            mtr.boqMtr?.pmApprovalStatus === "APPROVED"
-                              ? "border-gray-300 bg-gray-100 text-gray-500 cursor-not-allowed"
-                              : "border-amber-300 focus:ring-amber-500"
-                          }`}
-                        >
-                          <option value="">-- Select Vendor --</option>
-                          {vendorOptions.map((vendor, index) => (
-                            <option key={index} value={vendor}>
-                              {vendor}
-                            </option>
-                          ))}
-                        </select>
                       </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Comparison Sheet - Collapsible */}
+              <div className="border-b border-amber-200">
+                <button
+                  onClick={() => setIsComparisonExpanded(!isComparisonExpanded)}
+                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                >
+                  <h4 className="text-md font-semibold text-amber-700">Vendor Comparison Sheet</h4>
+                  {isComparisonExpanded ? (
+                    <FiChevronUp className="w-5 h-5 text-amber-600" />
+                  ) : (
+                    <FiChevronDown className="w-5 h-5 text-amber-600" />
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {isComparisonExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-6 border-l-4 border-amber-400">
+                        <div className="flex items-center justify-between mb-4">
+                          <h5 className="text-lg font-semibold text-amber-700">Vendor Comparisons</h5>
+                          <button
+                            onClick={addComparison}
+                            className="flex items-center gap-2 px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+                          >
+                            <FiPlus className="w-4 h-4" />
+                            Add More
+                          </button>
+                        </div>
+
+                        {/* Comparison Table */}
+                        <div className="overflow-x-auto">
+                          <table className="w-full border border-gray-200 rounded-lg">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
+                                  Vendor Name
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Qty</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Rate</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
+                                  Value
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
+                                  Lead Time
+                                </th>
+                                <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 border-b">
+                                  Action
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {comparisons.map((comparison, index) => (
+                                <tr key={comparison.id} className="border-b hover:bg-gray-50">
+                                  <td className="px-4 py-3 relative">
+                                    <VendorDropdown
+                                      value={comparison.vendorName}
+                                      onChange={(vendorName) =>
+                                        updateComparison(comparison.id, "vendorName", vendorName)
+                                      }
+                                      placeholder="Select or add vendor"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <input
+                                      type="number"
+                                      value={comparison.qty}
+                                      onChange={(e) => updateComparison(comparison.id, "qty", e.target.value)}
+                                      step="0.01"
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <input
+                                      type="number"
+                                      value={comparison.rate}
+                                      onChange={(e) => updateComparison(comparison.id, "rate", e.target.value)}
+                                      step="0.01"
+                                      placeholder="0.00"
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <input
+                                      type="number"
+                                      value={comparison.value.toFixed(2)}
+                                      readOnly
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <input
+                                      type="text"
+                                      value={comparison.leadTime}
+                                      onChange={(e) => updateComparison(comparison.id, "leadTime", e.target.value)}
+                                      placeholder="e.g., 7 days"
+                                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    {comparisons.length > 3 && (
+                                      <button
+                                        onClick={() => removeComparison(comparison.id)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                      >
+                                        <FiTrash2 className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Vendor Selection */}
+                        <div className="mt-6">
+                          <label className="block text-sm font-medium text-amber-700 mb-2">
+                            Select Vendor for MTR:
+                          </label>
+                          {mtr.boqMtr?.pmApprovalStatus === "APPROVED" && (
+                            <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                              <p className="text-sm text-green-700 font-medium">
+                                ✓ Vendor selection is locked - PM has approved the selected vendor
+                              </p>
+                            </div>
+                          )}
+                          <div className="w-full max-w-md relative">
+                            {console.log("[v0] Vendor options for final dropdown:", vendorOptions)}
+                            <select
+                              value={selectedVendor}
+                              onChange={(e) => setSelectedVendor(e.target.value)}
+                              disabled={mtr.boqMtr?.pmApprovalStatus === "APPROVED"}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                            >
+                              <option value="">-- Select Vendor --</option>
+                              {vendorOptions.length > 0 ? (
+                                vendorOptions.map((vendor, index) => (
+                                  <option key={index} value={vendor}>
+                                    {vendor}
+                                  </option>
+                                ))
+                              ) : (
+                                <option value="" disabled>
+                                  No vendors selected in comparison items above
+                                </option>
+                              )}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         )}

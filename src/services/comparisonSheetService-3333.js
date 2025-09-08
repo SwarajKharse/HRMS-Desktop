@@ -228,7 +228,7 @@ export const comparisonSheetService = {
             pmApprovalStatus: mtr.pmApprovalStatus,
             assignedPurchaser: mtr.assignedPurchaser,
             projectName: mtr.projectName,
-            purchaseMTR: mtr.purchaseMTR,
+            purchaseMTR : mtr.purchaseMTR
           })),
         )
       } else {
@@ -275,27 +275,6 @@ export const comparisonSheetService = {
           //"Content-Type": "multipart/form-data",
         },
       })
-
-      // Track uploaded POs in localStorage since backend doesn't provide retrieval endpoints
-      if (response.data && response.data.uploadedPOs) {
-        const uploadedPOs = JSON.parse(localStorage.getItem("uploadedPOs") || "{}")
-        const poNumber = formData.get("poNumber")
-        const fileName = formData.get("file")?.name || "Unknown"
-        const mtrIds = formData.getAll("mtrIds")
-
-        // Store PO info for each MTR
-        mtrIds.forEach((mtrId) => {
-          uploadedPOs[mtrId] = {
-            poNumber: poNumber,
-            fileName: fileName,
-            uploadDate: new Date().toISOString(),
-            approvalStatus: "PENDING",
-          }
-        })
-
-        localStorage.setItem("uploadedPOs", JSON.stringify(uploadedPOs))
-      }
-
       return response.data
     } catch (error) {
       console.error("Error uploading PO for MTRs:", error)
@@ -309,88 +288,6 @@ export const comparisonSheetService = {
       return response.data
     } catch (error) {
       console.error("Error fetching PO details:", error)
-      return []
-    }
-  },
-
-  checkPOStatus: async (mtrId) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/material-requisitions/${mtrId}/po-status`)
-      return response.data
-    } catch (error) {
-      // If endpoint doesn't exist (403/404), fallback to localStorage for backward compatibility
-      if (error.response?.status === 403 || error.response?.status === 404) {
-        console.warn(`[v0] PO status endpoint not found for MTR ${mtrId}, using localStorage fallback`)
-        const uploadedPOs = JSON.parse(localStorage.getItem("uploadedPOs") || "{}")
-        const mtrPO = uploadedPOs[mtrId]
-
-        if (mtrPO) {
-          return {
-            mtrId: mtrId,
-            hasPO: true,
-            poCount: 1,
-            latestPO: {
-              poNumber: mtrPO.poNumber,
-              fileName: mtrPO.fileName,
-              createdAt: mtrPO.uploadDate,
-              approvalStatus: mtrPO.approvalStatus || "PENDING",
-            },
-          }
-        }
-
-        return { mtrId: mtrId, hasPO: false, poCount: 0 }
-      }
-
-      console.error("Error checking PO status:", error)
-      return { mtrId: mtrId, hasPO: false, poCount: 0 }
-    }
-  },
-
-  getPOsByMtrId: async (mtrId) => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/material-requisitions/${mtrId}/purchase-orders`)
-      return response.data || []
-    } catch (error) {
-      // If endpoint doesn't exist (403/404), return empty array
-      if (error.response?.status === 403 || error.response?.status === 404) {
-        console.warn(`[v0] PO details endpoint not found for MTR ${mtrId}`)
-        return []
-      }
-      console.error("Error fetching POs by MTR ID:", error)
-      return []
-    }
-  },
-
-  getMTRsWithPOStatus: async (filters = {}) => {
-    try {
-      // First get the approved MTRs
-      const mtrsResponse = await comparisonSheetService.getPMApprovedMaterialRequisitions(filters)
-      const mtrs = mtrsResponse.content || mtrsResponse
-
-      if (!Array.isArray(mtrs)) {
-        return { content: [], totalElements: 0, totalPages: 0 }
-      }
-
-      // Then check PO status for each MTR using the proper backend endpoint
-      const mtrsWithPOStatus = await Promise.all(
-        mtrs.map(async (mtr) => {
-          const poStatus = await comparisonSheetService.checkPOStatus(mtr.id)
-          return {
-            ...mtr,
-            poStatus: poStatus,
-          }
-        }),
-      )
-
-      return {
-        content: mtrsWithPOStatus,
-        totalElements: mtrsResponse.totalElements || mtrsWithPOStatus.length,
-        totalPages: mtrsResponse.totalPages || 1,
-        size: mtrsResponse.size || filters.size || 10,
-        number: mtrsResponse.number || 0,
-      }
-    } catch (error) {
-      console.error("Error fetching MTRs with PO status:", error)
       throw error
     }
   },
