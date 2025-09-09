@@ -44,4 +44,24 @@ export const materialRequisitionService = {
       throw error
     }
   },
+
+  deleteMaterialRequisition: async (id) => {
+    try {
+      const response = await axios.delete(`${API_URL}/material-requisitions/${id}`)
+      return response.data
+    } catch (error) {
+      console.error("Error deleting material requisition:", error)
+      throw error
+    }
+  },
+
+  approveMaterialRequisition: async (id, approvalData) => {
+    try {
+      const response = await axios.put(`${API_URL}/material-requisitions/${id}/approve`, approvalData)
+      return response.data
+    } catch (error) {
+      console.error("Error approving material requisition:", error)
+      throw error
+    }
+  },
 }

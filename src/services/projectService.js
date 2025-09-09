@@ -9,7 +9,15 @@ const getAuthHeaders = () => {
       "Content-Type": "application/json",
       // Add authorization header if your authService provides a token
       // FIX 1: Uncomment this line to send the authorization token
-      'Authorization': `Bearer ${authService.getToken()}`,
+      Authorization: `Bearer ${authService.getToken()}`,
+    },
+  }
+}
+
+const getAuthHeadersForFormData = () => {
+  return {
+    headers: {
+      Authorization: `Bearer ${authService.getToken()}`,
     },
   }
 }
@@ -220,6 +228,102 @@ export const projectService = {
       return response.data
     } catch (error) {
       console.error("Error fetching project plan BOQ:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+  async getProjectDocuments(projectId) {
+    try {
+      console.log("[v0] Fetching documents for project ID:", projectId)
+      const response = await axios.get(`${API_URL}/projects/${projectId}/documents`, getAuthHeaders())
+      console.log("[v0] Service received documents:", response.data)
+      return response.data
+    } catch (error) {
+      console.error("Error fetching project documents:", error)
+      return []
+    }
+  },
+
+  async uploadProjectDocument(formData) {
+    try {
+      const response = await axios.post(
+        `${API_URL}/projects/upload-project-document`,
+        formData,
+        getAuthHeadersForFormData(),
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error uploading document:", error)
+      throw error
+    }
+  },
+
+  async uploadImageToS3(file, documentType, leadId) {
+    const formData = new FormData()
+    formData.append("file", file)
+    formData.append("documentType", documentType)
+    formData.append("leadId", leadId)
+
+    return await this.uploadProjectDocument(formData)
+  },
+
+  async deleteProjectDocument(documentId, fileUrl) {
+    try {
+      const response = await axios.delete(`${API_URL}/projects/documents/${documentId}`, getAuthHeaders())
+      return true
+    } catch (error) {
+      console.error("Error deleting document:", error)
+      throw error
+    }
+  },
+
+  async saveProjectPlanHistory(projectId, historyEntry) {
+    try {
+      const response = await axios.post(
+        `${API_URL}/projects/${projectId}/plans/history`,
+        historyEntry,
+        getAuthHeaders(),
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error saving project plan history:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+  async getProjectById(projectId) {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/project`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error fetching project:", error)
+      throw error
+    }
+  },
+  async updateCategoryItemApprovalStatus(projectId, productId, categoryType, itemIndex, approvalData) {
+    try {
+      const response = await axios.put(
+        `${API_URL}/projects/${projectId}/boq/${productId}/category-items/${categoryType}/${itemIndex}/approval-status`,
+        approvalData,
+        getAuthHeaders(),
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error updating category item approval status:", error)
+      throw error
+    }
+  },
+
+  async updateMTRApprovalStatus(projectId, productId, categoryType, itemIndex, mtrIndex, approvalData) {
+    try {
+      const response = await axios.put(
+        `${API_URL}/projects/${projectId}/boq/${productId}/category-items/${categoryType}/${itemIndex}/mtr/${mtrIndex}/approval-status`,
+        approvalData,
+        getAuthHeaders(),
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error updating MTR approval status:", error)
       throw error
     }
   },

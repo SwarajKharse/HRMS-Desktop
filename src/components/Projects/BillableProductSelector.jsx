@@ -1,8 +1,7 @@
 "use client"
-
 import { useState, useEffect, useRef } from "react"
 import { FiSearch, FiPlus, FiTrash2, FiX, FiEdit2, FiSave, FiChevronDown, FiChevronRight } from "react-icons/fi"
-import { storeService } from "../../services/storeService" // Assuming this path is correct
+import { storeService } from "../../services/storeService"
 
 function BillableProductSelector({ projectId, onSave, leadProductTypes, existingBOQ = null, isEditMode = false }) {
   const [products, setProducts] = useState([])
@@ -29,72 +28,125 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
     const supplyAmount = parsedQty * parsedSupplyRate
     const installationAmount = parsedQty * parsedInstallationRate
     const total = supplyAmount + installationAmount
-    return { supplyAmount: supplyAmount, installationAmount: installationAmount, total: total } // Changed to camelCase
+    return { supply_amount: supplyAmount, installation_amount: installationAmount, total: total }
   }
 
-  // Helper function to extract category information from nested structure
-  // Updated to correctly use product.categoryId.label as per provided payload structure for products list
-  const extractCategoryInfo = (product) => {
-    if (product && product.categoryId && product.categoryId.label) {
-      const topCategory = product.categoryId.label
+  const extractCategoryInfo = (product, allLeadProductTypes, explicitLeadProductTypeId = null) => {
+    if (!product) {
       return {
-        topCategory,
-        mainCategory: topCategory, // Assuming no deeper hierarchy from this source
-        subCategory: topCategory, // Assuming no deeper hierarchy from this source
-        fullPath: topCategory,
+        topCategory: "Unassigned",
+        mainCategory: "Uncategorized",
+        subCategory: "Uncategorized",
+        fullPath: "Unassigned > Uncategorized > Uncategorized",
+        leadProductTypeId: null,
       }
     }
-    // Fallback for other structures or if category info is missing
+
+    let topCategory = "Unassigned"
+    let mainCategory = "Uncategorized"
+    let subCategory = "Uncategorized"
+    let finalLeadProductTypeId = explicitLeadProductTypeId // Prioritize explicit ID
+
+    // Determine finalLeadProductTypeId first
+    if (finalLeadProductTypeId === null) {
+      // Case 1: Product is an existing BOQ item's product (item.product)
+      // It has a categoryId which is the leadProductType object
+      if (product.categoryId && product.categoryId.id) {
+        finalLeadProductTypeId = product.categoryId.id
+      }
+      // Case 2: Product is from storeService (e.g., availableProducts for non-billable)
+      // It has a category_id which is the sub-category object
+      else if (
+        product.category_id &&
+        product.category_id.productCategory &&
+        product.category_id.productCategory.mainGroup
+      ) {
+        finalLeadProductTypeId = product.category_id.productCategory.mainGroup.id
+      }
+    }
+
+    // Now, use finalLeadProductTypeId to find the topCategory label
+    if (finalLeadProductTypeId) {
+      topCategory = allLeadProductTypes.find((t) => t.id === finalLeadProductTypeId)?.label || "Unassigned"
+    }
+
+    // Determine mainCategory and subCategory based on available product structure
+    // Prioritize existing BOQ item structure (product.categoryId)
+    if (product.categoryId) {
+      mainCategory = product.categoryId.productCategory?.category_name || "Uncategorized"
+      subCategory = product.categoryId.category_name || "Uncategorized"
+    }
+    // Fallback to storeService product structure (product.category_id)
+    else if (product.category_id) {
+      mainCategory = product.category_id.productCategory?.category_name || "Uncategorized"
+      subCategory = product.category_id.category_name || "Uncategorized"
+    }
+
     return {
-      topCategory: "Uncategorized",
-      mainCategory: "Uncategorized",
-      subCategory: "Uncategorized",
-      fullPath: "Uncategorized",
+      topCategory,
+      mainCategory,
+      subCategory,
+      fullPath: `${topCategory} > ${mainCategory} > ${subCategory}`,
+      leadProductTypeId: finalLeadProductTypeId,
     }
   }
 
   // Initialize with existing BOQ data if in edit mode
   useEffect(() => {
-    if (isEditMode && existingBOQ && existingBOQ.items && Array.isArray(existingBOQ.items) && !isInitialized) {
-      console.log("Initializing with existing BOQ data in BillableProductSelector:", existingBOQ)
+    if (isEditMode && existingBOQ && existingBOQ.items && !isInitialized) {
+      console.log("BPS: Initializing with existing BOQ data:", existingBOQ)
       const productsByCategory = {}
       const usedCategories = []
       existingBOQ.items.forEach((item) => {
-        // Use item.product.categoryId.id for categoryId and item.product.categoryId.label for categoryName
-        const categoryId = item.product?.categoryId?.id || "unassigned"
-        const categoryName = item.product?.categoryId?.label || "Unassigned"
+        // 'item' here is already the flattened product from BOQEditComponent's boqProducts state
+        const boqItemId = item.id // This is the BOQItem.id from the backend
+        const productMasterId = item.product_id // This is the ProductsMaster.id
+
+        // Use the leadProductTypeId and categoryInfo directly from the item
+        const categoryId = item.leadProductTypeId || "unassigned"
+        const categoryName =
+          item.categoryInfo?.topCategory || leadProductTypes.find((cat) => cat.id === categoryId)?.label || "Unassigned"
+
+        console.log("BPS: Initializing existing BOQ item (flattened):", JSON.stringify(item, null, 2))
+        console.log("BPS: Derived categoryId for existing item:", categoryId)
+        console.log("BPS: Derived categoryName for existing item:", categoryName)
 
         if (!usedCategories.find((cat) => cat.id === categoryId)) {
           usedCategories.push({ id: categoryId, name: categoryName })
         }
-        const initialQty = item.totalQty || 1 // Use item.totalQty from BOQEditComponent's formatted item
-        const initialSupplyRate = item.supplyRate || 0
-        const initialInstallationRate = item.installationRate || 0
-        const { supplyAmount, installationAmount, total } = calculateAmounts(
+
+        const initialQty = item.qty || 1 // Use item.qty from BOQEditComponent's formatted item
+        const initialSupplyRate = item.supply_rate || 0
+        const initialInstallationRate = item.installation_rate || 0
+        const { supply_amount, installation_amount, total } = calculateAmounts(
           initialQty,
           initialSupplyRate,
           initialInstallationRate,
         )
+
         const product = {
-          id: item.id, // This is the BOQItem ID from backend, use as stable ID for selector's state
-          productId: item.product?.id, // This is the ProductsMaster ID
-          productName: item.product?.productName || "Unknown Product",
-          hsnCode: item.product?.hsnCode || "",
-          productDescription: item.product?.productDescription || "",
-          productQty: item.product?.productQty || 0, // Available quantity from store
-          uom: item.uom || item.product?.uom || "",
+          id: boqItemId, // CRITICAL: Use BOQItem.id as the unique identifier for the selector's internal state
+          productId: productMasterId, // Store ProductsMaster.id separately
+          product_name: item.product_name || "Unknown Product", // Use product_name directly from item
+          hsn_code: item.hsn_code || "",
+          product_description: item.product_description || "",
+          product_qty: item.product_qty || 0, // This is the available quantity from store (if present)
+          uom: item.uom || "",
           qty: initialQty, // This is the BOQ quantity
           make: item.make || "",
-          supplyRate: initialSupplyRate,
-          installationRate: initialInstallationRate,
-          supplyAmount: supplyAmount,
-          installationAmount: installationAmount,
+          supply_rate: initialSupplyRate,
+          installation_rate: initialInstallationRate,
+          supply_amount: supply_amount,
+          installation_amount: installation_amount,
           total: total,
-          leadProductTypeId: categoryId, // This is the leadProductTypeId
-          categoryInfo: extractCategoryInfo(item.product), // Pass item.product to extractCategoryInfo
+          leadProductTypeId: categoryId, // This is the leadProductType ID
+          leadProductTypeLabel: categoryName, // Ensure this is set for existing items
+          categoryInfo: item.categoryInfo, // Use the categoryInfo directly from the item
           isExisting: true, // Flag to mark as an existing item
-          isNewBoqItem: false, // Flag for BOQEditComponent
+          isNewBoqItem: false, // Explicitly false for existing items
         }
+        console.log("BPS: Final product_name for existing item:", product.product_name)
+        console.log("BPS: Final categoryInfo for existing item:", product.categoryInfo)
         if (!productsByCategory[categoryId]) {
           productsByCategory[categoryId] = []
         }
@@ -113,13 +165,50 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
       setSelectedCategories([])
       setIsInitialized(true)
     }
-  }, [isEditMode, existingBOQ, isInitialized, leadProductTypes])
+  }, [isEditMode, existingBOQ, isInitialized, leadProductTypes]) // Add leadProductTypes to dependencies
 
   // Fetch products and categories on component mount
   useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const response = await storeService.getProductsList()
+        console.log("API Response (BillableProductSelector):", response)
+        let productsData = []
+        if (Array.isArray(response)) {
+          productsData = response
+        } else if (response && Array.isArray(response.data)) {
+          productsData = response.data
+        } else if (response && Array.isArray(response.products)) {
+          productsData = response.products
+        } else if (response && typeof response === "object") {
+          const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
+          if (arrayProperty) {
+            productsData = arrayProperty
+          }
+        }
+        if (!Array.isArray(productsData)) {
+          throw new Error("Invalid response format: Expected an array of products")
+        }
+        setProducts(productsData)
+        setFilteredProducts(productsData)
+      } catch (err) {
+        console.error("Error fetching products (BillableProductSelector):", err)
+        setError(`Failed to load products: ${err.message}`)
+        setProducts([])
+        setFilteredProducts([])
+      } finally {
+        setLoading(false)
+      }
+    }
     fetchProducts()
-    fetchCategories()
   }, [])
+
+  // Update categories state directly from prop
+  useEffect(() => {
+    setCategories(leadProductTypes.map((item) => ({ id: item.id, name: item.label })))
+  }, [leadProductTypes]) // This useEffect will run when leadProductTypes prop changes
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -147,7 +236,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
       const lowercasedSearch = searchTerm.toLowerCase()
       const filtered = products.filter((product) => {
         if (!product) return false
-        const categoryInfo = extractCategoryInfo(product)
+        const categoryInfo = extractCategoryInfo(product, leadProductTypes) // Pass leadProductTypes
         return (
           (product.product_name || "").toLowerCase().includes(lowercasedSearch) ||
           categoryInfo.topCategory.toLowerCase().includes(lowercasedSearch) ||
@@ -159,56 +248,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
       })
       setFilteredProducts(filtered)
     }
-  }, [searchTerm, products])
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true)
-      setError("")
-      const response = await storeService.getProductsList()
-      console.log("API Response (BillableProductSelector):", response)
-      let productsData = []
-      if (Array.isArray(response)) {
-        productsData = response
-      } else if (response && Array.isArray(response.data)) {
-        productsData = response.data
-      } else if (response && Array.isArray(response.products)) {
-        productsData = response.products
-      } else if (response && typeof response === "object") {
-        const arrayProperty = Object.values(response).find((value) => Array.isArray(value))
-        if (arrayProperty) {
-          productsData = arrayProperty
-        }
-      }
-      if (!Array.isArray(productsData)) {
-        throw new Error("Invalid response format: Expected an array of products")
-      }
-      setProducts(productsData)
-      setFilteredProducts(productsData)
-    } catch (err) {
-      console.error("Error fetching products (BillableProductSelector):", err)
-      setError(`Failed to load products: ${err.message}`)
-      setProducts([])
-      setFilteredProducts([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchCategories = async () => {
-    try {
-      // Categories are now passed via leadProductTypes prop
-      setCategories(
-        leadProductTypes.map((item) => {
-          const newitem = { id: item.id, name: item.label }
-          return newitem
-        }),
-      )
-    } catch (err) {
-      console.error("Error fetching categories (BillableProductSelector):", err)
-      setError(`Failed to load categories: ${err.message}`)
-    }
-  }
+  }, [searchTerm, products, leadProductTypes]) // Add leadProductTypes to dependencies
 
   const handleCategorySelect = (categoryId) => {
     const category = categories.find((cat) => cat.id === Number.parseInt(categoryId))
@@ -237,32 +277,48 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
   const handleProductSelect = (product) => {
     if (!activeProductSearch) return
     const categoryProducts = selectedProductsByCategory[activeProductSearch] || []
-    // Check if product is already selected in this category by its actual product ID
+    // Check if product (by its actual product master ID) is already selected in this category
     if (categoryProducts.some((p) => p.productId === product.id)) {
       return
     }
-    // For new products, rates and amounts are set to 0
-    const { supplyAmount, installationAmount, total } = calculateAmounts(1, 0, 0)
+
+    const tempBoqItemId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const selectedLeadProductType = leadProductTypes.find((t) => t.id === activeProductSearch)
+    const categoryLabelForNewProduct = selectedLeadProductType ? selectedLeadProductType.label : "Unassigned"
+
+    const { supply_amount, installation_amount, total } = calculateAmounts(1, 0, 0)
+
+    // CRITICAL CHANGE: Ensure categoryInfo reflects the selected leadProductType
+    const newCategoryInfo = extractCategoryInfo(product, leadProductTypes, activeProductSearch)
+
+    console.log("BPS: Selecting new product:", JSON.stringify(product, null, 2))
+    console.log("BPS: Active Product Search (leadProductTypeId):", activeProductSearch)
+    console.log("BPS: New Category Info for selected product:", newCategoryInfo)
+
     const updatedProduct = {
-      id: Date.now(), // Temporary unique ID for this new BOQ item entry in frontend state
-      productId: product.id, // This is the actual ProductsMaster ID
-      productName: product.product_name || product.productName || product.name || "Unknown Product",
-      hsnCode: product.hsn_code || product.hsnCode || "",
-      productDescription: product.product_description || product.productDescription || "",
-      productQty: product.product_qty || product.productQty || 0, // Available quantity
+      id: tempBoqItemId,
+      productId: product.id,
+      product_name: product.product_name || product.productName || product.name || "Unknown Product",
+      hsn_code: product.hsn_code || product.hsnCode || "",
+      product_description: product.product_description || product.productDescription || "",
+      product_qty: product.product_qty || product.productQty || 0,
       uom: product.uom || "",
-      qty: 1, // Default BOQ quantity
+      qty: 1,
       make: "",
-      supplyRate: 0,
-      installationRate: 0,
-      supplyAmount: supplyAmount,
-      installationAmount: installationAmount,
+      supply_rate: 0,
+      installation_rate: 0,
+      supply_amount: supply_amount,
+      installation_amount: installation_amount,
       total: total,
-      leadProductTypeId: activeProductSearch, // This is the leadProductTypeId
-      categoryInfo: extractCategoryInfo(product),
-      isExisting: false, // New product
-      isNewBoqItem: true, // Flag for BOQEditComponent
+      leadProductTypeId: activeProductSearch, // This is the leadProductType ID
+      leadProductTypeLabel: categoryLabelForNewProduct, // Store the label directly for new products
+      categoryInfo: newCategoryInfo, // Use the newly constructed categoryInfo
+      isExisting: false,
+      isNewBoqItem: true,
     }
+
+    console.log("BPS: Final product_name for new product:", updatedProduct.product_name)
+
     setSelectedProductsByCategory((prev) => ({
       ...prev,
       [activeProductSearch]: [...(prev[activeProductSearch] || []), updatedProduct],
@@ -272,22 +328,20 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
     setActiveProductSearch(null)
   }
 
-  const handleProductFieldChange = (categoryId, id, field, value) => {
-    // id here is BOQItem ID or temporary ID
+  const handleProductFieldChange = (categoryId, productId, field, value) => {
     setSelectedProductsByCategory((prev) => {
       const updatedCategoryProducts = prev[categoryId].map((product) => {
-        if (product.id === id) {
-          // Match by product.id (BOQItem ID or temporary ID)
+        if (product.id === productId) {
           const updatedProduct = { ...product, [field]: value }
           // Recalculate amounts only if qty changes, using existing (or 0) rates
-          if (field === "qty" || field === "supplyRate" || field === "installationRate") {
-            const { supplyAmount, installationAmount, total } = calculateAmounts(
+          if (field === "qty") {
+            const { supply_amount, installation_amount, total } = calculateAmounts(
               updatedProduct.qty,
-              updatedProduct.supplyRate,
-              updatedProduct.installationRate,
+              updatedProduct.supply_rate,
+              updatedProduct.installation_rate,
             )
-            updatedProduct.supplyAmount = supplyAmount
-            updatedProduct.installationAmount = installationAmount
+            updatedProduct.supply_amount = supply_amount
+            updatedProduct.installation_amount = installation_amount
             updatedProduct.total = total
           }
           return updatedProduct
@@ -301,10 +355,9 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
     })
   }
 
-  const handleRemoveProduct = (categoryId, id) => {
-    // id here is BOQItem ID or temporary ID
+  const handleRemoveProduct = (categoryId, productId) => {
     setSelectedProductsByCategory((prev) => {
-      const updatedCategory = prev[categoryId].filter((product) => product.id !== id) // Match by product.id
+      const updatedCategory = prev[categoryId].filter((product) => product.id !== productId)
       if (updatedCategory.length === 0) {
         const { [categoryId]: removed, ...rest } = prev
         return rest
@@ -336,24 +389,25 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
   const handleSaveBOQ = async () => {
     const allProducts = Object.entries(selectedProductsByCategory).flatMap(([categoryId, products]) =>
       products.map((p) => ({
-        id: p.isExisting ? p.id : null, // Send BOQItem ID if existing, null if new
-        productId: p.productId, // This is ProductsMaster.id
-        productName: p.productName,
-        hsnCode: p.hsnCode,
+        id: p.id, // This is the BOQItem.id (for existing) or temporary ID (for new)
+        productId: p.productId, // This is the ProductsMaster.id
+        productName: p.product_name || "", // Use productName
+        hsnCode: p.hsn_code || "",
         qty: Number.parseFloat(p.qty) || 1,
         make: p.make || "",
         uom: p.uom || "",
-        leadProductTypeId: Number.parseInt(categoryId),
-        supplyRate: Number.parseFloat(p.supplyRate) || 0,
-        installationRate: Number.parseFloat(p.installationRate) || 0,
-        supplyAmount: p.supplyAmount,
-        installationAmount: p.installationAmount,
+        leadProductTypeId: p.leadProductTypeId, // Use p.leadProductTypeId
+        leadProductTypeLabel: p.leadProductTypeLabel, // ADDED: Pass the label
+        supplyRate: Number.parseFloat(p.supply_rate) || 0,
+        installationRate: Number.parseFloat(p.installation_rate) || 0,
+        supplyAmount: p.supply_amount,
+        installationAmount: p.installation_amount,
         total: p.total,
         categoryInfo: p.categoryInfo,
-        isExisting: p.isExisting, // Pass this flag to BOQEditComponent
-        isNewBoqItem: p.isNewBoqItem, // Pass this flag to BOQEditComponent
+        isNewBoqItem: p.isNewBoqItem || false,
       })),
     )
+
     if (allProducts.length === 0) {
       setError("Please add at least one product to the BOQ")
       return
@@ -363,12 +417,13 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
       setError("Please enter valid quantities for all products")
       return
     }
+
     setSaving(true)
     setError("")
     try {
       const boqData = {
-        projectId: projectId,
-        items: allProducts, // Send the mapped products directly
+        project_id: projectId,
+        items: allProducts, // Pass the array directly
       }
       console.log("Saving BOQ data from BillableProductSelector:", boqData)
       // Call the onSave prop passed from BOQEditComponent
@@ -387,7 +442,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
 
   const getSelectedProductsInCategory = (categoryId) => {
     const categoryProducts = selectedProductsByCategory[categoryId] || []
-    return categoryProducts.map((p) => p.productId) // Return productId for checking
+    return categoryProducts.map((p) => p.productId) // Check against ProductsMaster.id
   }
 
   return (
@@ -395,7 +450,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
       <div className="space-y-4 rounded-lg bg-white border p-4 flex-1 overflow-auto">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-lg border-b pb-2 flex-1">
-            {isEditMode ? "Edit Billable BOQ Items2222222222" : "Select Billable BOQ Items"}
+            {isEditMode ? "Edit Billable BOQ Items" : "Select Billable BOQ Items"}
           </h3>
           {isEditMode && (
             <div className="flex items-center text-sm text-blue-600">
@@ -495,12 +550,12 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                 ) : Array.isArray(filteredProducts) && filteredProducts.length > 0 ? (
                   filteredProducts.map((product) => {
                     if (!product || !product.id) return null
-                    const categoryInfo = extractCategoryInfo(product)
+                    const categoryInfo = extractCategoryInfo(product, leadProductTypes) // Pass leadProductTypes
                     const selectedInCategory = getSelectedProductsInCategory(activeProductSearch)
-                    const isAlreadySelected = selectedInCategory.includes(product.id)
+                    const isAlreadySelected = selectedInCategory.includes(product.id) // Check against product.id (ProductsMaster.id)
                     return (
                       <div
-                        key={product.id}
+                        key={product.id} // Key by ProductsMaster.id for the search results list
                         className={
                           "p-3 cursor-pointer border-b border-gray-100 last:border-b-0 " +
                           (isAlreadySelected ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100")
@@ -589,21 +644,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                               <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Quantity
                               </th>
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Supply Rate
-                              </th>
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Installation Rate
-                              </th>
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Supply Amount
-                              </th>
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Installation Amount
-                              </th>
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Total
-                              </th>
+                              {/* Removed Rate, Amount, and Total headers */}
                               <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
                               </th>
@@ -611,15 +652,16 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {categoryProducts.map((product, index) => {
-                              const categoryInfo = product.categoryInfo || extractCategoryInfo(product)
+                              const categoryInfo =
+                                product.categoryInfo || extractCategoryInfo(product, leadProductTypes)
                               return (
                                 <tr key={product.id} className={index % 2 === 0 ? "bg-gray-50" : ""}>
                                   <td className="px-3 py-2">
                                     <div className="text-sm font-medium">
-                                      {product.productName || "Unnamed Product"}
+                                      {product.product_name || "Unnamed Product"}
                                     </div>
-                                    <div className="text-xs text-gray-500">HSN: {product.hsnCode || "N/A"}</div>
-                                    <div className="text-xs text-gray-400">Available: {product.productQty || "0"}</div>
+                                    <div className="text-xs text-gray-500">HSN: {product.hsn_code || "N/A"}</div>
+                                    <div className="text-xs text-gray-400">Available: {product.product_qty || "0"}</div>
                                     <div className="text-xs text-gray-400">UOM: {product.uom || "N/A"}</div>
                                   </td>
                                   <td className="px-3 py-2">
@@ -651,49 +693,13 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                                         }
                                       }}
                                       placeholder="Qty"
-                                      className={`w-16 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${product.isExisting ? "bg-gray-100 text-gray-700 cursor-not-allowed" : ""}`}
+                                      className={`w-16 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
+                                        product.isExisting ? "bg-gray-100 text-gray-700 cursor-not-allowed" : ""
+                                      }`}
                                       readOnly={product.isExisting} // Make qty read-only for existing items
                                     />
                                   </td>
-                                  <td className="px-3 py-2">
-                                    <input
-                                      type="text"
-                                      inputMode="numeric"
-                                      pattern="[0-9]*\.?[0-9]*"
-                                      value={product.supplyRate}
-                                      onChange={(e) => {
-                                        const value = e.target.value
-                                        if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                                          handleProductFieldChange(category.id, product.id, "supplyRate", value)
-                                        }
-                                      }}
-                                      placeholder="Supply Rate"
-                                      className="w-24 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    />
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <input
-                                      type="text"
-                                      inputMode="numeric"
-                                      pattern="[0-9]*\.?[0-9]*"
-                                      value={product.installationRate}
-                                      onChange={(e) => {
-                                        const value = e.target.value
-                                        if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                                          handleProductFieldChange(category.id, product.id, "installationRate", value)
-                                        }
-                                      }}
-                                      placeholder="Install Rate"
-                                      className="w-24 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    />
-                                  </td>
-                                  <td className="px-3 py-2 text-sm text-gray-700">{product.supplyAmount.toFixed(2)}</td>
-                                  <td className="px-3 py-2 text-sm text-gray-700">
-                                    {product.installationAmount.toFixed(2)}
-                                  </td>
-                                  <td className="px-3 py-2 text-sm font-semibold text-gray-800">
-                                    {product.total.toFixed(2)}
-                                  </td>
+                                  {/* Removed Rate, Amount, and Total cells */}
                                   <td className="px-3 py-2">
                                     <button
                                       onClick={() => handleRemoveProduct(category.id, product.id)}
