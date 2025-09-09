@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
+import { purchaseOrderService } from "../../../services/purchaseOrderService"
 import { useAuth } from "../../../contexts/AuthContext"
 import VendorDropdownPOUpload from "./VendorDropdownPOUpload"
 
@@ -28,6 +29,11 @@ const POUploadWithVendorSelection = () => {
   const [poFile, setPOFile] = useState(null)
   const [poNumber, setPONumber] = useState("")
   const [message, setMessage] = useState({ type: "", text: "" })
+
+  const [editingPO, setEditingPO] = useState(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editPOFile, setEditPOFile] = useState(null)
+  const [editPONumber, setEditPONumber] = useState("")
 
   const showMessage = (type, text) => {
     setMessage({ type, text })
@@ -60,7 +66,8 @@ const POUploadWithVendorSelection = () => {
             fileName: poStatus.latestPO?.fileName || null,
             uploadDate: poStatus.latestPO?.createdAt || null,
             approvalStatus: poStatus.latestPO?.approvalStatus || "PENDING",
-            fileUrl : poStatus.latestPO?.fileUrl || null
+            fileUrl: poStatus.latestPO?.fileUrl || null,
+            poId: poStatus.latestPO?.id || null, // Adding poId to track the PO for editing/removing
           }
         } catch (error) {
           console.error(`Error checking PO status for MTR ${req.id}:`, error)
@@ -184,7 +191,8 @@ const POUploadWithVendorSelection = () => {
           uploadDate: new Date().toISOString(),
           fileName: poFile.name,
           approvalStatus: "PENDING",
-          fileUrl : poFile.fileUrl
+          fileUrl: poFile.fileUrl,
+          poId: result.poId, // Adding poId to track the PO for editing/removing
         }
       })
       setPOStatusMap(updatedPOStatusMap)
@@ -195,6 +203,78 @@ const POUploadWithVendorSelection = () => {
     } catch (error) {
       console.error("Error uploading PO:", error)
       showMessage("error", "Error uploading PO. Please try again.")
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleEditPO = (mtrId) => {
+    const poData = poStatusMap[mtrId]
+    if (poData) {
+      setEditingPO({ mtrId, ...poData })
+      setEditPONumber(poData.poNumber || "")
+      setShowEditModal(true)
+    }
+  }
+
+  const handleRemovePO = async (mtrId) => {
+    if (!window.confirm("Are you sure you want to remove this PO? This action cannot be undone.")) {
+      return
+    }
+
+    try {
+      const poData = poStatusMap[mtrId]
+      if (poData && poData.poId) {
+        await purchaseOrderService.deletePurchaseOrder(poData.poId)
+
+        // Update local state
+        const updatedPOStatusMap = { ...poStatusMap }
+        delete updatedPOStatusMap[mtrId]
+        setPOStatusMap(updatedPOStatusMap)
+
+        showMessage("success", "PO removed successfully!")
+      }
+    } catch (error) {
+      console.error("Error removing PO:", error)
+      showMessage("error", "Error removing PO. Please try again.")
+    }
+  }
+
+  const handleUpdatePO = async () => {
+    if (!editPONumber.trim()) {
+      showMessage("error", "Please enter PO Number")
+      return
+    }
+
+    try {
+      setUploading(true)
+      const formData = new FormData()
+
+      if (editPOFile) {
+        formData.append("file", editPOFile)
+      }
+      formData.append("poNumber", editPONumber.trim())
+      formData.append("currentUserId", user?.userId || 1)
+
+      await purchaseOrderService.updatePurchaseOrder(editingPO.poId, formData)
+
+      // Update local state
+      const updatedPOStatusMap = { ...poStatusMap }
+      updatedPOStatusMap[editingPO.mtrId] = {
+        ...updatedPOStatusMap[editingPO.mtrId],
+        poNumber: editPONumber.trim(),
+        fileName: editPOFile ? editPOFile.name : updatedPOStatusMap[editingPO.mtrId].fileName,
+      }
+      setPOStatusMap(updatedPOStatusMap)
+
+      showMessage("success", "PO updated successfully!")
+      setShowEditModal(false)
+      setEditingPO(null)
+      setEditPOFile(null)
+      setEditPONumber("")
+    } catch (error) {
+      console.error("Error updating PO:", error)
+      showMessage("error", "Error updating PO. Please try again.")
     } finally {
       setUploading(false)
     }
@@ -222,6 +302,67 @@ const POUploadWithVendorSelection = () => {
     resetModal()
   }
 
+  const renderEditModal = () => {
+    if (!showEditModal || !editingPO) return null
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Edit Purchase Order</h3>
+            <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                PO Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={editPONumber}
+                onChange={(e) => setEditPONumber(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Replace File (Optional)</label>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx"
+                onChange={(e) => setEditPOFile(e.target.files[0])}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {editPOFile && <p className="mt-2 text-sm text-green-600">New file: {editPOFile.name}</p>}
+              <p className="mt-1 text-sm text-gray-500">Current file: {editingPO.fileName}</p>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdatePO}
+                disabled={uploading || !editPONumber.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {uploading ? "Updating..." : "Update PO"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const renderTableView = () => (
     <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
       <div className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-lg">
@@ -231,7 +372,6 @@ const POUploadWithVendorSelection = () => {
               <h2 className="text-xl font-semibold leading-none tracking-tight text-blue-700">
                 Purchase Order Management
               </h2>
-              {/* <p className="text-sm text-gray-600">Manage PO uploads for approved MTRs</p> */}
             </div>
             <button
               onClick={handleOpenModal}
@@ -256,7 +396,7 @@ const POUploadWithVendorSelection = () => {
                     <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Product Name</th>
                     <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Qty</th>
                     <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Purchase MTR</th>
-                    <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Upload PO</th>
+                    <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">PO Status</th>
                   </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
@@ -284,13 +424,50 @@ const POUploadWithVendorSelection = () => {
                       <td className="p-4 align-middle text-gray-700">{req.purchaseMTR}</td>
                       <td className="p-4 align-middle">
                         {poStatusMap[req.id]?.hasPO ? (
-                          <div className="space-y-1">
-                            <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              PO Uploaded
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  poStatusMap[req.id]?.approvalStatus === "APPROVED"
+                                    ? "bg-green-100 text-green-800"
+                                    : poStatusMap[req.id]?.approvalStatus === "REJECTED"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-yellow-100 text-yellow-800"
+                                }`}
+                              >
+                                {poStatusMap[req.id]?.approvalStatus || "PENDING"}
+                              </div>
                             </div>
                             <div className="text-xs text-gray-600">PO: {poStatusMap[req.id]?.poNumber}</div>
                             {poStatusMap[req.id]?.fileName && (
-                              <div className="text-xs text-indigo-600 hover:text-gray-500"><a href={poStatusMap[req.id]?.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">{poStatusMap[req.id].poNumber}</a></div>
+                              <div className="text-xs">
+                                <a
+                                  href={poStatusMap[req.id]?.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline hover:text-blue-800"
+                                >
+                                  {poStatusMap[req.id].fileName}
+                                </a>
+                              </div>
+                            )}
+                            {poStatusMap[req.id]?.approvalStatus !== "APPROVED" && (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => handleEditPO(req.id)}
+                                  className="inline-flex items-center justify-center text-xs px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded"
+                                  title="Edit PO"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleRemovePO(req.id)}
+                                  className="inline-flex items-center justify-center text-xs px-2 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded"
+                                  title="Remove PO"
+                                >
+                                  Remove
+                                </button>
+                              </div>
                             )}
                           </div>
                         ) : (
@@ -311,6 +488,7 @@ const POUploadWithVendorSelection = () => {
           )}
         </div>
       </div>
+      {renderEditModal()}
     </div>
   )
 

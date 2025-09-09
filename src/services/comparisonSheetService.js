@@ -393,5 +393,39 @@ export const comparisonSheetService = {
       console.error("Error fetching MTRs with PO status:", error)
       throw error
     }
+    },
+  
+  getPOsByMtrIdWithDetails: async (mtrId) => {
+    try {
+      console.log("[v0] Making API call to fetch detailed POs for MTR:", mtrId)
+      const url = `${API_BASE_URL}/material-requisitions/${mtrId}/purchase-orders-detailed`
+      console.log("[v0] API URL:", url)
+
+      const response = await axios.get(url)
+      console.log("[v0] API response status:", response.status)
+      console.log("[v0] API response data:", response.data)
+
+      return response.data || []
+    } catch (error) {
+      console.error("[v0] Error fetching detailed POs by MTR ID:", error)
+      console.error("[v0] Error response data:", error.response?.data)
+      console.error("[v0] Error response status:", error.response?.status)
+      console.error("[v0] Request URL:", error.config?.url)
+      return []
+    }
+  },
+
+  approvePO: async (poId, approvalStatus, remarks = "") => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/material-requisitions/purchase-orders/${poId}/approval`, {
+        approvalStatus: approvalStatus,
+        approvalRemarks: remarks,
+        currentUserId: 1,
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error updating PO approval:", error)
+      throw error
+    }
   },
 }

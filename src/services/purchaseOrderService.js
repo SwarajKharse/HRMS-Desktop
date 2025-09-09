@@ -98,4 +98,48 @@ export const purchaseOrderService = {
       throw error
     }
   },
+
+  updatePurchaseOrder: async (poId, formData) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/material-requisitions/purchase-orders/${poId}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error updating purchase order:", error)
+      throw error
+    }
+  },
+
+  deletePurchaseOrder: async (poId) => {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/material-requisitions/purchase-orders/${poId}`)
+      return response.data
+    } catch (error) {
+      console.error("Error deleting purchase order:", error)
+      throw error
+    }
+  },
+
+  approvePurchaseOrder: async (poId, approvalData) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/material-requisitions/purchase-orders/${poId}/approve`, approvalData)
+      return response.data
+    } catch (error) {
+      console.error("Error approving purchase order:", error)
+      throw error
+    }
+  },
+
+  getPurchaseOrderById: async (poId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/purchase-orders/${poId}`)
+      return response.data
+    } catch (error) {
+      console.error("Error fetching purchase order:", error)
+      throw error
+    }
+  },
 }

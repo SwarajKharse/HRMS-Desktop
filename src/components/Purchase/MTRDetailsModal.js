@@ -26,6 +26,13 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
   const [pmApprovalRemarks, setPmApprovalRemarks] = useState(mtr?.pmApprovalRemarks || "")
   const [pmApprovalLoading, setPmApprovalLoading] = useState(false)
 
+  const [purchaseOrders, setPurchaseOrders] = useState([])
+  const [poLoading, setPOLoading] = useState(false)
+  const [selectedPO, setSelectedPO] = useState(null)
+  const [poApprovalStatus, setPOApprovalStatus] = useState("PENDING")
+  const [poApprovalRemarks, setPOApprovalRemarks] = useState("")
+  const [poApprovalLoading, setPOApprovalLoading] = useState(false)
+
   useEffect(() => {
     const loadPurchasers = async () => {
       try {
@@ -38,6 +45,7 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
 
     loadPurchasers()
     fetchMTRData()
+    fetchPurchaseOrders()
   }, [])
 
   const fetchMTRData = async () => {
@@ -77,6 +85,37 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
       }
     } catch (error) {
       console.error("Error fetching selected vendor details:", error)
+    }
+  }
+
+  const fetchPurchaseOrders = async () => {
+    if (!mtr?.id) return
+
+    setPOLoading(true)
+    try {
+      console.log("[v0] Fetching POs for MTR ID:", mtr.id)
+      const pos = await comparisonSheetService.getPOsByMtrIdWithDetails(mtr.id)
+      console.log("[v0] Received POs from API:", pos)
+      console.log("[v0] POs array length:", pos?.length || 0)
+
+      setPurchaseOrders(pos || [])
+
+      // Set the first PO as selected if available
+      if (pos && pos.length > 0) {
+        console.log("[v0] Setting first PO as selected:", pos[0])
+        setSelectedPO(pos[0])
+        setPOApprovalStatus(pos[0].approvalStatus || "PENDING")
+        setPOApprovalRemarks(pos[0].approvalRemarks || "")
+      } else {
+        console.log("[v0] No POs found for MTR", mtr.id)
+      }
+    } catch (error) {
+      console.error("[v0] Error fetching purchase orders:", error)
+      console.error("[v0] Error response:", error.response?.data)
+      console.error("[v0] Error status:", error.response?.status)
+      setPurchaseOrders([])
+    } finally {
+      setPOLoading(false)
     }
   }
 
@@ -134,6 +173,46 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
       setError("Failed to update PM approval status. Please try again.")
     } finally {
       setPmApprovalLoading(false)
+    }
+  }
+
+  const handleSavePOApproval = async () => {
+    if (!selectedPO || !poApprovalStatus || poApprovalStatus === "PENDING") {
+      setError("Please select a PO and approval status")
+      return
+    }
+
+    setPOApprovalLoading(true)
+    setError("")
+    setSuccess("")
+
+    try {
+      await comparisonSheetService.approvePO(selectedPO.id, poApprovalStatus, poApprovalRemarks)
+      setSuccess("PO approval status updated successfully!")
+
+      // Update local state
+      const updatedPOs = purchaseOrders.map((po) =>
+        po.id === selectedPO.id
+          ? {
+              ...po,
+              approvalStatus: poApprovalStatus,
+              approvalRemarks: poApprovalRemarks,
+              approvalDate: new Date().toISOString(),
+            }
+          : po,
+      )
+      setPurchaseOrders(updatedPOs)
+      setSelectedPO((prev) => ({ ...prev, approvalStatus: poApprovalStatus, approvalRemarks: poApprovalRemarks }))
+
+      // Call parent onSave if provided
+      if (onSave) {
+        onSave({ ...mtrData, purchaseOrders: updatedPOs })
+      }
+    } catch (error) {
+      console.error("Error updating PO approval:", error)
+      setError("Failed to update PO approval status. Please try again.")
+    } finally {
+      setPOApprovalLoading(false)
     }
   }
 
@@ -342,6 +421,140 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
                   <div className="mt-3 p-3 bg-white rounded border">
                     <p className="text-sm font-medium text-gray-700">Previous Remarks:</p>
                     <p className="text-sm text-gray-700">{mtrData.pmApprovalRemarks}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {purchaseOrders.length > 0 && (
+              <div className="col-span-2 mt-4 p-4 bg-yellow-50 rounded-lg border border-orange-200">
+                <h4 className="text-md font-semibold text-orange-800 mb-3">Purchase Order Approval</h4>
+
+                {poLoading ? (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">Loading purchase orders...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* PO Selection */}
+                    <div>
+                      <label className="text-sm font-medium text-orange-700 block mb-1">Select Purchase Order:</label>
+                      <select
+                        value={selectedPO?.id || ""}
+                        onChange={(e) => {
+                          const po = purchaseOrders.find((p) => p.id === Number.parseInt(e.target.value))
+                          setSelectedPO(po)
+                          setPOApprovalStatus(po?.approvalStatus || "PENDING")
+                          setPOApprovalRemarks(po?.approvalRemarks || "")
+                        }}
+                        className="w-full h-10 rounded-md border border-orange-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        disabled={poApprovalLoading}
+                      >
+                        <option value="">-- Select PO --</option>
+                        {purchaseOrders.map((po) => (
+                          <option key={po.id} value={po.id}>
+                            {po.poNumber} - {po.fileName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {selectedPO && (
+                      <>
+                        {/* Current PO Details */}
+                        <div className="p-3 bg-white rounded border">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Selected PO Details:</p>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <div>
+                              <p className="text-xs font-medium text-gray-600">PO Number:</p>
+                              <p className="font-semibold text-orange-600">{selectedPO.poNumber}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-gray-600">File:</p>
+                              <a
+                                href={selectedPO.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline hover:text-blue-800 text-sm"
+                              >
+                                {selectedPO.fileName}
+                              </a>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-gray-600">Current Status:</p>
+                              <div className="flex items-center gap-2">
+                                {selectedPO.approvalStatus === "APPROVED" && <FiCheck className="text-green-600" />}
+                                {selectedPO.approvalStatus === "REJECTED" && <FiXCircle className="text-red-600" />}
+                                <span
+                                  className={`font-semibold ${
+                                    selectedPO.approvalStatus === "APPROVED"
+                                      ? "text-green-600"
+                                      : selectedPO.approvalStatus === "REJECTED"
+                                        ? "text-red-600"
+                                        : "text-yellow-600"
+                                  }`}
+                                >
+                                  {selectedPO.approvalStatus || "PENDING"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          {selectedPO.approvalDate && (
+                            <div className="mt-2">
+                              <p className="text-xs font-medium text-gray-600">Approval Date:</p>
+                              <p className="text-sm">{formatDate(selectedPO.approvalDate)}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Approval Controls */}
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-sm font-medium text-orange-700 block mb-1">
+                              Update Approval Status:
+                            </label>
+                            <select
+                              value={poApprovalStatus}
+                              onChange={(e) => setPOApprovalStatus(e.target.value)}
+                              className="w-full h-10 rounded-md border border-orange-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              disabled={poApprovalLoading}
+                            >
+                              <option value="PENDING">Pending</option>
+                              <option value="APPROVED">Approved</option>
+                              <option value="REJECTED">Rejected</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-sm font-medium text-orange-700 block mb-1">Approval Remarks:</label>
+                            <textarea
+                              value={poApprovalRemarks}
+                              onChange={(e) => setPOApprovalRemarks(e.target.value)}
+                              placeholder="Enter approval remarks for the purchase order..."
+                              rows={3}
+                              className="w-full rounded-md border border-orange-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                              disabled={poApprovalLoading}
+                            />
+                          </div>
+
+                          <button
+                            onClick={handleSavePOApproval}
+                            disabled={poApprovalLoading || poApprovalStatus === "PENDING"}
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed h-10 px-4 py-2 gap-2"
+                          >
+                            <FiSave size={16} />
+                            {poApprovalLoading ? "Saving..." : "Update PO Approval"}
+                          </button>
+                        </div>
+
+                        {selectedPO.approvalRemarks && (
+                          <div className="p-3 bg-white rounded border">
+                            <p className="text-sm font-medium text-gray-700">Previous Approval Remarks:</p>
+                            <p className="text-sm text-gray-700">{selectedPO.approvalRemarks}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
