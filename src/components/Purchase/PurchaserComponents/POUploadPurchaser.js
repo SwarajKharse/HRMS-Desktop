@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
 import { purchaseOrderService } from "../../../services/purchaseOrderService"
+import { purchaseInvoiceService } from "../../../services/purchaseInvoiceService"
 import { useAuth } from "../../../contexts/AuthContext"
 import VendorDropdownPOUpload from "./VendorDropdownPOUpload"
 
@@ -34,6 +35,16 @@ const POUploadWithVendorSelection = () => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [editPOFile, setEditPOFile] = useState(null)
   const [editPONumber, setEditPONumber] = useState("")
+
+  const [showPIModal, setShowPIModal] = useState(false)
+  const [selectedPOForPI, setSelectedPOForPI] = useState(null)
+  const [piFile, setPIFile] = useState(null)
+  const [payableAmount, setPayableAmount] = useState("")
+  const [selectedProjectName, setSelectedProjectName] = useState("")
+  const [expectedPaymentDate, setExpectedPaymentDate] = useState("")
+  const [projectNames, setProjectNames] = useState([])
+  const [piRemarks, setPIRemarks] = useState("")
+  const [uploadingPI, setUploadingPI] = useState(false)
 
   const showMessage = (type, text) => {
     setMessage({ type, text })
@@ -280,6 +291,72 @@ const POUploadWithVendorSelection = () => {
     }
   }
 
+  const fetchProjectNames = async () => {
+    try {
+      const names = await purchaseInvoiceService.getProjectNames()
+      setProjectNames(names)
+    } catch (error) {
+      console.error("Error fetching project names:", error)
+      setProjectNames([])
+    }
+  }
+
+  const handleTransferToAccounts = (mtrId) => {
+    const poData = poStatusMap[mtrId]
+    if (poData && poData.approvalStatus === "APPROVED") {
+      setSelectedPOForPI({
+        mtrId,
+        poId: poData.poId,
+        poNumber: poData.poNumber,
+        ...poData,
+      })
+      setShowPIModal(true)
+      fetchProjectNames()
+    }
+  }
+
+  const handleUploadPI = async () => {
+    if (!piFile || !payableAmount || !selectedProjectName || !expectedPaymentDate) {
+      showMessage("error", "Please fill all required fields")
+      return
+    }
+
+    try {
+      setUploadingPI(true)
+      const formData = new FormData()
+      formData.append("file", piFile)
+      formData.append("poId", selectedPOForPI.poId)
+      formData.append("payableAmount", payableAmount)
+      formData.append("projectName", selectedProjectName)
+      formData.append("expectedPaymentDate", expectedPaymentDate)
+      formData.append("uploadedBy", user?.id || 1)
+      if (piRemarks) {
+        formData.append("remarks", piRemarks)
+      }
+
+      await purchaseInvoiceService.uploadPurchaseInvoice(formData)
+
+      showMessage("success", "Purchase Invoice uploaded successfully and transferred to accounts!")
+
+      // Reset PI modal state
+      setShowPIModal(false)
+      setSelectedPOForPI(null)
+      setPIFile(null)
+      setPayableAmount("")
+      setSelectedProjectName("")
+      setExpectedPaymentDate("")
+      setPIRemarks("")
+
+      // Refresh table data
+      fetchTableData()
+    } catch (error) {
+      console.error("Error uploading PI:", error)
+      showMessage("error", "Error uploading Purchase Invoice. Please try again.")
+    } finally {
+      setUploadingPI(false)
+    }
+  }
+
   const resetModal = () => {
     setCurrentStep(1)
     setSelectedVendor("")
@@ -289,6 +366,16 @@ const POUploadWithVendorSelection = () => {
     setUploadedPOs([])
     setShowPODetails(false)
     setPONumber("")
+  }
+
+  const resetPIModal = () => {
+    setShowPIModal(false)
+    setSelectedPOForPI(null)
+    setPIFile(null)
+    setPayableAmount("")
+    setSelectedProjectName("")
+    setExpectedPaymentDate("")
+    setPIRemarks("")
   }
 
   const handleClose = () => {
@@ -355,6 +442,125 @@ const POUploadWithVendorSelection = () => {
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 {uploading ? "Updating..." : "Update PO"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const renderPITransferModal = () => {
+    if (!showPIModal || !selectedPOForPI) return null
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Transfer to Accounts - Upload PI</h3>
+            <button onClick={resetPIModal} className="text-gray-400 hover:text-gray-600">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="p-6 space-y-4">
+            {/* PO Information */}
+            <div className="bg-blue-50 p-4 rounded-md">
+              <h4 className="font-medium text-blue-900 mb-2">Purchase Order Details</h4>
+              <p className="text-sm text-blue-800">
+                <span className="font-medium">PO Number:</span> {selectedPOForPI.poNumber}
+              </p>
+              <p className="text-sm text-blue-800">
+                <span className="font-medium">Status:</span> {selectedPOForPI.approvalStatus}
+              </p>
+            </div>
+
+            {/* PI Upload Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload PI File <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx"
+                  onChange={(e) => setPIFile(e.target.files[0])}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {piFile && <p className="mt-2 text-sm text-green-600">Selected: {piFile.name}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payable Amount <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={payableAmount}
+                  onChange={(e) => setPayableAmount(e.target.value)}
+                  placeholder="Enter payable amount"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Project Name <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={selectedProjectName}
+                  onChange={(e) => setSelectedProjectName(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">Select Project</option>
+                  {projectNames.map((name, index) => (
+                    <option key={index} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Expected Payment Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={expectedPaymentDate}
+                  onChange={(e) => setExpectedPaymentDate(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Remarks (Optional)</label>
+                <textarea
+                  value={piRemarks}
+                  onChange={(e) => setPIRemarks(e.target.value)}
+                  rows={3}
+                  placeholder="Enter any additional remarks"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                onClick={resetPIModal}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUploadPI}
+                disabled={uploadingPI || !piFile || !payableAmount || !selectedProjectName || !expectedPaymentDate}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {uploadingPI ? "Transferring..." : "Transfer to Accounts"}
               </button>
             </div>
           </div>
@@ -451,23 +657,35 @@ const POUploadWithVendorSelection = () => {
                                 </a>
                               </div>
                             )}
-                            {poStatusMap[req.id]?.approvalStatus !== "APPROVED" && (
+                            {poStatusMap[req.id]?.approvalStatus === "APPROVED" ? (
                               <div className="flex gap-1">
                                 <button
-                                  onClick={() => handleEditPO(req.id)}
-                                  className="inline-flex items-center justify-center text-xs px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded"
-                                  title="Edit PO"
+                                  onClick={() => handleTransferToAccounts(req.id)}
+                                  className="inline-flex items-center justify-center text-xs px-2 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded"
+                                  title="Transfer to Accounts"
                                 >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleRemovePO(req.id)}
-                                  className="inline-flex items-center justify-center text-xs px-2 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded"
-                                  title="Remove PO"
-                                >
-                                  Remove
+                                  Transfer to Accounts
                                 </button>
                               </div>
+                            ) : (
+                              poStatusMap[req.id]?.approvalStatus !== "APPROVED" && (
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => handleEditPO(req.id)}
+                                    className="inline-flex items-center justify-center text-xs px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded"
+                                    title="Edit PO"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleRemovePO(req.id)}
+                                    className="inline-flex items-center justify-center text-xs px-2 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded"
+                                    title="Remove PO"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              )
                             )}
                           </div>
                         ) : (
@@ -489,6 +707,7 @@ const POUploadWithVendorSelection = () => {
         </div>
       </div>
       {renderEditModal()}
+      {renderPITransferModal()}
     </div>
   )
 

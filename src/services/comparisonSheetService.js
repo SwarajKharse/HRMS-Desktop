@@ -189,11 +189,11 @@ export const comparisonSheetService = {
 
   getMTRsByApprovedVendor: async ({ vendorName, assignedPurchaser }) => {
     try {
-      console.log("[v0] getMTRsByApprovedVendor called with:", { vendorName, assignedPurchaser })
-      console.log("[v0] vendorName type:", typeof vendorName)
-      console.log("[v0] vendorName value:", vendorName)
-      console.log("[v0] assignedPurchaser type:", typeof assignedPurchaser)
-      console.log("[v0] assignedPurchaser value:", assignedPurchaser)
+      console.log("getMTRsByApprovedVendor called with:", { vendorName, assignedPurchaser })
+      console.log("vendorName type:", typeof vendorName)
+      console.log("vendorName value:", vendorName)
+      console.log("assignedPurchaser type:", typeof assignedPurchaser)
+      console.log("assignedPurchaser value:", assignedPurchaser)
 
       const params = new URLSearchParams({
         size: "1000",
@@ -204,24 +204,24 @@ export const comparisonSheetService = {
       }
 
       const endpoint = `${API_BASE_URL}/material-requisitions/pm-approved`
-      console.log("[v0] Final API URL:", `${endpoint}?${params}`)
+      console.log("Final API URL:", `${endpoint}?${params}`)
 
       const response = await axios.get(`${endpoint}?${params}`)
 
       let mtrs = response.data.content || response.data
-      console.log("[v0] Raw API response:", response.data)
-      console.log("[v0] Extracted MTRs from content:", mtrs)
+      console.log("Raw API response:", response.data)
+      console.log("Extracted MTRs from content:", mtrs)
 
       if (Array.isArray(mtrs)) {
         // Filter only approved MTRs since we're looking for approved vendor MTRs
         mtrs = mtrs.filter((mtr) => {
-          console.log("[v0] Checking MTR:", { id: mtr.id, pmApprovalStatus: mtr.pmApprovalStatus })
+          console.log("Checking MTR:", { id: mtr.id, pmApprovalStatus: mtr.pmApprovalStatus })
           return mtr.pmApprovalStatus === "APPROVED"
         })
 
-        console.log("[v0] Found approved MTRs:", mtrs.length)
+        console.log("Found approved MTRs:", mtrs.length)
         console.log(
-          "[v0] MTR details:",
+          "MTR details:",
           mtrs.map((mtr) => ({
             id: mtr.id,
             mtrCode: mtr.mtrCode,
@@ -232,20 +232,20 @@ export const comparisonSheetService = {
           })),
         )
       } else {
-        console.error("[v0] MTRs is not an array:", mtrs)
+        console.error("MTRs is not an array:", mtrs)
         mtrs = []
       }
 
-      console.log("[v0] Final filtered MTRs:", mtrs)
+      console.log("Final filtered MTRs:", mtrs)
       return mtrs
     } catch (error) {
-      console.error("[v0] Error fetching MTRs by approved vendor:", error)
-      console.error("[v0] Error status:", error.response?.status)
-      console.error("[v0] Error message:", error.response?.data)
-      console.error("[v0] Request URL:", error.config?.url)
+      console.error("Error fetching MTRs by approved vendor:", error)
+      console.error("Error status:", error.response?.status)
+      console.error("Error message:", error.response?.data)
+      console.error("Request URL:", error.config?.url)
 
       if (error.response?.status === 404) {
-        console.warn("[v0] Backend endpoint not found, returning mock data for testing")
+        console.warn("Backend endpoint not found, returning mock data for testing")
         return [
           {
             id: 1,
@@ -320,7 +320,7 @@ export const comparisonSheetService = {
     } catch (error) {
       // If endpoint doesn't exist (403/404), fallback to localStorage for backward compatibility
       if (error.response?.status === 403 || error.response?.status === 404) {
-        console.warn(`[v0] PO status endpoint not found for MTR ${mtrId}, using localStorage fallback`)
+        console.warn(`PO status endpoint not found for MTR ${mtrId}, using localStorage fallback`)
         const uploadedPOs = JSON.parse(localStorage.getItem("uploadedPOs") || "{}")
         const mtrPO = uploadedPOs[mtrId]
 
@@ -353,7 +353,7 @@ export const comparisonSheetService = {
     } catch (error) {
       // If endpoint doesn't exist (403/404), return empty array
       if (error.response?.status === 403 || error.response?.status === 404) {
-        console.warn(`[v0] PO details endpoint not found for MTR ${mtrId}`)
+        console.warn(`PO details endpoint not found for MTR ${mtrId}`)
         return []
       }
       console.error("Error fetching POs by MTR ID:", error)
@@ -397,20 +397,20 @@ export const comparisonSheetService = {
   
   getPOsByMtrIdWithDetails: async (mtrId) => {
     try {
-      console.log("[v0] Making API call to fetch detailed POs for MTR:", mtrId)
+      console.log("Making API call to fetch detailed POs for MTR:", mtrId)
       const url = `${API_BASE_URL}/material-requisitions/${mtrId}/purchase-orders-detailed`
-      console.log("[v0] API URL:", url)
+      console.log("API URL:", url)
 
       const response = await axios.get(url)
-      console.log("[v0] API response status:", response.status)
-      console.log("[v0] API response data:", response.data)
+      console.log("API response status:", response.status)
+      console.log("API response data:", response.data)
 
       return response.data || []
     } catch (error) {
-      console.error("[v0] Error fetching detailed POs by MTR ID:", error)
-      console.error("[v0] Error response data:", error.response?.data)
-      console.error("[v0] Error response status:", error.response?.status)
-      console.error("[v0] Request URL:", error.config?.url)
+      console.error("Error fetching detailed POs by MTR ID:", error)
+      console.error("Error response data:", error.response?.data)
+      console.error("Error response status:", error.response?.status)
+      console.error("Request URL:", error.config?.url)
       return []
     }
   },
