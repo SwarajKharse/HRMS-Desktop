@@ -601,6 +601,33 @@ export const leadService = {
     }
   },
 
+  exportAllLeads: async (format = "csv") => {
+    try {
+      console.log("Exporting all leads in format:", format)
+
+      const response = await axios.get(`${BASE_URL}/export/allleads`, {
+        params: {
+          format: format,
+        },
+        responseType: "blob",
+      })
+
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", format === "excel" ? "all_leads.xlsx" : "all_leads.csv")
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+
+      return true
+    } catch (error) {
+      console.error("Export API Error:", error)
+      throw new Error("Failed to export all leads: " + (error.message || "Unknown error"))
+    }
+  },
+
   getAssignedLeads: async (
     page = 0,
     size = 30,
@@ -915,10 +942,7 @@ export const leadService = {
       )
       finalResult = [...response.data, ...responsesalesTl.data] */
 
-      const finalResult = await axios.get(
-        `${BASE_URL}/sselist/${user.orgId}`,
-        getAuthHeaders(),
-      )
+      const finalResult = await axios.get(`${BASE_URL}/sselist/${user.orgId}`, getAuthHeaders())
       return finalResult.data
     } catch (error) {
       throw error.response?.data || error.message
@@ -933,10 +957,7 @@ export const leadService = {
         `${EMP_BASE_URL}/manager/${user.orgId}/${"Business Development Manager"}`,
         getAuthHeaders(),
       ) */
-      const response = await axios.get(
-        `${BASE_URL}/bdmlist/${user.orgId}`,
-        getAuthHeaders(),
-      )
+      const response = await axios.get(`${BASE_URL}/bdmlist/${user.orgId}`, getAuthHeaders())
       return response.data
     } catch (error) {
       throw error.response?.data || error.message
