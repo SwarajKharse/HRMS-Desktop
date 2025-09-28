@@ -73,6 +73,14 @@ function Sidebar({logo}) {
     if (permissions?.webProductManagement) {
       updatedNavItems.push({ icon: RiProductHuntLine, label: 'Product Management', path: '/product-management' });
     }
+
+    if (permissions?.webAccounts) {
+      updatedNavItems.push({ icon: RiProductHuntLine, label: 'Accounts', path: '/accounts' });
+    }
+
+    if (permissions?.webFinance) {
+      updatedNavItems.push({ icon: RiProductHuntLine, label: 'Finance', path: '/finance' });
+    }
     setNavItems(updatedNavItems);
   }, [permissions]);
 

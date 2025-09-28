@@ -64,4 +64,17 @@ export const materialRequisitionService = {
       throw error
     }
   },
+
+   getMaterialRequisitionById: async (id) => {
+    try {
+      const response = await axios.get(`${API_URL}/api/material-requisitions/${id}`, {
+        ...getAuthHeaders(),
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error fetching material requisition:", error)
+      throw error
+    }
+  },
+
 }

@@ -1,9 +1,9 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
 import { materialRequisitionService } from "../../services/materialRequisitionService"
-import { FiSave, FiX, FiEye, FiEdit3, FiUpload } from "react-icons/fi"
+import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
+import { FiSave, FiX, FiEye, FiEdit3 } from "react-icons/fi"
 import MTRDetailsModal from "./MTRDetailsModal"
-
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -12,12 +12,18 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
 }
 
-const getWorkflowStatus = (req) => {
+const getWorkflowStatus = async (req) => {
+  console.log("[v0] Calculating workflow status for req:", JSON.stringify(req))
 
-  console.log("req")
-  console.log(JSON.stringify(req))
-
-  const { status, assignedPurchaser, projectManagerStatus, purchaseMTR, poUploaded, pmApprovalStatus } = req
+  const {
+    status,
+    assignedPurchaser,
+    projectManagerStatus,
+    purchaseMTR,
+    poUploaded,
+    pmApprovalStatus,
+    purchaseOrderId,
+  } = req
 
   // If no purchase is needed (purchaseMTR is 0)
   if (purchaseMTR === 0) {
@@ -35,10 +41,101 @@ const getWorkflowStatus = (req) => {
     }
   }
 
-  // If PO is uploaded and pending approval
-  if (poUploaded && !status?.includes("PO_APPROVED")) {
+  let piData = null
+  if (poUploaded && purchaseOrderId && (status?.includes("PO_APPROVED") || pmApprovalStatus === "APPROVED")) {
+    try {
+      console.log(`[v0] Attempting to fetch PI for PO ID: ${purchaseOrderId}`)
+      piData = await purchaseInvoiceService.getPurchaseInvoiceByPOId(purchaseOrderId)
+      console.log(`[v0] PI data for PO ${purchaseOrderId}:`, JSON.stringify(piData))
+
+      // Additional check to ensure we have valid PI data
+      if (piData && piData.id) {
+        console.log(`[v0] Valid PI found with ID: ${piData.id}, approval status: ${piData.approvalStatus}`)
+      } else {
+        console.log(`[v0] No valid PI data found for PO ${purchaseOrderId}`)
+        piData = null
+      }
+    } catch (error) {
+      console.log(`[v0] Error fetching PI for PO ${purchaseOrderId}:`, error.message)
+      piData = null
+    }
+  } else {
+    console.log(
+      `[v0] Skipping PI fetch - poUploaded: ${poUploaded}, purchaseOrderId: ${purchaseOrderId}, status: ${status}, pmApprovalStatus: ${pmApprovalStatus}`,
+    )
+  }
+
+  // PI workflow statuses (highest priority) - Enhanced logic
+  if (piData && piData.id) {
+    console.log(`[v0] Processing PI status: ${piData.approvalStatus}`)
+
+    if (piData.approvalStatus === "APPROVED") {
+      console.log("[v0] Returning PI Approved status")
+      return {
+        text: "PI Approved - Payment Processing",
+        color: "text-green-600 bg-green-50",
+      }
+    }
+
+    if (piData.approvalStatus === "REJECTED") {
+      console.log("[v0] Returning PI Rejected status")
+      return {
+        text: "PI Rejected - Needs Revision",
+        color: "text-red-600 bg-red-50",
+      }
+    }
+
+    if (piData.approvalStatus === "UNDER_REVIEW") {
+      console.log("[v0] Returning PI Under Review status")
+      return {
+        text: "PI Under Review",
+        color: "text-yellow-600 bg-yellow-50",
+      }
+    }
+
+    // Default pending status for uploaded PI
+    if (!piData.approvalStatus || piData.approvalStatus === "PENDING") {
+      console.log("[v0] Returning PI Pending status")
+      return {
+        text: "PI Uploaded - Approval Pending",
+        color: "text-orange-600 bg-orange-50",
+      }
+    }
+
+    // Catch-all for any other PI status
+    console.log(`[v0] Unknown PI approval status: ${piData.approvalStatus}, treating as uploaded`)
     return {
-      text: "PO uploaded, Approval on PO pending",
+      text: "PI Uploaded - Approval Pending",
+      color: "text-orange-600 bg-orange-50",
+    }
+  }
+
+  // PO workflow statuses - Enhanced logic
+  if (poUploaded) {
+    if (status?.includes("PO_APPROVED") || pmApprovalStatus === "APPROVED") {
+      return {
+        text: "PO Approved - PI Pending Upload",
+        color: "text-blue-600 bg-blue-50",
+      }
+    }
+
+    if (status?.includes("PO_REJECTED")) {
+      return {
+        text: "PO Rejected - Needs Revision",
+        color: "text-red-600 bg-red-50",
+      }
+    }
+
+    if (status?.includes("PO_UNDER_REVIEW")) {
+      return {
+        text: "PO Under Review",
+        color: "text-yellow-600 bg-yellow-50",
+      }
+    }
+
+    // Default pending status for uploaded PO
+    return {
+      text: "PO Uploaded - Approval Pending",
       color: "text-orange-600 bg-orange-50",
     }
   }
@@ -46,7 +143,7 @@ const getWorkflowStatus = (req) => {
   // If vendor is approved but no PO uploaded yet
   if (pmApprovalStatus === "APPROVED" || projectManagerStatus === "APPROVED") {
     return {
-      text: "Vendor Approved",
+      text: "Vendor Approved - PO Pending Upload",
       color: "text-green-600 bg-green-50",
     }
   }
@@ -54,13 +151,13 @@ const getWorkflowStatus = (req) => {
   // If purchaser is assigned but no project manager approval
   if (assignedPurchaser && !projectManagerStatus) {
     return {
-      text: "Purchaser Assigned - Approval Pending",
+      text: "Purchaser Assigned - PM Approval Pending",
       color: "text-yellow-600 bg-yellow-50",
     }
   }
 
   // If project manager has rejected
-  if (projectManagerStatus === "REJECTED") {
+  if (projectManagerStatus === "REJECTED" || pmApprovalStatus === "REJECTED") {
     return {
       text: "Rejected by Project Manager",
       color: "text-red-600 bg-red-50",
@@ -104,6 +201,7 @@ export default function MaterialRequisitionPurchase() {
   const [currentPage, setCurrentPage] = useState(0) // Backend is 0-indexed
   const [totalPages, setTotalPages] = useState(0)
   const [pageSize, setPageSize] = useState(10) // Default page size
+  const [workflowStatuses, setWorkflowStatuses] = useState({})
   const [filters, setFilters] = useState({
     itemName: "",
     status: "All",
@@ -154,6 +252,18 @@ export default function MaterialRequisitionPurchase() {
       setRequisitions(formattedRequisitions)
       setTotalPages(data.totalPages || 0)
       setCurrentPage(data.number || 0)
+
+      const statusPromises = formattedRequisitions.map(async (req) => {
+        const status = await getWorkflowStatus(req)
+        return { id: req.id, status }
+      })
+
+      const statuses = await Promise.all(statusPromises)
+      const statusMap = {}
+      statuses.forEach(({ id, status }) => {
+        statusMap[id] = status
+      })
+      setWorkflowStatuses(statusMap)
     } catch (e) {
       console.error("Failed to fetch material requisitions:", e)
       setError("Failed to load material requisitions. Please try again.")
@@ -325,6 +435,41 @@ export default function MaterialRequisitionPurchase() {
     setSelectedMTRForDetails(mtr)
     setShowDetailsModal(true)
   }
+
+  // Function to refresh status for a specific requisition
+  const refreshRequisitionStatus = async (reqId) => {
+    const req = requisitions.find((r) => r.id === reqId)
+    if (req) {
+      console.log(`[v0] Refreshing status for requisition ${reqId}`)
+      const status = await getWorkflowStatus(req)
+      setWorkflowStatuses((prev) => ({
+        ...prev,
+        [reqId]: status,
+      }))
+    }
+  }
+
+  // useEffect to periodically refresh statuses for PO approved items
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      // Only refresh statuses for items that might have PI updates
+      const poApprovedReqs = requisitions.filter(
+        (req) =>
+          req.poUploaded &&
+          req.purchaseOrderId &&
+          (req.status?.includes("PO_APPROVED") || req.pmApprovalStatus === "APPROVED"),
+      )
+
+      if (poApprovedReqs.length > 0) {
+        console.log(`[v0] Refreshing statuses for ${poApprovedReqs.length} PO approved items`)
+        for (const req of poApprovedReqs) {
+          await refreshRequisitionStatus(req.id)
+        }
+      }
+    }, 30000) // Refresh every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [requisitions])
 
   return (
     <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
@@ -533,7 +678,10 @@ export default function MaterialRequisitionPurchase() {
                         </td>
                         <td className="p-4 align-middle">
                           {(() => {
-                            const statusInfo = getWorkflowStatus(req)
+                            const statusInfo = workflowStatuses[req.id] || {
+                              text: "Loading...",
+                              color: "text-gray-600 bg-gray-50",
+                            }
                             return (
                               <span
                                 className={`inline-flex items-center px-3 py-1 text-xs font-medium ${statusInfo.color}`}
