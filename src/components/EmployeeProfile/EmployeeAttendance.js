@@ -32,7 +32,7 @@ const STATUS_CONFIG = {
     label: "Absent",
   },
   "Half Day": {
-    color: "bg-amber-200 text-amber-900 border-amber-300",
+    color: "bg-yellow-200 text-yellow-900 border-yellow-300",
     label: "Half Day",
   },
   "Paid Leave": {
