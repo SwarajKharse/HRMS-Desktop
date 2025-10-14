@@ -81,16 +81,27 @@ const getStatusColor = (status, record) => {
   }
 
   // For attendance issues, use the Present color but add an indicator badge
-  if (status === "Late Check-in" || status === "Early Check-out" || status === "Late Check-in and Early Check-out") {
+  if (status === "Late Check-in" || status === "Late Check-in and Early Check-out") {
     return STATUS_CONFIG["Present"].color
   }
+  if (status === "Early Check-out") {
+    // Check if the checkout time is available and before 16:30
+    if (record && record.checkOut && record.checkOut < "16:30") {
+      // If checkout is before 4 PM, make it yellow
+      return "bg-yellow-200 text-yellow-800 border-yellow-300";
+    } else {
+      // If checkout is after 4 PM, make it green (like a normal 'Present' day)
+      return STATUS_CONFIG["Present"].color;
+    }
+  }
+
 
   if (status === "Overtime") {
     return "bg-indigo-100 text-indigo-800 border-indigo-200"
   }
 
   if (status === "Half Day" && record && record.isHalfDayPaid) {
-    return "bg-gradient-to-r from-amber-200 to-blue-200 text-blue-900 border-blue-300"
+    return ""bg-yellow-200 text-yellow-800 border-yellow-300";
   }
 
   return STATUS_CONFIG[status]?.color || "bg-gray-50 text-gray-400 border-gray-200"
