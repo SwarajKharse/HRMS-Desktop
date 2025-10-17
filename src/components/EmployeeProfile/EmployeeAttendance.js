@@ -101,7 +101,7 @@ const getStatusColor = (status, record) => {
   }
 
   if (status === "Half Day" && record && record.isHalfDayPaid) {
-    return ""bg-yellow-200 text-yellow-800 border-yellow-300";
+    return "bg-yellow-200 text-yellow-800 border-yellow-300";
   }
 
   return STATUS_CONFIG[status]?.color || "bg-gray-50 text-gray-400 border-gray-200"
