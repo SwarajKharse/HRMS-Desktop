@@ -327,4 +327,43 @@ export const projectService = {
       throw error
     }
   },
+
+updateBOQWithGST: async (projectId, boqData) => {
+    try {
+      const response = await axios.put(`${API_URL}/projects/${projectId}/boq/gst`, boqData, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error updating BOQ with GST:", error)
+      throw error.response?.data || error.message
+    }
+  },
+
+  generatePOPDF: async (leadId, boqWithGST) => {
+    try {
+      const response = await axios.post(`${API_URL}/projects/generate-po-pdf/${leadId}`, boqWithGST, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error generating PO PDF:", error)
+      throw error.response?.data || error.message
+    }
+  },
+  // </CHANGE>
+
+  uploadPOToS3: async (projectId, file, leadCode) => {
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("leadCode", leadCode)
+
+      const response = await axios.post(`${API_URL}/projects/${projectId}/upload-po`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error uploading PO to S3:", error)
+      throw error.response?.data || error.message
+    }
+  },
 }

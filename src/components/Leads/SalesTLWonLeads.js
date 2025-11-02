@@ -7,10 +7,8 @@ import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
 import SalesTLHandOverForm from "./SalesTLHandOverForm"
-import { FiEdit2, FiAlertCircle, FiCheck, FiDownload, FiChevronRight, FiFilter, FiSearch } from "react-icons/fi"
-import { TbTransferIn } from "react-icons/tb";
-
-
+import { FiEdit2, FiAlertCircle, FiCheck, FiDownload, FiChevronRight, FiFilter, FiSearch, FiBell } from "react-icons/fi"
+import { TbTransferIn } from "react-icons/tb"
 
 function SalesTLWonLeads() {
   const navigate = useNavigate()
@@ -116,6 +114,8 @@ function SalesTLWonLeads() {
 
       console.log("Query parameters:", queryParams.toString())
 
+      console.log("[v0] Fetching leads - page:", page, "leadsPerPage:", leadsPerPage)
+
       const data = await leadService.getSalesTlWonLeads(
         page,
         leadsPerPage,
@@ -129,12 +129,21 @@ function SalesTLWonLeads() {
         appliedFilters.leadSource || "",
       )
 
+      console.log("[v0] API Response received:", data)
+      console.log("[v0] Results array:", data.results)
+      console.log("[v0] Results length:", data.results?.length)
+      console.log("[v0] First lead sample:", data.results?.[0])
+      console.log("[v0] First lead uploaded documents:", data.results?.[0]?.lead_uploaded_documents)
+
       setLeads(data.results || [])
       setTotalPages(data.totalPages || 1)
       setTotalResults(data.totalResults || 0)
       setLoading(false)
+
+      console.log("[v0] State updated - loading set to false, leads count:", data.results?.length || 0)
     } catch (error) {
-      console.error("Error fetching leads:", error)
+      console.error("[v0] Error fetching leads:", error)
+      console.error("[v0] Error details:", error.message, error.stack)
       setError("Failed to fetch leads")
       setLoading(false)
     }
@@ -154,12 +163,12 @@ function SalesTLWonLeads() {
 
   const fetchSourceTypeData = async () => {
     try {
-      const [leadSource, leadType, leadProductType,sseData, bdmData] = await Promise.all([
+      const [leadSource, leadType, leadProductType, sseData, bdmData] = await Promise.all([
         leadService.getLeadSourceList(),
         leadService.getLeadTypeList(),
         leadService.getLeadProductTypeList(),
         leadService.getSSEList(),
-        leadService.getBDMList()
+        leadService.getBDMList(),
       ])
       setSourcelist(leadSource)
       setTypelist(leadType)
@@ -263,7 +272,6 @@ function SalesTLWonLeads() {
     setShowForm(true)
   }
 
-
   const handleHandOverEdit = (e, id) => {
     e.stopPropagation()
     const lead = unassignedleads.find((emp) => emp.id === id)
@@ -343,7 +351,6 @@ function SalesTLWonLeads() {
     }
   }
 
-
   const getSSEStatus = (lead) => {
     if (lead.assigned_bdm !== null) {
       return {
@@ -358,6 +365,66 @@ function SalesTLWonLeads() {
     }
   }
 
+  const getPOStatus = (lead) => {
+    console.log("[v0] Getting PO status for lead:", lead.id, lead.lead_code)
+    console.log("[v0] Lead documents:", lead.leadDocuments)
+
+    const uploadedDocuments =
+      lead.leadDocuments || lead.lead_uploaded_documents || lead.uploadedDocuments || lead.documents || []
+
+    console.log("[v0] Uploaded documents found:", uploadedDocuments.length)
+    console.log("[v0] All documents:", uploadedDocuments)
+
+    const poDocuments = uploadedDocuments.filter((doc) => doc.document_type === "po_document")
+
+    console.log("[v0] PO documents found:", poDocuments.length)
+
+    // Sort by uploadedAt in descending order (latest first) and get the first one
+    const latestPoDocument =
+      poDocuments.length > 0 ? poDocuments.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0] : null
+
+    console.log("[v0] Latest PO document:", latestPoDocument)
+
+    // If no PO document found
+    if (!latestPoDocument || !latestPoDocument.status) {
+      console.log("[v0] No PO document or status found")
+      return {
+        label: "No PO",
+        className: "bg-gray-50 text-gray-600 ring-1 ring-gray-300/20",
+        showNotification: false,
+      }
+    }
+
+    // Get the status from the latest PO document
+    const poStatus = latestPoDocument.status
+    console.log("[v0] Latest PO Status:", poStatus)
+
+    if (poStatus === "Revision from Sales") {
+      return {
+        label: "Revision from Sales",
+        className: "bg-orange-50 text-orange-700 ring-1 ring-orange-600/20 font-semibold",
+        showNotification: true,
+      }
+    } else if (poStatus === "Approve") {
+      return {
+        label: "Approved",
+        className: "bg-green-50 text-green-700 ring-1 ring-green-600/20",
+        showNotification: false,
+      }
+    } else if (poStatus === "In progress") {
+      return {
+        label: "In Progress",
+        className: "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
+        showNotification: false,
+      }
+    } else {
+      return {
+        label: poStatus || "N/A",
+        className: "bg-gray-50 text-gray-600 ring-1 ring-gray-300/20",
+        showNotification: false,
+      }
+    }
+  }
 
   const checkHandOverButton = (lead) => {
     if (lead.leadStatus === "won") {
@@ -801,6 +868,7 @@ function SalesTLWonLeads() {
                       "Product Type",
                       "Asssigned SSE",
                       "Assigned BDM",
+                      "PO Status", // Added PO Status column header
                       "Status",
                       "Action",
                     ]
@@ -818,7 +886,7 @@ function SalesTLWonLeads() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {unassignedleads.length === 0 ? (
                     <tr>
-                      <td colSpan="8" className="px-6 py-8 text-center text-gray-500 font-medium">
+                      <td colSpan="9" className="px-6 py-8 text-center text-gray-500 font-medium">
                         No leads found
                       </td>
                     </tr>
@@ -827,7 +895,7 @@ function SalesTLWonLeads() {
                       const bdmStatus = getBDMStatus(lead)
                       const leadStatus = getLeadStatus(lead)
                       const sseStatus = getSSEStatus(lead)
-                      //const showHandoverButtonFlag = checkHandOverButton(lead)
+                      const poStatus = getPOStatus(lead) // Get PO status
 
                       return (
                         <motion.tr
@@ -904,6 +972,17 @@ function SalesTLWonLeads() {
 
                           <td className="px-6 py-4">
                             <div className="text-xs font-medium text-gray-900">
+                              <span
+                                className={`px-3 py-1 inline-flex items-center gap-1.5 text-xs font-semibold rounded-full ${poStatus.className}`}
+                              >
+                                {poStatus.showNotification && <FiBell className="w-3.5 h-3.5 animate-pulse" />}
+                                {poStatus.label}
+                              </span>
+                            </div>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            <div className="text-xs font-medium text-gray-900">
                               {leadStatus.className && (
                                 <span
                                   className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${leadStatus.className}`}
@@ -924,15 +1003,15 @@ function SalesTLWonLeads() {
                                 <FiEdit2 size={18} />
                               </button>
 
-
-                              {lead.lead_status === "won" ?
-                              <button
-                                className="text-gray-400 hover:text-indigo-600 transition-colors"
-                                onClick={(e) => handleHandOverEdit(e, lead.id)}
-                                title="HandOver to Project/AMC">
-                                <TbTransferIn size={18} />
-                              </button>
-                              : null }
+                              {lead.lead_status === "won" ? (
+                                <button
+                                  className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                  onClick={(e) => handleHandOverEdit(e, lead.id)}
+                                  title="HandOver to Project/AMC"
+                                >
+                                  <TbTransferIn size={18} />
+                                </button>
+                              ) : null}
                             </div>
                           </td>
                         </motion.tr>
@@ -953,6 +1032,7 @@ function SalesTLWonLeads() {
                     const bdmStatus = getBDMStatus(lead)
                     const leadStatus = getLeadStatus(lead)
                     const sseStatus = getSSEStatus(lead)
+                    const poStatus = getPOStatus(lead) // Get PO status for mobile view
 
                     return (
                       <motion.div
@@ -993,6 +1073,16 @@ function SalesTLWonLeads() {
                           <div className="text-gray-500">Client:</div>
                           <div className="font-medium">
                             {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                          </div>
+
+                          <div className="text-gray-500">PO Status:</div>
+                          <div>
+                            <span
+                              className={`px-2 py-1 inline-flex items-center gap-1 text-xs font-semibold rounded-full ${poStatus.className}`}
+                            >
+                              {poStatus.showNotification && <FiBell className="w-3 h-3 animate-pulse" />}
+                              {poStatus.label}
+                            </span>
                           </div>
 
                           <div className="text-gray-500">Status:</div>

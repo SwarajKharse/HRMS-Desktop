@@ -16,7 +16,10 @@ import {
 import { HiOutlineBuildingStorefront, HiMiniShoppingBag  } from "react-icons/hi2";
 import { GrProjects } from "react-icons/gr";
 import { usePermissions } from "../contexts/PermissionsContext"
-import { RiProductHuntLine } from "react-icons/ri";
+import { RiProductHuntLine, RiMoneyRupeeCircleLine } from "react-icons/ri";
+import { MdOutlineAccountBalance, MdMoney } from "react-icons/md";
+
+
 
 
 import { FaUsers } from "react-icons/fa";
@@ -75,11 +78,11 @@ function Sidebar({logo}) {
     }
 
     if (permissions?.webAccounts) {
-      updatedNavItems.push({ icon: RiProductHuntLine, label: 'Accounts', path: '/accounts' });
+      updatedNavItems.push({ icon: MdOutlineAccountBalance, label: 'Accounts', path: '/accounts' });
     }
 
     if (permissions?.webFinance) {
-      updatedNavItems.push({ icon: RiProductHuntLine, label: 'Finance', path: '/finance' });
+      updatedNavItems.push({ icon: RiMoneyRupeeCircleLine, label: 'Finance', path: '/finance' });
     }
     setNavItems(updatedNavItems);
   }, [permissions]);
