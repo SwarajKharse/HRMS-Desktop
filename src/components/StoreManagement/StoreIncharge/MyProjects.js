@@ -9,7 +9,7 @@ import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./ProjectLeadDetails"
 import BOQEditComponent from "./BOQMTREditStore"
-import ProjectDispatch from "./ProjectDispatch"
+import ProjectDispatch from "./ProjectDispatch" // Ensure this import is correct
 
 function NewProjects() {
   const navigate = useNavigate()
@@ -37,9 +37,12 @@ function NewProjects() {
   const [sourcelist, setSourcelist] = useState([])
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
+  // Mobile filter state
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  // Add new state variables for lead type and source filters
   const [typeSearchQuery, setTypeSearchQuery] = useState("")
   const [sourceSearchQuery, setSourceSearchQuery] = useState("")
+  // Applied filters state (what's actually sent to backend)
   const [appliedFilters, setAppliedFilters] = useState({
     leadCode: "",
     fromDate: "",
@@ -50,11 +53,15 @@ function NewProjects() {
     leadType: "",
     leadSource: "",
   })
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalResults, setTotalResults] = useState(0)
   const leadsPerPage = 30
+  // State for expanded rows on mobile
   const [expandedRows, setExpandedRows] = useState({})
+
+  // New state for Project Dispatch modal
   const [showProjectDispatch, setShowProjectDispatch] = useState(false)
   const [selectedProjectForDispatch, setSelectedProjectForDispatch] = useState(null)
 
@@ -73,12 +80,14 @@ function NewProjects() {
       setError("Failed to fetch projects")
       setLoading(false)
     }
-  }, [currentPage, leadsPerPage, user?.orgId, userId])
+  }, [currentPage, leadsPerPage, user?.orgId, userId]) // Removed unassignedleads from dependencies
 
+  // Effect to fetch leads
   useEffect(() => {
     fetchLeads()
   }, [fetchLeads])
 
+  // Effect to fetch source/type data (runs once on mount)
   useEffect(() => {
     const fetchSourceTypeData = async () => {
       try {
@@ -96,51 +105,48 @@ function NewProjects() {
       }
     }
     if (sourcelist.length === 0) {
+      // Only fetch if lists are empty
       fetchSourceTypeData()
     }
-  }, [])
+  }, []) // Empty dependency array means this runs once on mount
 
+  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery])
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber)
+    // Scroll to top on mobile when changing pages
     if (window.innerWidth < 768) {
       window.scrollTo(0, 0)
     }
   }
 
   const handleRowClick = (lead) => {
+    // Toggle expanded state for mobile view
     setExpandedRows((prev) => ({
       ...prev,
       [lead.id]: !prev[lead.id],
     }))
   }
 
-  const handleAddEmployee = async (updatedProjectData) => {
-    console.log("[v0] handleAddEmployee called with data:", updatedProjectData)
+  const handleAddEmployee = async () => {
     try {
-      if (updatedProjectData && updatedProjectData.projectId) {
-        console.log("[v0] Calling projectService.updateProjectDetails")
-        await projectService.updateProjectDetails(updatedProjectData.projectId, updatedProjectData)
-        setSuccessMessage("Project updated successfully!")
-        setTimeout(() => setSuccessMessage(null), 3000)
-      }
       await fetchLeads()
       setShowForm(false)
       setSelectedLead(null)
     } catch (error) {
-      console.error("[v0] Error updating project:", error)
-      setError("Failed to update project: " + (error.message || error))
-      setTimeout(() => setError(null), 5000)
+      setError("Failed to add employee")
     }
   }
 
-  const handleEdit = (e, project) => {
+  const handleEdit = (e, id) => {
     e.stopPropagation()
-    console.log("Editing project:", project)
-    setSelectedLead(project)
+    // const allLeads = [...new Set(unassignedleads.map((tag) => tag.lead))]
+    //const lead = allLeads.find((emp) => emp.id === id)
+    console.log("ID is =============" + id)
+    setSelectedLead(id)
     setShowForm(true)
   }
 
@@ -149,6 +155,7 @@ function NewProjects() {
     try {
       setLoading(true)
       console.log("Fetching BOQ data for project:", project.id)
+      // Always fetch fresh BOQ data from the database
       const boqData = await projectService.getBOQByProjectId(project.id)
       console.log("Fetched BOQ data:", boqData)
       setSelectedProject({
@@ -158,6 +165,7 @@ function NewProjects() {
       setShowBOQEdit(true)
     } catch (error) {
       console.error("Error fetching BOQ data:", error)
+      // If no BOQ exists or error occurs, create empty structure
       setSelectedProject({
         ...project,
         boq: {
@@ -174,11 +182,16 @@ function NewProjects() {
     try {
       setLoading(true)
       console.log("Saving BOQ data:", boqData)
+      // Save the BOQ data
       await projectService.saveBOQWithMaterialRequisition(selectedProject.id, boqData)
       setSuccessMessage("BOQ saved successfully!")
+      // Close the BOQ edit modal
       setShowBOQEdit(false)
+      // Clear the selected project
       setSelectedProject(null)
+      // Refresh the projects list to get updated data
       await fetchLeads()
+      // Clear success message after 3 seconds
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
       console.error("Error saving BOQ:", error)
@@ -221,6 +234,7 @@ function NewProjects() {
 
   const fetchDateFromApi = (apiDate) => {
     if (!apiDate) return false
+    // Create date from input value
     var inputDate = new Date(apiDate)
     var todaysDate = new Date()
     if (inputDate.setHours(0, 0, 0, 0) == todaysDate.setHours(0, 0, 0, 0)) {
@@ -239,23 +253,26 @@ function NewProjects() {
     })
   }
 
+  // New handler for opening Project Dispatch modal
   const handleProjectDispatchClick = (e, project) => {
-    e.stopPropagation()
+    e.stopPropagation() // Prevent row click from firing
     setSelectedProjectForDispatch(project)
     setShowProjectDispatch(true)
   }
 
+  // New handler for closing Project Dispatch modal
   const handleDispatchClose = () => {
     setShowProjectDispatch(false)
     setSelectedProjectForDispatch(null)
   }
 
+  // New handler for saving Project Dispatch data
   const handleDispatchSave = async (savedData) => {
     console.log("Dispatch plan saved:", savedData)
     setSuccessMessage("Dispatch plan saved successfully!")
     setShowProjectDispatch(false)
     setSelectedProjectForDispatch(null)
-    await fetchLeads()
+    await fetchLeads() // Refresh the project list
     setTimeout(() => setSuccessMessage(null), 3000)
   }
 
@@ -272,6 +289,7 @@ function NewProjects() {
 
   return (
     <div className="flex flex-col gap-4 md:gap-8">
+      {/* Error Message */}
       {error && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -293,7 +311,9 @@ function NewProjects() {
           <span className="text-sm md:font-medium">{successMessage}</span>
         </motion.div>
       )}
+      {/* Employee List */}
       <div className="bg-white rounded-xl shadow-sm p-3 md:p-6 mx-2 md:mx-0">
+        {/* Mobile Filter Toggle */}
         <div className="md:hidden flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-800">New Projects</h2>
         </div>
@@ -313,6 +333,7 @@ function NewProjects() {
             transition={{ duration: 0.2 }}
             className="overflow-hidden rounded-lg border border-gray-200"
           >
+            {/* Desktop Table View */}
             <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -382,7 +403,7 @@ function NewProjects() {
                           <div className="flex items-center gap-4">
                             <button
                               className="text-gray-400 hover:text-indigo-600 transition-colors"
-                              onClick={(e) => handleEdit(e, project)}
+                              onClick={(e) => handleEdit(e, project.lead?.id)}
                               title="Edit"
                             >
                               <FiEdit2 size={18} />
@@ -395,6 +416,7 @@ function NewProjects() {
                 </tbody>
               </table>
             </div>
+            {/* Mobile Card View */}
             <div className="md:hidden">
               {unassignedleads.length === 0 ? (
                 <div className="p-4 text-center text-gray-500 font-medium">No projects found</div>
@@ -428,7 +450,7 @@ function NewProjects() {
                           </button>
                           <button
                             className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                            onClick={(e) => handleEdit(e, project)}
+                            onClick={(e) => handleEdit(e, project.lead?.id)}
                             title="Edit"
                           >
                             <FiEdit2 size={16} />
@@ -438,6 +460,7 @@ function NewProjects() {
                       <div className="grid grid-cols-1 gap-y-2 text-xs">
                         <div className="font-medium text-gray-900">{project.project_name}</div>
                       </div>
+                      {/* Expand/collapse indicator */}
                       <div className="flex justify-center mt-2">
                         <FiChevronRight
                           className={`text-gray-400 transition-transform ${
@@ -453,6 +476,7 @@ function NewProjects() {
             </div>
           </motion.div>
         </AnimatePresence>
+        {/* Pagination Controls */}
         {totalPages > 1 && (
           <div className="mt-4 flex justify-center items-center gap-2 flex-wrap">
             <button
@@ -462,19 +486,26 @@ function NewProjects() {
             >
               Prev
             </button>
+            {/* Mobile pagination - just show current/total */}
             <div className="md:hidden px-3 py-1 text-sm">
               Page {currentPage} of {totalPages}
             </div>
+            {/* Desktop pagination - show page numbers */}
             <div className="hidden md:flex">
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                // Show at most 5 page buttons
                 let pageNum
                 if (totalPages <= 5) {
+                  // If 5 or fewer pages, show all
                   pageNum = i + 1
                 } else if (currentPage <= 3) {
+                  // If near the start, show first 5 pages
                   pageNum = i + 1
                 } else if (currentPage >= totalPages - 2) {
+                  // If near the end, show last 5 pages
                   pageNum = totalPages - 4 + i
                 } else {
+                  // Otherwise show 2 before and 2 after current page
                   pageNum = currentPage - 2 + i
                 }
                 return (
@@ -515,10 +546,11 @@ function NewProjects() {
           {Math.min(currentPage * leadsPerPage, totalResults)} of {totalResults} projects
         </div>
       </div>
+      {/* Modals */}
       <AnimatePresence>
         {showForm && (
           <ProjectLeadDetails
-            project={selectedLead}
+            leadId={selectedLead}
             activeTab="salestl-won-leads"
             onClose={() => {
               setShowForm(false)

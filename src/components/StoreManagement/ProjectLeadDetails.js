@@ -5,8 +5,8 @@ import { FiX } from "react-icons/fi"
 
 // IMPORTANT: Replace these mock imports with your actual service and context imports
 // import { authService } from "../../services/authService"
- import { leadService } from "../../services/leadService"
- import { projectService } from "../../services/projectService"
+import { leadService } from "../../services/leadService"
+import { projectService } from "../../services/projectService"
 // import { useAuth } from "../../contexts/AuthContext"
 
 // Mock services and context for demonstration purposes
@@ -108,10 +108,14 @@ import { FiX } from "react-icons/fi"
       }, 500)
     })
   },
+  getStoreInchargeList: async () => [
+    { id: 1, firstName: "John", lastName: "Doe" },
+    { id: 2, firstName: "Jane", lastName: "Smith" },
+  ],
 } */
 const useAuth = () => ({ user: { userId: "user123", orgId: "org456" } })
 
-function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
+function ProjectLeadDetails({ project, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
   const fileInputRef = useRef(null)
 
@@ -135,6 +139,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   const [sourcelist, setSourcelist] = useState([])
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
+  const [seData, setSEList] = useState([])
 
   // Initialize formData and projectData with default empty structures
   // These will be updated once 'lead' data is fetched in the second useEffect
@@ -147,12 +152,14 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   })
 
   const [projectData, setProjectData] = useState({
+    projectId: "", // Added projectId field
     projectName: "",
     projectDescription: "",
     projectBudget: "",
     projectTimeline: "",
     projectStatus: "planning",
     projectManager: "",
+    storeIncharge: "",
     estimatedValue: "",
     actualValue: "",
     startDate: "",
@@ -165,63 +172,73 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
       setDataLoading(true)
       setError("")
       try {
-        console.log("Fetching lead details for leadId:", leadId)
-        const [leadDetails, leadSource, leadType, leadProductType] = await Promise.all([
+        console.log("Fetching lead details for project:", project) // Updated log message
+        const leadId = project?.lead?.id // Extract leadId from project object
+
+        if (!leadId) {
+          throw new Error("No lead ID found in project")
+        }
+
+        const [leadDetails, leadSource, leadType, leadProductType, siteEngineers] = await Promise.all([
           projectService.getLeadByLeadId(leadId),
           leadService.getLeadSourceList(),
           leadService.getLeadTypeList(),
           leadService.getLeadProductTypeList(),
+          projectService.getStoreInchargeList(),
         ])
         setLead(leadDetails)
         setSourcelist(leadSource)
         setTypelist(leadType)
         setProductTypelist(leadProductType)
+        setSEList(siteEngineers)
         console.log("Fetched lead details:", leadDetails)
       } catch (err) {
         setError("Failed to load lead details or related lists.")
         console.error(err)
-        setLead(null) // Set lead to null on error to show error message
+        setLead(null)
       } finally {
         setDataLoading(false)
       }
     }
 
-    if (leadId) {
-      // Only fetch if leadId is provided
+    if (project) {
+      // Check for project instead of leadId
       fetchInitialData()
     } else {
-      setDataLoading(false) // If no leadId, stop loading and show no data
+      setDataLoading(false)
       setLead(null)
     }
-  }, [leadId, user?.orgId]) // Add leadId to dependencies. Use optional chaining for user.orgId
+  }, [project, user?.orgId]) // Changed dependency from leadId to project
 
   // Effect to update formData and projectData when lead changes
   useEffect(() => {
-    if (lead) {
+    if (lead && project) {
+      // Also check for project
       setFormData((prev) => ({
         ...prev,
-        ...lead, // Spread lead properties to update formData
-        proposal_type: lead.proposal_type || [], // Ensure it's an array
-        lead_proposal_type: lead.lead_proposal_type || [], // Ensure it's an array
+        ...lead,
+        proposal_type: lead.proposal_type || [],
+        lead_proposal_type: lead.lead_proposal_type || [],
         employee_updatedby: {
           id: userId,
         },
       }))
       setProjectData({
+        projectId: project.id, // Set project ID from project object
         projectName: lead.project_name || "",
         projectDescription: lead.project_description || "",
         projectBudget: lead.project_budget || "",
         projectTimeline: lead.project_timeline || "",
         projectStatus: lead.project_status || "planning",
         projectManager: lead.project_manager || "",
-        siteEngineer: lead.site_engineer || "",
+        storeIncharge: project.storeIncharge?.id || "", // Get ID from storeIncharge object
         estimatedValue: lead.estimated_value || "",
         actualValue: lead.actual_value || "",
         startDate: lead.start_date || "",
         endDate: lead.end_date || "",
       })
     }
-  }, [lead, userId]) // Depend on lead and userId
+  }, [lead, project, userId]) // Added project to dependencies
 
   // Toggle section expansion
   const toggleSection = (section) => {
@@ -237,21 +254,29 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     setError("")
     try {
       const processedData = {
-        ...formData,
-        ...projectData,
+        projectId: projectData.projectId,
+        project_name: projectData.projectName,
+        project_description: projectData.projectDescription,
+        project_budget: projectData.projectBudget,
+        project_timeline: projectData.projectTimeline,
+        project_status: projectData.projectStatus,
+        project_manager: projectData.projectManager,
+        store_incharge: projectData.storeIncharge,
+        estimated_value: projectData.estimatedValue,
+        actual_value: projectData.actualValue,
+        start_date: projectData.startDate,
+        end_date: projectData.endDate,
         employee_updatedby: {
           id: userId,
         },
       }
-      // The original code had `const formData = new FormData()` here, which shadows the state `formData`.
-      // If your `onSubmit` function expects a FormData object (e.g., for file uploads),
-      // you'll need to construct it here with `processedData` and any files.
-      // For now, assuming `onSubmit` can handle the processedData object directly.
-      await onSubmit(processedData) // Pass processedData to onSubmit if it expects it
-      onClose()
+
+      console.log("[v0] Submitting project data:", processedData)
+      await onSubmit(processedData) // Wait for onSubmit to complete before closing
+      // onClose will be called from parent after successful submission
     } catch (err) {
-      console.log(err)
-      setError(err.message || "Failed to update lead")
+      console.log("[v0] Error in handleSubmit:", err)
+      setError(err.message || "Failed to update project")
       window.scrollTo(0, 0)
     } finally {
       setLoading(false)
@@ -360,7 +385,29 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
         className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
       >
         <div className="bg-white rounded-lg shadow-xl p-8 flex flex-col items-center justify-center">
-          <p className="text-lg font-medium text-gray-700">No lead details found for ID: {leadId}.</p>
+          <p className="text-lg font-medium text-gray-700">No lead details found for ID: {project?.lead?.id}.</p>
+          <button
+            onClick={onClose}
+            className="mt-4 px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </motion.div>
+    )
+  }
+
+  // Show error message if no project provided
+  if (!project) {
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      >
+        <div className="bg-white rounded-lg shadow-xl p-8 flex flex-col items-center justify-center">
+          <p className="text-lg font-medium text-gray-700">No project data provided.</p>
           <button
             onClick={onClose}
             className="mt-4 px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
@@ -386,7 +433,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
         className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto"
       >
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center z-10">
-          <h2 className="text-xl font-semibold">Project Management</h2>
+          <h2 className="text-xl font-semibold">Project Management</h2> {/* Removed "33" from title */}
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
             <FiX size={20} />
           </button>
@@ -753,38 +800,25 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
             borderColor="border-amber-300"
             headerTextColor="text-amber-800"
           >
-            <div className="space-y-6">
-              {/* Project Information */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2">
-                  Assign Project Manager <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="project_manager"
-                  value={projectData.projectManager} // Bind to projectData state
-                  onChange={(e) => setProjectData({ ...projectData, projectManager: e.target.value })}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Engineer</option>
-                  {/* You would map over your ssedata (Site Engineer data) here */}
-                  <option value="4">Gahininath Maske</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2">
-                  Assign Site Engineer <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="project_manager"
-                  value={projectData.siteEngineer} // Bind to projectData state
-                  onChange={(e) => setProjectData({ ...projectData, siteEngineer: e.target.value })}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Engineer</option>
-                  {/* You would map over your ssedata (Site Engineer data) here */}
-                  <option value="4">Gahininath Maske</option>
-                </select>
-              </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2">
+                Assign Store Incharge <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="store_incharge"
+                value={projectData.storeIncharge}
+                onChange={(e) => setProjectData({ ...projectData, storeIncharge: Number.parseInt(e.target.value, 10) })}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+              >
+                <option value="">Select Store Incharge</option>
+                {seData.map((engineer, i) => {
+                  return (
+                    <option key={i} value={engineer.id}>
+                      {engineer.firstName + " " + engineer.lastName}
+                    </option>
+                  )
+                })}
+              </select>
             </div>
           </ExpandableSection>
           {/* Action Buttons */}
