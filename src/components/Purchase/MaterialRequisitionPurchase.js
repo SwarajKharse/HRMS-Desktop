@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 import { materialRequisitionService } from "../../services/materialRequisitionService"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { FiSave, FiX, FiEye, FiEdit3 } from "react-icons/fi"
-import MTRDetailsModal from "./MTRDetailsModal"
+import PurchaseMTRDetailsModal from "./PurchaseMTRDetailsModal"
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -13,19 +13,17 @@ const formatDate = (dateString) => {
 }
 
 const getWorkflowStatus = async (req) => {
-  console.log("[v0] Calculating workflow status for req:", JSON.stringify(req))
-
   const {
     status,
     assignedPurchaser,
     projectManagerStatus,
     purchaseMTR,
     poUploaded,
-    pmApprovalStatus,
+    purchaseManagerApprovalStatus,
     purchaseOrderId,
+    poApprovalStatus,
   } = req
 
-  // If no purchase is needed (purchaseMTR is 0)
   if (purchaseMTR === 0) {
     return {
       text: "No Purchase Required",
@@ -33,7 +31,6 @@ const getWorkflowStatus = async (req) => {
     }
   }
 
-  // If purchaser is not assigned
   if (!assignedPurchaser) {
     return {
       text: "Purchaser Not Assigned",
@@ -41,36 +38,29 @@ const getWorkflowStatus = async (req) => {
     }
   }
 
-  let piData = null
-  if (poUploaded && purchaseOrderId && (status?.includes("PO_APPROVED") || pmApprovalStatus === "APPROVED")) {
-    try {
-      console.log(`[v0] Attempting to fetch PI for PO ID: ${purchaseOrderId}`)
-      piData = await purchaseInvoiceService.getPurchaseInvoiceByPOId(purchaseOrderId)
-      console.log(`[v0] PI data for PO ${purchaseOrderId}:`, JSON.stringify(piData))
+  const hasPOUploaded = poUploaded || (purchaseOrderId && purchaseOrderId > 0)
 
-      // Additional check to ensure we have valid PI data
+  let piData = null
+  if (
+    hasPOUploaded &&
+    purchaseOrderId &&
+    (poApprovalStatus === "APPROVED" || purchaseManagerApprovalStatus === "APPROVED")
+  ) {
+    try {
+      piData = await purchaseInvoiceService.getPurchaseInvoiceByPOId(purchaseOrderId)
       if (piData && piData.id) {
-        console.log(`[v0] Valid PI found with ID: ${piData.id}, approval status: ${piData.approvalStatus}`)
+        // Valid PI found
       } else {
-        console.log(`[v0] No valid PI data found for PO ${purchaseOrderId}`)
         piData = null
       }
     } catch (error) {
-      console.log(`[v0] Error fetching PI for PO ${purchaseOrderId}:`, error.message)
       piData = null
     }
-  } else {
-    console.log(
-      `[v0] Skipping PI fetch - poUploaded: ${poUploaded}, purchaseOrderId: ${purchaseOrderId}, status: ${status}, pmApprovalStatus: ${pmApprovalStatus}`,
-    )
   }
 
-  // PI workflow statuses (highest priority) - Enhanced logic
+  // PI status checks
   if (piData && piData.id) {
-    console.log(`[v0] Processing PI status: ${piData.approvalStatus}`)
-
     if (piData.approvalStatus === "APPROVED") {
-      console.log("[v0] Returning PI Approved status")
       return {
         text: "PI Approved - Payment Processing",
         color: "text-green-600 bg-green-50",
@@ -78,7 +68,6 @@ const getWorkflowStatus = async (req) => {
     }
 
     if (piData.approvalStatus === "REJECTED") {
-      console.log("[v0] Returning PI Rejected status")
       return {
         text: "PI Rejected - Needs Revision",
         color: "text-red-600 bg-red-50",
@@ -86,85 +75,76 @@ const getWorkflowStatus = async (req) => {
     }
 
     if (piData.approvalStatus === "UNDER_REVIEW") {
-      console.log("[v0] Returning PI Under Review status")
       return {
         text: "PI Under Review",
         color: "text-yellow-600 bg-yellow-50",
       }
     }
 
-    // Default pending status for uploaded PI
-    if (!piData.approvalStatus || piData.approvalStatus === "PENDING") {
-      console.log("[v0] Returning PI Pending status")
-      return {
-        text: "PI Uploaded - Approval Pending",
-        color: "text-orange-600 bg-orange-50",
-      }
-    }
-
-    // Catch-all for any other PI status
-    console.log(`[v0] Unknown PI approval status: ${piData.approvalStatus}, treating as uploaded`)
     return {
       text: "PI Uploaded - Approval Pending",
       color: "text-orange-600 bg-orange-50",
     }
   }
 
-  // PO workflow statuses - Enhanced logic
-  if (poUploaded) {
-    if (status?.includes("PO_APPROVED") || pmApprovalStatus === "APPROVED") {
+  if (hasPOUploaded) {
+    console.log("1111")
+    if (poApprovalStatus === "APPROVED") {
+      console.log("2222")
       return {
         text: "PO Approved - PI Pending Upload",
         color: "text-blue-600 bg-blue-50",
       }
     }
 
-    if (status?.includes("PO_REJECTED")) {
+    if (poApprovalStatus === "REJECTED") {
+      console.log("3333")
       return {
         text: "PO Rejected - Needs Revision",
         color: "text-red-600 bg-red-50",
       }
     }
 
-    if (status?.includes("PO_UNDER_REVIEW")) {
+    if (poApprovalStatus === "UNDER_REVIEW") {
+      console.log("4444")
       return {
         text: "PO Under Review",
         color: "text-yellow-600 bg-yellow-50",
       }
     }
 
-    // Default pending status for uploaded PO
+    // This is the default case when PO is uploaded but not yet reviewed
     return {
-      text: "PO Uploaded - Approval Pending",
+      
+      text: "PO Uploaded - Approval Pending444",
       color: "text-orange-600 bg-orange-50",
     }
   }
 
-  // If vendor is approved but no PO uploaded yet
-  if (pmApprovalStatus === "APPROVED" || projectManagerStatus === "APPROVED") {
+  if (purchaseManagerApprovalStatus === "APPROVED" || projectManagerStatus === "APPROVED") {
+    console.log("5555  "+purchaseOrderId)
     return {
       text: "Vendor Approved - PO Pending Upload",
       color: "text-green-600 bg-green-50",
     }
   }
 
-  // If purchaser is assigned but no project manager approval
   if (assignedPurchaser && !projectManagerStatus) {
+    console.log("6666 "+purchaseOrderId)
     return {
       text: "Purchaser Assigned - PM Approval Pending",
       color: "text-yellow-600 bg-yellow-50",
     }
   }
 
-  // If project manager has rejected
-  if (projectManagerStatus === "REJECTED" || pmApprovalStatus === "REJECTED") {
+  if (projectManagerStatus === "REJECTED" || purchaseManagerApprovalStatus === "REJECTED") {
+    console.log("77777")
     return {
       text: "Rejected by Project Manager",
       color: "text-red-600 bg-red-50",
     }
   }
 
-  // Default status based on general status
   switch (status) {
     case "APPROVED":
       return {
@@ -198,9 +178,9 @@ export default function MaterialRequisitionPurchase() {
   const [requisitions, setRequisitions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [currentPage, setCurrentPage] = useState(0) // Backend is 0-indexed
+  const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
-  const [pageSize, setPageSize] = useState(10) // Default page size
+  const [pageSize, setPageSize] = useState(10)
   const [workflowStatuses, setWorkflowStatuses] = useState({})
   const [filters, setFilters] = useState({
     itemName: "",
@@ -210,16 +190,11 @@ export default function MaterialRequisitionPurchase() {
     mtrDateTo: "",
   })
 
-  // State for inline editing
   const [editingMtrId, setEditingMtrId] = useState(null)
   const [editedMtrData, setEditedMtrData] = useState({})
 
-  // State for view details modal
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedMTRForDetails, setSelectedMTRForDetails] = useState(null)
-
-  // State for PO upload modal
-  const [showPOUploadModal, setShowPOUploadModal] = useState(false)
 
   const fetchMaterialRequisitions = useCallback(async () => {
     setLoading(true)
@@ -236,12 +211,10 @@ export default function MaterialRequisitionPurchase() {
       }).toString()
 
       const data = await materialRequisitionService.fetchMaterialRequisitions(queryParams)
-      console.log("API Response Data:", data)
 
       const formattedRequisitions = (data.content || []).map((req) => {
         return {
           ...req,
-          // Ensure numeric fields are numbers for calculations
           mtrQty: Number.parseFloat(req.mtrQty || 0),
           stockAlloted: Number.parseFloat(req.stockAlloted || 0),
           purchaseMTR: Number.parseFloat(req.purchaseMTR || 0),
@@ -286,7 +259,7 @@ export default function MaterialRequisitionPurchase() {
   }
 
   const handleApplyFilters = () => {
-    setCurrentPage(0) // Reset to first page when applying new filters
+    setCurrentPage(0)
   }
 
   const handlePageChange = (page) => {
@@ -367,15 +340,14 @@ export default function MaterialRequisitionPurchase() {
     return items
   }
 
-  // This function will now be explicitly called by the edit icon
-  const handleEditClick = (e, mtr) => {
-    e.stopPropagation() // Prevent row click from also triggering
-    setEditingMtrId(mtr.id)
-    setEditedMtrData({ ...mtr }) // Copy current MTR data for editing
+  const handleEditClick = (e, req) => {
+    e.stopPropagation()
+    setEditingMtrId(req.id)
+    setEditedMtrData({ ...req })
   }
 
   const handleCancelClick = (e) => {
-    e.stopPropagation() // Prevent row click from re-triggering edit mode
+    e.stopPropagation()
     setEditingMtrId(null)
     setEditedMtrData({})
   }
@@ -384,7 +356,6 @@ export default function MaterialRequisitionPurchase() {
     const { value } = e.target
     setEditedMtrData((prev) => {
       const newData = { ...prev, [field]: value }
-      // Recalculate Purchase MTR
       if (field === "mtrQty" || field === "stockAlloted") {
         const mtrQty = Number.parseFloat(newData.mtrQty || 0)
         const stockAlloted = Number.parseFloat(newData.stockAlloted || 0)
@@ -395,19 +366,14 @@ export default function MaterialRequisitionPurchase() {
   }
 
   const handleSaveClick = async (e, mtrId) => {
-    e.stopPropagation() // Prevent row click from re-triggering edit mode
+    e.stopPropagation()
     setLoading(true)
     setError(null)
     try {
-      // Prepare payload with only editable fields and calculated purchaseMTR
       const payload = {
-        // MTR Qty is read-only, so send its original value
         mtrQty: Number.parseFloat(editedMtrData.mtrQty),
         stockAlloted: Number.parseFloat(editedMtrData.stockAlloted),
-        // Purchase MTR is calculated, send the calculated value
         purchaseMTR: Number.parseFloat(editedMtrData.purchaseMTR),
-        dcQty: Number.parseFloat(editedMtrData.dcQty),
-        // Other fields are read-only, send their original values
         remarks: editedMtrData.remarks,
         expectedDeliveryDate: editedMtrData.expectedDeliveryDate,
         priority: editedMtrData.priority,
@@ -415,13 +381,13 @@ export default function MaterialRequisitionPurchase() {
         status: editedMtrData.status,
       }
 
-      await materialRequisitionService.updateMaterialRequisition(mtrId, payload)
+      const currentUserId = 181 // Replace with actual user ID from context/auth
 
-      // Update the local state with the saved data
+      await materialRequisitionService.updateMaterialRequisition(mtrId, payload, currentUserId)
+
       setRequisitions((prev) => prev.map((req) => (req.id === mtrId ? { ...req, ...editedMtrData } : req)))
       setEditingMtrId(null)
       setEditedMtrData({})
-      alert("Material Requisition updated successfully!")
     } catch (e) {
       console.error("Failed to save material requisition:", e)
       setError(`Failed to save material requisition: ${e.message}`)
@@ -430,17 +396,15 @@ export default function MaterialRequisitionPurchase() {
     }
   }
 
-  const handleViewDetailsClick = (e, mtr) => {
-    e.stopPropagation() // Prevent row click from triggering edit mode
-    setSelectedMTRForDetails(mtr)
+  const handleViewDetailsClick = (e, req) => {
+    e.stopPropagation()
+    setSelectedMTRForDetails(req)
     setShowDetailsModal(true)
   }
 
-  // Function to refresh status for a specific requisition
   const refreshRequisitionStatus = async (reqId) => {
     const req = requisitions.find((r) => r.id === reqId)
     if (req) {
-      console.log(`[v0] Refreshing status for requisition ${reqId}`)
       const status = await getWorkflowStatus(req)
       setWorkflowStatuses((prev) => ({
         ...prev,
@@ -449,24 +413,21 @@ export default function MaterialRequisitionPurchase() {
     }
   }
 
-  // useEffect to periodically refresh statuses for PO approved items
   useEffect(() => {
     const interval = setInterval(async () => {
-      // Only refresh statuses for items that might have PI updates
       const poApprovedReqs = requisitions.filter(
         (req) =>
           req.poUploaded &&
           req.purchaseOrderId &&
-          (req.status?.includes("PO_APPROVED") || req.pmApprovalStatus === "APPROVED"),
+          (req.poApprovalStatus === "APPROVED" || req.purchaseManagerApprovalStatus === "APPROVED"),
       )
 
       if (poApprovedReqs.length > 0) {
-        console.log(`[v0] Refreshing statuses for ${poApprovedReqs.length} PO approved items`)
         for (const req of poApprovedReqs) {
           await refreshRequisitionStatus(req.id)
         }
       }
-    }, 30000) // Refresh every 30 seconds
+    }, 30000)
 
     return () => clearInterval(interval)
   }, [requisitions])
@@ -478,16 +439,6 @@ export default function MaterialRequisitionPurchase() {
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">Material Requisitions</h2>
           </div>
-          {/* <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">Material Requisitions</h2>
-            <button
-              onClick={() => setShowPOUploadModal(true)}
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 gap-2"
-            >
-              <FiUpload size={16} />
-              Upload PO
-            </button>
-          </div> */}
         </div>
         <div className="p-6 pt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -608,7 +559,6 @@ export default function MaterialRequisitionPurchase() {
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Stock Allotted</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Purchase MTR</th>
-                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">DC Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Status</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Actions</th>
                     </tr>
@@ -630,7 +580,7 @@ export default function MaterialRequisitionPurchase() {
                               type="number"
                               step="0.01"
                               value={editedMtrData.mtrQty}
-                              readOnly // MTR Qty is now read-only
+                              readOnly
                               className="w-24 p-1 border rounded bg-gray-100 text-gray-600 focus:outline-none"
                             />
                           ) : (
@@ -661,19 +611,6 @@ export default function MaterialRequisitionPurchase() {
                             />
                           ) : (
                             req.purchaseMTR
-                          )}
-                        </td>
-                        <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.dcQty}
-                              onChange={(e) => handleInputChange(e, "dcQty")}
-                              className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            />
-                          ) : (
-                            req.dcQty
                           )}
                         </td>
                         <td className="p-4 align-middle">
@@ -714,7 +651,7 @@ export default function MaterialRequisitionPurchase() {
                               <button
                                 onClick={(e) => handleEditClick(e, req)}
                                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 h-9 px-3 py-1"
-                                title="Edit Stock Allotted and DC Qty"
+                                title="Edit Stock Allotted"
                               >
                                 <FiEdit3 size={16} />
                               </button>
@@ -790,16 +727,15 @@ export default function MaterialRequisitionPurchase() {
           )}
         </div>
       </div>
-      {showDetailsModal && <MTRDetailsModal mtr={selectedMTRForDetails} onClose={() => setShowDetailsModal(false)} />}
-      {/* {showPOUploadModal && (
-        <POUploadModal
-          onClose={() => setShowPOUploadModal(false)}
-          onSuccess={() => {
-            setShowPOUploadModal(false)
-            fetchMaterialRequisitions() // Refresh the list after successful upload
+      {showDetailsModal && (
+        <PurchaseMTRDetailsModal
+          mtr={selectedMTRForDetails}
+          onClose={() => {
+            setShowDetailsModal(false)
+            fetchMaterialRequisitions()
           }}
         />
-      )} */}
+      )}
     </div>
   )
 }

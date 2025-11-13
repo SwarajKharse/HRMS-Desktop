@@ -157,6 +157,8 @@ const POUploadWithVendorSelection = () => {
       console.log("[v0] selectedVendor value:", selectedVendor)
       console.log("[v0] selectedVendor type:", typeof selectedVendor)
 
+      console.log(selectedVendor+" ***    "+user?.userId)
+
       const mtrData = await comparisonSheetService.getMTRsByApprovedVendor({
         vendorName: selectedVendor,
         assignedPurchaser: user?.userId || 1,
@@ -231,6 +233,7 @@ const POUploadWithVendorSelection = () => {
       formData.append("vendorName", selectedVendor)
       formData.append("uploadedBy", user?.userId || 1)
       formData.append("poNumber", poNumber.trim())
+      formData.append("currentUserId",user?.userId)
 
       const result = await comparisonSheetService.uploadPOForMTRs(formData)
 

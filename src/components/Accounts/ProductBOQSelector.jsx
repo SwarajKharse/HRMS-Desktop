@@ -5,13 +5,23 @@ import { FiSearch, FiPlus, FiTrash2, FiX, FiEdit2, FiSave, FiChevronDown, FiChev
 import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
 
-function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ = null, isEditMode = false }) {
+function ProductBOQSelector({
+  projectId,
+  onSave,
+  leadProductTypes,
+  existingBOQ = null,
+  isEditMode = false,
+  currentUserId,
+  projectSalesTlId,
+  onBOQItemStatusUpdateSuccess,
+  onProductCountChange,
+}) {
   const [products, setProducts] = useState([])
-  const [categories, setCategories] = useState([]) // This will hold leadProductTypes as categories
-  const [selectedCategories, setSelectedCategories] = useState([]) // Categories (leadProductTypes) selected by the user
-  const [selectedProductsByCategory, setSelectedProductsByCategory] = useState({}) // Products grouped by selected category (leadProductType)
+  const [categories, setCategories] = useState([])
+  const [selectedCategories, setSelectedCategories] = useState([])
+  const [selectedProductsByCategory, setSelectedProductsByCategory] = useState({})
   const [expandedCategories, setExpandedCategories] = useState({})
-  const [activeProductSearch, setActiveProductSearch] = useState(null) // Stores the categoryId (leadProductTypeId) for which product search is active
+  const [activeProductSearch, setActiveProductSearch] = useState(null)
   const [filteredProducts, setFilteredProducts] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [showDropdown, setShowDropdown] = useState(false)
@@ -19,11 +29,14 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
   const [error, setError] = useState("")
   const [saving, setSaving] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
-  const [selectedCategoryToAdd, setSelectedCategoryToAdd] = useState("") // Declare selectedCategoryToAdd
+  const [selectedCategoryToAdd, setSelectedCategoryToAdd] = useState("")
+
+  const previousProductCountRef = useRef(0)
+  const previousProductsDataRef = useRef(null)
+
   const dropdownRef = useRef(null)
   const searchInputRef = useRef(null)
 
-  // Helper function to calculate amounts
   const calculateAmounts = (qty, supplyRate, installationRate) => {
     const parsedQty = Number.parseFloat(qty) || 0
     const parsedSupplyRate = Number.parseFloat(supplyRate) || 0
@@ -31,57 +44,67 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
     const supplyAmount = parsedQty * parsedSupplyRate
     const installationAmount = parsedQty * parsedInstallationRate
     const total = supplyAmount + installationAmount
-    return { supplyAmount, installationAmount, total } // Changed to camelCase
+    return { supplyAmount, installationAmount, total }
   }
 
-  // Initialize with existing BOQ data if in edit mode
   useEffect(() => {
     if (isEditMode && existingBOQ && existingBOQ.items && !isInitialized) {
-      console.log("Initializing with existing BOQ data:", existingBOQ)
+      console.log("[v0] Initializing with existing BOQ data:", existingBOQ)
       const productsByCategory = {}
       const usedCategories = []
       existingBOQ.items.forEach((item) => {
-        // item here comes from SalesTLHandOverForm, which already mapped to camelCase
-        const categoryId = item.leadProductTypeId || "default" // Use leadProductTypeId for category grouping
-        const categoryName = leadProductTypes.find((lpt) => lpt.id === categoryId)?.label || "Default Category" // Get category name from leadProductTypes
+        const categoryId = item.leadProductTypeId || "default"
+        const categoryName = leadProductTypes.find((lpt) => lpt.id === categoryId)?.label || "Default Category"
         if (!usedCategories.find((cat) => cat.id === categoryId)) {
           usedCategories.push({ id: categoryId, name: categoryName })
         }
-        const initialQty = item.qty || 1
-        const initialSupplyRate = item.supplyRate || 0
-        const initialInstallationRate = item.installationRate || 0
+        const initialQty = Number.parseFloat(item.qty) || 1
+        const initialSupplyRate = Number.parseFloat(item.supplyRate) || 0
+        const initialInstallationRate = Number.parseFloat(item.installationRate) || 0
+
+        console.log(`[v0] Initializing product ${item.product?.productName}:`, {
+          qty: initialQty,
+          supplyRate: initialSupplyRate,
+          installationRate: initialInstallationRate,
+        })
+
         const { supplyAmount, installationAmount, total } = calculateAmounts(
           initialQty,
           initialSupplyRate,
           initialInstallationRate,
         )
         const product = {
-          id: item.id, // This is the BOQItem ID, important for potential future updates to individual items
-          productId: item.productId, // This is the actual ProductsMaster ID
-          productName: item.product?.productName || "Unknown Product", // For display (camelCase)
-          hsnCode: item.product?.hsnCode || "", // For display (camelCase)
-          productDescription: item.product?.productDescription || "", // For display (camelCase)
-          productQty: item.product?.productQty || 0, // For display (camelCase)
+          id: item.id,
+          productId: item.productId,
+          productName: item.product?.productName || "Unknown Product",
+          hsnCode: item.product?.hsnCode || "",
+          productDescription: item.product?.productDescription || "",
+          productQty: item.product?.productQty || 0,
           uom: item.uom || item.product?.uom || "",
           qty: initialQty,
           make: item.make || "",
-          supplyRate: initialSupplyRate, // camelCase
-          installationRate: initialInstallationRate, // camelCase
-          supplyAmount: supplyAmount, // camelCase
-          installationAmount: installationAmount, // camelCase
+          supplyRate: initialSupplyRate,
+          installationRate: initialInstallationRate,
+          supplyAmount: supplyAmount,
+          installationAmount: installationAmount,
           total: total,
-          leadProductTypeId: categoryId, // This internally represents leadProductTypeId for grouping (camelCase)
-          categoryInfo: extractCategoryInfo(item.product), // Pass item.product for category info
-          isExisting: true, // Flag to mark as an existing item
+          leadProductTypeId: categoryId,
+          categoryInfo: extractCategoryInfo(item.product),
+          salestlApprovalStatus: item.salestlApprovalStatus || "PENDING",
+          salestlApprovalDate: item.salestlApprovalDate,
+          salestlApprovalRemarks: item.salestlApprovalRemarks,
+          isExisting: true,
         }
         if (!productsByCategory[categoryId]) {
           productsByCategory[categoryId] = []
         }
         productsByCategory[categoryId].push(product)
       })
+
+      console.log("[v0] Final products by category:", productsByCategory)
+
       setSelectedCategories(usedCategories)
       setSelectedProductsByCategory(productsByCategory)
-      // Expand all categories that have products
       const expanded = {}
       usedCategories.forEach((category) => {
         expanded[category.id] = true
@@ -93,15 +116,29 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
       setSelectedCategories([])
       setIsInitialized(true)
     }
-  }, [isEditMode, existingBOQ, isInitialized, leadProductTypes]) // Added leadProductTypes to dependency array
+  }, [isEditMode, existingBOQ, isInitialized, leadProductTypes])
 
-  // Fetch products and categories on component mount
+  useEffect(() => {
+    const totalCount = getTotalProductCount()
+    const currentDataString = JSON.stringify(selectedProductsByCategory)
+
+    // Call onProductCountChange if count changed OR if product data changed
+    if (
+      (totalCount !== previousProductCountRef.current || currentDataString !== previousProductsDataRef.current) &&
+      onProductCountChange
+    ) {
+      console.log("[v0] ProductBOQSelector - syncing data to parent. Count:", totalCount)
+      previousProductCountRef.current = totalCount
+      previousProductsDataRef.current = currentDataString
+      onProductCountChange(totalCount, selectedProductsByCategory)
+    }
+  }, [selectedProductsByCategory, onProductCountChange])
+
   useEffect(() => {
     fetchProducts()
     fetchCategories()
   }, [])
 
-  // Handle click outside to close dropdown
   useEffect(() => {
     function handleClickOutside(event) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -115,7 +152,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
     }
   }, [])
 
-  // Helper function to extract category information from nested structure
   const extractCategoryInfo = (product) => {
     if (!product)
       return {
@@ -124,7 +160,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
         subCategory: "Uncategorized",
         fullPath: "Uncategorized",
       }
-    // Assuming product.category_id is an object with nested category info (snake_case from API)
     const topCategory = product?.category_id?.productCategory?.leadProductType?.label || "Uncategorized"
     const mainCategory = product?.category_id?.productCategory?.category_name || "Uncategorized"
     const subCategory = product?.category_id?.category_name || "Uncategorized"
@@ -136,7 +171,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
     }
   }
 
-  // Filter products based on search term (no category filtering)
   useEffect(() => {
     if (!Array.isArray(products)) {
       setFilteredProducts([])
@@ -149,7 +183,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
       const filtered = products.filter((product) => {
         if (!product) return false
         const categoryInfo = extractCategoryInfo(product)
-        // Use camelCase for product properties as they are stored in state after fetchProducts mapping
         return (
           (product.productName || "").toLowerCase().includes(lowercasedSearch) ||
           categoryInfo.topCategory.toLowerCase().includes(lowercasedSearch) ||
@@ -168,7 +201,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
       setLoading(true)
       setError("")
       const response = await storeService.getProductsList()
-      console.log("API Response:", response)
       let productsData = []
       if (Array.isArray(response)) {
         productsData = response
@@ -185,16 +217,14 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
       if (!Array.isArray(productsData)) {
         throw new Error("Invalid response format: Expected an array of products")
       }
-      // Map incoming snake_case product properties from API to camelCase for internal state
       const mappedProducts = productsData.map((product) => ({
-        ...product, // Keep original snake_case properties for extractCategoryInfo if needed
+        ...product,
         productName: product.product_name,
         hsnCode: product.hsn_code,
         productDescription: product.product_description,
         productQty: product.product_qty,
         supplyRate: product.supply_rate,
         installationRate: product.installation_rate,
-        // categoryId: product.category_id, // Keep original category_id for extractCategoryInfo
       }))
       setProducts(mappedProducts)
       setFilteredProducts(mappedProducts)
@@ -210,7 +240,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
 
   const fetchCategories = async () => {
     try {
-      // leadProductTypes is already passed as a prop, use it directly
       setCategories(
         leadProductTypes.map((item) => {
           const newitem = { id: item.id, name: item.label }
@@ -249,30 +278,29 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
 
   const handleProductSelect = (product) => {
     if (!activeProductSearch) return
-    // Check if product is already selected in this category
     const categoryProducts = selectedProductsByCategory[activeProductSearch] || []
     if (categoryProducts.some((p) => p.productId === product.id)) {
-      // Check against the actual product ID
       return
     }
-    const { supplyAmount, installationAmount, total } = calculateAmounts(1, 0, 0) // Default values (camelCase)
+    const { supplyAmount, installationAmount, total } = calculateAmounts(1, 0, 0)
     const updatedProduct = {
-      id: Date.now(), // Temporary unique ID for this new BOQ item entry in frontend state
-      productId: product.id, // This is the actual ProductsMaster ID
-      productName: product.productName || product.product_name || "Unknown Product", // For display (camelCase)
-      hsnCode: product.hsnCode || product.hsn_code || "", // For display (camelCase)
-      productDescription: product.productDescription || product.product_description || "", // For display (camelCase)
-      productQty: product.productQty || product.product_qty || 0, // For display (camelCase)
+      id: Date.now(),
+      productId: product.id,
+      productName: product.productName || product.product_name || "Unknown Product",
+      hsnCode: product.hsnCode || product.hsn_code || "",
+      productDescription: product.productDescription || product.product_description || "",
+      productQty: product.productQty || product.product_qty || 0,
       uom: product.uom || "",
       qty: 1,
       make: "",
-      supplyRate: 0, // camelCase
-      installationRate: 0, // camelCase
-      supplyAmount: supplyAmount, // camelCase
-      installationAmount: installationAmount, // camelCase
+      supplyRate: 0,
+      installationRate: 0,
+      supplyAmount: supplyAmount,
+      installationAmount: installationAmount,
       total: total,
-      leadProductTypeId: activeProductSearch, // This internally represents leadProductTypeId for grouping (camelCase)
+      leadProductTypeId: activeProductSearch,
       categoryInfo: extractCategoryInfo(product),
+      salestlApprovalStatus: "PENDING",
       isExisting: false,
     }
     setSelectedProductsByCategory((prev) => ({
@@ -285,26 +313,57 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
   }
 
   const handleProductFieldChange = (categoryId, productId, field, value) => {
+    console.log("[v0] handleProductFieldChange called:", {
+      categoryId,
+      productId,
+      field,
+      value,
+      valueType: typeof value,
+    })
+
     setSelectedProductsByCategory((prev) => {
       const updatedCategoryProducts = prev[categoryId].map((product) => {
         if (product.id === productId) {
-          // Match by the internal BOQItem ID
-          const updatedProduct = { ...product, [field]: value }
+          let processedValue = value
+          if (field === "qty" || field === "supplyRate" || field === "installationRate") {
+            // Convert to number for numeric fields
+            processedValue = value === "" ? 0 : Number.parseFloat(value) || 0
+            console.log("[v0] Converted numeric field:", {
+              field,
+              originalValue: value,
+              processedValue,
+              processedType: typeof processedValue,
+            })
+          }
+
+          const updatedProduct = { ...product, [field]: processedValue }
+
           // Recalculate amounts if relevant fields change
           if (field === "qty" || field === "supplyRate" || field === "installationRate") {
             const { supplyAmount, installationAmount, total } = calculateAmounts(
               updatedProduct.qty,
-              updatedProduct.supplyRate, // camelCase
-              updatedProduct.installationRate, // camelCase
+              updatedProduct.supplyRate,
+              updatedProduct.installationRate,
             )
-            updatedProduct.supplyAmount = supplyAmount // camelCase
-            updatedProduct.installationAmount = installationAmount // camelCase
+            updatedProduct.supplyAmount = supplyAmount
+            updatedProduct.installationAmount = installationAmount
             updatedProduct.total = total
+
+            console.log("[v0] Recalculated amounts:", {
+              qty: updatedProduct.qty,
+              supplyRate: updatedProduct.supplyRate,
+              installationRate: updatedProduct.installationRate,
+              supplyAmount,
+              installationAmount,
+              total,
+            })
           }
           return updatedProduct
         }
         return product
       })
+
+      console.log("[v0] Updated category products:", updatedCategoryProducts)
       return {
         ...prev,
         [categoryId]: updatedCategoryProducts,
@@ -343,24 +402,72 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
     }, 100)
   }
 
+  const handleApprovalStatusChange = async (categoryId, productId, newStatus) => {
+    try {
+      setError("")
+      const product = selectedProductsByCategory[categoryId]?.find((p) => p.id === productId)
+
+      if (!product || !product.isExisting) {
+        setError("Can only update approval status for saved BOQ items")
+        return
+      }
+
+      console.log("[v0] Updating approval status for product:", productId, "to:", newStatus)
+
+      // Call backend API
+      await projectService.updateBOQItemApprovalStatus(
+        productId,
+        "SALESTL",
+        newStatus,
+        `Status changed to ${newStatus} by SalesTL`,
+      )
+
+      // Update local state
+      setSelectedProductsByCategory((prev) => {
+        const updatedCategoryProducts = prev[categoryId].map((p) => {
+          if (p.id === productId) {
+            return {
+              ...p,
+              salestlApprovalStatus: newStatus,
+              salestlApprovalDate: new Date().toISOString(),
+            }
+          }
+          return p
+        })
+        return {
+          ...prev,
+          [categoryId]: updatedCategoryProducts,
+        }
+      })
+
+      // Notify parent to refresh
+      if (onBOQItemStatusUpdateSuccess) {
+        await onBOQItemStatusUpdateSuccess()
+      }
+
+      console.log("[v0] Successfully updated approval status")
+    } catch (err) {
+      console.error("Error updating approval status:", err)
+      setError(`Failed to update approval status: ${err.message || err}`)
+    }
+  }
+
   const handleSaveBOQ = async () => {
-    const allProducts = Object.entries(selectedProductsByCategory).flatMap(
-      ([categoryId, products]) =>
-        products.map((product) => ({ ...product, leadProductTypeId: Number.parseInt(categoryId) })), // Map to leadProductTypeId (camelCase)
+    const allProducts = Object.entries(selectedProductsByCategory).flatMap(([categoryId, products]) =>
+      products.map((product) => ({ ...product, leadProductTypeId: Number.parseInt(categoryId) })),
     )
     if (allProducts.length === 0) {
       setError("Please add at least one product to the BOQ")
       return
     }
-    // Validate quantities and rates
     const invalidProducts = allProducts.filter(
       (p) =>
         !p.qty ||
         Number.parseFloat(p.qty) <= 0 ||
-        !p.supplyRate || // Use camelCase
-        Number.parseFloat(p.supplyRate) < 0 || // Use camelCase
-        !p.installationRate || // Use camelCase
-        Number.parseFloat(p.installationRate) < 0, // Use camelCase
+        !p.supplyRate ||
+        Number.parseFloat(p.supplyRate) < 0 ||
+        !p.installationRate ||
+        Number.parseFloat(p.installationRate) < 0,
     )
     if (invalidProducts.length > 0) {
       setError("Please enter valid quantities and non-negative rates for all products")
@@ -370,28 +477,26 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
     setError("")
     try {
       const boqData = {
-        projectId: projectId, // This key is correct as per BOQRequestDTO (camelCase)
+        projectId: projectId,
         items: allProducts.map((p) => ({
-          // No 'id' field in BOQItemDTO, so we don't send the internal BOQItem ID
-          productId: Number.parseInt(p.productId), // Corrected key name to camelCase
-          qty: Number.parseFloat(p.qty), // Ensure it's a number (Double)
+          productId: Number.parseInt(p.productId),
+          qty: Number.parseFloat(p.qty),
           make: p.make || "",
           uom: p.uom || "",
-          leadProductTypeId: Number.parseInt(p.leadProductTypeId), // Corrected key name to camelCase
-          supplyRate: Number.parseFloat(p.supplyRate), // Ensure it's a number (BigDecimal) (camelCase)
-          installationRate: Number.parseFloat(p.installationRate), // Ensure it's a number (BigDecimal) (camelCase)
-          supplyAmount: Number.parseFloat(p.supplyAmount), // Ensure it's a number (BigDecimal) (camelCase)
-          installationAmount: Number.parseFloat(p.installationAmount), // Ensure it's a number (BigDecimal) (camelCase)
-          total: Number.parseFloat(p.total), // Ensure it's a number (BigDecimal) (camelCase)
-          // Removed product_name and hsn_code as they are not part of BOQItemDTO
+          leadProductTypeId: Number.parseInt(p.leadProductTypeId),
+          supplyRate: Number.parseFloat(p.supplyRate),
+          installationRate: Number.parseFloat(p.installationRate),
+          supplyAmount: Number.parseFloat(p.supplyAmount),
+          installationAmount: Number.parseFloat(p.installationAmount),
+          total: Number.parseFloat(p.total),
         })),
       }
       console.log("Saving BOQ data (payload to backend):", boqData)
       if (isEditMode && projectId) {
         await projectService.createOrUpdateBOQ(projectId, boqData)
-        onSave(boqData, true) // Pass true to indicate it was saved to backend
+        onSave(boqData, true)
       } else {
-        onSave(boqData, false) // Pass false if not directly saving to backend (e.g., new project)
+        onSave(boqData, false)
       }
     } catch (err) {
       console.error("Error saving BOQ:", err)
@@ -407,13 +512,16 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
 
   const getSelectedProductsInCategory = (categoryId) => {
     const categoryProducts = selectedProductsByCategory[categoryId] || []
-    return categoryProducts.map((p) => p.productId) // Return productId for checking
+    return categoryProducts.map((p) => p.productId)
   }
 
   const allProductsFlat = Object.values(selectedProductsByCategory).flat()
-  const totalSupplyAmount = allProductsFlat.reduce((sum, product) => sum + (product.supplyAmount || 0), 0) // Use camelCase
-  const totalInstallationAmount = allProductsFlat.reduce((sum, product) => sum + (product.installationAmount || 0), 0) // Use camelCase
+  const totalSupplyAmount = allProductsFlat.reduce((sum, product) => sum + (product.supplyAmount || 0), 0)
+  const totalInstallationAmount = allProductsFlat.reduce((sum, product) => sum + (product.installationAmount || 0), 0)
   const grandTotal = allProductsFlat.reduce((sum, product) => sum + (product.total || 0), 0)
+
+  const isSalesTL =
+    currentUserId && projectSalesTlId && Number.parseInt(currentUserId) === Number.parseInt(projectSalesTlId)
 
   return (
     <div className="space-y-6">
@@ -427,7 +535,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
             </div>
           )}
         </div>
-        {/* Error message */}
+
         {error && (
           <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 border border-red-100">
             <span className="text-sm font-medium">{error}</span>
@@ -436,18 +544,17 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
             </button>
           </div>
         )}
-        {/* Category selector */}
+
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">Add Categories</label>
           <div className="flex gap-2">
             <select
-              value={selectedCategoryToAdd} // Controlled component
+              value={selectedCategoryToAdd}
               onChange={(e) => {
                 const value = e.target.value
-                setSelectedCategoryToAdd(value) // Update state
+                setSelectedCategoryToAdd(value)
                 if (value) {
                   handleCategorySelect(value)
-                  // Reset after selection to make the dropdown visually clear
                   setSelectedCategoryToAdd("")
                 }
               }}
@@ -463,7 +570,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                 ))}
             </select>
           </div>
-          {/* Selected categories chips */}
           {selectedCategories.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
               {selectedCategories.map((category) => (
@@ -483,7 +589,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
             </div>
           )}
         </div>
-        {/* Product search dropdown (shown when activeProductSearch is set) */}
+
         {activeProductSearch && (
           <div className="relative" ref={dropdownRef}>
             <div className="mb-2 text-sm text-gray-600">
@@ -513,7 +619,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                 <FiX />
               </button>
             </div>
-            {/* Dropdown for product selection */}
             {showDropdown && (
               <div className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg max-h-80 overflow-auto">
                 {loading ? (
@@ -526,7 +631,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                     if (!product || !product.id) return null
                     const categoryInfo = extractCategoryInfo(product)
                     const selectedInCategory = getSelectedProductsInCategory(activeProductSearch)
-                    const isAlreadySelected = selectedInCategory.includes(product.id) // Check against product.id
+                    const isAlreadySelected = selectedInCategory.includes(product.id)
                     return (
                       <div
                         key={product.id}
@@ -569,7 +674,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
             )}
           </div>
         )}
-        {/* Selected categories with products */}
+
         {selectedCategories.length > 0 && (
           <div className="mt-6">
             <h4 className="font-medium mb-4">
@@ -579,7 +684,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
               const categoryProducts = selectedProductsByCategory[category.id] || []
               return (
                 <div key={category.id} className="mb-4 border rounded-lg">
-                  {/* Category header */}
                   <div className="flex items-center justify-between p-3 bg-gray-50">
                     <div
                       className="flex items-center cursor-pointer hover:bg-gray-100 transition-colors flex-1 -m-3 p-3"
@@ -601,7 +705,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                       Add Product
                     </button>
                   </div>
-                  {/* Category products table */}
                   {expandedCategories[category.id] && (
                     <div className="overflow-x-auto">
                       {categoryProducts.length === 0 ? (
@@ -634,6 +737,11 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                               <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Total
                               </th>
+                              {isEditMode && isSalesTL && (
+                                <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  SalesTL Approval
+                                </th>
+                              )}
                               <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Actions
                               </th>
@@ -672,7 +780,6 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                                       onChange={(e) => {
                                         const value = e.target.value
                                         if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                                          // Allow decimals
                                           handleProductFieldChange(category.id, product.id, "qty", value)
                                         }
                                       }}
@@ -690,16 +797,16 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                                       type="text"
                                       inputMode="numeric"
                                       pattern="[0-9]*\.?[0-9]*"
-                                      value={product.supplyRate} // Use camelCase
+                                      value={product.supplyRate}
                                       onChange={(e) => {
                                         const value = e.target.value
                                         if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                                          handleProductFieldChange(category.id, product.id, "supplyRate", value) // Use camelCase
+                                          handleProductFieldChange(category.id, product.id, "supplyRate", value)
                                         }
                                       }}
                                       onBlur={(e) => {
                                         if (e.target.value === "") {
-                                          handleProductFieldChange(category.id, product.id, "supplyRate", "0") // Use camelCase
+                                          handleProductFieldChange(category.id, product.id, "supplyRate", "0")
                                         }
                                       }}
                                       placeholder="Supply Rate"
@@ -711,16 +818,16 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                                       type="text"
                                       inputMode="numeric"
                                       pattern="[0-9]*\.?[0-9]*"
-                                      value={product.installationRate} // Use camelCase
+                                      value={product.installationRate}
                                       onChange={(e) => {
                                         const value = e.target.value
                                         if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                                          handleProductFieldChange(category.id, product.id, "installationRate", value) // Use camelCase
+                                          handleProductFieldChange(category.id, product.id, "installationRate", value)
                                         }
                                       }}
                                       onBlur={(e) => {
                                         if (e.target.value === "") {
-                                          handleProductFieldChange(category.id, product.id, "installationRate", "0") // Use camelCase
+                                          handleProductFieldChange(category.id, product.id, "installationRate", "0")
                                         }
                                       }}
                                       placeholder="Inst. Rate"
@@ -731,7 +838,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                                     <input
                                       type="text"
                                       readOnly
-                                      value={product.supplyAmount.toFixed(2)} // Use camelCase
+                                      value={product.supplyAmount.toFixed(2)}
                                       placeholder="Supply Amt"
                                       className="w-24 p-1 text-sm border rounded bg-gray-100 text-gray-700"
                                     />
@@ -740,7 +847,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                                     <input
                                       type="text"
                                       readOnly
-                                      value={product.installationAmount.toFixed(2)} // Use camelCase
+                                      value={product.installationAmount.toFixed(2)}
                                       placeholder="Inst. Amt"
                                       className="w-24 p-1 text-sm border rounded bg-gray-100 text-gray-700"
                                     />
@@ -754,6 +861,31 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                                       className="w-24 p-1 text-sm border rounded bg-gray-100 text-gray-700 font-semibold"
                                     />
                                   </td>
+                                  {isEditMode && isSalesTL && (
+                                    <td className="px-3 py-2">
+                                      {product.isExisting ? (
+                                        <select
+                                          value={product.salestlApprovalStatus || "PENDING"}
+                                          onChange={(e) =>
+                                            handleApprovalStatusChange(category.id, product.id, e.target.value)
+                                          }
+                                          className={`w-28 p-1 text-xs border rounded focus:outline-none focus:ring-1 ${
+                                            product.salestlApprovalStatus === "APPROVED"
+                                              ? "border-green-500 bg-green-50 text-green-700"
+                                              : product.salestlApprovalStatus === "REJECTED"
+                                                ? "border-red-500 bg-red-50 text-red-700"
+                                                : "border-yellow-500 bg-yellow-50 text-yellow-700"
+                                          }`}
+                                        >
+                                          <option value="PENDING">Pending</option>
+                                          <option value="APPROVED">Approved</option>
+                                          <option value="REJECTED">Rejected</option>
+                                        </select>
+                                      ) : (
+                                        <span className="text-xs text-gray-400">Save first</span>
+                                      )}
+                                    </td>
+                                  )}
                                   <td className="px-3 py-2">
                                     <button
                                       onClick={() => handleRemoveProduct(category.id, product.id)}
@@ -776,7 +908,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
             })}
           </div>
         )}
-        {/* Grand Totals for all items (moved outside category loop) */}
+
         {getTotalProductCount() > 0 && (
           <div className="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
             <h4 className="font-semibold text-lg mb-3">Overall BOQ Totals</h4>
@@ -797,7 +929,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
             </div>
           </div>
         )}
-        {/* Save BOQ button */}
+
         {getTotalProductCount() > 0 && (
           <div className="flex justify-end mt-4">
             <button

@@ -1,9 +1,10 @@
 "use client"
 import { useState, useEffect } from "react"
-import { FiX, FiSave, FiCheck, FiXCircle, FiFileText, FiDownload } from "react-icons/fi"
+import { FiX, FiSave, FiCheck, FiXCircle, FiFileText, FiDownload, FiPlus, FiEdit3, FiTrash2 } from "react-icons/fi"
 import { motion } from "framer-motion"
 import { comparisonSheetService } from "../../services/comparisonSheetService"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
+import { materialRequisitionService } from "../../services/materialRequisitionService"
 import { useAuth } from "../../contexts/AuthContext"
 
 // Helper function to format dates for display
@@ -13,7 +14,7 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
 }
 
-export default function MTRDetailsModal({ mtr, onClose, onSave }) {
+export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
   const { user } = useAuth()
   const [purchasers, setPurchasers] = useState([])
   const [selectedPurchaser, setSelectedPurchaser] = useState(mtr?.assignedPurchaser || "")
@@ -25,9 +26,13 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
   const [mtrLoading, setMtrLoading] = useState(false)
   const [selectedVendorDetails, setSelectedVendorDetails] = useState(null)
 
-  const [pmApprovalStatus, setPmApprovalStatus] = useState(mtr?.pmApprovalStatus || "PENDING")
-  const [pmApprovalRemarks, setPmApprovalRemarks] = useState(mtr?.pmApprovalRemarks || "")
-  const [pmApprovalLoading, setPmApprovalLoading] = useState(false)
+  const [purchaseManagerApprovalStatus, setPurchaseManagerApprovalStatus] = useState(
+    mtr?.purchaseManagerApprovalStatus || "PENDING",
+  )
+  const [purchaseManagerApprovalRemarks, setPurchaseManagerApprovalRemarks] = useState(
+    mtr?.purchaseManagerApprovalRemarks || "",
+  )
+  const [purchaseManagerApprovalLoading, setPurchaseManagerApprovalLoading] = useState(false)
 
   const [purchaseOrders, setPurchaseOrders] = useState([])
   const [poLoading, setPOLoading] = useState(false)
@@ -42,6 +47,17 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
   const [piApprovalRemarks, setPIApprovalRemarks] = useState("")
   const [piApprovalLoading, setPIApprovalLoading] = useState(false)
 
+  const [dcQtyList, setDcQtyList] = useState([])
+  const [dcQtyLoading, setDcQtyLoading] = useState(false)
+  const [showAddDcQty, setShowAddDcQty] = useState(false)
+  const [editingDcQtyId, setEditingDcQtyId] = useState(null)
+  const [dcQtyForm, setDcQtyForm] = useState({
+    dcQty: "",
+    dcDate: new Date().toISOString().split("T")[0],
+    remarks: "",
+  })
+  const [deletingDcQtyId, setDeletingDcQtyId] = useState(null)
+
   useEffect(() => {
     const loadPurchasers = async () => {
       try {
@@ -55,7 +71,98 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
     loadPurchasers()
     fetchMTRData()
     fetchPurchaseOrders()
+    fetchDcQtyList()
   }, [])
+
+  const fetchDcQtyList = async () => {
+    if (!mtr?.id) return
+
+    setDcQtyLoading(true)
+    try {
+      const dcQtyData = await materialRequisitionService.getDCQtyByMtrId(mtr.id)
+      setDcQtyList(dcQtyData || [])
+    } catch (error) {
+      console.error("Error fetching DC Qty list:", error)
+      setDcQtyList([])
+    } finally {
+      setDcQtyLoading(false)
+    }
+  }
+
+  const handleDcQtySubmit = async () => {
+    if (!dcQtyForm.dcQty || Number.parseFloat(dcQtyForm.dcQty) <= 0) {
+      setError("Please enter a valid DC Qty")
+      return
+    }
+
+    setDcQtyLoading(true)
+    setError("")
+    setSuccess("")
+
+    try {
+      const currentUserId = user?.userId || user?.id
+
+      if (editingDcQtyId) {
+        await materialRequisitionService.updateDCQty(editingDcQtyId, dcQtyForm, currentUserId)
+        setSuccess("DC Qty updated successfully!")
+      } else {
+        await materialRequisitionService.addDCQty(mtr.id, dcQtyForm, currentUserId)
+        setSuccess("DC Qty added successfully!")
+      }
+
+      // Reset form and refresh list
+      setDcQtyForm({ dcQty: "", dcDate: new Date().toISOString().split("T")[0], remarks: "" })
+      setShowAddDcQty(false)
+      setEditingDcQtyId(null)
+      await fetchDcQtyList()
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(""), 3000)
+    } catch (error) {
+      console.error("Error saving DC Qty:", error)
+      setError("Failed to save DC Qty. Please try again.")
+    } finally {
+      setDcQtyLoading(false)
+    }
+  }
+
+  const handleEditDcQty = (dcQty) => {
+    setEditingDcQtyId(dcQty.id)
+    setDcQtyForm({
+      dcQty: dcQty.dcQty,
+      dcDate: dcQty.dcDate,
+      remarks: dcQty.remarks || "",
+    })
+    setShowAddDcQty(true)
+    setError("")
+  }
+
+  const handleDeleteDcQty = async (dcQtyId) => {
+    setDcQtyLoading(true)
+    setError("")
+    setSuccess("")
+
+    try {
+      await materialRequisitionService.deleteDCQty(dcQtyId)
+      setSuccess("DC Qty deleted successfully!")
+      setDeletingDcQtyId(null)
+      await fetchDcQtyList()
+
+      setTimeout(() => setSuccess(""), 3000)
+    } catch (error) {
+      console.error("Error deleting DC Qty:", error)
+      setError("Failed to delete DC Qty. Please try again.")
+    } finally {
+      setDcQtyLoading(false)
+    }
+  }
+
+  const handleCancelDcQtyForm = () => {
+    setShowAddDcQty(false)
+    setEditingDcQtyId(null)
+    setDcQtyForm({ dcQty: "", dcDate: new Date().toISOString().split("T")[0], remarks: "" })
+    setError("")
+  }
 
   const fetchMTRData = async () => {
     if (!mtr?.id) return
@@ -102,28 +209,17 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
 
     setPOLoading(true)
     try {
-      console.log("[v0] Fetching POs for MTR ID:", mtr.id)
       const pos = await comparisonSheetService.getPOsByMtrIdWithDetails(mtr.id)
-      console.log("[v0] Received POs from API:", pos)
-      console.log("[v0] POs array length:", pos?.length || 0)
-
       setPurchaseOrders(pos || [])
 
-      // Set the first PO as selected if available
       if (pos && pos.length > 0) {
-        console.log("[v0] Setting first PO as selected:", pos[0])
         setSelectedPO(pos[0])
         setPOApprovalStatus(pos[0].approvalStatus || "PENDING")
         setPOApprovalRemarks(pos[0].approvalRemarks || "")
-
         await fetchPIDataForPO(pos[0].id)
-      } else {
-        console.log("[v0] No POs found for MTR", mtr.id)
       }
     } catch (error) {
-      console.error("[v0] Error fetching purchase orders:", error)
-      console.error("[v0] Error response:", error.response?.data)
-      console.error("[v0] Error status:", error.response?.status)
+      console.error("Error fetching purchase orders:", error)
       setPurchaseOrders([])
     } finally {
       setPOLoading(false)
@@ -135,10 +231,7 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
 
     setPILoading(true)
     try {
-      console.log("[v0] Fetching PI data for PO ID:", poId)
       const pi = await purchaseInvoiceService.getPurchaseInvoiceByPOId(poId)
-      console.log("[v0] Received PI data:", pi)
-
       if (pi) {
         setPIData(pi)
         setPIApprovalStatus(pi.approvalStatus || "PENDING")
@@ -149,7 +242,7 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
         setPIApprovalRemarks("")
       }
     } catch (error) {
-      console.error("[v0] Error fetching PI data:", error)
+      console.error("Error fetching PI data:", error)
       setPIData(null)
       setPIApprovalStatus("PENDING")
       setPIApprovalRemarks("")
@@ -172,7 +265,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
       await comparisonSheetService.assignPurchaser(mtrData.id, Number.parseInt(selectedPurchaser))
       setSuccess("Purchaser assigned successfully!")
 
-      // Call parent onSave if provided
       if (onSave) {
         onSave({ ...mtrData, assignedPurchaser: Number.parseInt(selectedPurchaser) })
       }
@@ -184,34 +276,37 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
     }
   }
 
-  const handleSavePMApproval = async () => {
-    if (!pmApprovalStatus || pmApprovalStatus === "PENDING") {
+  const handleSavePurchaseManagerApproval = async () => {
+    if (!purchaseManagerApprovalStatus || purchaseManagerApprovalStatus === "PENDING") {
       setError("Please select an approval status")
       return
     }
 
-    setPmApprovalLoading(true)
+    setPurchaseManagerApprovalLoading(true)
     setError("")
     setSuccess("")
 
     try {
-      await comparisonSheetService.updatePMApprovalStatus(mtrData.id, pmApprovalStatus, pmApprovalRemarks)
-      setSuccess("PM approval status updated successfully!")
+      await comparisonSheetService.updatePurchaseManagerApprovalStatus(
+        mtrData.id,
+        purchaseManagerApprovalStatus,
+        purchaseManagerApprovalRemarks,
+      )
+      setSuccess("Purchase Manager approval status updated successfully!")
 
-      // Call parent onSave if provided
       if (onSave) {
         onSave({
           ...mtrData,
-          pmApprovalStatus,
-          pmApprovalRemarks,
-          pmApprovalDate: new Date().toISOString(),
+          purchaseManagerApprovalStatus,
+          purchaseManagerApprovalRemarks,
+          purchaseManagerApprovalDate: new Date().toISOString(),
         })
       }
     } catch (error) {
-      console.error("Error updating PM approval:", error)
-      setError("Failed to update PM approval status. Please try again.")
+      console.error("Error updating Purchase Manager approval:", error)
+      setError("Failed to update Purchase Manager approval status. Please try again.")
     } finally {
-      setPmApprovalLoading(false)
+      setPurchaseManagerApprovalLoading(false)
     }
   }
 
@@ -230,7 +325,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
       await comparisonSheetService.approvePO(selectedPO.id, poApprovalStatus, poApprovalRemarks, currentUserId)
       setSuccess("PO approval status updated successfully!")
 
-      // Update local state
       const updatedPOs = purchaseOrders.map((po) =>
         po.id === selectedPO.id
           ? {
@@ -244,7 +338,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
       setPurchaseOrders(updatedPOs)
       setSelectedPO((prev) => ({ ...prev, approvalStatus: poApprovalStatus, approvalRemarks: poApprovalRemarks }))
 
-      // Call parent onSave if provided
       if (onSave) {
         onSave({ ...mtrData, purchaseOrders: updatedPOs })
       }
@@ -276,7 +369,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
       await purchaseInvoiceService.approvePurchaseInvoice(piData.id, approvalData)
       setSuccess("Purchase Invoice approval status updated successfully!")
 
-      // Update local PI data
       setPIData((prev) => ({
         ...prev,
         approvalStatus: piApprovalStatus,
@@ -285,7 +377,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
         approvedBy: user,
       }))
 
-      // Call parent onSave if provided
       if (onSave) {
         onSave({ ...mtrData, piApprovalStatus: piApprovalStatus })
       }
@@ -299,6 +390,8 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
 
   if (!mtrData) return null
 
+  const totalDcQty = dcQtyList.reduce((sum, item) => sum + Number.parseFloat(item.dcQty || 0), 0)
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -311,7 +404,7 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.95 }}
-        className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b">
@@ -321,9 +414,21 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
           </button>
         </div>
 
-        {error && <div className="mx-4 mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">{error}</div>}
+        {error && (
+          <div className="mx-4 mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded flex justify-between items-center">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="text-red-700 hover:text-red-900">
+              <FiX />
+            </button>
+          </div>
+        )}
         {success && (
-          <div className="mx-4 mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">{success}</div>
+          <div className="mx-4 mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded flex justify-between items-center">
+            <span>{success}</span>
+            <button onClick={() => setSuccess("")} className="text-green-700 hover:text-green-900">
+              <FiX />
+            </button>
+          </div>
         )}
 
         <div className="p-6 overflow-auto flex-1 text-gray-800">
@@ -353,10 +458,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
               <p>{mtrData.purchaseMTR}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">DC Qty:</p>
-              <p>{mtrData.dcQty}</p>
-            </div>
-            <div>
               <p className="text-sm font-medium text-gray-600">MTR Date:</p>
               <p>{formatDate(mtrData.mtrDate)}</p>
             </div>
@@ -371,6 +472,159 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
             <div className="col-span-2">
               <p className="text-sm font-medium text-gray-600">Status:</p>
               <p>{mtrData.status}</p>
+            </div>
+
+            <div className="col-span-2 mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+              <div className="flex justify-between items-center mb-3">
+                <h4 className="text-md font-semibold text-green-800">DC Qty Management</h4>
+                <button
+                  onClick={() => setShowAddDcQty(!showAddDcQty)}
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-9 px-3 py-1 gap-2"
+                  disabled={dcQtyLoading}
+                >
+                  <FiPlus size={16} />
+                  {editingDcQtyId ? "Cancel Edit" : "Add DC Qty"}
+                </button>
+              </div>
+
+              {showAddDcQty && (
+                <div className="mb-4 p-3 bg-white rounded border border-green-300">
+                  <h5 className="text-sm font-semibold text-green-700 mb-2">
+                    {editingDcQtyId ? "Edit DC Qty" : "Add New DC Qty"}
+                  </h5>
+                  <div className="grid grid-cols-3 gap-3 mb-3">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-1">DC Qty *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={dcQtyForm.dcQty}
+                        onChange={(e) => setDcQtyForm({ ...dcQtyForm, dcQty: e.target.value })}
+                        placeholder="Enter DC Qty"
+                        className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        disabled={dcQtyLoading}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-1">DC Date *</label>
+                      <input
+                        type="date"
+                        value={dcQtyForm.dcDate}
+                        onChange={(e) => setDcQtyForm({ ...dcQtyForm, dcDate: e.target.value })}
+                        className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        disabled={dcQtyLoading}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 block mb-1">Remarks</label>
+                      <input
+                        type="text"
+                        value={dcQtyForm.remarks}
+                        onChange={(e) => setDcQtyForm({ ...dcQtyForm, remarks: e.target.value })}
+                        placeholder="Optional remarks"
+                        className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        disabled={dcQtyLoading}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleDcQtySubmit}
+                      disabled={dcQtyLoading}
+                      className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 h-9 px-4 py-1 gap-2"
+                    >
+                      <FiSave size={16} />
+                      {dcQtyLoading ? "Saving..." : editingDcQtyId ? "Update" : "Add"}
+                    </button>
+                    <button
+                      onClick={handleCancelDcQtyForm}
+                      disabled={dcQtyLoading}
+                      className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-gray-300 text-gray-700 hover:bg-gray-400 h-9 px-4 py-1"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-3">
+                <p className="text-sm font-medium text-green-700">
+                  Total DC Qty: <span className="text-lg font-bold">{totalDcQty.toFixed(2)}</span>
+                </p>
+              </div>
+
+              {dcQtyLoading && !showAddDcQty ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500">Loading DC Qty list...</p>
+                </div>
+              ) : dcQtyList.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  <p className="text-sm">No DC Qty entries found. Click "Add DC Qty" to add one.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-green-100 border-b border-green-200">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-green-800">DC Qty</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-800">DC Date</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-800">Remarks</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-800">Added By</th>
+                        <th className="px-3 py-2 text-left font-semibold text-green-800">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dcQtyList.map((dcQty) => (
+                        <tr key={dcQty.id} className="border-b border-green-100 hover:bg-green-50">
+                          <td className="px-3 py-2 font-medium text-gray-700">{dcQty.dcQty}</td>
+                          <td className="px-3 py-2 text-gray-700">{formatDate(dcQty.dcDate)}</td>
+                          <td className="px-3 py-2 text-gray-700">{dcQty.remarks || "-"}</td>
+                          <td className="px-3 py-2 text-gray-700">{dcQty.addedByName || `User ${dcQty.addedBy}`}</td>
+                          <td className="px-3 py-2">
+                            {deletingDcQtyId === dcQty.id ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleDeleteDcQty(dcQty.id)}
+                                  className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
+                                  disabled={dcQtyLoading}
+                                >
+                                  Confirm
+                                </button>
+                                <button
+                                  onClick={() => setDeletingDcQtyId(null)}
+                                  className="text-xs bg-gray-300 text-gray-700 px-2 py-1 rounded hover:bg-gray-400"
+                                  disabled={dcQtyLoading}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleEditDcQty(dcQty)}
+                                  className="text-blue-600 hover:text-blue-800"
+                                  title="Edit DC Qty"
+                                  disabled={dcQtyLoading}
+                                >
+                                  <FiEdit3 size={16} />
+                                </button>
+                                <button
+                                  onClick={() => setDeletingDcQtyId(dcQty.id)}
+                                  className="text-red-600 hover:text-red-800"
+                                  title="Delete DC Qty"
+                                  disabled={dcQtyLoading}
+                                >
+                                  <FiTrash2 size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
             <div className="col-span-2 mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -405,7 +659,9 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
 
             {mtrData.selectedVendor && (
               <div className="col-span-2 mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h4 className="text-md font-semibold text-gray-800 mb-3">Selected Vendor & PM Approval</h4>
+                <h4 className="text-md font-semibold text-gray-800 mb-3">
+                  Selected Vendor & Purchase Manager Approval
+                </h4>
 
                 <div className="mb-4 p-3 bg-white rounded border">
                   <p className="text-sm font-medium text-gray-700 mb-2">Selected Vendor Details:</p>
@@ -440,24 +696,24 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
                   <div>
                     <p className="text-sm font-medium text-gray-700">Current Approval Status:</p>
                     <div className="flex items-center gap-2">
-                      {mtrData.pmApprovalStatus === "APPROVED" && <FiCheck className="text-green-600" />}
-                      {mtrData.pmApprovalStatus === "REJECTED" && <FiXCircle className="text-red-600" />}
+                      {mtrData.purchaseManagerApprovalStatus === "APPROVED" && <FiCheck className="text-green-600" />}
+                      {mtrData.purchaseManagerApprovalStatus === "REJECTED" && <FiXCircle className="text-red-600" />}
                       <span
                         className={`font-semibold ${
-                          mtrData.pmApprovalStatus === "APPROVED"
+                          mtrData.purchaseManagerApprovalStatus === "APPROVED"
                             ? "text-green-600"
-                            : mtrData.pmApprovalStatus === "REJECTED"
+                            : mtrData.purchaseManagerApprovalStatus === "REJECTED"
                               ? "text-red-600"
                               : "text-yellow-600"
                         }`}
                       >
-                        {mtrData.pmApprovalStatus || "PENDING"}
+                        {mtrData.purchaseManagerApprovalStatus || "PENDING"}
                       </span>
                     </div>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-700">Approval Date:</p>
-                    <p>{formatDate(mtrData.pmApprovalDate)}</p>
+                    <p>{formatDate(mtrData.purchaseManagerApprovalDate)}</p>
                   </div>
                 </div>
 
@@ -465,10 +721,10 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
                   <div>
                     <label className="text-sm font-medium text-gray-700 block mb-1">Update Approval Status:</label>
                     <select
-                      value={pmApprovalStatus}
-                      onChange={(e) => setPmApprovalStatus(e.target.value)}
+                      value={purchaseManagerApprovalStatus}
+                      onChange={(e) => setPurchaseManagerApprovalStatus(e.target.value)}
                       className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={pmApprovalLoading}
+                      disabled={purchaseManagerApprovalLoading}
                     >
                       <option value="PENDING">Pending</option>
                       <option value="APPROVED">Approved</option>
@@ -479,29 +735,29 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
                   <div>
                     <label className="text-sm font-medium text-gray-700 block mb-1">Remarks:</label>
                     <textarea
-                      value={pmApprovalRemarks}
-                      onChange={(e) => setPmApprovalRemarks(e.target.value)}
+                      value={purchaseManagerApprovalRemarks}
+                      onChange={(e) => setPurchaseManagerApprovalRemarks(e.target.value)}
                       placeholder="Enter approval remarks for selected vendor..."
                       rows={3}
                       className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      disabled={pmApprovalLoading}
+                      disabled={purchaseManagerApprovalLoading}
                     />
                   </div>
 
                   <button
-                    onClick={handleSavePMApproval}
-                    disabled={pmApprovalLoading || pmApprovalStatus === "PENDING"}
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed h-10 px-4 py-2 gap-2"
+                    onClick={handleSavePurchaseManagerApproval}
+                    disabled={purchaseManagerApprovalLoading || purchaseManagerApprovalStatus === "PENDING"}
+                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed h-10 px-4 py-2 gap-2"
                   >
                     <FiSave size={16} />
-                    {pmApprovalLoading ? "Saving..." : "Update Vendor Approval"}
+                    {purchaseManagerApprovalLoading ? "Saving..." : "Update Vendor Approval"}
                   </button>
                 </div>
 
-                {mtrData.pmApprovalRemarks && (
+                {mtrData.purchaseManagerApprovalRemarks && (
                   <div className="mt-3 p-3 bg-white rounded border">
                     <p className="text-sm font-medium text-gray-700">Previous Remarks:</p>
-                    <p className="text-sm text-gray-700">{mtrData.pmApprovalRemarks}</p>
+                    <p className="text-sm text-gray-700">{mtrData.purchaseManagerApprovalRemarks}</p>
                   </div>
                 )}
               </div>
@@ -517,7 +773,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {/* PO Selection */}
                     <div>
                       <label className="text-sm font-medium text-orange-700 block mb-1">Select Purchase Order:</label>
                       <select
@@ -545,7 +800,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
 
                     {selectedPO && (
                       <>
-                        {/* Current PO Details */}
                         <div className="p-3 bg-white rounded border">
                           <p className="text-sm font-medium text-gray-700 mb-2">Selected PO Details:</p>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -591,7 +845,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
                           )}
                         </div>
 
-                        {/* Approval Controls */}
                         <div className="space-y-3">
                           <div>
                             <label className="text-sm font-medium text-orange-700 block mb-1">
@@ -654,10 +907,8 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
                   </div>
                 ) : piData ? (
                   <div className="space-y-4">
-                    {/* Check if PI was uploaded by different user */}
                     {piData.uploadedBy?.id !== user?.userId && piData.uploadedBy?.id !== user?.id ? (
                       <>
-                        {/* PI Details Display */}
                         <div className="p-3 bg-white rounded border border-purple-300">
                           <div className="flex items-center gap-2 mb-2">
                             <FiFileText className="text-purple-600" />
@@ -708,7 +959,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
                             </div>
                           </div>
 
-                          {/* Document Download */}
                           {piData.fileUrl && (
                             <div className="mt-3 pt-3 border-t border-purple-200">
                               <div className="flex items-center gap-2">
@@ -725,7 +975,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
                             </div>
                           )}
 
-                          {/* Remarks */}
                           {piData.remarks && (
                             <div className="mt-3 pt-3 border-t border-purple-200">
                               <p className="text-xs font-medium text-gray-600">Remarks:</p>
@@ -734,7 +983,6 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
                           )}
                         </div>
 
-                        {/* Approval Controls */}
                         <div className="space-y-3">
                           <div>
                             <label className="text-sm font-medium text-purple-700 block mb-1">Approval Status:</label>

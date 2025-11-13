@@ -22,7 +22,16 @@ import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
 import { leadService } from "../../services/leadService"
 
-function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose, currentUserId, project }) {
+function BOQEditComponent({
+  projectId,
+  projectName,
+  existingBOQ,
+  onSave,
+  onClose,
+  currentUserId,
+  project,
+  onBOQUpdate,
+}) {
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [boqProducts, setBOQProducts] = useState([])
   const [availableSkillsets, setAvailableSkillsets] = useState([])
@@ -50,6 +59,16 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   // const [toolsSearchTerm, setToolsSearchTerm] = useState("")
   // const [selectedSkillSets, setSelectedSkillSets] = useState([])
   // const [selectedTools, setSelectedTools] = useState([])
+
+  const refetchBOQData = async () => {
+    try {
+      if (onBOQUpdate) {
+        await onBOQUpdate()
+      }
+    } catch (error) {
+      console.error("Error refetching BOQ data:", error)
+    }
+  }
 
   const updateCategoryItemApprovalStatus = async (productId, categoryType, itemIndex, approvalData) => {
     try {
@@ -94,12 +113,13 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
       await projectService.updateCategoryItemApprovalStatus(projectId, productId, categoryType, itemIndex, payload)
 
       setShowApprovalModal(null)
+
+      await refetchBOQData()
     } catch (error) {
       console.error("Error updating category item approval status:", error)
-      setError("Failed to update approval status: " + error.message)
+      setError("Failed to update category item approval status: " + error.message)
     }
   }
-  // </CHANGE>
 
   const updateMTRApprovalStatus = async (productId, categoryType, itemIndex, mtrIndex, approvalData) => {
     try {
@@ -118,11 +138,20 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             if (categoryType === "billable") {
               const materialRequisitions = [...(updatedProduct.materialRequisitions || [])]
               if (materialRequisitions[mtrIndex]) {
-                materialRequisitions[mtrIndex] = {
-                  ...materialRequisitions[mtrIndex],
-                  pmApprovalStatus: finalStatus,
-                  pmApprovalRemarks: remarks,
-                  pmApprovalDate: finalDate,
+                if (type === "PM") {
+                  materialRequisitions[mtrIndex] = {
+                    ...materialRequisitions[mtrIndex],
+                    pmApprovalStatus: finalStatus,
+                    pmApprovalRemarks: remarks,
+                    pmApprovalDate: finalDate,
+                  }
+                } else if (type === "SALESTL") {
+                  materialRequisitions[mtrIndex] = {
+                    ...materialRequisitions[mtrIndex],
+                    salestlApprovalStatus: finalStatus,
+                    salestlApprovalRemarks: remarks,
+                    salestlApprovalDate: finalDate,
+                  }
                 }
                 updatedProduct.materialRequisitions = materialRequisitions
               }
@@ -149,18 +178,32 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
         }),
       )
 
-      const payload = {
-        pmApprovalStatus: finalStatus,
-        pmApprovalRemarks: remarks || "",
-        pmApprovalDate: finalDate,
+      const payload = {}
+      if (type === "PM") {
+        payload.pmApprovalStatus = finalStatus
+        payload.pmApprovalRemarks = remarks || ""
+        payload.pmApprovalDate = finalDate
+      } else if (type === "SALESTL") {
+        payload.salestlApprovalStatus = finalStatus
+        payload.salestlApprovalRemarks = remarks || ""
+        payload.salestlApprovalDate = finalDate
       }
 
       console.log("[v0] Sending MTR approval update payload:", payload)
 
-      // Use the correct projectService method
-      await projectService.updateMTRApprovalStatus(projectId, productId, categoryType, itemIndex, mtrIndex, payload)
+      // For billable MTRs, itemIndex is not needed (pass null or undefined)
+      await projectService.updateMTRApprovalStatus(
+        projectId,
+        productId,
+        categoryType,
+        categoryType === "billable" ? null : itemIndex,
+        mtrIndex,
+        payload,
+      )
 
       setShowApprovalModal(null)
+
+      await refetchBOQData()
     } catch (error) {
       console.error("Error updating MTR approval status:", error)
       setError("Failed to update MTR approval status: " + error.message)
@@ -337,7 +380,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
     }
   }
 
-  /* const getProductNameByReferenceId = (item, category) => {
+  const getProductNameByReferenceId = (item, category) => {
     // If item already has a name/product_name, use it
     if (category === "nonBillable" && (item.product_name || item.productName)) {
       return item.product_name || item.productName
@@ -370,31 +413,8 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
     }
 
     return "Unknown Item"
-  } */
-
-  const getProductNameByReferenceId = (item, category) => {
-
-    var referenceId = item.referenceId;
-
-    if (!referenceId) return "Unknown Item"
-
-    if (category === "nonBillable") {
-      const product = availableProducts.find((p) => p.id === referenceId)
-      return product?.product_name || product?.productName || "Unknown Product"
-    } else if (category === "skillSet") {
-      
-      const skillset = availableSkillsets.find((s) => s.id === referenceId)
-      return skillset?.skillset_name || "Unknown Skillset"
-    } else if (category === "tools") {
-      const tool = availableTools.find((t) => t.id === referenceId)
-      return tool?.tool_name || "Unknown Tool"
-    }
-
-    return "Unknown Item"
   }
-  
-  
-  
+
   useEffect(() => {
     console.log("=== BOQ Data Debug ===")
     console.log("Raw Existing BOQ:", JSON.stringify(existingBOQ, null, 2))
@@ -435,6 +455,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 pmApprovalStatus: mtr.pmApprovalStatus || "PENDING",
                 pmApprovalRemarks: mtr.pmApprovalRemarks || "",
                 pmApprovalDate: mtr.pmApprovalDate || null,
+                salestlApprovalStatus: mtr.salestlApprovalStatus || "PENDING",
+                salestlApprovalRemarks: mtr.salestlApprovalRemarks || "",
+                salestlApprovalDate: mtr.salestlApprovalDate || null,
               }
             })
 
@@ -460,6 +483,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 pmApprovalStatus: mtr.pmApprovalStatus || "PENDING",
                 pmApprovalRemarks: mtr.pmApprovalRemarks || "",
                 pmApprovalDate: mtr.pmApprovalDate || null,
+                salestlApprovalStatus: mtr.salestlApprovalStatus || "PENDING",
+                salestlApprovalRemarks: mtr.salestlApprovalRemarks || "",
+                salestlApprovalDate: mtr.salestlApprovalDate || null,
               })),
             }))
 
@@ -483,6 +509,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 pmApprovalStatus: mtr.pmApprovalStatus || "PENDING",
                 pmApprovalRemarks: mtr.pmApprovalRemarks || "",
                 pmApprovalDate: mtr.pmApprovalDate || null,
+                salestlApprovalStatus: mtr.salestlApprovalStatus || "PENDING",
+                salestlApprovalRemarks: mtr.salestlApprovalRemarks || "",
+                salestlApprovalDate: mtr.salestlApprovalDate || null,
               })),
             }))
 
@@ -507,6 +536,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 pmApprovalStatus: mtr.pmApprovalStatus || "PENDING",
                 pmApprovalRemarks: mtr.pmApprovalRemarks || "",
                 pmApprovalDate: mtr.pmApprovalDate || null,
+                salestlApprovalStatus: mtr.salestlApprovalStatus || "PENDING",
+                salestlApprovalRemarks: mtr.salestlApprovalRemarks || "",
+                salestlApprovalDate: mtr.salestlApprovalDate || null,
               })),
             }))
 
@@ -561,6 +593,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
 
   const ApprovalStatusBadge = ({
     status,
+    type,
     onUpdate,
     productId,
     categoryType,
@@ -581,6 +614,16 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           return "bg-yellow-100 text-yellow-800 border-yellow-200"
         default:
           return "bg-gray-100 text-gray-800 border-gray-200"
+      }
+    }
+
+    const getType = (type) => {
+      console.log("Category Type is" + type)
+      if (type === "PM") {
+        console.log("PM--------")
+        return "PM"
+      } else {
+        return "Sales TL"
       }
     }
 
@@ -634,7 +677,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
     return (
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-600">PM Approval:</span>
+          <span className="text-xs font-medium text-gray-600">{getType(type)} Approval:</span>
           {readOnly ? (
             <div
               className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
@@ -930,7 +973,7 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
   }
 
   // Inline MTR List (replaces MaterialRequisitionList.js)
-  const MTRList = ({ materialRequisitions, onRemove, onEdit }) => {
+  const MTRList = ({ materialRequisitions, onRemove, onEdit, productId, categoryType, itemIndex }) => {
     if (!materialRequisitions || materialRequisitions.length === 0) {
       return <div className="text-center text-gray-500 py-2 text-sm">No material requisitions added yet</div>
     }
@@ -976,10 +1019,10 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                     <span className="text-gray-600">Purchase:</span>
                     <span className="ml-1 font-medium">{mtr.purchaseMTR}</span>
                   </div>
-                  <div>
+                  {/* <div>
                     <span className="text-gray-600">DC Qty:</span>
                     <span className="ml-1 font-medium">{mtr.dcQty}</span>
-                  </div>
+                  </div> */}
                   {mtr.expectedDeliveryDate && (
                     <div>
                       <span className="text-gray-600">Delivery:</span>
@@ -993,6 +1036,57 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                   <div className="mt-2 text-sm">
                     <span className="text-gray-600">Remarks:</span>
                     <span className="ml-1">{mtr.remarks}</span>
+                  </div>
+                )}
+
+                {categoryType === "billable" && (
+                  <div className="mt-3 p-2 bg-white rounded-lg border border-gray-200">
+                    <div className="flex gap-4">
+                      {/* PM Approval - editable */}
+                      <ApprovalStatusBadge
+                        status={mtr.pmApprovalStatus || "PENDING"}
+                        productId={productId}
+                        type="PM"
+                        categoryType={categoryType}
+                        itemIndex={itemIndex}
+                        mtrIndex={index}
+                        remarks={mtr.pmApprovalRemarks}
+                        approvalDate={mtr.pmApprovalDate}
+                        onUpdate={updateMTRApprovalStatus}
+                        isMTR={true}
+                      />
+
+                      {/* SalesTL Approval - read only */}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-gray-600">SalesTL Approval:</span>
+                          <div
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${
+                              mtr.salestlApprovalStatus === "APPROVED"
+                                ? "bg-green-100 text-green-800 border-green-200"
+                                : mtr.salestlApprovalStatus === "REJECTED"
+                                  ? "bg-red-100 text-red-800 border-red-200"
+                                  : "bg-yellow-100 text-yellow-800 border-yellow-200"
+                            }`}
+                          >
+                            {mtr.salestlApprovalStatus === "APPROVED" && <FiCheck size={14} />}
+                            {mtr.salestlApprovalStatus === "REJECTED" && <FiX size={14} />}
+                            {mtr.salestlApprovalStatus === "PENDING" && <FiClock size={14} />}
+                            {mtr.salestlApprovalStatus}
+                          </div>
+                        </div>
+                        {mtr.salestlApprovalRemarks && (
+                          <div className="text-xs text-gray-500">
+                            <span className="font-medium">Remarks111111:</span> {mtr.salestlApprovalRemarks}
+                          </div>
+                        )}
+                        {mtr.salestlApprovalDate && (
+                          <div className="text-xs text-gray-500">
+                            {new Date(mtr.salestlApprovalDate).toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1353,6 +1447,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             pmApprovalRemarks: "",
             pmApprovalDate:
               currentUserId && project?.project_manager?.id === currentUserId ? new Date().toISOString() : null,
+            salestlApprovalStatus: "PENDING", // Default Salestl approval status
+            salestlApprovalRemarks: "",
+            salestlApprovalDate: null,
           }
 
           if (category === "nonBillable") {
@@ -1398,6 +1495,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 pmApprovalRemarks: "",
                 pmApprovalDate:
                   currentUserId && project?.project_manager?.id === currentUserId ? new Date().toISOString() : null,
+                salestlApprovalStatus: "PENDING", // Default Salestl approval status
+                salestlApprovalRemarks: "",
+                salestlApprovalDate: null,
               },
             ],
           }
@@ -1437,6 +1537,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                 pmApprovalRemarks: "",
                 pmApprovalDate:
                   currentUserId && project?.project_manager?.id === currentUserId ? new Date().toISOString() : null,
+                salestlApprovalStatus: "PENDING", // Default Salestl approval status
+                salestlApprovalRemarks: "",
+                salestlApprovalDate: null,
               },
             ],
           }
@@ -1512,12 +1615,15 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                     id: null, // New MTR, ID should be null
                     ...mtrData,
                     createdAt: new Date().toISOString(),
+                    salestlApprovalStatus: "PENDING", // Default Salestl approval status
+                    salestlApprovalRemarks: "",
+                    salestlApprovalDate: null,
                   },
                 ],
               }
             }
           } else {
-            // Handling MTRs for NonBillable, SkillSet, Tools
+            // Handling MTRs for NonBillable, SkillSet, Tools categories
             const updatedCategory = [...(p[category] || [])]
             const targetItem = updatedCategory[productIndex]
 
@@ -1538,6 +1644,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                   id: null, // New category MTR, ID should be null
                   ...mtrData,
                   createdAt: new Date().toISOString(),
+                  salestlApprovalStatus: "PENDING", // Default Salestl approval status
+                  salestlApprovalRemarks: "",
+                  salestlApprovalDate: null,
                 },
               ]
               updatedCategory[productIndex] = {
@@ -1666,6 +1775,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
           pmApprovalStatus: existingBOQItem.pmApprovalStatus,
           pmApprovalRemarks: existingBOQItem.pmApprovalRemarks,
           pmApprovalDate: existingBOQItem.pmApprovalDate,
+          salestlApprovalStatus: existingBOQItem.salestlApprovalStatus,
+          salestlApprovalRemarks: existingBOQItem.salestlApprovalRemarks,
+          salestlApprovalDate: existingBOQItem.salestlApprovalDate,
         })
         processedIncomingIds.add(matchedIncomingItem.id)
       }
@@ -1708,6 +1820,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
             pmApprovalStatus: isProjectManager ? "APPROVED" : "PENDING",
             pmApprovalRemarks: "",
             pmApprovalDate: isProjectManager ? new Date().toISOString() : null,
+            salestlApprovalStatus: "PENDING", // Default Salestl approval status
+            salestlApprovalRemarks: "",
+            salestlApprovalDate: null,
             nonBillable: [],
             skillSet: [],
             tools: [],
@@ -1977,6 +2092,9 @@ function BOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose
                                                     [`${product.id}-billable`]: true,
                                                   }))
                                                 }}
+                                                productId={product.id}
+                                                categoryType="billable"
+                                                itemIndex={null}
                                               />
                                               <AnimatePresence>
                                                 {expandedMTRForms[`${product.id}-billable`] && (

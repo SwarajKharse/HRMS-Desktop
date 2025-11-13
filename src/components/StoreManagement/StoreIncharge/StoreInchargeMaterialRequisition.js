@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { materialRequisitionService } from "../../../services/materialRequisitionService"
 import { FiSave, FiX, FiEye, FiEdit3 } from "react-icons/fi"
-import MTRDetailsModal from "./MTRDetailsModal"
+import StoreInchargeMTRDetailsModal from "./StoreInchargeMTRDetailsModal"
 import { useAuth } from "../../../contexts/AuthContext"
 
 const formatDate = (dateString) => {
@@ -209,7 +209,6 @@ export default function StoreInchargeMaterialRequisition() {
         mtrQty: Number.parseFloat(editedMtrData.mtrQty),
         stockAlloted: Number.parseFloat(editedMtrData.stockAlloted),
         purchaseMTR: Number.parseFloat(editedMtrData.purchaseMTR),
-        dcQty: Number.parseFloat(editedMtrData.dcQty),
         remarks: editedMtrData.remarks,
         expectedDeliveryDate: editedMtrData.expectedDeliveryDate,
         priority: editedMtrData.priority,
@@ -217,9 +216,9 @@ export default function StoreInchargeMaterialRequisition() {
         status: editedMtrData.status,
       }
 
-      await materialRequisitionService.updateMaterialRequisition(mtrId, payload)
+      const updatedMtr = await materialRequisitionService.updateMaterialRequisition(mtrId, payload, currentUserId)
 
-      setRequisitions((prev) => prev.map((req) => (req.id === mtrId ? { ...req, ...editedMtrData } : req)))
+      setRequisitions((prev) => prev.map((req) => (req.id === mtrId ? { ...req, ...updatedMtr } : req)))
       setEditingMtrId(null)
       setEditedMtrData({})
       alert("Material Requisition updated successfully!")
@@ -356,13 +355,11 @@ export default function StoreInchargeMaterialRequisition() {
                 <table className="w-full caption-bottom text-sm">
                   <thead className="[&_tr]:border-b bg-gray-100">
                     <tr className="border-b transition-colors hover:bg-gray-100">
-                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Code</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Project Name</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Product Name</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Stock Allotted</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Purchase MTR</th>
-                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">DC Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
@@ -374,7 +371,6 @@ export default function StoreInchargeMaterialRequisition() {
                           editingMtrId === req.id ? "bg-blue-50" : "hover:bg-gray-50"
                         }`}
                       >
-                        <td className="p-4 align-middle text-gray-700 font-medium">{req.mtrCode || "N/A"}</td>
                         <td className="p-4 align-middle text-gray-700">{req.projectName || "N/A"}</td>
                         <td className="p-4 align-middle text-gray-700">{req.productName || "N/A"}</td>
                         <td className="p-4 align-middle text-gray-700">
@@ -416,19 +412,6 @@ export default function StoreInchargeMaterialRequisition() {
                             req.purchaseMTR
                           )}
                         </td>
-                        <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.dcQty}
-                              onChange={(e) => handleInputChange(e, "dcQty")}
-                              className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            />
-                          ) : (
-                            req.dcQty
-                          )}
-                        </td>
                         <td className="p-4 align-middle">
                           {editingMtrId === req.id ? (
                             <div className="flex gap-2">
@@ -452,14 +435,14 @@ export default function StoreInchargeMaterialRequisition() {
                               <button
                                 onClick={(e) => handleEditClick(e, req)}
                                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 h-9 px-3 py-1"
-                                title="Edit Stock Allotted and DC Qty"
+                                title="Edit Stock Allotted"
                               >
                                 <FiEdit3 size={16} />
                               </button>
                               <button
                                 onClick={(e) => handleViewDetailsClick(e, req)}
                                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 h-9 px-3 py-1"
-                                title="View all details"
+                                title="View all details and manage DC Qty"
                               >
                                 <FiEye size={16} />
                               </button>
@@ -528,7 +511,16 @@ export default function StoreInchargeMaterialRequisition() {
           )}
         </div>
       </div>
-      {showDetailsModal && <MTRDetailsModal mtr={selectedMTRForDetails} onClose={() => setShowDetailsModal(false)} />}
+      {showDetailsModal && (
+        <StoreInchargeMTRDetailsModal
+          mtr={selectedMTRForDetails}
+          currentUserId={currentUserId}
+          onClose={() => {
+            setShowDetailsModal(false)
+            fetchMaterialRequisitions()
+          }}
+        />
+      )}
     </div>
   )
 }

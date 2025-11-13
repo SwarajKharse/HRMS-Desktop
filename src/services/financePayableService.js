@@ -42,11 +42,11 @@ export const financePayableService = {
     }
   },
 
-  approveOrRejectPayable: async (piId, approvalStatus, remarks, financeUserId) => {
+  approveOrRejectPayable: async (poId, approvalStatus, remarks, financeUserId) => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/finance-payables/approve-reject`,
-        { piId, approvalStatus, remarks, financeUserId },
+        `${API_BASE_URL}/finance-payables/${poId}/approve-reject`,
+        {  approvalStatus, remarks, financeUserId },
         {
           ...getAuthHeaders(),
         },

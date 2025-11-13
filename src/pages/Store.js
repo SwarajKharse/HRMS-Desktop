@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import NewProjects from "../components/StoreManagement/NewProjects"
 import MaterialRequisitions from "../components/StoreManagement/MaterialRequisitions"
+import StoreInchargeMaterialRequisition from "../components/StoreManagement/StoreIncharge/StoreInchargeMaterialRequisition"
 import { GrWorkshop } from "react-icons/gr"
 import { useAuth } from "../contexts/AuthContext"
 
@@ -26,6 +27,12 @@ function Projects() {
         label: "MaterialRequisitions",
         icon: GrWorkshop,
         component: MaterialRequisitions,
+      },
+      {
+        id: "store-incharge-mtr",
+        label: "My MaterialRequisitions",
+        icon: GrWorkshop,
+        component: StoreInchargeMaterialRequisition,
       }
     ]
 
@@ -33,17 +40,11 @@ function Projects() {
     const designation = employee.designation.name.replace(/\s+/g, "-").toLowerCase() || ""
 
     // Filter tabs based on designation
-   /*  if (designation.includes("director")) {
-      return allTabs // Admin/Manager can see all tabs
-    } else if (designation.includes("sales-team-leader") || designation.includes("leader")) {
-      return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]] // BDM can see unassigned and BDM assigne
-    } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
-      return [allTabs[3], allTabs[4], allTabs[5]] // SSE can see unassigned and SSE assigned
-    } else if (designation.includes("bdm") || designation.includes("business") || designation.includes("development")) {
-      return [allTabs[6]] // BDM can see unassigned and BDM assigned
-    } else {
-      return [allTabs[0]] // Default to just unassigned leads
-    } */
+    if (designation.includes("store-incharge")) {
+      return [allTabs[2]] 
+    } else if (designation.includes("manager")) {
+      return [allTabs[0], allTabs[1]] // BDM can see unassigned and BDM assigne
+    } 
     
     return allTabs
   }

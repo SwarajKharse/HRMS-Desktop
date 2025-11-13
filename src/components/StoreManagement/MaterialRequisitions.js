@@ -1,10 +1,10 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
-import { materialRequisitionService } from "../../services/materialRequisitionService" // Ensure this path is correct
-import { FiSave, FiX, FiEye, FiEdit3 } from "react-icons/fi" // Added FiEdit3 for edit icon
-import MTRDetailsModal from "./MTRDetailsModal" // Import the new modal component
+import { materialRequisitionService } from "../../services/materialRequisitionService"
+import { FiSave, FiX, FiEye, FiEdit3 } from "react-icons/fi"
+import StoreManagerMTRDetailsModal from "./StoreManagerMTRDetailsModal"
+import { useAuth } from "../../contexts/AuthContext"
 
-// Helper function to format dates for display
 const formatDate = (dateString) => {
   if (!dateString) return ""
   const date = new Date(dateString)
@@ -15,9 +15,10 @@ export default function MaterialRequisition() {
   const [requisitions, setRequisitions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [currentPage, setCurrentPage] = useState(0) // Backend is 0-indexed
+  const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
-  const [pageSize, setPageSize] = useState(10) // Default page size
+  const [pageSize, setPageSize] = useState(10)
+  const { user } = useAuth()
   const [filters, setFilters] = useState({
     itemName: "",
     status: "All",
@@ -26,11 +27,9 @@ export default function MaterialRequisition() {
     mtrDateTo: "",
   })
 
-  // State for inline editing
   const [editingMtrId, setEditingMtrId] = useState(null)
   const [editedMtrData, setEditedMtrData] = useState({})
 
-  // State for view details modal
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedMTRForDetails, setSelectedMTRForDetails] = useState(null)
 
@@ -54,7 +53,6 @@ export default function MaterialRequisition() {
       const formattedRequisitions = (data.content || []).map((req) => {
         return {
           ...req,
-          // Ensure numeric fields are numbers for calculations
           mtrQty: Number.parseFloat(req.mtrQty || 0),
           stockAlloted: Number.parseFloat(req.stockAlloted || 0),
           purchaseMTR: Number.parseFloat(req.purchaseMTR || 0),
@@ -87,7 +85,7 @@ export default function MaterialRequisition() {
   }
 
   const handleApplyFilters = () => {
-    setCurrentPage(0) // Reset to first page when applying new filters
+    setCurrentPage(0)
   }
 
   const handlePageChange = (page) => {
@@ -168,15 +166,14 @@ export default function MaterialRequisition() {
     return items
   }
 
-  // This function will now be explicitly called by the edit icon
   const handleEditClick = (e, mtr) => {
-    e.stopPropagation() // Prevent row click from also triggering
+    e.stopPropagation()
     setEditingMtrId(mtr.id)
-    setEditedMtrData({ ...mtr }) // Copy current MTR data for editing
+    setEditedMtrData({ ...mtr })
   }
 
   const handleCancelClick = (e) => {
-    e.stopPropagation() // Prevent row click from re-triggering edit mode
+    e.stopPropagation()
     setEditingMtrId(null)
     setEditedMtrData({})
   }
@@ -185,7 +182,6 @@ export default function MaterialRequisition() {
     const { value } = e.target
     setEditedMtrData((prev) => {
       const newData = { ...prev, [field]: value }
-      // Recalculate Purchase MTR
       if (field === "mtrQty" || field === "stockAlloted") {
         const mtrQty = Number.parseFloat(newData.mtrQty || 0)
         const stockAlloted = Number.parseFloat(newData.stockAlloted || 0)
@@ -196,19 +192,15 @@ export default function MaterialRequisition() {
   }
 
   const handleSaveClick = async (e, mtrId) => {
-    e.stopPropagation() // Prevent row click from re-triggering edit mode
+    e.stopPropagation()
     setLoading(true)
     setError(null)
     try {
-      // Prepare payload with only editable fields and calculated purchaseMTR
+      var currentUserId = user.userId
       const payload = {
-        // MTR Qty is read-only, so send its original value
         mtrQty: Number.parseFloat(editedMtrData.mtrQty),
         stockAlloted: Number.parseFloat(editedMtrData.stockAlloted),
-        // Purchase MTR is calculated, send the calculated value
         purchaseMTR: Number.parseFloat(editedMtrData.purchaseMTR),
-        dcQty: Number.parseFloat(editedMtrData.dcQty),
-        // Other fields are read-only, send their original values
         remarks: editedMtrData.remarks,
         expectedDeliveryDate: editedMtrData.expectedDeliveryDate,
         priority: editedMtrData.priority,
@@ -216,9 +208,8 @@ export default function MaterialRequisition() {
         status: editedMtrData.status,
       }
 
-      await materialRequisitionService.updateMaterialRequisition(mtrId, payload)
+      await materialRequisitionService.updateMaterialRequisition(mtrId, payload,currentUserId)
 
-      // Update the local state with the saved data
       setRequisitions((prev) => prev.map((req) => (req.id === mtrId ? { ...req, ...editedMtrData } : req)))
       setEditingMtrId(null)
       setEditedMtrData({})
@@ -232,7 +223,7 @@ export default function MaterialRequisition() {
   }
 
   const handleViewDetailsClick = (e, mtr) => {
-    e.stopPropagation() // Prevent row click from triggering edit mode
+    e.stopPropagation()
     setSelectedMTRForDetails(mtr)
     setShowDetailsModal(true)
   }
@@ -362,7 +353,6 @@ export default function MaterialRequisition() {
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Stock Allotted</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Purchase MTR</th>
-                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">DC Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
@@ -383,7 +373,7 @@ export default function MaterialRequisition() {
                               type="number"
                               step="0.01"
                               value={editedMtrData.mtrQty}
-                              readOnly // MTR Qty is now read-only
+                              readOnly
                               className="w-24 p-1 border rounded bg-gray-100 text-gray-600 focus:outline-none"
                             />
                           ) : (
@@ -416,19 +406,6 @@ export default function MaterialRequisition() {
                             req.purchaseMTR
                           )}
                         </td>
-                        <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.dcQty}
-                              onChange={(e) => handleInputChange(e, "dcQty")}
-                              className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            />
-                          ) : (
-                            req.dcQty
-                          )}
-                        </td>
                         <td className="p-4 align-middle">
                           {editingMtrId === req.id ? (
                             <div className="flex gap-2">
@@ -452,14 +429,14 @@ export default function MaterialRequisition() {
                               <button
                                 onClick={(e) => handleEditClick(e, req)}
                                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 h-9 px-3 py-1"
-                                title="Edit Stock Allotted and DC Qty"
+                                title="Edit Stock Allotted"
                               >
                                 <FiEdit3 size={16} />
                               </button>
                               <button
                                 onClick={(e) => handleViewDetailsClick(e, req)}
                                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 h-9 px-3 py-1"
-                                title="View all details"
+                                title="View all details and manage DC Qty"
                               >
                                 <FiEye size={16} />
                               </button>
@@ -528,7 +505,15 @@ export default function MaterialRequisition() {
           )}
         </div>
       </div>
-      {showDetailsModal && <MTRDetailsModal mtr={selectedMTRForDetails} onClose={() => setShowDetailsModal(false)} />}
+      {showDetailsModal && (
+        <StoreManagerMTRDetailsModal
+          mtr={selectedMTRForDetails}
+          onClose={() => {
+            setShowDetailsModal(false)
+            fetchMaterialRequisitions()
+          }}
+        />
+      )}
     </div>
   )
 }

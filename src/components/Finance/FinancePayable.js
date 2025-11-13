@@ -13,8 +13,8 @@ function ApprovalModal({ isOpen, onClose, invoice, onSuccess }) {
 
   useEffect(() => {
     if (isOpen && invoice) {
-      setApprovalStatus("")
-      setRemarks("")
+      setApprovalStatus(invoice.financeManagerApprovalStatus || "")
+      setRemarks(invoice.financeManagerApprovalRemarks || "")
       setError(null)
     }
   }, [isOpen, invoice])
@@ -80,7 +80,7 @@ function ApprovalModal({ isOpen, onClose, invoice, onSuccess }) {
               </div>
               <div>
                 <span className="font-medium text-gray-700">PI Number:</span>
-                <span className="ml-2 text-gray-900">{invoice.piNumber}</span>
+                <span className="ml-2 text-gray-900">{invoice.piNumber || "N/A"}</span>
               </div>
               <div>
                 <span className="font-medium text-gray-700">Project:</span>
@@ -89,7 +89,7 @@ function ApprovalModal({ isOpen, onClose, invoice, onSuccess }) {
               <div>
                 <span className="font-medium text-gray-700">Amount:</span>
                 <span className="ml-2 text-gray-900 font-semibold">
-                  ₹{Number.parseFloat(invoice.payableAmount || 0).toLocaleString("en-IN")}
+                  ₹{Number.parseFloat(invoice.payableAmount || invoice.amount || 0).toLocaleString("en-IN")}
                 </span>
               </div>
               <div>
@@ -102,14 +102,14 @@ function ApprovalModal({ isOpen, onClose, invoice, onSuccess }) {
                 <span className="font-medium text-gray-700">Current Status:</span>
                 <span
                   className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
-                    invoice.approvedFromFinance === "APPROVED"
+                    invoice.financeManagerApprovalStatus === "APPROVED"
                       ? "bg-green-100 text-green-700"
-                      : invoice.approvedFromFinance === "REJECTED"
+                      : invoice.financeManagerApprovalStatus === "REJECTED"
                         ? "bg-red-100 text-red-700"
                         : "bg-yellow-100 text-yellow-700"
                   }`}
                 >
-                  {invoice.approvedFromFinance}
+                  {invoice.financeManagerApprovalStatus || "PENDING"}
                 </span>
               </div>
             </div>
@@ -124,21 +124,21 @@ function ApprovalModal({ isOpen, onClose, invoice, onSuccess }) {
                   rel="noopener noreferrer"
                   className="text-blue-600 underline hover:text-blue-800 text-sm"
                 >
-                  {invoice.fileName || "PI File"}
+                  {invoice.fileName || "PO File"}
                 </a>
               ) : (
-                <span className="text-gray-400 text-sm">No PI file</span>
+                <span className="text-gray-400 text-sm">No PO file</span>
               )}
-              {invoice.poFileUrl && (
+              {invoice.piFileUrl && (
                 <>
                   <span className="mx-2 text-gray-400">|</span>
                   <a
-                    href={invoice.poFileUrl}
+                    href={invoice.piFileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 underline hover:text-blue-800 text-sm"
                   >
-                    {invoice.poFileName || "PO File"}
+                    {invoice.piFileName || "PI File"}
                   </a>
                 </>
               )}
@@ -277,7 +277,7 @@ function FinancePayable() {
   const handleHandoverToPurchase = async (e, invoice) => {
     e.stopPropagation()
 
-    if (invoice.approvedFromFinance !== "APPROVED") {
+    if (invoice.financeManagerApprovalStatus !== "APPROVED") {
       setError("Cannot handover to purchase. Invoice must be approved first.")
       setTimeout(() => setError(null), 3000)
       return
@@ -505,7 +505,7 @@ function FinancePayable() {
                         <div className="text-sm font-medium text-gray-900">{invoice.poNumber || "N/A"}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{invoice.piNumber}</div>
+                        <div className="text-sm font-medium text-gray-900">{invoice.piNumber || "N/A"}</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-gray-900">
@@ -521,9 +521,9 @@ function FinancePayable() {
                       {/* Documents column with PO and PI file links */}
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
-                          {invoice.poFileUrl ? (
+                          {invoice.fileUrl ? (
                             <a
-                              href={invoice.poFileUrl}
+                              href={invoice.fileUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium transition-colors"
@@ -536,9 +536,9 @@ function FinancePayable() {
                           ) : (
                             <span className="text-xs text-gray-400">No PO</span>
                           )}
-                          {invoice.fileUrl ? (
+                          {invoice.piFileUrl ? (
                             <a
-                              href={invoice.fileUrl}
+                              href={invoice.piFileUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium transition-colors"
@@ -556,10 +556,10 @@ function FinancePayable() {
                       <td className="px-6 py-4">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                            invoice.approvedFromFinance,
+                            invoice.financeManagerApprovalStatus || "PENDING",
                           )}`}
                         >
-                          {invoice.approvedFromFinance}
+                          {invoice.financeManagerApprovalStatus || "PENDING"}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -584,7 +584,8 @@ function FinancePayable() {
                           <button
                             onClick={(e) => handleHandoverToPurchase(e, invoice)}
                             disabled={
-                              invoice.approvedFromFinance !== "APPROVED" || invoice.handoverFromFinance === "COMPLETE"
+                              invoice.financeManagerApprovalStatus !== "APPROVED" ||
+                              invoice.handoverFromFinance === "COMPLETE"
                             }
                             className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                           >
@@ -614,10 +615,10 @@ function FinancePayable() {
                       </div>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                          invoice.approvedFromFinance,
+                          invoice.financeManagerApprovalStatus || "PENDING",
                         )}`}
                       >
-                        {invoice.approvedFromFinance}
+                        {invoice.financeManagerApprovalStatus || "PENDING"}
                       </span>
                     </div>
 
@@ -638,9 +639,9 @@ function FinancePayable() {
                       <div className="col-span-2">
                         <span className="font-medium text-gray-700">Documents:</span>
                         <div className="flex gap-3 mt-1">
-                          {invoice.poFileUrl ? (
+                          {invoice.fileUrl ? (
                             <a
-                              href={invoice.poFileUrl}
+                              href={invoice.fileUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium"
@@ -652,9 +653,9 @@ function FinancePayable() {
                           ) : (
                             <span className="text-xs text-gray-400">No PO</span>
                           )}
-                          {invoice.fileUrl ? (
+                          {invoice.piFileUrl ? (
                             <a
-                              href={invoice.fileUrl}
+                              href={invoice.piFileUrl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium"
@@ -694,7 +695,8 @@ function FinancePayable() {
                       <button
                         onClick={(e) => handleHandoverToPurchase(e, invoice)}
                         disabled={
-                          invoice.approvedFromFinance !== "APPROVED" || invoice.handoverFromFinance === "COMPLETE"
+                          invoice.financeManagerApprovalStatus !== "APPROVED" ||
+                          invoice.handoverFromFinance === "COMPLETE"
                         }
                         className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
