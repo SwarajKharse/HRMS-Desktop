@@ -473,7 +473,8 @@ function FinancePayable() {
                     "Project Name",
                     "Expected Date",
                     "Documents",
-                    "Status",
+                    "PM Status",
+                    "PO Status",
                     "Handover",
                     "Actions",
                   ].map((header) => (
@@ -489,7 +490,7 @@ function FinancePayable() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {purchaseInvoices.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-12 text-center text-gray-500 font-medium">
+                    <td colSpan="10" className="px-6 py-12 text-center text-gray-500 font-medium">
                       No purchase invoices found
                     </td>
                   </tr>
@@ -518,7 +519,6 @@ function FinancePayable() {
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">{formatDate(invoice.expectedPaymentDate)}</div>
                       </td>
-                      {/* Documents column with PO and PI file links */}
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
                           {invoice.fileUrl ? (
@@ -552,6 +552,15 @@ function FinancePayable() {
                             <span className="text-xs text-gray-400">No PI</span>
                           )}
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
+                            invoice.purchaseManagerApprovalStatus || "PENDING",
+                          )}`}
+                        >
+                          {invoice.purchaseManagerApprovalStatus || "PENDING"}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <span
@@ -635,7 +644,30 @@ function FinancePayable() {
                         <span className="font-medium text-gray-700">Project:</span>
                         <div className="text-gray-900">{invoice.projectName}</div>
                       </div>
-                      {/* Document links to mobile view */}
+                      <div>
+                        <span className="font-medium text-gray-700">PM Status:</span>
+                        <div>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
+                              invoice.purchaseManagerApprovalStatus || "PENDING",
+                            )}`}
+                          >
+                            {invoice.purchaseManagerApprovalStatus || "PENDING"}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">PO Status:</span>
+                        <div>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
+                              invoice.financeManagerApprovalStatus || "PENDING",
+                            )}`}
+                          >
+                            {invoice.financeManagerApprovalStatus || "PENDING"}
+                          </span>
+                        </div>
+                      </div>
                       <div className="col-span-2">
                         <span className="font-medium text-gray-700">Documents:</span>
                         <div className="flex gap-3 mt-1">

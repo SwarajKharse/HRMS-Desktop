@@ -7,13 +7,13 @@ import {
   FiAlertCircle,
   FiCheck,
   FiChevronRight,
-  FiUser,
   FiFileText,
   FiCalendar,
   FiDollarSign,
   FiClock,
   FiCheckCircle,
   FiXCircle,
+  FiUpload, // Added upload icon for payment receipt
 } from "react-icons/fi"
 import { purchaseInvoiceService } from "../../../services/purchaseInvoiceService"
 import { useAuth } from "../../../contexts/AuthContext"
@@ -28,6 +28,8 @@ function PayablePIComponent() {
   const [projectNameFilter, setProjectNameFilter] = useState("")
   const [statusFilter, setStatusFilter] = useState("")
   const [successMessage, setSuccessMessage] = useState(null)
+
+  const [uploadingReceipt, setUploadingReceipt] = useState(null)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -83,6 +85,31 @@ function PayablePIComponent() {
     if (window.innerWidth < 768) {
       window.scrollTo(0, 0)
     }
+  }
+
+  const handleUploadReceipt = async (e, invoice) => {
+    e.stopPropagation()
+    const input = document.createElement("input")
+    input.type = "file"
+    input.accept = "application/pdf"
+    input.onchange = async (event) => {
+      const file = event.target.files[0]
+      if (file) {
+        try {
+          setUploadingReceipt(invoice.id)
+          await purchaseInvoiceService.uploadPaymentReceipt(invoice.id, file)
+          setSuccessMessage("Payment receipt uploaded successfully!")
+          await fetchPurchaseInvoices()
+          setTimeout(() => setSuccessMessage(null), 3000)
+        } catch (error) {
+          setError("Failed to upload payment receipt")
+          setTimeout(() => setError(null), 3000)
+        } finally {
+          setUploadingReceipt(null)
+        }
+      }
+    }
+    input.click()
   }
 
   const handleUpdateInvoice = (e, invoice) => {
@@ -159,6 +186,8 @@ function PayablePIComponent() {
         return "bg-red-100 text-red-800"
       case "pending":
         return "bg-yellow-100 text-yellow-800"
+      case "paid":
+        return "bg-blue-100 text-blue-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -278,6 +307,8 @@ function PayablePIComponent() {
                       "Pay Amount",
                       "Project Name",
                       "Expected Payment Date",
+                      "PI Status", // Added PI Status column
+                      "Payment Status", // Added Payment Status column
                       "Files",
                       "Actions",
                     ].map((header) => (
@@ -293,7 +324,7 @@ function PayablePIComponent() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {invoices.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="px-6 py-8 text-center text-gray-500 font-medium">
+                      <td colSpan="9" className="px-6 py-8 text-center text-gray-500 font-medium">
                         No purchase invoices found
                       </td>
                     </tr>
@@ -327,8 +358,24 @@ function PayablePIComponent() {
                           <div className="text-sm text-gray-900">{formatDate(invoice.expectedPaymentDate)}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1">
-                            {invoice.fileUrl ? (
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.approvalStatus)}`}
+                          >
+                            {getStatusIcon(invoice.approvalStatus)}
+                            <span className="ml-1">{invoice.approvalStatus || "PENDING"}</span>
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.paymentStatus)}`}
+                          >
+                            {getStatusIcon(invoice.paymentStatus)}
+                            <span className="ml-1">{invoice.paymentStatus || "PENDING"}</span>
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            {invoice.fileUrl && (
                               <div className="text-xs">
                                 <a
                                   href={invoice.fileUrl}
@@ -337,16 +384,41 @@ function PayablePIComponent() {
                                   className="text-blue-600 underline hover:text-blue-800"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  {invoice.fileName}
+                                  PI: {invoice.fileName}
                                 </a>
                               </div>
-                            ) : (
+                            )}
+                            {invoice.paymentReceiptUrl && (
+                              <div className="text-xs">
+                                <a
+                                  href={invoice.paymentReceiptUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-600 underline hover:text-green-800"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  Receipt: {invoice.paymentReceiptFilename}
+                                </a>
+                              </div>
+                            )}
+                            {!invoice.fileUrl && !invoice.paymentReceiptUrl && (
                               <span className="text-xs text-gray-400">No files</span>
                             )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
+                            {invoice.approvalStatus === "APPROVED" && !invoice.paymentReceiptUrl && (
+                              <button
+                                className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium flex items-center gap-1"
+                                onClick={(e) => handleUploadReceipt(e, invoice)}
+                                disabled={uploadingReceipt === invoice.id}
+                                title="Upload Payment Receipt"
+                              >
+                                <FiUpload size={14} />
+                                {uploadingReceipt === invoice.id ? "Uploading..." : "Upload Receipt"}
+                              </button>
+                            )}
                             <button
                               className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
                               onClick={(e) => handleUpdateInvoice(e, invoice)}
@@ -381,43 +453,59 @@ function PayablePIComponent() {
                       <div className="flex justify-between items-start mb-2">
                         <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                           <FiFileText className="h-4 w-4 text-blue-600" />
-                          {invoice.invoiceNumber}
+                          {invoice.piNumber}
                         </div>
-                        <button
-                          className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
-                          onClick={(e) => handleUpdateInvoice(e, invoice)}
-                          title="Update Invoice"
-                        >
-                          Update
-                        </button>
+                        <div className="flex gap-1">
+                          {invoice.approvalStatus === "APPROVED" && !invoice.paymentReceiptUrl && (
+                            <button
+                              className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium"
+                              onClick={(e) => handleUploadReceipt(e, invoice)}
+                              disabled={uploadingReceipt === invoice.id}
+                              title="Upload Receipt"
+                            >
+                              <FiUpload size={12} />
+                            </button>
+                          )}
+                          <button
+                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
+                            onClick={(e) => handleUpdateInvoice(e, invoice)}
+                            title="Update Invoice"
+                          >
+                            Update
+                          </button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-1 gap-y-1 text-xs">
                         <div className="flex items-center gap-1">
-                          <FiUser className="h-3 w-3" />
-                          <span className="font-medium">Vendor:</span> {invoice.vendorName}
+                          <FiFileText className="h-3 w-3" />
+                          <span className="font-medium">PO:</span> {invoice.purchaseOrder?.poNumber || "N/A"}
                         </div>
                         <div className="flex items-center gap-1">
                           <FiDollarSign className="h-3 w-3" />
-                          <span className="font-medium">Amount:</span> {formatCurrency(invoice.amount)}
+                          <span className="font-medium">Amount:</span> {formatCurrency(invoice.payableAmount)}
                         </div>
                         <div className="flex items-center gap-1">
                           <FiCalendar className="h-3 w-3" />
-                          <span className="font-medium">Date:</span> {formatDate(invoice.invoiceDate)}
+                          <span className="font-medium">Date:</span> {formatDate(invoice.expectedPaymentDate)}
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="font-medium">Status:</span>
+                          <span className="font-medium">PI Status:</span>
                           <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.status)}`}
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.approvalStatus)}`}
                           >
-                            {getStatusIcon(invoice.status)}
-                            <span className="ml-1">{invoice.status}</span>
+                            {getStatusIcon(invoice.approvalStatus)}
+                            <span className="ml-1">{invoice.approvalStatus || "PENDING"}</span>
                           </span>
                         </div>
-                        {invoice.dueDate && (
-                          <div>
-                            <span className="font-medium">Due Date:</span> {formatDate(invoice.dueDate)}
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">Payment:</span>
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.paymentStatus)}`}
+                          >
+                            {getStatusIcon(invoice.paymentStatus)}
+                            <span className="ml-1">{invoice.paymentStatus || "PENDING"}</span>
+                          </span>
+                        </div>
                       </div>
                       <div className="flex justify-center mt-2">
                         <FiChevronRight

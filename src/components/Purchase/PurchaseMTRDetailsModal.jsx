@@ -47,6 +47,8 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
   const [piApprovalRemarks, setPIApprovalRemarks] = useState("")
   const [piApprovalLoading, setPIApprovalLoading] = useState(false)
 
+  const [transferLoading, setTransferLoading] = useState(false)
+
   const [dcQtyList, setDcQtyList] = useState([])
   const [dcQtyLoading, setDcQtyLoading] = useState(false)
   const [showAddDcQty, setShowAddDcQty] = useState(false)
@@ -321,8 +323,7 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
     setSuccess("")
 
     try {
-      const currentUserId = user?.userId || user?.id
-      await comparisonSheetService.approvePO(selectedPO.id, poApprovalStatus, poApprovalRemarks, currentUserId)
+      await comparisonSheetService.approvePO(selectedPO.id, poApprovalStatus, poApprovalRemarks)
       setSuccess("PO approval status updated successfully!")
 
       const updatedPOs = purchaseOrders.map((po) =>
@@ -385,6 +386,41 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
       setError("Failed to update Purchase Invoice approval status. Please try again.")
     } finally {
       setPIApprovalLoading(false)
+    }
+  }
+
+  const handleTransferToAccounts = async () => {
+    if (!piData || !piData.id) {
+      setError("No Purchase Invoice found to transfer")
+      return
+    }
+
+    setTransferLoading(true)
+    setError("")
+    setSuccess("")
+
+    try {
+      const currentUserId = user?.userId || user?.id
+      await purchaseInvoiceService.transferToAccounts(piData.id, currentUserId)
+      setSuccess("Purchase Invoice successfully transferred to Accounts!")
+
+      setPIData((prev) => ({
+        ...prev,
+        handoverFromFinance: true,
+        handoverDate: new Date().toISOString(),
+      }))
+
+      if (onSave) {
+        onSave({ ...mtrData })
+      }
+
+      // Refresh PI data to get updated status
+      await fetchPIDataForPO(selectedPO.id)
+    } catch (error) {
+      console.error("Error transferring to accounts:", error)
+      setError("Failed to transfer Purchase Invoice to Accounts. Please try again.")
+    } finally {
+      setTransferLoading(false)
     }
   }
 
@@ -938,6 +974,10 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
                               <p className="font-semibold text-gray-700">
                                 {piData.uploadedBy?.firstName} {piData.uploadedBy?.lastName}
                               </p>
+                              </div>
+                            <div>
+                              <p className="text-xs font-medium text-gray-600">Account Approval Status:</p>
+                              <p className="font-semibold text-orange-600">{piData.status}</p>
                             </div>
                             <div>
                               <p className="text-xs font-medium text-gray-600">Current Status:</p>
@@ -1024,6 +1064,33 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
                           <div className="p-3 bg-white rounded border">
                             <p className="text-sm font-medium text-gray-700">Previous PI Approval Remarks:</p>
                             <p className="text-sm text-gray-700">{piData.approvalRemarks}</p>
+                          </div>
+                        )}
+
+                        {piData.approvalStatus === "APPROVED" && piData.handoverFromFinance !== "COMPLETE" && (
+                          <div className="mt-4 p-3 bg-green-50 rounded border border-green-200">
+                            <p className="text-sm font-medium text-green-700 mb-2">
+                              PI has been approved. Ready to transfer to Accounts.
+                            </p>
+                            <button
+                              onClick={handleTransferToAccounts}
+                              disabled={transferLoading}
+                              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed h-10 px-4 py-2 gap-2"
+                            >
+                              <FiCheck size={16} />
+                              {transferLoading ? "Transferring..." : "Transfer to Accounts"}
+                            </button>
+                          </div>
+                        )}
+
+                        {piData.handoverFromFinance === "COMPLETE" && (
+                          <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+                            <div className="flex items-center gap-2 text-blue-700">
+                              <FiCheck className="text-blue-600" />
+                              <p className="text-sm font-medium">
+                                Successfully transferred to Accounts
+                              </p>
+                            </div>
                           </div>
                         )}
                       </>

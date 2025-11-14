@@ -88,9 +88,7 @@ const getWorkflowStatus = async (req) => {
   }
 
   if (hasPOUploaded) {
-    console.log("1111")
     if (poApprovalStatus === "APPROVED") {
-      console.log("2222")
       return {
         text: "PO Approved - PI Pending Upload",
         color: "text-blue-600 bg-blue-50",
@@ -98,7 +96,6 @@ const getWorkflowStatus = async (req) => {
     }
 
     if (poApprovalStatus === "REJECTED") {
-      console.log("3333")
       return {
         text: "PO Rejected - Needs Revision",
         color: "text-red-600 bg-red-50",
@@ -106,7 +103,6 @@ const getWorkflowStatus = async (req) => {
     }
 
     if (poApprovalStatus === "UNDER_REVIEW") {
-      console.log("4444")
       return {
         text: "PO Under Review",
         color: "text-yellow-600 bg-yellow-50",
@@ -115,14 +111,12 @@ const getWorkflowStatus = async (req) => {
 
     // This is the default case when PO is uploaded but not yet reviewed
     return {
-      
-      text: "PO Uploaded - Approval Pending444",
+      text: "PO Uploaded - Approval Pending",
       color: "text-orange-600 bg-orange-50",
     }
   }
 
   if (purchaseManagerApprovalStatus === "APPROVED" || projectManagerStatus === "APPROVED") {
-    console.log("5555  "+purchaseOrderId)
     return {
       text: "Vendor Approved - PO Pending Upload",
       color: "text-green-600 bg-green-50",
@@ -130,7 +124,6 @@ const getWorkflowStatus = async (req) => {
   }
 
   if (assignedPurchaser && !projectManagerStatus) {
-    console.log("6666 "+purchaseOrderId)
     return {
       text: "Purchaser Assigned - PM Approval Pending",
       color: "text-yellow-600 bg-yellow-50",
@@ -138,7 +131,6 @@ const getWorkflowStatus = async (req) => {
   }
 
   if (projectManagerStatus === "REJECTED" || purchaseManagerApprovalStatus === "REJECTED") {
-    console.log("77777")
     return {
       text: "Rejected by Project Manager",
       color: "text-red-600 bg-red-50",
@@ -182,6 +174,10 @@ export default function MaterialRequisitionPurchase() {
   const [totalPages, setTotalPages] = useState(0)
   const [pageSize, setPageSize] = useState(10)
   const [workflowStatuses, setWorkflowStatuses] = useState({})
+  const [editingMtrId, setEditingMtrId] = useState(null)
+  const [editedMtrData, setEditedMtrData] = useState({})
+  const [editingPaymentStatus, setEditingPaymentStatus] = useState(null)
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("")
   const [filters, setFilters] = useState({
     itemName: "",
     status: "All",
@@ -189,10 +185,6 @@ export default function MaterialRequisitionPurchase() {
     mtrDateFrom: "",
     mtrDateTo: "",
   })
-
-  const [editingMtrId, setEditingMtrId] = useState(null)
-  const [editedMtrData, setEditedMtrData] = useState({})
-
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedMTRForDetails, setSelectedMTRForDetails] = useState(null)
 
@@ -413,6 +405,31 @@ export default function MaterialRequisitionPurchase() {
     }
   }
 
+  const handlePaymentStatusChange = (piId, currentStatus) => {
+    setEditingPaymentStatus(piId)
+    setSelectedPaymentStatus(currentStatus || "PENDING")
+  }
+
+  const handlePaymentStatusSave = async (piId) => {
+    try {
+      setLoading(true)
+      await purchaseInvoiceService.updatePaymentStatus(piId, selectedPaymentStatus)
+      setEditingPaymentStatus(null)
+      await fetchMaterialRequisitions()
+    } catch (error) {
+      console.error("Error updating payment status:", error)
+      setError("Failed to update payment status")
+      setTimeout(() => setError(null), 3000)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePaymentStatusCancel = () => {
+    setEditingPaymentStatus(null)
+    setSelectedPaymentStatus("")
+  }
+
   useEffect(() => {
     const interval = setInterval(async () => {
       const poApprovedReqs = requisitions.filter(
@@ -559,114 +576,181 @@ export default function MaterialRequisitionPurchase() {
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Stock Allotted</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Purchase MTR</th>
-                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Status</th>
+                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">PI Status</th>
+                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Payment Status</th>
+                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Payment Receipt</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="[&_tr:last-child]:border-0">
-                    {requisitions.map((req) => (
-                      <tr
-                        key={req.id}
-                        className={`border-b transition-colors ${
-                          editingMtrId === req.id ? "bg-blue-50" : "hover:bg-gray-50"
-                        }`}
-                      >
-                        <td className="p-4 align-middle text-gray-700 font-medium">{req.mtrCode || "N/A"}</td>
-                        <td className="p-4 align-middle text-gray-700">{req.projectName || "N/A"}</td>
-                        <td className="p-4 align-middle text-gray-700">{req.productName || "N/A"}</td>
-                        <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.mtrQty}
-                              readOnly
-                              className="w-24 p-1 border rounded bg-gray-100 text-gray-600 focus:outline-none"
-                            />
-                          ) : (
-                            req.mtrQty
-                          )}
-                        </td>
-                        <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.stockAlloted}
-                              onChange={(e) => handleInputChange(e, "stockAlloted")}
-                              className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            />
-                          ) : (
-                            req.stockAlloted
-                          )}
-                        </td>
-                        <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.purchaseMTR}
-                              readOnly
-                              className="w-24 p-1 border rounded bg-gray-100 text-gray-600"
-                            />
-                          ) : (
-                            req.purchaseMTR
-                          )}
-                        </td>
-                        <td className="p-4 align-middle">
-                          {(() => {
-                            const statusInfo = workflowStatuses[req.id] || {
-                              text: "Loading...",
-                              color: "text-gray-600 bg-gray-50",
-                            }
-                            return (
+                    {requisitions.map((req) => {
+                      return (
+                        <tr
+                          key={req.id}
+                          className={`border-b transition-colors ${
+                            editingMtrId === req.id ? "bg-blue-50" : "hover:bg-gray-50"
+                          }`}
+                        >
+                          <td className="p-4 align-middle text-gray-700 font-medium">{req.mtrCode || "N/A"}</td>
+                          <td className="p-4 align-middle text-gray-700">{req.projectName || "N/A"}</td>
+                          <td className="p-4 align-middle text-gray-700">{req.productName || "N/A"}</td>
+                          <td className="p-4 align-middle text-gray-700">
+                            {editingMtrId === req.id ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editedMtrData.mtrQty}
+                                readOnly
+                                className="w-24 p-1 border rounded bg-gray-100 text-gray-600 focus:outline-none"
+                              />
+                            ) : (
+                              req.mtrQty
+                            )}
+                          </td>
+                          <td className="p-4 align-middle text-gray-700">
+                            {editingMtrId === req.id ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editedMtrData.stockAlloted}
+                                onChange={(e) => handleInputChange(e, "stockAlloted")}
+                                className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                              />
+                            ) : (
+                              req.stockAlloted
+                            )}
+                          </td>
+                          <td className="p-4 align-middle text-gray-700">
+                            {editingMtrId === req.id ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editedMtrData.purchaseMTR}
+                                readOnly
+                                className="w-24 p-1 border rounded bg-gray-100 text-gray-600"
+                              />
+                            ) : (
+                              req.purchaseMTR
+                            )}
+                          </td>
+                          <td className="p-4 align-middle">
+                            {req.piId ? (
                               <span
-                                className={`inline-flex items-center px-3 py-1 text-xs font-medium ${statusInfo.color}`}
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  req.piStatus === "APPROVED" || req.piStatus === "Approve"
+                                    ? "bg-green-100 text-green-800"
+                                    : req.piStatus === "REJECTED"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-yellow-100 text-yellow-800"
+                                }`}
                               >
-                                {statusInfo.text}
+                                {req.piStatus || "PENDING"}
                               </span>
-                            )
-                          })()}
-                        </td>
-                        <td className="p-4 align-middle">
-                          {editingMtrId === req.id ? (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={(e) => handleSaveClick(e, req.id)}
-                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-9 px-3 py-1"
-                                title="Save changes"
+                            ) : (
+                              <span className="text-xs text-gray-400">N/A</span>
+                            )}
+                          </td>
+                          <td className="p-4 align-middle">
+                            {req.piId ? (
+                              editingPaymentStatus === req.piId ? (
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    value={selectedPaymentStatus}
+                                    onChange={(e) => setSelectedPaymentStatus(e.target.value)}
+                                    className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="PENDING">PENDING</option>
+                                    <option value="PARTIALLY_PAID">PARTIALLY_PAID</option>
+                                    <option value="PAID">PAID</option>
+                                  </select>
+                                  <button
+                                    onClick={() => handlePaymentStatusSave(req.piId)}
+                                    className="text-green-600 hover:text-green-800"
+                                    title="Save"
+                                  >
+                                    <FiSave size={14} />
+                                  </button>
+                                  <button
+                                    onClick={handlePaymentStatusCancel}
+                                    className="text-red-600 hover:text-red-800"
+                                    title="Cancel"
+                                  >
+                                    <FiX size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span
+                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 ${
+                                    req.paymentStatus === "PAID"
+                                      ? "bg-green-100 text-green-800"
+                                      : req.paymentStatus === "PARTIALLY_PAID"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : "bg-gray-100 text-gray-800"
+                                  }`}
+                                  onClick={() => handlePaymentStatusChange(req.piId, req.paymentStatus)}
+                                  title="Click to edit payment status"
+                                >
+                                  {req.paymentStatus || "PENDING"}
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-xs text-gray-400">N/A</span>
+                            )}
+                          </td>
+                          <td className="p-4 align-middle">
+                            {req.paymentReceiptUrl ? (
+                              <a
+                                href={req.paymentReceiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline hover:text-blue-800 text-xs"
                               >
-                                <FiSave size={16} />
-                              </button>
-                              <button
-                                onClick={handleCancelClick}
-                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-gray-300 text-gray-700 hover:bg-gray-400 h-9 px-3 py-1"
-                                title="Cancel editing"
-                              >
-                                <FiX size={16} />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={(e) => handleEditClick(e, req)}
-                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 h-9 px-3 py-1"
-                                title="Edit Stock Allotted"
-                              >
-                                <FiEdit3 size={16} />
-                              </button>
-                              <button
-                                onClick={(e) => handleViewDetailsClick(e, req)}
-                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 h-9 px-3 py-1"
-                                title="View all details"
-                              >
-                                <FiEye size={16} />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                                View Receipt
+                              </a>
+                            ) : (
+                              <span className="text-xs text-gray-400">No Receipt</span>
+                            )}
+                          </td>
+                          <td className="p-4 align-middle">
+                            {editingMtrId === req.id ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => handleSaveClick(e, req.id)}
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-9 px-3 py-1"
+                                  title="Save changes"
+                                >
+                                  <FiSave size={16} />
+                                </button>
+                                <button
+                                  onClick={handleCancelClick}
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-gray-300 text-gray-700 hover:bg-gray-400 h-9 px-3 py-1"
+                                  title="Cancel editing"
+                                >
+                                  <FiX size={16} />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => handleEditClick(e, req)}
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 h-9 px-3 py-1"
+                                  title="Edit Stock Allotted"
+                                >
+                                  <FiEdit3 size={16} />
+                                </button>
+                                <button
+                                  onClick={(e) => handleViewDetailsClick(e, req)}
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 h-9 px-3 py-1"
+                                  title="View all details"
+                                >
+                                  <FiEye size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

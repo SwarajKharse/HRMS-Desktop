@@ -209,4 +209,69 @@ export const purchaseInvoiceService = {
       throw error
     }
   },
+
+  transferToAccounts: async (piId, userId) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/purchase-invoices/${piId}/transfer-to-accounts`, null, {
+        params: { userId },
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error transferring PI to accounts:", error)
+      throw error
+    }
+  },
+
+  getPurchaseInvoicesByPO: async (poId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/purchase-invoices/po/${poId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error fetching purchase invoices by PO:", error)
+      return []
+    }
+  },
+
+  uploadPaymentReceipt: async (piId, file) => {
+    try {
+      const userId = JSON.parse(localStorage.getItem("user"))?.userId || JSON.parse(localStorage.getItem("user"))?.id
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("userId", userId)
+
+      const response = await axios.post(`${API_BASE_URL}/purchase-invoices/${piId}/upload-payment-receipt`, formData, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error uploading payment receipt:", error)
+      throw error
+    }
+  },
+
+  updatePaymentStatus: async (piId, paymentStatus) => {
+    try {
+      const userId = JSON.parse(localStorage.getItem("user"))?.userId || JSON.parse(localStorage.getItem("user"))?.id
+      const response = await axios.put(`${API_BASE_URL}/purchase-invoices/${piId}/payment-status`, null, {
+        params: { paymentStatus, userId },
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error updating payment status:", error)
+      throw error
+    }
+  },
 }
