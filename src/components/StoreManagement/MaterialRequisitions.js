@@ -27,6 +27,8 @@ export default function MaterialRequisition() {
     mtrDateTo: "",
   })
 
+  const currentUserId = user.userId
+
   const [editingMtrId, setEditingMtrId] = useState(null)
   const [editedMtrData, setEditedMtrData] = useState({})
 
@@ -512,6 +514,7 @@ export default function MaterialRequisition() {
             setShowDetailsModal(false)
             fetchMaterialRequisitions()
           }}
+          currentUserId={currentUserId}
         />
       )}
     </div>

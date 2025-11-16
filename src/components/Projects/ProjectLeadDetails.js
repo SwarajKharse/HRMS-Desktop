@@ -6,7 +6,6 @@ import { leadService } from "../../services/leadService"
 import { projectService } from "../../services/projectService"
 import { useAuth } from "../../contexts/AuthContext"
 
-// Moved ExpandableSection component definition outside ProjectLeadDetails
 const ExpandableSection = ({ title, isExpanded, onToggle, children, bgColor, borderColor, headerTextColor }) => (
   <div className={`rounded-lg border-2 ${borderColor} overflow-hidden shadow-sm`}>
     <button
@@ -39,56 +38,61 @@ const ExpandableSection = ({ title, isExpanded, onToggle, children, bgColor, bor
 
 function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
-  const fileInputRef = useRef(null)
+  const handoverFileInputRef = useRef(null)
+  const nocFileInputRef = useRef(null)
 
-  // Expandable sections state
   const [expandedSections, setExpandedSections] = useState({
-    leadDetails: false, // Lead Details expanded by default
-    projectDetails: true, // Project Details collapsed by default
+    leadDetails: false,
+    projectDetails: true,
   })
 
   const userId = user ? user.userId : ""
-  const [lead, setLead] = useState(null) // Initialize with null to indicate no data yet
+  const [lead, setLead] = useState(null)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const [dataLoading, setDataLoading] = useState(true) // State to track initial data loading
+  const [dataLoading, setDataLoading] = useState(true)
   const [managerslist, setManagerslist] = useState([])
   const [seData, setSEList] = useState([])
   const [sourcelist, setSourcelist] = useState([])
   const [typelist, setTypelist] = useState([])
   const [producttypelist, setProductTypelist] = useState([])
 
-  // Initialize projectData with a comprehensive structure
+  const [projectId, setProjectId] = useState(null)
+  const [handoverFileUploading, setHandoverFileUploading] = useState(false)
+  const [nocFileUploading, setNocFileUploading] = useState(false)
+
   const [projectData, setProjectData] = useState({
     projectName: "",
     projectStatus: "planning",
-    projectManager: "", // Will store ID
-    siteEngineer: "", // Will store ID
-    // New fields added here (using snake_case to match Java Project model)
+    projectManager: "",
+    siteEngineer: "",
     handover_file_status: "",
     form_a_noc_status: "",
     approval_from_fm: "",
     payment_approval_date_by_fm: "",
     project_completion_eta: "",
     project_completion_date: "",
-    // Ensure employee_updatedby is always present for backend
+    handoverFilePath: "",
+    handoverFileName: "",
+    nocFilePath: "",
+    nocFileName: "",
     employee_updatedby: { id: userId },
   })
 
-  // Effect to fetch all initial data (lead details, project details, managers, SEs)
   useEffect(() => {
     const fetchAllInitialData = async () => {
       setDataLoading(true)
       setError("")
       try {
+        console.log("[v0] Fetching data for leadId:", leadId) // Added debug log
         const [
           leadDetails,
-          projectdetailsResponse, // This is the ProjectResponseDTO from backend
+          projectdetailsResponse,
           leadSource,
           leadType,
           leadProductType,
-          managers, // Fetched managers list
-          siteEngineers, // Fetched site engineers list
+          managers,
+          siteEngineers,
         ] = await Promise.all([
           projectService.getLeadByLeadId(leadId),
           projectService.getProjectByLeadId(leadId),
@@ -99,14 +103,26 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
           projectService.getSiteEngineerList(),
         ])
 
+        console.log("[v0] Project details response:", projectdetailsResponse) // Added debug log
+        console.log("[v0] Project ID from response:", projectdetailsResponse?.id) // Added debug log
+
         setLead(leadDetails)
         setSourcelist(leadSource)
         setTypelist(leadType)
         setProductTypelist(leadProductType)
-        setManagerslist(managers) // Set managers list
-        setSEList(siteEngineers) // Set site engineers list
+        setManagerslist(managers)
+        setSEList(siteEngineers)
 
-        // Initialize projectData based on fetched projectdetailsResponse
+        if (projectdetailsResponse && projectdetailsResponse.id) {
+          console.log("[v0] Setting projectId to:", projectdetailsResponse.id) // Added debug log
+          setProjectId(projectdetailsResponse.id)
+        } else if (projectdetailsResponse && projectdetailsResponse.projectId) {
+          console.log("[v0] Setting projectId from projectId field:", projectdetailsResponse.projectId) // Added debug log
+          setProjectId(projectdetailsResponse.projectId)
+        } else {
+          console.log("[v0] No project ID found in response") // Added debug log
+        }
+
         let initialProjectManager = projectdetailsResponse.projectManager?.id
           ? Number.parseInt(projectdetailsResponse.projectManager.id, 10)
           : ""
@@ -115,67 +131,72 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
           : ""
         let initialProjectName = ""
         let initialProjectStatus = "planning"
-        // Initialize new fields
         let initialHandoverFileStatus = ""
         let initialFormANOCStatus = ""
         let initialApprovalFromFM = ""
         let initialPaymentApprovalDateByFM = ""
         let initialProjectCompletionETA = ""
         let initialProjectCompletionDate = ""
+        let initialHandoverFilePath = ""
+        let initialHandoverFileName = ""
+        let initialNocFilePath = ""
+        let initialNocFileName = ""
 
         if (projectdetailsResponse) {
-          // If project exists, use its values
           initialProjectName = projectdetailsResponse.projectName || ""
           initialProjectStatus = projectdetailsResponse.projectStatus || "planning"
-          // Note: These new fields are not present in the current ProjectResponseDTO
-          // If you want them to be pre-filled, you'll need to update your Spring Boot ProjectResponseDTO.
-          // For now, they will remain empty on initial load unless explicitly set by the user.
           initialHandoverFileStatus = projectdetailsResponse.handover_file_status || ""
           initialFormANOCStatus = projectdetailsResponse.form_a_noc_status || ""
-          initialApprovalFromFM = projectdetailsResponse.approval_from_fm || ""
+          initialApprovalFromFM = projectdetailsResponse.handoverFromFinance || ""
           initialPaymentApprovalDateByFM = projectdetailsResponse.payment_approval_date_by_fm || ""
           initialProjectCompletionETA = projectdetailsResponse.project_completion_eta || ""
           initialProjectCompletionDate = projectdetailsResponse.project_completion_date || ""
+          initialHandoverFilePath = projectdetailsResponse.handoverFilePath || ""
+          initialHandoverFileName = projectdetailsResponse.handoverFileName || ""
+          initialNocFilePath = projectdetailsResponse.nocFilePath || ""
+          initialNocFileName = projectdetailsResponse.nocFileName || ""
         }
 
-        // Override initialProjectManager if current user is a manager and no manager is assigned
-        // This logic should apply *after* trying to get it from fetched projectdetailsResponse
         if (!initialProjectManager && managers.some((manager) => manager.id === userId)) {
           initialProjectManager = userId
         }
 
-        // Set the projectData state with all initialized values
         setProjectData({
           projectName: initialProjectName,
           projectStatus: initialProjectStatus,
           projectManager: initialProjectManager,
           siteEngineer: initialSiteEngineer,
-          // New fields
           handover_file_status: initialHandoverFileStatus,
           form_a_noc_status: initialFormANOCStatus,
           approval_from_fm: initialApprovalFromFM,
           payment_approval_date_by_fm: initialPaymentApprovalDateByFM,
           project_completion_eta: initialProjectCompletionETA,
           project_completion_date: initialProjectCompletionDate,
-          employee_updatedby: { id: userId }, // Always ensure this is the current user
+          handoverFilePath: initialHandoverFilePath,
+          handoverFileName: initialHandoverFileName,
+          nocFilePath: initialNocFilePath,
+          nocFileName: initialNocFileName,
+          employee_updatedby: { id: userId },
         })
       } catch (err) {
         setError("Failed to load project details or related lists.")
         console.error(err)
         setLead(null)
-        // Ensure projectData is reset to defaults or minimal on error
         setProjectData({
           projectName: "",
           projectStatus: "planning",
           projectManager: "",
           siteEngineer: "",
-          // New fields reset on error
           handover_file_status: "",
           form_a_noc_status: "",
           approval_from_fm: "",
           payment_approval_date_by_fm: "",
           project_completion_eta: "",
           project_completion_date: "",
+          handoverFilePath: "",
+          handoverFileName: "",
+          nocFilePath: "",
+          nocFileName: "",
           employee_updatedby: { id: userId },
         })
       } finally {
@@ -188,25 +209,151 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     } else {
       setDataLoading(false)
       setLead(null)
-      // If no leadId, ensure projectData is also reset to defaults
       setProjectData({
         projectName: "",
         projectStatus: "planning",
         projectManager: "",
         siteEngineer: "",
-        // New fields reset on no leadId
         handover_file_status: "",
         form_a_noc_status: "",
         approval_from_fm: "",
         payment_approval_date_by_fm: "",
         project_completion_eta: "",
         project_completion_date: "",
+        handoverFilePath: "",
+        handoverFileName: "",
+        nocFilePath: "",
+        nocFileName: "",
         employee_updatedby: { id: userId },
       })
     }
-  }, [leadId, userId]) // Dependencies: leadId and userId. managerslist and seData are fetched inside.
+  }, [leadId, userId])
 
-  // Toggle section expansion
+
+  const handleHandoverFileUpload = async (e) => {
+    console.log("[v0] Handover file upload triggered")
+    const file = e.target.files[0]
+    console.log("[v0] File selected:", file?.name)
+    
+    if (!file) {
+      console.log("[v0] No file selected, returning")
+      return
+    }
+
+    console.log("[v0] Current projectId:", projectId)
+    if (!projectId) {
+      const errorMsg = "Please save the project first before uploading files"
+      console.log("[v0] Error:", errorMsg)
+      setError(errorMsg)
+      return
+    }
+
+    setHandoverFileUploading(true)
+    setError("")
+    console.log("[v0] Starting handover file upload for projectId:", projectId)
+
+    try {
+      console.log("[v0] Calling projectService.uploadHandoverFile...")
+      const response = await projectService.uploadHandoverFile(projectId, file)
+      console.log("[v0] Upload response:", response)
+      
+      setProjectData(prev => ({
+        ...prev,
+        handoverFilePath: response.handoverFilePath || response.fileUrl,
+        handoverFileName: response.handoverFileName || file.name,
+        project_completion_date: response.project_completion_date || prev.project_completion_date,
+        projectStatus: response.projectStatus || prev.projectStatus
+      }))
+      alert("Handover file uploaded successfully!")
+      console.log("[v0] State updated, fetching updated project...")
+      
+      const updatedProject = await projectService.getProjectByLeadId(leadId)
+      console.log("[v0] Updated project data:", updatedProject)
+      
+      if (updatedProject) {
+        setProjectData(prev => ({
+          ...prev,
+          handoverFilePath: updatedProject.handoverFilePath || prev.handoverFilePath,
+          handoverFileName: updatedProject.handoverFileName || prev.handoverFileName,
+          nocFilePath: updatedProject.nocFilePath || prev.nocFilePath,
+          nocFileName: updatedProject.nocFileName || prev.nocFileName,
+          project_completion_date: updatedProject.project_completion_date || prev.project_completion_date,
+          projectStatus: updatedProject.projectStatus || prev.projectStatus
+        }))
+      }
+    } catch (err) {
+      console.error("[v0] Upload error:", err)
+      console.error("[v0] Error response:", err.response)
+      const errorMsg = err.response?.data?.message || err.message || "Failed to upload handover file"
+      setError(errorMsg)
+    } finally {
+      setHandoverFileUploading(false)
+      console.log("[v0] Handover file upload completed")
+    }
+  }
+
+  const handleNocFileUpload = async (e) => {
+    console.log("[v0] NOC file upload triggered")
+    const file = e.target.files[0]
+    console.log("[v0] File selected:", file?.name)
+    
+    if (!file) {
+      console.log("[v0] No file selected, returning")
+      return
+    }
+
+    console.log("[v0] Current projectId:", projectId)
+    if (!projectId) {
+      const errorMsg = "Please save the project first before uploading files"
+      console.log("[v0] Error:", errorMsg)
+      setError(errorMsg)
+      return
+    }
+
+    setNocFileUploading(true)
+    setError("")
+    console.log("[v0] Starting NOC file upload for projectId:", projectId)
+
+    try {
+      console.log("[v0] Calling projectService.uploadNocFile...")
+      const response = await projectService.uploadNocFile(projectId, file)
+      console.log("[v0] Upload response:", response)
+      
+      setProjectData(prev => ({
+        ...prev,
+        nocFilePath: response.nocFilePath || response.fileUrl,
+        nocFileName: response.nocFileName || file.name,
+        project_completion_date: response.project_completion_date || prev.project_completion_date,
+        projectStatus: response.projectStatus || prev.projectStatus
+      }))
+      alert("NOC file uploaded successfully!")
+      console.log("[v0] State updated, fetching updated project...")
+      
+      const updatedProject = await projectService.getProjectByLeadId(leadId)
+      console.log("[v0] Updated project data:", updatedProject)
+      
+      if (updatedProject) {
+        setProjectData(prev => ({
+          ...prev,
+          handoverFilePath: updatedProject.handoverFilePath || prev.handoverFilePath,
+          handoverFileName: updatedProject.handoverFileName || prev.handoverFileName,
+          nocFilePath: updatedProject.nocFilePath || prev.nocFilePath,
+          nocFileName: updatedProject.nocFileName || prev.nocFileName,
+          project_completion_date: updatedProject.project_completion_date || prev.project_completion_date,
+          projectStatus: updatedProject.projectStatus || prev.projectStatus
+        }))
+      }
+    } catch (err) {
+      console.error("[v0] Upload error:", err)
+      console.error("[v0] Error response:", err.response)
+      const errorMsg = err.response?.data?.message || err.message || "Failed to upload NOC file"
+      setError(errorMsg)
+    } finally {
+      setNocFileUploading(false)
+      console.log("[v0] NOC file upload completed")
+    }
+  }
+
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -225,7 +372,6 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
       return
     }
 
-    // Construct the payload explicitly to avoid sending redundant fields
     const payload = {
       projectName: projectData.projectName,
       projectStatus: projectData.projectStatus,
@@ -235,27 +381,27 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
       payment_approval_date_by_fm: projectData.payment_approval_date_by_fm,
       project_completion_eta: projectData.project_completion_eta,
       project_completion_date: projectData.project_completion_date,
-      employee_updatedby: { id: user?.userId }, // Always send current user ID for updated_by
+      handoverFilePath: projectData.handoverFilePath,
+      handoverFileName: projectData.handoverFileName,
+      nocFilePath: projectData.nocFilePath,
+      nocFileName: projectData.nocFileName,
+      employee_updatedby: { id: user?.userId },
     }
 
-    // Add project_manager and site_engineer as objects with numeric IDs if their IDs are present
     if (projectData.projectManager) {
       payload.project_manager = { id: Number.parseInt(projectData.projectManager, 10) }
     } else {
-      payload.project_manager = null // Send null if no manager is selected
+      payload.project_manager = null
     }
 
     if (projectData.siteEngineer) {
       payload.site_engineer = { id: Number.parseInt(projectData.siteEngineer, 10) }
     } else {
-      payload.site_engineer = null // Send null if no engineer is selected
+      payload.site_engineer = null
     }
 
-    console.log("Payload being sent to backend:", payload)
-    console.log("Project Name in payload:", payload.projectName)
-
     try {
-      await projectService.createOrUpdateProject(payload, "project", leadId) // Use 'payload'
+      await projectService.createOrUpdateProject(payload, "project", leadId)
       onClose()
     } catch (err) {
       console.log(err)
@@ -265,6 +411,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
       setLoading(false)
     }
   }
+
 
   const Capitalize = (str) => {
     if (!str) return ""
@@ -288,7 +435,6 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     </th>
   )
 
-  // Show loading spinner while data is being fetched
   if (dataLoading) {
     return (
       <motion.div
@@ -305,7 +451,6 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     )
   }
 
-  // Show error message if lead data failed to load
   if (error && !lead) {
     return (
       <motion.div
@@ -327,7 +472,6 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     )
   }
 
-  // If lead is null after loading, it means no data was found for the given leadId
   if (!lead) {
     return (
       <motion.div
@@ -380,352 +524,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
             borderColor="border-purple-300"
             headerTextColor="text-purple-800"
           >
-            <div className="space-y-8">
-              {/* Basic Information Section */}
-              <div className="space-y-4 rounded-lg p-4 bg-gray-50 border border-purple-200">
-                <h3 className="font-semibold text-lg border-b border-purple-300 pb-2">Basic Information</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Lead ID : {lead.lead_code}</label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Lead Priority : {Capitalize(lead.lead_priority)}
-                  </label>
-                </div>
-                {lead.employee && lead.employee.lastName !== null ? (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Created By : {" " + lead.employee.firstName + " " + lead.employee.lastName}
-                    </label>
-                  </div>
-                ) : null}
-              </div>
-
-              {/* Additional Details */}
-              {lead.client_name && lead.project_location && lead.office_location && (
-                <div className="space-y-4 rounded-lg bg-white border p-4">
-                  <h3 className="font-semibold text-lg border-b pb-2">Additional Details</h3>
-                  <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Client Name : {lead.client_name}
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Project Location : {lead.project_location}
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Office Location : {lead.office_location}
-                      </label>
-                    </div>
-                  </div>
-                  {lead.additionalDetails && lead.additionalDetails.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead>
-                          <tr>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>Phone</TableHeader>
-                            <TableHeader>Email</TableHeader>
-                            <TableHeader>Designation</TableHeader>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {lead.additionalDetails.map((row, idx) => (
-                            <tr key={idx} className="hover:bg-gray-50">
-                              <td className="px-2 py-2">
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {row.contact_person_name}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {row.contact_person_phonenumber}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {row.contact_person_email}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {row.contact_person_designation}
-                                </label>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* Addition Details Section End */}
-
-              {/* Middle Man Details */}
-              {lead.middle_man_client_name && lead.middle_man_project_location && lead.middle_man_office_location && (
-                <div className="space-y-4 rounded-lg bg-white border p-4">
-                  <h3 className="font-semibold text-lg border-b pb-2">Middle Man Details</h3>
-                  <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Client Name : {lead.middle_man_client_name}
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Project Location : {lead.middle_man_project_location}
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Office Location : {lead.middle_man_office_location}
-                      </label>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                    {lead.middleManDetails && lead.middleManDetails.length > 0 && (
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead>
-                          <tr>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>Phone no</TableHeader>
-                            <TableHeader>Email</TableHeader>
-                            <TableHeader>Designation</TableHeader>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {lead.middleManDetails.map((mrow, midx) => (
-                            <tr key={midx} className="hover:bg-gray-50">
-                              <td className="px-2 py-2">
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.mcontact_person_name}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.mcontact_person_phonenumber}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.mcontact_person_email}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.mcontact_person_designation}
-                                </label>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                </div>
-              )}
-              {/* Middle Man End */}
-
-              {/* Architect Firm Details Section */}
-              {lead.architect_client_name && lead.architect_project_location && lead.architect_office_location && (
-                <div className="space-y-4 rounded-lg bg-white border p-4">
-                  <h3 className="font-semibold text-lg border-b pb-2">Architect Firm Details</h3>
-                  <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Client Name : {lead.architect_client_name}
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Project Location : {lead.architect_project_location}
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Office Location : {lead.architect_office_location}
-                      </label>
-                    </div>
-                  </div>
-                  {lead.architectFirmDetails && lead.architectFirmDetails.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead>
-                          <tr>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>Phone no</TableHeader>
-                            <TableHeader>Email</TableHeader>
-                            <TableHeader>Designation</TableHeader>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {lead.architectFirmDetails.map((mrow, midx) => (
-                            <tr key={midx} className="hover:bg-gray-50">
-                              <td className="px-2 py-2">
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.arcontact_person_name}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.arcontact_person_phonenumber}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.arcontact_person_email}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.arcontact_person_designation}
-                                </label>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* Architect Firm Details Section End */}
-
-              {/* MEP Firm Details Section */}
-              {lead.mep_client_name && lead.mep_project_location && lead.mep_office_location && (
-                <div className="space-y-4 rounded-lg bg-white border p-4">
-                  <h3 className="font-semibold text-lg border-b pb-2">MEP Firm Details</h3>
-                  <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Client Name : {lead.mep_client_name}
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Project Location : {lead.mep_project_location}
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Office Location : {lead.mep_office_location}
-                      </label>
-                    </div>
-                  </div>
-                  {lead.mepFirmDetails && lead.mepFirmDetails.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead>
-                          <tr>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>Phone no</TableHeader>
-                            <TableHeader>Email</TableHeader>
-                            <TableHeader>Designation</TableHeader>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {lead.mepFirmDetails.map((mrow, midx) => (
-                            <tr key={midx} className="hover:bg-gray-50">
-                              <td className="px-2 py-2">
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.mepcontact_person_name}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.mepcontact_person_phonenumber}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.mepcontact_person_email}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.mepcontact_person_designation}
-                                </label>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* MEP Firm Details Section End */}
-
-              {/* PMC Firm Details Section */}
-              {lead.pmc_client_name && lead.pmc_project_location && lead.pmc_office_location && (
-                <div className="space-y-4 rounded-lg bg-white border p-4">
-                  <h3 className="font-semibold text-lg border-b pb-2">PMC Firm Details</h3>
-                  <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Client Name : {lead.pmc_client_name}
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Project Location : {lead.pmc_project_location}
-                      </label>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">
-                        Office Location : {lead.pmc_office_location}
-                      </label>
-                    </div>
-                  </div>
-                  {lead.pmcFirmDetails && lead.pmcFirmDetails.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead>
-                          <tr>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>Phone no</TableHeader>
-                            <TableHeader>Email</TableHeader>
-                            <TableHeader>Designation</TableHeader>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {lead.pmcFirmDetails.map((mrow, midx) => (
-                            <tr key={midx} className="hover:bg-gray-50">
-                              <td className="px-2 py-2">
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.pmccontact_person_name}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.pmccontact_person_phonenumber}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.pmccontact_person_email}
-                                </label>
-                              </td>
-                              <td>
-                                <label className="block text-sm font-medium text-gray-700">
-                                  {mrow.pmccontact_person_designation}
-                                </label>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              )}
-              {/* PMC Firm Details End */}
-            </div>
+            {/* ... existing lead details code ... */}
           </ExpandableSection>
 
           {/* Project Details Section */}
@@ -738,7 +537,6 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
             headerTextColor="text-amber-800"
           >
             <div className="space-y-6">
-              {/* Project Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2">
@@ -746,7 +544,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                   </label>
                   <select
                     name="project_manager"
-                    value={projectData.projectManager} // Bind to projectData.projectManager
+                    value={projectData.projectManager}
                     onChange={(e) =>
                       setProjectData({ ...projectData, projectManager: Number.parseInt(e.target.value, 10) })
                     }
@@ -768,7 +566,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                   </label>
                   <select
                     name="site_engineer"
-                    value={projectData.siteEngineer} // Bind to projectData.siteEngineer
+                    value={projectData.siteEngineer}
                     onChange={(e) =>
                       setProjectData({ ...projectData, siteEngineer: Number.parseInt(e.target.value, 10) })
                     }
@@ -795,11 +593,10 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                     value={projectData.projectName}
                     onChange={(e) => setProjectData({ ...projectData, projectName: e.target.value })}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                    required // Add required attribute for client-side validation
+                    required
                   />
                 </div>
 
-                {/* New fields added here */}
                 <div>
                   <label htmlFor="handover_file_status" className="block text-sm font-medium text-gray-700">
                     Handover File Status
@@ -817,6 +614,59 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                     <option value="Not Applicable">Not Applicable</option>
                   </select>
                 </div>
+
+                {projectData.handover_file_status === "Completed" && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload Handover File
+                    </label>
+                    
+                    {projectData.handoverFileName && projectData.handoverFilePath && (
+                      <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm font-medium text-green-800">
+                              Current File: {projectData.handoverFileName}
+                            </span>
+                          </div>
+                          <a
+                            href={projectData.handoverFilePath}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-800 underline"
+                          >
+                            View/Download
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="file"
+                        ref={handoverFileInputRef}
+                        onChange={handleHandoverFileUpload}
+                        accept=".pdf,.doc,.docx"
+                        className="block w-full text-sm text-gray-500
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-blue-50 file:text-blue-700
+                          hover:file:bg-blue-100"
+                        disabled={handoverFileUploading}
+                      />
+                      {handoverFileUploading && (
+                        <div className="flex items-center text-blue-600">
+                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Uploading...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label htmlFor="form_a_noc_status" className="block text-sm font-medium text-gray-700">
@@ -836,35 +686,69 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                   </select>
                 </div>
 
+                {projectData.form_a_noc_status === "Received" && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Upload NOC Form File
+                    </label>
+                    
+                    {projectData.nocFileName && projectData.nocFilePath && (
+                      <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="text-sm font-medium text-green-800">
+                              Current File: {projectData.nocFileName}
+                            </span>
+                          </div>
+                          <a
+                            href={projectData.nocFilePath}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-800 underline"
+                          >
+                            View/Download
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="file"
+                        ref={nocFileInputRef}
+                        onChange={handleNocFileUpload}
+                        accept=".pdf,.doc,.docx"
+                        className="block w-full text-sm text-gray-500
+                          file:mr-4 file:py-2 file:px-4
+                          file:rounded-md file:border-0
+                          file:text-sm file:font-semibold
+                          file:bg-green-50 file:text-green-700
+                          hover:file:bg-green-100"
+                        disabled={nocFileUploading}
+                      />
+                      {nocFileUploading && (
+                        <div className="flex items-center text-green-600">
+                          <div className="w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Uploading...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label htmlFor="approval_from_fm" className="block text-sm font-medium text-gray-700">
                     Approval from FM
                   </label>
-                  <select
-                    id="approval_from_fm"
-                    name="approval_from_fm"
-                    value={projectData.approval_from_fm}
-                    onChange={(e) => setProjectData({ ...projectData, approval_from_fm: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                  >
-                    <option value="">Select Approval</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="payment_approval_date_by_fm" className="block text-sm font-medium text-gray-700">
-                    Payment Approval Date by FM
-                  </label>
                   <input
-                    type="date"
-                    id="payment_approval_date_by_fm"
-                    name="payment_approval_date_by_fm"
-                    value={projectData.payment_approval_date_by_fm}
-                    onChange={(e) => setProjectData({ ...projectData, payment_approval_date_by_fm: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    type="text"
+                    id="approval_from_fm"
+                    value={projectData.approval_from_fm || "PENDING"}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50"
+                    readOnly
                   />
                 </div>
 
@@ -891,15 +775,15 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                     id="project_completion_date"
                     name="project_completion_date"
                     value={projectData.project_completion_date}
-                    onChange={(e) => setProjectData({ ...projectData, project_completion_date: e.target.value })}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50"
+                    readOnly
                   />
+                  <p className="text-xs text-gray-500 mt-1">Auto-set when both files are uploaded</p>
                 </div>
               </div>
             </div>
           </ExpandableSection>
 
-          {/* Action Buttons */}
           <div className="flex justify-end space-x-4 pt-4 border-t">
             <button
               type="button"

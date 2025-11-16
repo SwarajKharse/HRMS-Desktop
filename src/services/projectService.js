@@ -401,4 +401,36 @@ updateBOQWithGST: async (projectId, boqData) => {
       throw error
     }
   },
+
+  uploadHandoverFile: async (projectId, file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await axios.post(
+    `${API_URL}/projects/${projectId}/upload-handover-file`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  );
+  return response.data;
+},
+
+uploadNocFile: async (projectId, file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await axios.post(
+    `${API_URL}/projects/${projectId}/upload-noc-file`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  );
+  return response.data;
+},
 }

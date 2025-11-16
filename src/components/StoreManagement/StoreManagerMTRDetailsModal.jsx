@@ -63,6 +63,12 @@ export default function StoreManagerMTRDetailsModal({ mtr, onClose, currentUserI
       return
     }
 
+    const dcQtyValue = parseFloat(dcQtyForm.dcQty)
+    if (isNaN(dcQtyValue) || dcQtyValue <= 0) {
+      setErrorMessage("DC Qty must be a positive number")
+      return
+    }
+
     setLoading(true)
     setErrorMessage("")
     try {
@@ -77,7 +83,8 @@ export default function StoreManagerMTRDetailsModal({ mtr, onClose, currentUserI
       setEditingDCQty(null)
     } catch (error) {
       console.error("Failed to save DC Qty:", error)
-      setErrorMessage("Failed to save DC Qty")
+      const errorMsg = error.response?.data?.message || error.response?.data || error.message || "Failed to save DC Qty"
+      setErrorMessage(errorMsg)
     } finally {
       setLoading(false)
     }
@@ -188,7 +195,14 @@ export default function StoreManagerMTRDetailsModal({ mtr, onClose, currentUserI
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h4 className="text-md font-bold text-gray-800">DC Quantities</h4>
-                <p className="text-sm text-gray-600">Total: {totalDCQty}</p>
+                <p className="text-sm text-gray-600">
+                  Total: {totalDCQty} / {mtr.purchaseMTR} (Purchase MTR)
+                </p>
+                {totalDCQty > mtr.purchaseMTR && (
+                  <p className="text-xs text-red-600 font-semibold">
+                    Warning: Total DC Qty exceeds Purchase MTR!
+                  </p>
+                )}
               </div>
               <button
                 onClick={handleAddDCQty}

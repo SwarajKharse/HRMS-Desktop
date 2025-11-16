@@ -5,8 +5,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import NewProjects from "../components/StoreManagement/NewProjects"
 import MaterialRequisitions from "../components/StoreManagement/MaterialRequisitions"
 import StoreInchargeMaterialRequisition from "../components/StoreManagement/StoreIncharge/StoreInchargeMaterialRequisition"
+import DCQtyList from "../components/StoreManagement/DCQtyList"
 import { GrWorkshop } from "react-icons/gr"
 import { useAuth } from "../contexts/AuthContext"
+import { TbTruckDelivery } from "react-icons/tb";
 
 function Projects() {
   const { employee } = useAuth()
@@ -29,6 +31,12 @@ function Projects() {
         component: MaterialRequisitions,
       },
       {
+        id: "dc-qty-list-store-manager",
+        label: "DC Quantities",
+        icon: TbTruckDelivery,
+        component: DCQtyList,
+      },
+      {
         id: "store-incharge-mtr",
         label: "My MaterialRequisitions",
         icon: GrWorkshop,
@@ -43,7 +51,7 @@ function Projects() {
     if (designation.includes("store-incharge")) {
       return [allTabs[2]] 
     } else if (designation.includes("manager")) {
-      return [allTabs[0], allTabs[1]] // BDM can see unassigned and BDM assigne
+      return [allTabs[0], allTabs[1], allTabs[2]] // BDM can see unassigned and BDM assigne
     } 
     
     return allTabs
