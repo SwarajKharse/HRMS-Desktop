@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useRef, useEffect } from "react"
 import {
   FiSearch,
@@ -25,6 +27,16 @@ function ProductBOQSelector({
   currentUserId,
   projectSalesTlId,
   onBOQItemStatusUpdateSuccess, // New prop
+  onProductCountChange, // New prop to notify parent of product count changes
+  gstType,
+  setGstType,
+  cgstPercent,
+  setCgstPercent,
+  sgstPercent,
+  setSgstPercent,
+  igstPercent,
+  setIgstPercent,
+  // </CHANGE>
 }) {
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([]) // This will hold leadProductTypes as categories
@@ -116,7 +128,17 @@ function ProductBOQSelector({
     )
   }
 
-  const ApprovalModal = ({ projectId, productId, type, currentStatus, currentRemarks, onClose, onSaveSuccess, onLocalUpdate }) => { // Added onLocalUpdate
+  const ApprovalModal = ({
+    projectId,
+    productId,
+    type,
+    currentStatus,
+    currentRemarks,
+    onClose,
+    onSaveSuccess,
+    onLocalUpdate,
+  }) => {
+    // Added onLocalUpdate
     const [status, setStatus] = useState(currentStatus)
     const [remarks, setRemarks] = useState(currentRemarks)
     const [modalLoading, setModalLoading] = useState(false)
@@ -133,13 +155,13 @@ function ProductBOQSelector({
         })
 
         // Get the current date/time for immediate UI update
-        const now = new Date().toISOString(); // Use ISO string for consistency with backend
+        const now = new Date().toISOString() // Use ISO string for consistency with backend
 
         // Call the local update function to immediately reflect changes in the UI
-        onLocalUpdate(productId, type, status, remarks, now);
+        onLocalUpdate(productId, type, status, remarks, now)
 
-        onSaveSuccess(); // Callback to parent to indicate success (e.g., show success message)
-        onClose();
+        onSaveSuccess() // Callback to parent to indicate success (e.g., show success message)
+        onClose()
       } catch (error) {
         console.error("Error updating approval status:", error)
         setModalError("Failed to update approval status: " + (error.message || "Unknown error"))
@@ -165,7 +187,9 @@ function ProductBOQSelector({
               </div>
             )}
             <div>
-              <label htmlFor="status-select" className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <label htmlFor="status-select" className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
               <select
                 id="status-select" // Added id for accessibility
                 value={status}
@@ -178,7 +202,9 @@ function ProductBOQSelector({
               </select>
             </div>
             <div>
-              <label htmlFor="remarks-textarea" className="block text-sm font-medium text-gray-700 mb-2">Remarks</label>
+              <label htmlFor="remarks-textarea" className="block text-sm font-medium text-gray-700 mb-2">
+                Remarks
+              </label>
               <textarea
                 id="remarks-textarea" // Added id for accessibility
                 value={remarks}
@@ -217,29 +243,28 @@ function ProductBOQSelector({
   // New function to update local state immediately after approval status change
   const handleLocalBOQItemUpdate = (boqItemId, type, newStatus, newRemarks, newApprovalDate) => {
     setSelectedProductsByCategory((prevCategories) => {
-      const updatedCategories = { ...prevCategories };
+      const updatedCategories = { ...prevCategories }
       for (const categoryId in updatedCategories) {
         updatedCategories[categoryId] = updatedCategories[categoryId].map((item) => {
           if (item.id === boqItemId) {
-            const updatedItem = { ...item };
+            const updatedItem = { ...item }
             if (type === "PM") {
-              updatedItem.pmApprovalStatus = newStatus;
-              updatedItem.pmApprovalRemarks = newRemarks;
-              updatedItem.pmApprovalDate = newApprovalDate;
+              updatedItem.pmApprovalStatus = newStatus
+              updatedItem.pmApprovalRemarks = newRemarks
+              updatedItem.pmApprovalDate = newApprovalDate
             } else if (type === "SALESTL") {
-              updatedItem.salestlApprovalStatus = newStatus;
-              updatedItem.salestlApprovalRemarks = newRemarks;
-              updatedItem.salestlApprovalDate = newApprovalDate;
+              updatedItem.salestlApprovalStatus = newStatus
+              updatedItem.salestlApprovalRemarks = newRemarks
+              updatedItem.salestlApprovalDate = newApprovalDate
             }
-            return updatedItem;
+            return updatedItem
           }
-          return item;
-        });
+          return item
+        })
       }
-      return updatedCategories;
-    });
-  };
-
+      return updatedCategories
+    })
+  }
 
   useEffect(() => {
     if (isEditMode && existingBOQ && existingBOQ.items && !isInitialized) {
@@ -325,6 +350,15 @@ function ProductBOQSelector({
       document.removeEventListener("mousedown", handleClickOutside)
     }
   }, [])
+
+  useEffect(() => {
+    if (onProductCountChange) {
+      const count = getTotalProductCount()
+      console.log("[v0] ProductBOQSelector - notifying parent of product count:", count)
+      onProductCountChange(count, selectedProductsByCategory)
+    }
+  }, [selectedProductsByCategory, onProductCountChange])
+  // </CHANGE>
 
   const extractCategoryInfo = (product) => {
     if (!product)
@@ -563,9 +597,8 @@ function ProductBOQSelector({
   }
 
   const handleSaveBOQ = async () => {
-    const allProducts = Object.entries(selectedProductsByCategory).flatMap(
-      ([categoryId, products]) =>
-        products.map((product) => ({ ...product, leadProductTypeId: Number.parseInt(categoryId) })),
+    const allProducts = Object.entries(selectedProductsByCategory).flatMap(([categoryId, products]) =>
+      products.map((product) => ({ ...product, leadProductTypeId: Number.parseInt(categoryId) })),
     )
     if (allProducts.length === 0) {
       setError("Please add at least one product to the BOQ")
@@ -608,6 +641,23 @@ function ProductBOQSelector({
           pmApprovalDate: p.pmApprovalDate,
           salestlApprovalDate: p.salestlApprovalDate,
         })),
+        gstType: gstType,
+        cgstPercent: gstType === "CGST_SGST" ? cgstPercent : null,
+        sgstPercent: gstType === "CGST_SGST" ? sgstPercent : null,
+        igstPercent: gstType === "IGST" ? igstPercent : null,
+        preGstAmount: totalSupplyAmount + totalInstallationAmount,
+        gstAmount:
+          gstType === "CGST_SGST"
+            ? (totalSupplyAmount + totalInstallationAmount) * (cgstPercent / 100) +
+              (totalSupplyAmount + totalInstallationAmount) * (sgstPercent / 100)
+            : (totalSupplyAmount + totalInstallationAmount) * (igstPercent / 100),
+        postGstAmount:
+          totalSupplyAmount +
+          totalInstallationAmount +
+          (gstType === "CGST_SGST"
+            ? (totalSupplyAmount + totalInstallationAmount) * (cgstPercent / 100) +
+              (totalSupplyAmount + totalInstallationAmount) * (sgstPercent / 100)
+            : (totalSupplyAmount + totalInstallationAmount) * (igstPercent / 100)),
       }
       console.log("Saving BOQ data (payload to backend):", boqData)
       onSave(boqData, true)
@@ -632,6 +682,24 @@ function ProductBOQSelector({
   const totalSupplyAmount = allProductsFlat.reduce((sum, product) => sum + (product.supplyAmount || 0), 0)
   const totalInstallationAmount = allProductsFlat.reduce((sum, product) => sum + (product.installationAmount || 0), 0)
   const grandTotal = allProductsFlat.reduce((sum, product) => sum + (product.total || 0), 0)
+
+  const preGstAmount = grandTotal
+  let gstAmount = 0
+  let postGstAmount = 0
+  let cgstAmount = 0
+  let sgstAmount = 0
+  let igstAmount = 0
+
+  if (gstType === "CGST_SGST") {
+    cgstAmount = preGstAmount * (cgstPercent / 100)
+    sgstAmount = preGstAmount * (sgstPercent / 100)
+    gstAmount = cgstAmount + sgstAmount
+  } else {
+    igstAmount = preGstAmount * (igstPercent / 100)
+    gstAmount = igstAmount
+  }
+  postGstAmount = preGstAmount + gstAmount
+  // </CHANGE>
 
   return (
     <div className="space-y-6">
@@ -670,7 +738,9 @@ function ProductBOQSelector({
           </div>
         )}
         <div className="space-y-2">
-          <label htmlFor="category-select" className="block text-sm font-medium text-gray-700">Add Categories</label>
+          <label htmlFor="category-select" className="block text-sm font-medium text-gray-700">
+            Add Categories
+          </label>
           <div className="flex gap-2">
             <select
               id="category-select" // Added id for accessibility
@@ -783,7 +853,10 @@ function ProductBOQSelector({
                             )}
                           </div>
                           {!isAlreadySelected && (
-                            <button type="button" className="text-blue-600 hover:bg-blue-50 p-1 rounded-full ml-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              className="text-blue-600 hover:bg-blue-50 p-1 rounded-full ml-2 flex-shrink-0"
+                            >
                               <FiPlus />
                             </button>
                           )}
@@ -849,10 +922,10 @@ function ProductBOQSelector({
                                 Quantity
                               </th>
                               <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Supply Rate
+                                Supply Cost
                               </th>
                               <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Installation Rate
+                                Installation Cost
                               </th>
                               <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Supply Amount
@@ -936,7 +1009,7 @@ function ProductBOQSelector({
                                           handleProductFieldChange(category.id, product.id, "supplyRate", "0")
                                         }
                                       }}
-                                      placeholder="Supply Rate"
+                                      placeholder="Supply Cost"
                                       className="w-24 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     />
                                   </td>
@@ -957,7 +1030,7 @@ function ProductBOQSelector({
                                           handleProductFieldChange(category.id, product.id, "installationRate", "0")
                                         }
                                       }}
-                                      placeholder="Inst. Rate"
+                                      placeholder="Installation Cost"
                                       className="w-24 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     />
                                   </td>
@@ -1066,6 +1139,121 @@ function ProductBOQSelector({
                 <span className="font-medium text-green-700 text-lg">Grand Total: ₹{grandTotal.toFixed(2)}</span>
               </div>
             </div>
+
+            <div className="mt-6 pt-4 border-t border-gray-300">
+              <h5 className="font-semibold text-md mb-3">GST Configuration</h5>
+
+              {/* GST Type Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">GST Type</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="gstType"
+                      value="CGST_SGST"
+                      checked={gstType === "CGST_SGST"}
+                      onChange={(e) => setGstType(e.target.value)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">CGST + SGST</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="gstType"
+                      value="IGST"
+                      checked={gstType === "IGST"}
+                      onChange={(e) => setGstType(e.target.value)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">IGST</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* GST Percentage Inputs */}
+              {gstType === "CGST_SGST" ? (
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">CGST (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={cgstPercent}
+                      onChange={(e) => setCgstPercent(Number.parseFloat(e.target.value) || 0)}
+                      className="w-full p-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">SGST (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={sgstPercent}
+                      onChange={(e) => setSgstPercent(Number.parseFloat(e.target.value) || 0)}
+                      className="w-full p-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">IGST (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={igstPercent}
+                    onChange={(e) => setIgstPercent(Number.parseFloat(e.target.value) || 0)}
+                    className="w-full p-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+
+              {/* GST Calculation Display */}
+              <div className="bg-white p-4 rounded-lg border border-gray-300">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">Amount before GST:</span>
+                    <span className="font-semibold">₹{preGstAmount.toFixed(2)}</span>
+                  </div>
+
+                  {gstType === "CGST_SGST" ? (
+                    <>
+                      <div className="flex justify-between text-sm text-blue-600">
+                        <span>CGST ({cgstPercent}%):</span>
+                        <span>₹{cgstAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-blue-600">
+                        <span>SGST ({sgstPercent}%):</span>
+                        <span>₹{sgstAmount.toFixed(2)}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between text-sm text-blue-600">
+                      <span>IGST ({igstPercent}%):</span>
+                      <span>₹{igstAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
+                    <span className="font-medium">Total GST:</span>
+                    <span className="font-semibold text-blue-600">₹{gstAmount.toFixed(2)}</span>
+                  </div>
+
+                  <div className="flex justify-between text-lg font-bold pt-2 border-t-2 border-gray-300">
+                    <span className="text-green-700">Grand Total (with GST):</span>
+                    <span className="text-green-700">₹{postGstAmount.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* </CHANGE> */}
           </div>
         )}
         {getTotalProductCount() > 0 && (

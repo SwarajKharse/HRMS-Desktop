@@ -6,8 +6,10 @@ import NewProjects from "../components/Purchase/NewProjects"
 import MaterialRequisitionPurchase from "../components/Purchase/MaterialRequisitionPurchase"
 import ComparisionSheetPurchaser from "../components/Purchase/PurchaserComponents/ComparisionSheetPurchaser"
 import POUploadPurchaser from "../components/Purchase/PurchaserComponents/POUploadPurchaser"
+import POManagementGrid from "../components/Purchase/POManagementGrid"
 import { GrWorkshop } from "react-icons/gr"
 import { useAuth } from "../contexts/AuthContext"
+import { GiBuyCard } from "react-icons/gi";
 
 
 
@@ -30,6 +32,12 @@ function Projects() {
         label: "Material Requisitions",
         icon: GrWorkshop,
         component: MaterialRequisitionPurchase,
+      },
+      {
+        id: "po-details-purchasemanager",
+        label: "PO List",
+        icon: GiBuyCard,
+        component: POManagementGrid,
       },
       {
         id: "comparision-sheet-purchaser",
@@ -65,9 +73,9 @@ function Projects() {
     
 
     if (designation.includes("ass.-purchase-manager")) {
-      return [allTabs[2], allTabs[3]] // BDM can see unassigned and BDM assigne
+      return [allTabs[3], allTabs[4]] // BDM can see unassigned and BDM assigne
     } else if (designation.includes("purchase-manager")) {
-      return [allTabs[0], allTabs[1]]
+      return [allTabs[0], allTabs[1],allTabs[2]]
     } else {
       return []
     }

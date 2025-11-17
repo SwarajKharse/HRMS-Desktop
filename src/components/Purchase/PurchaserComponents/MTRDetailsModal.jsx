@@ -136,10 +136,6 @@ export default function MTRDetailsModal({ mtr, onClose }) {
                       <p className="font-medium text-gray-600">Purchase MTR:</p>
                       <p className="font-semibold">{mtr.purchaseMTR}</p>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-600">DC Qty:</p>
-                      <p className="font-semibold">{mtr.dcQty}</p>
-                    </div>
                   </div>
                 </div>
               </div>

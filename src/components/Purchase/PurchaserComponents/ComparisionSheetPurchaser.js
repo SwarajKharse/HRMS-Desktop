@@ -246,6 +246,9 @@ export default function ComparisionSheetPurchaser() {
           pmApprovalStatus: completeData.pmApprovalStatus,
           pmApprovalDate: completeData.pmApprovalDate,
           pmApprovalRemarks: completeData.pmApprovalRemarks,
+          purchaseManagerApprovalStatus: completeData.purchaseManagerApprovalStatus,
+          purchaseManagerApprovalDate : completeData.purchaseManagerApprovalDate,
+          purchaseManagerApprovalRemarks : completeData.purchaseManagerApprovalRemarks
         },
       }
 

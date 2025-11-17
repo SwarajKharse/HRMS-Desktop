@@ -142,4 +142,48 @@ export const purchaseOrderService = {
       throw error
     }
   },
+
+  getPurchaseOrdersPaginated: async (params) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/purchase-orders/paginated`, { params })
+      return response.data
+    } catch (error) {
+      console.error("Error fetching purchase orders:", error)
+      throw error
+    }
+  },
+
+  updateMaterialStatus: async (poId, materialStatus) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/purchase-orders/${poId}/material-status`, {
+        materialStatus,
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error updating material status:", error)
+      throw error
+    }
+  },
+
+  updatePOStatus: async (poId, poStatus) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/purchase-orders/${poId}/po-status`, {
+        poStatus,
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error updating PO status:", error)
+      throw error
+    }
+  },
+
+  getPOWithGRNs: async (poId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/purchase-orders/${poId}/with-grns`)
+      return response.data
+    } catch (error) {
+      console.error("Error fetching PO with GRNs:", error)
+      throw error
+    }
+  },
 }

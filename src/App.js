@@ -35,7 +35,9 @@ import LeadsLising from './pages/LeadsListing';
 import Projects from './pages/Projects';
 import Store from './pages/Store';
 import Purchase from './pages/Purchase';
+import Accounts from './pages/Accounts';
 import ProductManagement from './pages/ProductManagement';
+import Finance from './pages/Finance';
 
 function App() {
   return (
@@ -193,7 +195,23 @@ function App() {
                     <ProductManagement />
                   </Layout>
                 </ProtectedPermissionRoute>
-              } />    
+              } />
+              
+              <Route path="/accounts" element={
+                <ProtectedPermissionRoute permissionKey="webAccounts">
+                  <Layout>
+                    <Accounts />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
+
+              <Route path="/finance" element={
+                <ProtectedPermissionRoute permissionKey="webFinance">
+                  <Layout>
+                    <Finance />
+                  </Layout>
+                </ProtectedPermissionRoute>
+              } />
               <Route
                 path="/settings"
                 element={

@@ -183,6 +183,18 @@ export const projectService = {
       throw error.response?.data || error.message
     }
   },
+
+  getStoreInchargeList: async () => {
+    try {
+      const user = { orgId: 1 } // Placeholder for user object
+      const response = await axios.get(`${API_URL}/projects/storeinchargelist/${user.orgId || 1}`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+
   getSiteEngineerProjects: async (page = 0, size = 30, assignedSE) => {
     try {
       const queryParams = {
@@ -316,15 +328,109 @@ export const projectService = {
 
   async updateMTRApprovalStatus(projectId, productId, categoryType, itemIndex, mtrIndex, approvalData) {
     try {
-      const response = await axios.put(
+      /* const response = await axios.put(
         `${API_URL}/projects/${projectId}/boq/${productId}/category-items/${categoryType}/${itemIndex}/mtr/${mtrIndex}/approval-status`,
         approvalData,
         getAuthHeaders(),
-      )
+      ) */
+      
+      let url
+      if (categoryType === "billable") {
+        // Billable MTRs belong directly to BOQ items, no itemIndex needed
+        url = `${API_URL}/projects/${projectId}/boq/${productId}/mtr/${mtrIndex}/approval-status`
+      } else {
+        // Category MTRs belong to category items (nonBillable, skillSet, tools)
+        url = `${API_URL}/projects/${projectId}/boq/${productId}/category-items/${categoryType}/${itemIndex}/mtr/${mtrIndex}/approval-status`
+      }
+      const response = await axios.put(url, approvalData, getAuthHeaders())
       return response.data
     } catch (error) {
       console.error("Error updating MTR approval status:", error)
       throw error
     }
   },
+
+updateBOQWithGST: async (projectId, boqData) => {
+    try {
+      const response = await axios.put(`${API_URL}/projects/${projectId}/boq/gst`, boqData, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error updating BOQ with GST:", error)
+      throw error.response?.data || error.message
+    }
+  },
+
+  generatePOPDF: async (leadId, boqWithGST) => {
+    try {
+      const response = await axios.post(`${API_URL}/projects/generate-po-pdf/${leadId}`, boqWithGST, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error generating PO PDF:", error)
+      throw error.response?.data || error.message
+    }
+  },
+  // </CHANGE>
+
+  uploadPOToS3: async (projectId, file, leadCode) => {
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("leadCode", leadCode)
+
+      const response = await axios.post(`${API_URL}/projects/${projectId}/upload-po`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error uploading PO to S3:", error)
+      throw error.response?.data || error.message
+    }
+  },
+
+  async updateProjectDetails(projectId, details) {
+    try {
+      console.log("[v0] Updating project details for project:", projectId)
+      console.log("[v0] Update payload:", details)
+      const response = await axios.put(`${API_URL}/projects/${projectId}/update-details`, details, getAuthHeaders())
+      console.log("[v0] Update response:", response.data)
+      return response.data
+    } catch (error) {
+      console.error("[v0] Error updating project details:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+  uploadHandoverFile: async (projectId, file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await axios.post(
+    `${API_URL}/projects/${projectId}/upload-handover-file`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  );
+  return response.data;
+},
+
+uploadNocFile: async (projectId, file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const response = await axios.post(
+    `${API_URL}/projects/${projectId}/upload-noc-file`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  );
+  return response.data;
+},
 }

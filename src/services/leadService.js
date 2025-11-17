@@ -957,7 +957,8 @@ export const leadService = {
         `${EMP_BASE_URL}/manager/${user.orgId}/${"Business Development Manager"}`,
         getAuthHeaders(),
       ) */
-      const response = await axios.get(`${BASE_URL}/bdmlist/${user.orgId}`, getAuthHeaders())
+      //const response = await axios.get(`${BASE_URL}/bdmlist/${user.orgId}`, getAuthHeaders())
+      const response = await axios.get(`${BASE_URL}/bdmlist/1`, getAuthHeaders())
       return response.data
     } catch (error) {
       throw error.response?.data || error.message

@@ -18,6 +18,8 @@ const POUploadWithVendorSelection = () => {
   const [totalPages, setTotalPages] = useState(0)
   const [pageSize] = useState(10)
   const [poStatusMap, setPOStatusMap] = useState({}) // Adding state to track PO status for each MTR
+  const [piListByPO, setPIListByPO] = useState({})
+  const [transferringToAccounts, setTransferringToAccounts] = useState(false)
 
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedVendor, setSelectedVendor] = useState("")
@@ -39,12 +41,16 @@ const POUploadWithVendorSelection = () => {
   const [showPIModal, setShowPIModal] = useState(false)
   const [selectedPOForPI, setSelectedPOForPI] = useState(null)
   const [piFile, setPIFile] = useState(null)
+  const [shareStatus, setShareStatus] = useState("")
   const [payableAmount, setPayableAmount] = useState("")
   const [selectedProjectName, setSelectedProjectName] = useState("")
   const [expectedPaymentDate, setExpectedPaymentDate] = useState("")
-  const [projectNames, setProjectNames] = useState([])
   const [piRemarks, setPIRemarks] = useState("")
   const [uploadingPI, setUploadingPI] = useState(false)
+
+  const [projectNames, setProjectNames] = useState([])
+  const [existingPIData, setExistingPIData] = useState(null)
+  const [loadingPIData, setLoadingPIData] = useState(false)
 
   const showMessage = (type, text) => {
     setMessage({ type, text })
@@ -52,6 +58,49 @@ const POUploadWithVendorSelection = () => {
       setMessage({ type: "", text: "" })
     }, 5000)
   }
+
+  const fetchProjectNames = useCallback(async () => {
+    try {
+      const names = await purchaseInvoiceService.getProjectNames()
+      setProjectNames(names || [])
+    } catch (error) {
+      console.error("Error fetching project names:", error)
+      setProjectNames([])
+    }
+  }, [])
+
+  const fetchExistingPIData = useCallback(async (poId) => {
+    if (!poId) return
+
+    try {
+      setLoadingPIData(true)
+      // Try to get existing PI data for this PO
+      const allPIs = await purchaseInvoiceService.getAllPurchaseInvoices()
+      const existingPI = allPIs.find((pi) => pi.purchaseOrder?.id === poId)
+
+      if (existingPI) {
+        setExistingPIData(existingPI)
+        // Pre-populate form with existing data
+        setPayableAmount(existingPI.payableAmount?.toString() || "")
+        setSelectedProjectName(existingPI.projectName || "")
+        setExpectedPaymentDate(existingPI.expectedPaymentDate || "")
+        setPIRemarks(existingPI.remarks || "")
+        // Pre-populate share status if available
+        setShareStatus(existingPI.shareStatus || "")
+      } else {
+        setExistingPIData(null)
+      }
+    } catch (error) {
+      console.error("Error fetching existing PI data:", error)
+      setExistingPIData(null)
+    } finally {
+      setLoadingPIData(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchProjectNames()
+  }, [fetchProjectNames])
 
   const fetchTableData = useCallback(async () => {
     setTableLoading(true)
@@ -68,6 +117,8 @@ const POUploadWithVendorSelection = () => {
       setTotalPages(data.totalPages || 0)
 
       const poStatuses = {}
+      const pisByPO = {}
+
       for (const req of data.content || []) {
         try {
           const poStatus = await comparisonSheetService.checkPOStatus(req.id)
@@ -77,8 +128,25 @@ const POUploadWithVendorSelection = () => {
             fileName: poStatus.latestPO?.fileName || null,
             uploadDate: poStatus.latestPO?.createdAt || null,
             approvalStatus: poStatus.latestPO?.approvalStatus || "PENDING",
+            financeManagerApprovalStatus: poStatus.latestPO?.financeManagerApprovalStatus || "PENDING",
             fileUrl: poStatus.latestPO?.fileUrl || null,
-            poId: poStatus.latestPO?.id || null, // Adding poId to track the PO for editing/removing
+            poId: poStatus.latestPO?.id || null,
+          }
+
+          if (poStatus.hasPO && poStatus.latestPO?.id) {
+            try {
+              const piList = await purchaseInvoiceService.getPurchaseInvoicesByPO(poStatus.latestPO.id)
+              if (piList && piList.length > 0) {
+                pisByPO[req.id] = piList
+                // Get the latest PI for status display
+                const latestPI = piList[piList.length - 1]
+                poStatuses[req.id].latestPIStatus = latestPI.purchaseManagerApprovalStatus || "PENDING"
+                poStatuses[req.id].latestPIId = latestPI.id
+                poStatuses[req.id].handedOverToAccounts = latestPI.handoverFromFinance || false
+              }
+            } catch (error) {
+              console.log(`No PI found for PO ${poStatus.latestPO.id}`)
+            }
           }
         } catch (error) {
           console.error(`Error checking PO status for MTR ${req.id}:`, error)
@@ -86,6 +154,7 @@ const POUploadWithVendorSelection = () => {
         }
       }
       setPOStatusMap(poStatuses)
+      setPIListByPO(pisByPO)
     } catch (error) {
       console.error("Failed to fetch material requisitions:", error)
       setRequisitions([])
@@ -112,6 +181,8 @@ const POUploadWithVendorSelection = () => {
       setLoading(true)
       console.log("[v0] selectedVendor value:", selectedVendor)
       console.log("[v0] selectedVendor type:", typeof selectedVendor)
+
+      console.log(selectedVendor + " ***    " + user?.userId)
 
       const mtrData = await comparisonSheetService.getMTRsByApprovedVendor({
         vendorName: selectedVendor,
@@ -185,8 +256,9 @@ const POUploadWithVendorSelection = () => {
         formData.append("mtrIds", mtrId)
       })
       formData.append("vendorName", selectedVendor)
-      formData.append("uploadedBy", user?.id || 1)
+      formData.append("uploadedBy", user?.userId || 1)
       formData.append("poNumber", poNumber.trim())
+      formData.append("currentUserId", user?.userId)
 
       const result = await comparisonSheetService.uploadPOForMTRs(formData)
 
@@ -291,33 +363,28 @@ const POUploadWithVendorSelection = () => {
     }
   }
 
-  const fetchProjectNames = async () => {
-    try {
-      const names = await purchaseInvoiceService.getProjectNames()
-      setProjectNames(names)
-    } catch (error) {
-      console.error("Error fetching project names:", error)
-      setProjectNames([])
-    }
+  // Pass the mtrId to fetch existing PIs correctly
+  const handleOpenPIModal = async (poData, mtrId) => {
+    setSelectedPOForPI(poData)
+    setExistingPIData(piListByPO[mtrId] || [])
+    setShowPIModal(true)
   }
 
-  const handleTransferToAccounts = (mtrId) => {
-    const poData = poStatusMap[mtrId]
-    if (poData && poData.approvalStatus === "APPROVED") {
-      setSelectedPOForPI({
-        mtrId,
-        poId: poData.poId,
-        poNumber: poData.poNumber,
-        ...poData,
-      })
-      setShowPIModal(true)
-      fetchProjectNames()
-    }
+  const resetPIModal = () => {
+    setSelectedPOForPI(null)
+    setPIFile(null)
+    setShareStatus("")
+    setPayableAmount("")
+    setSelectedProjectName("")
+    setExpectedPaymentDate("")
+    setPIRemarks("")
+    setShowPIModal(false)
+    setExistingPIData(null)
   }
 
   const handleUploadPI = async () => {
-    if (!piFile || !payableAmount || !selectedProjectName || !expectedPaymentDate) {
-      showMessage("error", "Please fill all required fields")
+    if (!piFile || !shareStatus || !payableAmount || !selectedProjectName || !expectedPaymentDate) {
+      showMessage("error", "Please fill in all required fields to submit")
       return
     }
 
@@ -325,35 +392,59 @@ const POUploadWithVendorSelection = () => {
       setUploadingPI(true)
       const formData = new FormData()
       formData.append("file", piFile)
-      formData.append("poId", selectedPOForPI.poId)
+      formData.append("shareStatus", shareStatus)
       formData.append("payableAmount", payableAmount)
       formData.append("projectName", selectedProjectName)
       formData.append("expectedPaymentDate", expectedPaymentDate)
-      formData.append("uploadedBy", user?.id || 1)
-      if (piRemarks) {
-        formData.append("remarks", piRemarks)
-      }
+      formData.append("remarks", piRemarks)
+      formData.append("poId", selectedPOForPI.poId)
+      formData.append("uploadedBy", user?.userId || user?.id || 1)
 
       await purchaseInvoiceService.uploadPurchaseInvoice(formData)
 
-      showMessage("success", "Purchase Invoice uploaded successfully and transferred to accounts!")
+      showMessage("success", "PI submitted successfully to Accounts!")
 
-      // Reset PI modal state
-      setShowPIModal(false)
-      setSelectedPOForPI(null)
-      setPIFile(null)
-      setPayableAmount("")
-      setSelectedProjectName("")
-      setExpectedPaymentDate("")
-      setPIRemarks("")
-
-      // Refresh table data
-      fetchTableData()
+      resetPIModal()
+      fetchTableData() // Refresh table to show updated PI status
     } catch (error) {
-      console.error("Error uploading PI:", error)
-      showMessage("error", "Error uploading Purchase Invoice. Please try again.")
+      console.error("Error submitting PI:", error)
+      showMessage("error", "Error submitting PI. Please try again.")
     } finally {
       setUploadingPI(false)
+    }
+  }
+
+  // Use latestPIId from poStatusMap
+  const handleTransferToAccounts = async (mtrId) => {
+    const poData = poStatusMap[mtrId]
+    if (!poData || !poData.latestPIId) {
+      showMessage("error", "No approved PI found for this MTR")
+      return
+    }
+
+    if (
+      !window.confirm(
+        "Are you sure you want to transfer this PI to Accounts? This action will mark it as ready for payment processing.",
+      )
+    ) {
+      return
+    }
+
+    try {
+      setTransferringToAccounts(true)
+
+      // Call backend to mark PI as handed over to accounts
+      await purchaseInvoiceService.transferToAccounts(poData.latestPIId)
+
+      showMessage("success", "PI successfully transferred to Accounts!")
+
+      // Update local state
+      await fetchTableData()
+    } catch (error) {
+      console.error("Error transferring to accounts:", error)
+      showMessage("error", "Error transferring to accounts. Please try again.")
+    } finally {
+      setTransferringToAccounts(false)
     }
   }
 
@@ -366,16 +457,6 @@ const POUploadWithVendorSelection = () => {
     setUploadedPOs([])
     setShowPODetails(false)
     setPONumber("")
-  }
-
-  const resetPIModal = () => {
-    setShowPIModal(false)
-    setSelectedPOForPI(null)
-    setPIFile(null)
-    setPayableAmount("")
-    setSelectedProjectName("")
-    setExpectedPaymentDate("")
-    setPIRemarks("")
   }
 
   const handleClose = () => {
@@ -453,11 +534,29 @@ const POUploadWithVendorSelection = () => {
   const renderPITransferModal = () => {
     if (!showPIModal || !selectedPOForPI) return null
 
+    const latestPI =
+      Array.isArray(existingPIData) && existingPIData.length > 0 ? existingPIData[existingPIData.length - 1] : null
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Transfer to Accounts - Upload PI</h3>
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold text-gray-900">Upload PI - Submit to Accounts</h3>
+              {latestPI && (
+                <div
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                    latestPI.purchaseManagerApprovalStatus === "APPROVED"
+                      ? "bg-green-100 text-green-800"
+                      : latestPI.purchaseManagerApprovalStatus === "REJECTED"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-yellow-100 text-yellow-800"
+                  }`}
+                >
+                  Latest PI: {latestPI.purchaseManagerApprovalStatus || "PENDING"}
+                </div>
+              )}
+            </div>
             <button onClick={resetPIModal} className="text-gray-400 hover:text-gray-600">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -465,7 +564,7 @@ const POUploadWithVendorSelection = () => {
             </button>
           </div>
 
-          <div className="p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {/* PO Information */}
             <div className="bg-blue-50 p-4 rounded-md">
               <h4 className="font-medium text-blue-900 mb-2">Purchase Order Details</h4>
@@ -477,11 +576,64 @@ const POUploadWithVendorSelection = () => {
               </p>
             </div>
 
+            {Array.isArray(existingPIData) && existingPIData.length > 0 && (
+              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                <h4 className="font-medium text-gray-900 mb-3">Existing Purchase Invoices ({existingPIData.length})</h4>
+                <div className="space-y-3 max-h-48 overflow-y-auto">
+                  {existingPIData.map((pi, index) => (
+                    <div key={pi.id} className="bg-white p-3 rounded border border-gray-200">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            PI #{index + 1}: {pi.piNumber}
+                          </p>
+                          <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600">
+                            <div>
+                              <span className="font-medium">Amount:</span> ₹{pi.payableAmount}
+                            </div>
+                            <div>
+                              <span className="font-medium">Expected Date:</span>{" "}
+                              {pi.expectedPaymentDate ? new Date(pi.expectedPaymentDate).toLocaleDateString() : "N/A"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Project:</span> {pi.projectName || "N/A"}
+                            </div>
+                            <div>
+                              <span className="font-medium">Uploaded:</span>{" "}
+                              {pi.createdAt ? new Date(pi.createdAt).toLocaleDateString() : "N/A"}
+                            </div>
+                          </div>
+                          {pi.remarks && (
+                            <p className="mt-2 text-xs text-gray-500">
+                              <span className="font-medium">Remarks:</span> {pi.remarks}
+                            </p>
+                          )}
+                        </div>
+                        <div className="ml-3">
+                          <div
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              pi.purchaseManagerApprovalStatus === "APPROVED"
+                                ? "bg-green-100 text-green-800"
+                                : pi.purchaseManagerApprovalStatus === "REJECTED"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {pi.purchaseManagerApprovalStatus || "PENDING"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* PI Upload Form */}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload PI File <span className="text-red-500">*</span>
+                  Upload PI/TI File <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="file"
@@ -490,6 +642,22 @@ const POUploadWithVendorSelection = () => {
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 />
                 {piFile && <p className="mt-2 text-sm text-green-600">Selected: {piFile.name}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Share Status <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={shareStatus}
+                  onChange={(e) => setShareStatus(e.target.value)}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">Select Status</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
               </div>
 
               <div>
@@ -508,7 +676,7 @@ const POUploadWithVendorSelection = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Project Name <span className="text-red-500">*</span>
+                  Associated Project <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={selectedProjectName}
@@ -547,22 +715,24 @@ const POUploadWithVendorSelection = () => {
                 />
               </div>
             </div>
+          </div>
 
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                onClick={resetPIModal}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUploadPI}
-                disabled={uploadingPI || !piFile || !payableAmount || !selectedProjectName || !expectedPaymentDate}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                {uploadingPI ? "Transferring..." : "Transfer to Accounts"}
-              </button>
-            </div>
+          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 flex-shrink-0 bg-white">
+            <button
+              onClick={resetPIModal}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleUploadPI}
+              disabled={
+                uploadingPI || !piFile || !shareStatus || !payableAmount || !selectedProjectName || !expectedPaymentDate
+              }
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {uploadingPI ? "Submitting..." : "Submit"}
+            </button>
           </div>
         </div>
       </div>
@@ -641,9 +811,45 @@ const POUploadWithVendorSelection = () => {
                                       : "bg-yellow-100 text-yellow-800"
                                 }`}
                               >
-                                {poStatusMap[req.id]?.approvalStatus || "PENDING"}
+                                PM: {poStatusMap[req.id]?.approvalStatus || "PENDING"}
                               </div>
+                              {poStatusMap[req.id]?.approvalStatus === "APPROVED" && (
+                                <div
+                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    poStatusMap[req.id]?.financeManagerApprovalStatus === "APPROVED"
+                                      ? "bg-green-100 text-green-800"
+                                      : poStatusMap[req.id]?.financeManagerApprovalStatus === "REJECTED"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-yellow-100 text-yellow-800"
+                                  }`}
+                                >
+                                  FM: {poStatusMap[req.id]?.financeManagerApprovalStatus || "PENDING"}
+                                </div>
+                              )}
                             </div>
+                            {piListByPO[req.id] && piListByPO[req.id].length > 0 && (
+                              <div className="flex items-center gap-2">
+                                <div className="text-xs text-gray-600 font-medium">
+                                  PIs: {piListByPO[req.id].length}
+                                </div>
+                                <div
+                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                    poStatusMap[req.id]?.latestPIStatus === "APPROVED"
+                                      ? "bg-purple-100 text-purple-800"
+                                      : poStatusMap[req.id]?.latestPIStatus === "REJECTED"
+                                        ? "bg-red-100 text-red-800"
+                                        : "bg-yellow-100 text-yellow-800"
+                                  }`}
+                                >
+                                  Latest PI: {poStatusMap[req.id]?.latestPIStatus || "PENDING"}
+                                </div>
+                                {poStatusMap[req.id]?.handedOverToAccounts && (
+                                  <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    ✓ Transferred
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <div className="text-xs text-gray-600">PO: {poStatusMap[req.id]?.poNumber}</div>
                             {poStatusMap[req.id]?.fileName && (
                               <div className="text-xs">
@@ -657,19 +863,9 @@ const POUploadWithVendorSelection = () => {
                                 </a>
                               </div>
                             )}
-                            {poStatusMap[req.id]?.approvalStatus === "APPROVED" ? (
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => handleTransferToAccounts(req.id)}
-                                  className="inline-flex items-center justify-center text-xs px-2 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded"
-                                  title="Transfer to Accounts"
-                                >
-                                  Transfer to Accounts
-                                </button>
-                              </div>
-                            ) : (
-                              poStatusMap[req.id]?.approvalStatus !== "APPROVED" && (
-                                <div className="flex gap-1">
+                            <div className="flex gap-1">
+                              {poStatusMap[req.id]?.approvalStatus !== "APPROVED" && (
+                                <>
                                   <button
                                     onClick={() => handleEditPO(req.id)}
                                     className="inline-flex items-center justify-center text-xs px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded"
@@ -684,9 +880,30 @@ const POUploadWithVendorSelection = () => {
                                   >
                                     Remove
                                   </button>
-                                </div>
-                              )
-                            )}
+                                </>
+                              )}
+                              {poStatusMap[req.id]?.approvalStatus === "APPROVED" &&
+                                poStatusMap[req.id]?.financeManagerApprovalStatus === "APPROVED" && (
+                                  <button
+                                    onClick={() => handleOpenPIModal(poStatusMap[req.id], req.id)}
+                                    className="inline-flex items-center justify-center text-xs px-2 py-1 bg-blue-600 text-white hover:bg-blue-700 rounded"
+                                    title="Upload PI"
+                                  >
+                                    Upload PI
+                                  </button>
+                                )}
+                              {poStatusMap[req.id]?.latestPIStatus === "APPROVED" &&
+                                !poStatusMap[req.id]?.handedOverToAccounts && (
+                                  <button
+                                    onClick={() => handleTransferToAccounts(req.id)}
+                                    disabled={transferringToAccounts}
+                                    className="inline-flex items-center justify-center text-xs px-2 py-1 bg-green-600 text-white hover:bg-green-700 rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    title="Transfer to Accounts"
+                                  >
+                                    {transferringToAccounts ? "Transferring..." : "Transfer to Accounts"}
+                                  </button>
+                                )}
+                            </div>
                           </div>
                         ) : (
                           <button
@@ -751,7 +968,7 @@ const POUploadWithVendorSelection = () => {
                 <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
                   <path
                     fillRule="evenodd"
-                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 01-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
                     clipRule="evenodd"
                   />
                 </svg>

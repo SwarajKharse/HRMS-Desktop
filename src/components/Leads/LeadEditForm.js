@@ -1,14 +1,16 @@
 "use client"
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
-import { FiX, FiCalendar, FiUpload, FiFile, FiExternalLink } from "react-icons/fi"
+import { FiX, FiCalendar, FiUpload, FiFile, FiExternalLink, FiPlus } from "react-icons/fi"
 import { authService } from "../../services/authService"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
+import SalesTLHandOverForm from "./SalesTLHandOverForm"
 
 function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
   const fileInputRef = useRef(null)
+  const poFileInputRef = useRef(null)
   let userId = ""
   if (user) {
     userId = user.userId
@@ -30,7 +32,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
   const [proposalDocumentName, setProposalDocumentName] = useState("")
   const [poName, setPOName] = useState([])
   const [departments, setDepartments] = useState([])
-  const [designations, setDesignations] = useState([])
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
@@ -49,6 +50,9 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false)
   const [poUpload, setPoUploads] = useState(false)
   const [poUploadedDocuments, setPoUploadedDocuments] = useState(false)
+  // Add state for PO management modal
+  const [showPOManagement, setShowPOManagement] = useState(false)
+  const [showCreatePOForm, setShowCreatePOForm] = useState(false)
 
   // Add a function to fetch uploaded documents for the lead
   const fetchUploadedDocuments = async () => {
@@ -103,7 +107,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     if (file) {
       setFormData({
         ...formData,
-        lead_po: file,
+        po_document: file,
       })
       setPoUploads(file.name)
     }
@@ -112,6 +116,11 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
   const triggerFileInput = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click()
+    }
+  }
+  const triggerPOFileInput = () => {
+    if (poFileInputRef.current) {
+      poFileInputRef.current.click()
     }
   }
   // Initialize form data when employee prop changes
@@ -626,14 +635,15 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           }
         })
         // Add file uploads if they exist
-        if (processedData.lead_po) {
-          formData.append("po_document", processedData.lead_po)
+        if (processedData.po_document) {
+          formData.append("po_document", processedData.po_document)
+          formData.append("document_type", "po_document")
         }
         formData.append("flag", "salestl-won-leads")
         // Use the FormData object for the API call
         await leadService.updatePOorRejectionReason(lead.id, formData)
         // Refresh the document list after upload
-        //await fetchUploadedPOs()
+        await fetchUploadedPOs()
       } else {
         // For other tabs, use the existing approach
         if (activeTab == "unassigned-leads") {
@@ -738,6 +748,22 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     (lead.lead_proposal_type && lead.lead_proposal_type.length > 0) ||
     lead.proposal_scope ||
     lead.bdm_visit_remarks
+
+  useEffect(() => {
+    window.openCreatePOForm = (lead) => {
+      setShowPOManagement(false) // Close PO Management if open
+      // Here you would open the SalesTLHandOverForm in Create PO mode
+      // This needs to be handled by the parent component
+      onClose() // Close the edit form
+      // Notify parent to open Create PO form
+      if (window.parentOpenCreatePOForm) {
+        window.parentOpenCreatePOForm(lead)
+      }
+    }
+    return () => {
+      delete window.openCreatePOForm
+    }
+  }, [onClose])
 
   return (
     <motion.div
@@ -1834,7 +1860,28 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               ) : null}
               {lead.lead_status === "won" ? (
                 <div className="space-y-4 rounded-lg bg-white border p-4">
-                  {/* List of existing proposal documents */}
+                  <h3 className="font-semibold text-lg border-b pb-2">PO Management</h3>
+
+                  <div className="flex gap-3 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePOForm(true)}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+                    >
+                      <FiPlus className="mr-2" />
+                      Create PO
+                    </button>
+                    <button
+                      type="button"
+                      onClick={triggerPOFileInput}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
+                    >
+                      <FiUpload className="mr-2" />
+                      Upload PO
+                    </button>
+                  </div>
+
+                  {/* List of existing PO documents */}
                   <div className="mt-4">
                     {isLoadingDocuments ? (
                       <div className="text-center py-4">
@@ -1850,7 +1897,9 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                               <span className="text-sm font-medium">{`PO ${index + 1}`}</span>
                             </div>
                             <div className="flex items-center">
-                              <span className="text-xs text-gray-500 mr-3">
+                              <span className="text-sm font-medium text-blue-500 mr-1">Status:</span>
+                              <span className="text-xs text-orange-500 mr-6">{doc.status}</span>
+                              <span className="text-xs text-gray-500 mr-6">
                                 {new Date(doc.uploadedAt).toLocaleDateString()}
                               </span>
                               <a
@@ -1866,38 +1915,25 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 py-2">No proposal documents uploaded yet.</p>
+                      <p className="text-sm text-gray-500 py-2">No PO documents uploaded yet.</p>
                     )}
                   </div>
-                  <div className="mt-4">
-                    <input
-                      type="file"
-                      name="lead_po"
-                      onChange={handlePOUpload}
-                      accept="application/pdf"
-                      className="hidden"
-                      ref={fileInputRef}
-                    />
-                    <div className="flex flex-col space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">Upload PO</label>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          type="button"
-                          onClick={triggerFileInput}
-                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                        >
-                          <FiUpload className="mr-2" />
-                          Choose File
-                        </button>
-                        <span className="text-sm text-gray-500">{poUpload ? poUpload : "No file chosen"}</span>
-                      </div>
-                    </div>
-                  </div>
+
+                  {/* Hidden file input for Upload PO */}
+                  <input
+                    type="file"
+                    name="lead_po"
+                    onChange={handlePOUpload}
+                    accept="application/pdf"
+                    className="hidden"
+                    ref={poFileInputRef}
+                  />
                 </div>
               ) : null}
-              {/* END Upload PO, or update Rejection Reason */}
             </>
           ) : null}
+          {/* END Upload PO, or update Rejection Reason */}
+
           <div className="flex justify-end space-x-4 pt-4">
             <button
               type="button"
@@ -1932,6 +1968,22 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           </div>
         </form>
       </motion.div>
+
+      {showCreatePOForm && (
+        <SalesTLHandOverForm
+          lead={lead}
+          activeTab="salestl-won-leads"
+          onClose={() => {
+            setShowCreatePOForm(false)
+            fetchUploadedPOs() // Refresh PO list after closing
+          }}
+          onSubmit={async () => {
+            setShowCreatePOForm(false)
+            await fetchUploadedPOs()
+            await onSubmit() // Refresh parent component
+          }}
+        />
+      )}
     </motion.div>
   )
 }

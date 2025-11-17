@@ -13,6 +13,7 @@ import {
   FiCheck,
   FiClock,
   FiAlertTriangle,
+  FiMinus, // Added FiMinus for the new N/A status icon
 } from "react-icons/fi"
 import { AiOutlineArrowDown, AiOutlineArrowUp } from "react-icons/ai"
 import { motion, AnimatePresence } from "framer-motion"
@@ -44,10 +45,14 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
   const [editingBillableMTR, setEditingBillableMTR] = useState(null)
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchInitialData = async () => {
       try {
+        console.log("[v0] Starting data fetch...")
+        setLoading(true)
+
         // Fetch Lead Product Types
         const leadResponse = await leadService.getLeadProductTypeList()
+        console.log("[v0] Lead product types response:", leadResponse)
         let productTypesData = []
         if (Array.isArray(leadResponse)) {
           productTypesData = leadResponse
@@ -61,15 +66,21 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
             productTypesData = arrayProperty
           }
         }
+        console.log("[v0] Processed lead product types:", productTypesData)
         setLeadProductTypes(productTypesData)
 
         // Fetch Skillsets
-        const skillsetsResponse = await storeService.getSkillSetList()
+        const skillsetsResponse = await storeService.getSkillSets()
+        console.log("[v0] Skillsets response:", skillsetsResponse)
         let skillsetsData = []
-        if (Array.isArray(skillsetsResponse)) {
+        if (skillsetsResponse && Array.isArray(skillsetsResponse.content)) {
+          skillsetsData = skillsetsResponse.content
+        } else if (Array.isArray(skillsetsResponse)) {
           skillsetsData = skillsetsResponse
         } else if (skillsetsResponse && Array.isArray(skillsetsResponse.data)) {
           skillsetsData = skillsetsResponse.data
+        } else if (skillsetsResponse && skillsetsResponse.data && Array.isArray(skillsetsResponse.data.content)) {
+          skillsetsData = skillsetsResponse.data.content
         } else if (skillsetsResponse && Array.isArray(skillsetsResponse.skillsets)) {
           skillsetsData = skillsetsResponse.skillsets
         } else if (skillsetsResponse && typeof skillsetsResponse === "object") {
@@ -78,15 +89,21 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
             skillsetsData = arrayProperty
           }
         }
+        console.log("[v0] Processed skillsets:", skillsetsData)
         setAvailableSkillsets(skillsetsData)
 
         // Fetch Tools
-        const toolsResponse = await storeService.getToolsList()
+        const toolsResponse = await storeService.getTools()
+        console.log("[v0] Tools response:", toolsResponse)
         let toolsData = []
-        if (Array.isArray(toolsResponse)) {
+        if (toolsResponse && Array.isArray(toolsResponse.content)) {
+          toolsData = toolsResponse.content
+        } else if (Array.isArray(toolsResponse)) {
           toolsData = toolsResponse
         } else if (toolsResponse && Array.isArray(toolsResponse.data)) {
           toolsData = toolsResponse.data
+        } else if (toolsResponse && toolsResponse.data && Array.isArray(toolsResponse.data.content)) {
+          toolsData = toolsResponse.data.content
         } else if (toolsResponse && Array.isArray(toolsResponse.tools)) {
           toolsData = toolsResponse.tools
         } else if (toolsResponse && typeof toolsResponse === "object") {
@@ -95,15 +112,20 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
             toolsData = arrayProperty
           }
         }
+        console.log("[v0] Processed tools:", toolsData)
         setAvailableTools(toolsData)
 
-        // Fetch All Products for Non-Billable
         const allProductsResponse = await storeService.getProductsList()
+        console.log("[v0] All products response:", allProductsResponse)
         let allProductsData = []
-        if (Array.isArray(allProductsResponse)) {
+        if (allProductsResponse && Array.isArray(allProductsResponse.content)) {
+          allProductsData = allProductsResponse.content
+        } else if (Array.isArray(allProductsResponse)) {
           allProductsData = allProductsResponse
         } else if (allProductsResponse && Array.isArray(allProductsResponse.data)) {
           allProductsData = allProductsResponse.data
+        } else if (allProductsResponse && allProductsResponse.data && Array.isArray(allProductsResponse.data.content)) {
+          allProductsData = allProductsResponse.data.content
         } else if (allProductsResponse && Array.isArray(allProductsResponse.products)) {
           allProductsData = allProductsResponse.products
         } else if (allProductsResponse && typeof allProductsResponse === "object") {
@@ -112,13 +134,19 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
             allProductsData = arrayProperty
           }
         }
+        console.log("[v0] Processed all products:", allProductsData)
+        console.log("[v0] Sample product:", allProductsData[0])
         setAvailableProducts(allProductsData)
+
+        console.log("[v0] Data fetch completed successfully")
       } catch (err) {
-        console.error("Error fetching initial data:", err)
+        console.error("[v0] Error fetching initial data:", err)
         setError("Error fetching initial data: " + err.message)
+      } finally {
+        setLoading(false)
       }
     }
-    fetchData()
+    fetchInitialData()
   }, []) // Empty dependency array ensures this runs only once on mount
 
   const cleanProjectCode = (name) => {
@@ -228,13 +256,14 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
 
             const nonBillable = (item.nonBillableItems || []).map((nb) => ({
               ...nb,
-              id: nb.id, // Preserve existing non-billable item ID for frontend state
-              product_name: nb.productName || nb.itemDescription || nb.hsnCode || "Unknown Non-Billable Product", // Use itemDescription or hsnCode as fallback
+              id: nb.id,
+              product_name:
+                nb.product_name || nb.productName || nb.itemDescription || nb.hsnCode || "Unknown Non-Billable Product",
               qty: nb.qty || 0,
               make: nb.make || "",
               uom: nb.uom || "",
               materialRequisitions: (nb.materialRequisitions || []).map((mtr, mtrIndex) => ({
-                id: mtr.id, // Preserve existing category MTR ID for frontend state
+                id: mtr.id,
                 mtrQty: mtr.mtrQty || 0,
                 stockAlloted: mtr.stockAlloted || 0,
                 purchaseMTR: mtr.purchaseMTR || 0,
@@ -278,7 +307,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
                 stockAlloted: mtr.stockAlloted || 0,
                 purchaseMTR: mtr.purchaseMTR || 0,
                 dcQty: t.dcQty || 0,
-                remarks: t.remarks || "",
+                remarks: mtr.remarks || "",
                 status: t.status || "Pending",
                 expectedDeliveryDate: t.expectedDeliveryDate || "",
                 priority: t.priority || "MEDIUM",
@@ -335,8 +364,13 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
     initializeBOQ()
   }, [existingBOQ, isBOQInitializedFromProps, leadProductTypes]) // Now leadProductTypes is a stable dependency after initial fetch
 
-  const ApprovalStatusBadge = ({ status, type, onUpdate, productId, remarks, approvalDate }) => {
+  // ApprovalStatusBadge now only displays status, does not open modal.
+  // It also handles "N/A" status for non-billable items.
+  const ApprovalStatusBadge = ({ status, type, remarks, approvalDate }) => {
     const getStatusColor = (status) => {
+      if (status === "N/A") {
+        return "bg-gray-100 text-gray-600 border-gray-200"
+      }
       switch (status) {
         case "APPROVED":
           return "bg-green-100 text-green-800 border-green-200"
@@ -348,7 +382,12 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
           return "bg-gray-100 text-gray-800 border-gray-200"
       }
     }
+
     const getStatusIcon = (status) => {
+      // Use FiMinus for N/A status
+      if (status === "N/A") {
+        return <FiMinus size={14} />
+      }
       switch (status) {
         case "APPROVED":
           return <FiCheck size={14} />
@@ -360,24 +399,25 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
           return <FiAlertTriangle size={14} />
       }
     }
+
     return (
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-gray-600">{type} Approval:</span>
-          <button
-            onClick={() => setShowApprovalModal({ productId, type, currentStatus: status, currentRemarks: remarks })}
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)} hover:opacity-80 transition-opacity`}
+          <div
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(status)}`}
           >
             {getStatusIcon(status)}
             {status}
-          </button>
+          </div>
         </div>
-        {remarks && (
+        {/* Only show remarks and date if status is not "N/A" */}
+        {remarks && status !== "N/A" && (
           <div className="text-xs text-gray-500">
             <span className="font-medium">Remarks:</span> {remarks}
           </div>
         )}
-        {approvalDate && (
+        {approvalDate && status !== "N/A" && (
           <div className="text-xs text-gray-500">
             <span className="font-medium">Date:</span> {new Date(approvalDate).toLocaleDateString()}
           </div>
@@ -658,10 +698,10 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
                     <span className="text-gray-600">Purchase:</span>
                     <span className="ml-1 font-medium">{mtr.purchaseMTR}</span>
                   </div>
-                  <div>
+                  {/* <div>
                     <span className="text-gray-600">DC Qty:</span>
                     <span className="ml-1 font-medium">{mtr.dcQty}</span>
-                  </div>
+                  </div> */}
                   {mtr.expectedDeliveryDate && (
                     <div>
                       <span className="text-gray-600">Delivery:</span>
@@ -710,11 +750,20 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
       return mainProduct[category][productIndex] || product
     }
 
+    // Initialize localData with fetched product details or defaults
     const [localData, setLocalData] = useState(() => {
       const currentProduct = getCurrentProduct()
+      // Use helper function to get names for display
+      const productName = getProductNameByReferenceId(currentProduct.referenceId, category)
+
       return {
         qty: currentProduct?.qty || "",
-        make: category === "skillSet" ? "" : currentProduct?.make || "",
+        make: category === "skillSet" ? null : currentProduct?.make || "",
+        // Include other relevant fields for editing
+        productName: productName,
+        hsn_code: currentProduct?.hsn_code || "",
+        uom: currentProduct?.uom || "",
+        referenceId: currentProduct.referenceId,
       }
     })
 
@@ -744,6 +793,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
     const currentMTRCount = (getCurrentProduct()?.materialRequisitions || []).length + 1
 
     const handleCategoryMTRSubmit = (mtrData) => {
+      // Ensure correct data is passed to updateCategoryProduct
       updateCategoryProduct(productId, category, productIndex, "qty", localData.qty)
       if (category !== "skillSet") {
         updateCategoryProduct(productId, category, productIndex, "make", localData.make)
@@ -756,7 +806,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
         <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="text-xl font-bold">Edit {product?.product_name || product?.name}</h3>
+            <h3 className="text-xl font-bold">Edit {localData.productName}</h3>
             <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
               <FiX />
             </button>
@@ -832,11 +882,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
                         currentMTRCount={currentMTRCount}
                         initialMTRData={editingCategoryMTR}
                         onSubmit={(mtrData) => {
-                          updateCategoryProduct(productId, category, productIndex, "qty", localData.qty)
-                          if (category !== "skillSet") {
-                            updateCategoryProduct(productId, category, productIndex, "make", localData.make)
-                          }
-                          handleMTRSubmit(productId, category, productIndex, mtrData)
+                          handleCategoryMTRSubmit(mtrData)
                           toggleMTRForm(`${productId}-${category}-${productIndex}`)
                           setEditingCategoryMTR(null)
                         }}
@@ -1021,22 +1067,24 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
     setBOQProducts((prev) =>
       prev.map((p) => {
         if (p.id === mainProductId) {
-          return {
-            ...p,
-            [category]: [
-              ...(p[category] || []),
-              {
-                id: null, // CRITICAL: Ensure BOQCategoryItem's own ID is null for new items
-                referenceId: product.id, // NEW: Pass the master data ID as referenceId
-                product_name: product.product_name || product.productName || product.name, // Use itemDescription or hsnCode as fallback
-                hsn_code: product.hsn_code || product.hsnCode || "",
-                uom: product.uom || "",
-                qty: "",
-                make: "", // Non-billable products can have make
-                materialRequisitions: [],
-              },
-            ],
+          const newItem = {
+            id: null,
+            referenceId: product.id,
+            product_name: product.product_name || product.productName || product.name,
+            productName: product.product_name || product.productName || product.name,
+            hsn_code: product.hsn_code || product.hsnCode,
+            qty: "",
+            make: "",
+            materialRequisitions: [],
           }
+
+          if (category === "nonBillable") {
+            return {
+              ...p,
+              nonBillable: [...(p.nonBillable || []), newItem],
+            }
+          }
+          return p
         }
         return p
       }),
@@ -1239,14 +1287,22 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
 
   const getFilteredNonBillableProducts = (searchKey) => {
     const searchTerm = searchTerms[searchKey] || ""
+    console.log("[v0] Filtering products with search term:", searchTerm)
+    console.log("[v0] Available products count:", availableProducts.length)
+    console.log("[v0] Sample available product:", availableProducts[0])
+
     if (!searchTerm.trim()) return availableProducts
     const lowercasedSearch = searchTerm.toLowerCase()
     return availableProducts.filter((product) => {
       if (!product) return false
+      const productName = product.product_name || product.productName || ""
+      const hsnCode = product.hsn_code || product.hsnCode || ""
+      const productDesc = product.product_description || product.productDescription || ""
+
       return (
-        (product.product_name || "").toLowerCase().includes(lowercasedSearch) ||
-        (product.hsn_code || "").toLowerCase().includes(lowercasedSearch) ||
-        (product.product_description || "").toLowerCase().includes(lowercasedSearch)
+        productName.toLowerCase().includes(lowercasedSearch) ||
+        hsnCode.toLowerCase().includes(lowercasedSearch) ||
+        productDesc.toLowerCase().includes(lowercasedSearch)
       )
     })
   }
@@ -1360,6 +1416,24 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
 
     setBOQProducts(updatedBOQProducts)
     setShowAddProductModal(false)
+  }
+
+  const getProductNameByReferenceId = (referenceId, category) => {
+    if (!referenceId) return "Unknown Item"
+
+    if (category === "nonBillable") {
+      const product = availableProducts.find((p) => p.id === referenceId)
+      return product?.product_name || product?.productName || "Unknown Product"
+    } else if (category === "skillSet") {
+      
+      const skillset = availableSkillsets.find((s) => s.id === referenceId)
+      return skillset?.skillset_name || "Unknown Skillset"
+    } else if (category === "tools") {
+      const tool = availableTools.find((t) => t.id === referenceId)
+      return tool?.tool_name || "Unknown Tool"
+    }
+
+    return "Unknown Item"
   }
 
   return (
@@ -1653,10 +1727,15 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
                                                           className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm"
                                                         >
                                                           <div className="font-medium">
-                                                            {availableProduct.product_name}
+                                                            {availableProduct.product_name ||
+                                                              availableProduct.productName ||
+                                                              "Unnamed Product"}
                                                           </div>
                                                           <div className="text-gray-500 text-xs">
-                                                            HSN: {availableProduct.hsn_code}
+                                                            HSN:{" "}
+                                                            {availableProduct.hsn_code ||
+                                                              availableProduct.hsnCode ||
+                                                              "N/A"}
                                                           </div>
                                                         </button>
                                                       ),
@@ -1667,11 +1746,14 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
                                               <div className="space-y-2">
                                                 {(product.nonBillable || []).map((item, index) => (
                                                   <div
-                                                    key={item.id || `nb-${index}`} // Use item.id for key
+                                                    key={item.id || `nb-${index}`}
                                                     className="bg-white p-3 rounded border flex items-center justify-between"
                                                   >
                                                     <div className="flex-1">
-                                                      <div className="font-medium">{item.product_name}</div>
+                                                      <div className="font-medium">
+                                                        {item.productName ||
+                                                          getProductNameByReferenceId(item.referenceId, "nonBillable")}
+                                                      </div>
                                                       <div className="text-sm text-gray-500">
                                                         Qty: {item.qty || 0} | Make: {item.make || "N/A"} | MTRs:{" "}
                                                         {(item.materialRequisitions || []).length}
@@ -1772,11 +1854,14 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
                                               <div className="space-y-2">
                                                 {(product.skillSet || []).map((item, index) => (
                                                   <div
-                                                    key={item.id || `ss-${index}`} // Use item.id for key
+                                                    key={item.id || `ss-${index}`}
                                                     className="bg-white p-3 rounded border flex items-center justify-between"
                                                   >
                                                     <div className="flex-1">
-                                                      <div className="font-medium">{item.name}</div>
+                                                      <div className="font-medium">
+                                                        {item.productName ||
+                                                          getProductNameByReferenceId(item.referenceId, "skillSet")}
+                                                      </div>
                                                       <div className="text-sm text-gray-500">
                                                         Qty: {item.qty || 0} | MTRs:{" "}
                                                         {(item.materialRequisitions || []).length}
@@ -1877,11 +1962,14 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
                                               <div className="space-y-2">
                                                 {(product.tools || []).map((item, index) => (
                                                   <div
-                                                    key={item.id || `tool-${index}`} // Use item.id for key
+                                                    key={item.id || `tool-${index}`}
                                                     className="bg-white p-3 rounded border flex items-center justify-between"
                                                   >
                                                     <div className="flex-1">
-                                                      <div className="font-medium">{item.name}</div>
+                                                      <div className="font-medium">
+                                                        {item.productName ||
+                                                          getProductNameByReferenceId(item.referenceId, "tools")}
+                                                      </div>
                                                       <div className="text-sm text-gray-500">
                                                         Qty: {item.qty || 0} | Make: {item.make || "N/A"} | MTRs:{" "}
                                                         {(item.materialRequisitions || []).length}
@@ -1995,16 +2083,8 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
             </div>
           </div>
         )}
-        {showApprovalModal && (
-          <ApprovalModal
-            productId={showApprovalModal.productId}
-            type={showApprovalModal.type}
-            currentStatus={showApprovalModal.currentStatus}
-            currentRemarks={showApprovalModal.currentRemarks}
-            onClose={() => setShowApprovalModal(null)}
-            onSave={() => {}}
-          />
-        )}
+        {/* Approval modal removed - status is display-only in SiteEngineerBOQEditComponent */}
+
         {editingProductModal && (
           <CategoryProductModal
             product={editingProductModal.product}

@@ -314,34 +314,34 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
                           <div>
                             <p className="font-medium text-blue-600">PM Approval:</p>
                             <div className="flex items-center gap-2">
-                              {mtr.boqMtr?.pmApprovalStatus === "APPROVED" && <FiCheck className="text-green-600" />}
-                              {mtr.boqMtr?.pmApprovalStatus === "REJECTED" && <FiXCircle className="text-red-600" />}
+                              {mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED" && <FiCheck className="text-green-600" />}
+                              {mtr.boqMtr?.purchaseManagerApprovalStatus === "REJECTED" && <FiXCircle className="text-red-600" />}
                               <span
                                 className={`font-semibold ${
-                                  mtr.boqMtr?.pmApprovalStatus === "APPROVED"
+                                  mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"
                                     ? "text-green-600"
-                                    : mtr.boqMtr?.pmApprovalStatus === "REJECTED"
+                                    : mtr.boqMtr?.purchaseManagerApprovalStatus === "REJECTED"
                                       ? "text-red-600"
                                       : "text-yellow-600"
                                 }`}
                               >
-                                {mtr.boqMtr?.pmApprovalStatus || "PENDING"}
+                                {mtr.boqMtr?.purchaseManagerApprovalStatus || "PENDING"}
                               </span>
                             </div>
                           </div>
                         </div>
 
-                        {mtr.boqMtr?.pmApprovalStatus && mtr.boqMtr.pmApprovalStatus !== "PENDING" && (
+                        {mtr.boqMtr?.purchaseManagerApprovalStatus && mtr.boqMtr.purchaseManagerApprovalStatus !== "PENDING" && (
                           <div className="mt-4 p-3 bg-gray-50 rounded-lg">
                             <div className="grid grid-cols-2 gap-4 text-sm">
                               <div>
                                 <p className="font-medium text-gray-600">Approval Date:</p>
-                                <p>{formatDate(mtr.boqMtr?.pmApprovalDate)}</p>
+                                <p>{formatDate(mtr.boqMtr?.purchaseManagerApprovalDate)}</p>
                               </div>
-                              {mtr.boqMtr?.pmApprovalRemarks && (
+                              {mtr.boqMtr?.purchaseManagerApprovalStatus && (
                                 <div className="col-span-2">
                                   <p className="font-medium text-gray-600">PM Remarks:</p>
-                                  <p className="text-gray-700">{mtr.boqMtr.pmApprovalRemarks}</p>
+                                  <p className="text-gray-700">{mtr.boqMtr.purchaseManagerApprovalRemarks}</p>
                                 </div>
                               )}
                             </div>
@@ -477,8 +477,9 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
                         <div className="mt-6">
                           <label className="block text-sm font-medium text-amber-700 mb-2">
                             Select Vendor for MTR:
-                          </label>
-                          {mtr.boqMtr?.pmApprovalStatus === "APPROVED" && (
+                            </label>
+                            
+                          {mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED" && (
                             <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-md">
                               <p className="text-sm text-green-700 font-medium">
                                 ✓ Vendor selection is locked - PM has approved the selected vendor
@@ -490,7 +491,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
                             <select
                               value={selectedVendor}
                               onChange={(e) => setSelectedVendor(e.target.value)}
-                              disabled={mtr.boqMtr?.pmApprovalStatus === "APPROVED"}
+                              disabled={mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
                               <option value="">-- Select Vendor --</option>
@@ -524,10 +525,10 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
           </button>
           <button
             onClick={handleSave}
-            disabled={loading || mtr.boqMtr?.pmApprovalStatus === "APPROVED"}
+            disabled={loading || mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {mtr.boqMtr?.pmApprovalStatus === "APPROVED"
+            {mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"
               ? "Vendor Approved - Cannot Modify"
               : loading
                 ? "Saving..."

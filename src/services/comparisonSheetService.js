@@ -63,6 +63,52 @@ export const comparisonSheetService = {
     }
   },
 
+  updatePurchaseManagerApprovalStatus: async (mtrId, status, remarks = "") => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/material-requisitions/${mtrId}/pm-approval`, null, {
+        params: {
+          status: status,
+          remarks: remarks,
+          currentUserId: 1,
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error updating Purchase Manager approval status:", error)
+      throw error
+    }
+  },
+
+  getMTRsByApprovedVendor: async ({ vendorName, assignedPurchaser }) => {
+    try {
+      console.log("[v0] getMTRsByApprovedVendor called with:", { vendorName, assignedPurchaser })
+
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/purchasemanager-approved/vendor`, {
+        params: {
+          purchaserId: assignedPurchaser,
+          vendorName: vendorName,
+        },
+      })
+
+      const mtrs = response.data || []
+      console.log("[v0] Fetched MTRs with vendor match from backend:", mtrs.length)
+      console.log(
+        "[v0] Filtered MTR details:",
+        mtrs.map((mtr) => ({
+          id: mtr.id,
+          mtrCode: mtr.mtrCode,
+          projectName: mtr.projectName,
+          productName: mtr.productName,
+        })),
+      )
+
+      return mtrs
+    } catch (error) {
+      console.error("[v0] Error fetching MTRs by approved vendor:", error)
+      throw error
+    }
+  },
+
   getPurchasers: async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/material-requisitions/employees/purchasers`)
@@ -187,7 +233,7 @@ export const comparisonSheetService = {
     }
   },
 
-  getMTRsByApprovedVendor: async ({ vendorName, assignedPurchaser }) => {
+ /*  getMTRsByApprovedVendor: async ({ vendorName, assignedPurchaser }) => {
     try {
       console.log("getMTRsByApprovedVendor called with:", { vendorName, assignedPurchaser })
       console.log("vendorName type:", typeof vendorName)
@@ -266,7 +312,7 @@ export const comparisonSheetService = {
 
       throw error
     }
-  },
+  }, */
 
   uploadPOForMTRs: async (formData) => {
     try {
@@ -282,6 +328,7 @@ export const comparisonSheetService = {
         const poNumber = formData.get("poNumber")
         const fileName = formData.get("file")?.name || "Unknown"
         const mtrIds = formData.getAll("mtrIds")
+        const currentUserId = formData.get("currentUserId")
 
         // Store PO info for each MTR
         mtrIds.forEach((mtrId) => {
@@ -290,6 +337,7 @@ export const comparisonSheetService = {
             fileName: fileName,
             uploadDate: new Date().toISOString(),
             approvalStatus: "PENDING",
+            currentUserId: currentUserId,
           }
         })
 
@@ -415,12 +463,12 @@ export const comparisonSheetService = {
     }
   },
 
-  approvePO: async (poId, approvalStatus, remarks = "") => {
+  approvePO: async (poId, approvalStatus, remarks = "",currentUserId) => {
     try {
       const response = await axios.put(`${API_BASE_URL}/material-requisitions/purchase-orders/${poId}/approval`, {
         approvalStatus: approvalStatus,
         approvalRemarks: remarks,
-        currentUserId: 1,
+        currentUserId: currentUserId,
       })
       return response.data
     } catch (error) {

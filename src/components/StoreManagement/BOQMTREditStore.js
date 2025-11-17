@@ -227,7 +227,7 @@ function BOQMTREditStore({ projectId, projectName, existingBOQ, onSave, onClose 
 
   const fetchSkillsets = async () => {
     try {
-      const response = await storeService.getSkillSetList()
+      const response = await storeService.getSkillSets()
       console.log("Skillsets API Raw Response:", response)
       let skillsetsData = []
       if (Array.isArray(response)) {
@@ -253,7 +253,7 @@ function BOQMTREditStore({ projectId, projectName, existingBOQ, onSave, onClose 
 
   const fetchTools = async () => {
     try {
-      const response = await storeService.getToolsList()
+      const response = await storeService.getTools()
       console.log("Tools API Raw Response:", response)
       let toolsData = []
       if (Array.isArray(response)) {

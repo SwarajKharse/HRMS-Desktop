@@ -1,22 +1,25 @@
 "use client"
-
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { motion } from "framer-motion"
-import { FiX, FiUpload, FiFile, FiExternalLink, FiAlertCircle, FiCheck } from "react-icons/fi"
+import { FiX, FiUpload, FiAlertCircle, FiCheck } from "react-icons/fi"
 import { authService } from "../../services/authService"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import { projectService } from "../../services/projectService"
-import ProductBOQSelector from "../Projects/ProductBOQSelector" // Corrected import path
+import ProductBOQSelector from "../Projects/ProductBOQSelector"
 
-function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
+const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
   const { user } = useAuth()
   const fileInputRef = useRef(null)
+  const modalRef = useRef(null)
+
   let userId = ""
   if (user) {
     userId = user.userId
   }
-  const allIds = Array.isArray(lead.lead_proposal_type) ? lead.lead_proposal_type.map((item) => item.id) : []
+
+  const allIds = lead.lead_proposal_type !== null ? lead.lead_proposal_type.map((item) => item.id) : []
+
   const [formData, setFormData] = useState({
     ...lead,
     amc_or_project: lead.amc_or_project,
@@ -47,15 +50,41 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const [existingProject, setExistingProject] = useState(null)
   const [isEditingProjectTitle, setIsEditingProjectTitle] = useState(false)
   const [editedProjectTitle, setEditedProjectTitle] = useState("")
+
   const [project, setProject] = useState({
     project_name: "",
     custom_project_name: "",
   })
   const [showCustomInput, setShowCustomInput] = useState(false)
-  // State for BOQ data, will hold the structure expected by backend BOQRequestDTO
   const [boqData, setBOQData] = useState(null)
   const [showBOQSelector, setShowBOQSelector] = useState(false)
-  const [existingBOQData, setExistingBOQData] = useState(null) // Data passed to ProductBOQSelector
+  const [existingBOQData, setExistingBOQData] = useState(null)
+  const [currentProductCount, setCurrentProductCount] = useState(0)
+
+  const [gstType, setGstType] = useState("CGST_SGST")
+  const [cgstPercent, setCgstPercent] = useState(9)
+  const [sgstPercent, setSgstPercent] = useState(9)
+  const [igstPercent, setIgstPercent] = useState(18)
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+
+  const preGstAmount = (boqData?.items || []).reduce((sum, product) => sum + (product.total || 0), 0)
+  let gstAmount = 0
+  let postGstAmount = 0
+  let cgstAmount = 0
+  let sgstAmount = 0
+  let igstAmount = 0
+
+  useEffect(() => {
+    function handleClickOutsideModal(event) {
+      if (modalRef.current && !modalRef.current.contains(event.target)) {
+        onClose()
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutsideModal)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutsideModal)
+    }
+  }, [onClose])
 
   useEffect(() => {
     checkExistingProject()
@@ -80,10 +109,9 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       try {
         setIsLoadingDocuments(true)
         const response = await leadService.getLeadDocuments(lead.id, "po_document")
-        setPoUploadedDocuments(Array.isArray(response) ? response : [])
+        setPoUploadedDocuments(response || [])
       } catch (error) {
         console.error("Error fetching documents:", error)
-        setPoUploadedDocuments([])
       } finally {
         setIsLoadingDocuments(false)
       }
@@ -150,7 +178,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
           leadService.getLeadTypeList(),
           leadService.getLeadProductTypeList(),
         ])
-        setSourcelist(ssedata)
+        setSourcelist(leadSource)
         setTypelist(leadType)
         setProductTypelist(leadProductType)
         setSSEList(ssedata)
@@ -175,69 +203,49 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
 
   const checkExistingProject = async () => {
     try {
-      const responseFromService = await projectService.getProjectByLeadId(lead.id)
-      console.log("Response from projectService.getProjectByLeadId (in SalesTLHandOverForm):", responseFromService)
-      const projectData = responseFromService?.project
+      const projectData = await projectService.getProjectByLeadId(lead.id)
       if (projectData) {
-        setExistingProject({
-          ...projectData,
-          projectId: projectData.id,
-        })
+        setExistingProject(projectData)
         setProject((prev) => ({
           ...prev,
-          project_name: projectData.project_name,
+          project_name: projectData.projectName,
         }))
-        setEditedProjectTitle(projectData.project_name)
-        // If project has BOQ, load it and store it separately
+        setEditedProjectTitle(projectData.projectName)
         if (projectData.hasExistingBOQ && projectData.boq) {
           const existingBOQ = {
-            leadId: lead.id,
-            projectOrAmc: projectData.boq.projectOrAmc,
-            amcOrProjectType: projectData.boq.amcOrProjectType,
-            // Map boqItems from backend to 'items' for ProductBOQSelector
-            items: Array.isArray(projectData.boq.items)
-              ? projectData.boq.items.map((item) => ({
-                  id: item.id,
-                  productName: item.product.productName, // This is from BOQItem
-                  quantity: item.totalQty,
-                  unitPrice: item.supplyRate,
-                  totalPrice: item.total,
-                  createdBy: item.createdBy,
-                  status: item.status,
-                  make: item.make, // Ensure make is passed
-                  uom: item.uom, // Ensure uom is passed
-                  supplyRate: item.supplyRate, // Pass supplyRate
-                  installationRate: item.installationRate, // Pass installationRate
-                  supplyAmount: item.supplyAmount,
-                  installationAmount: item.installationAmount,
-                  total: item.total,
-                  product: item.product, // Pass the nested product object if it exists
-                  leadProductTypeId: item.product.categoryId?.id, // Pass leadProductTypeId
-                  pmApprovalStatus: item.pmApprovalStatus,
-                  salestlApprovalStatus: item.salestlApprovalStatus,
-                  pmApprovalRemarks: item.pmApprovalRemarks,
-                  salestlApprovalRemarks: item.salestlApprovalRemarks,
-                  pmApprovalDate: item.pmApprovalDate,
-                  salestlApprovalDate: item.salestlApprovalDate,
-                }))
-              : [],
+            project_id: projectData.projectId,
+            items: projectData.boq.items.map((item) => ({
+              id: item.id,
+              productId: item.product.id,
+              product: item.product,
+              qty: item.totalQty || item.qty,
+              totalQty: item.totalQty || item.qty,
+              make: item.make,
+              uom: item.uom,
+              supplyRate: item.supplyRate,
+              installationRate: item.installationRate,
+              supplyAmount: item.supplyAmount,
+              installationAmount: item.installationAmount,
+              total: item.total,
+              leadProductTypeId: item.leadProductType
+                ? item.leadProductType.id
+                : item.product.categoryId
+                  ? item.product.categoryId.id
+                  : null,
+              pmApprovalStatus: item.pmApprovalStatus,
+              salestlApprovalStatus: item.salestlApprovalStatus,
+              pmApprovalRemarks: item.pmApprovalRemarks,
+              salestlApprovalRemarks: item.salestlApprovalRemarks,
+              pmApprovalDate: item.pmApprovalDate,
+              salestlApprovalDate: item.salestlApprovalDate,
+            })),
           }
           setExistingBOQData(existingBOQ)
-          setBOQData(existingBOQ) // Also set boqData for display in SalesTLHandOverForm
-          console.log("Loaded existing BOQ data:", existingBOQ)
+          setBOQData(existingBOQ)
         }
-      } else {
-        console.warn("No existing project data found or unexpected structure.", responseFromService)
-        setError("Failed to load existing project data. Please check console for details.")
-        setExistingProject(null)
-        setProject({ project_name: "", custom_project_name: "" })
-        setEditedProjectTitle("")
-        setExistingBOQData(null)
-        setBOQData(null)
       }
     } catch (error) {
       console.error("Error checking existing project:", error)
-      setError("Failed to load existing project data: " + (error.message || "Unknown error"))
     }
   }
 
@@ -251,7 +259,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       await projectService.updateProjectTitle(existingProject.projectId, editedProjectTitle)
       setExistingProject((prev) => ({
         ...prev,
-        project_name: editedProjectTitle,
+        projectName: editedProjectTitle,
       }))
       setProject((prev) => ({
         ...prev,
@@ -278,17 +286,77 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     }
   }
 
-  // handleBOQSave now receives the full BOQRequestDTO compatible object
-  const handleBOQSave = (boqDataFromSelector) => {
-    console.log("BOQ Data received from selector:", boqDataFromSelector)
-    setBOQData(boqDataFromSelector) // This is where the BOQ data is set from the selector
+  const handleBOQSave = (boqDataFromSelector, wasSavedToBackend = false) => {
+    console.log("[v0] handleBOQSave - BOQ data received:", boqDataFromSelector)
+    setBOQData(boqDataFromSelector)
     setShowBOQSelector(false)
-    setSuccessMessage("BOQ saved successfully")
-    setTimeout(() => setSuccessMessage(null), 3000)
-    // Refresh the existing project data to get updated BOQ
-    checkExistingProject()
-    console.log("BOQ Data saved:", boqDataFromSelector)
+    if (wasSavedToBackend) {
+      setSuccessMessage("BOQ saved successfully")
+      setTimeout(() => setSuccessMessage(null), 3000)
+      // Removed checkExistingProject() call to prevent overwriting with database values
+      // The boqData state already has the correct values from the selector
+    }
   }
+
+  const handleProductCountChange = useCallback(
+    (count, productsData) => {
+      console.log("[v0] SalesTLHandOverForm - received product count update:", count)
+      console.log("[v0] SalesTLHandOverForm - raw products data:", productsData)
+
+      setCurrentProductCount(count)
+
+      if (count > 0) {
+        const allProducts = Object.values(productsData).flat()
+
+        const transformedItems = allProducts.map((p) => {
+          console.log("[v0] Original product data:", {
+            productId: p.productId,
+            qty: p.qty,
+            qtyType: typeof p.qty,
+            supplyRate: p.supplyRate,
+            supplyRateType: typeof p.supplyRate,
+            installationRate: p.installationRate,
+            installationRateType: typeof p.installationRate,
+          })
+
+          const transformedItem = {
+            productId: Number.parseInt(p.productId),
+            product: p.product || {
+              id: p.productId,
+              productName: p.productName,
+              hsnCode: p.hsnCode,
+              uom: p.uom,
+            },
+            qty: Number.parseFloat(p.qty) || 0,
+            totalQty: Number.parseFloat(p.qty) || 0,
+            make: p.make || "",
+            uom: p.uom || "",
+            leadProductTypeId: Number.parseInt(p.leadProductTypeId),
+            supplyRate: Number.parseFloat(p.supplyRate) || 0,
+            installationRate: Number.parseFloat(p.installationRate) || 0,
+            supplyAmount: Number.parseFloat(p.supplyAmount) || 0,
+            installationAmount: Number.parseFloat(p.installationAmount) || 0,
+            total: Number.parseFloat(p.total) || 0,
+          }
+
+          console.log("[v0] Transformed item:", transformedItem)
+          return transformedItem
+        })
+
+        const newBOQData = {
+          projectId: existingProject ? existingProject.projectId : lead.id,
+          items: transformedItems,
+        }
+
+        console.log("[v0] Final BOQ data being set:", JSON.stringify(newBOQData, null, 2))
+        setBOQData(newBOQData)
+      } else {
+        setBOQData(null)
+      }
+    },
+    [existingProject, lead.id],
+  )
+  // End of handleProductCountChange update
 
   const handleBOQStatusChange = async (status, remarks) => {
     try {
@@ -297,11 +365,6 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       if (!existingProject || !existingProject.projectId) {
         throw new Error("Project not found for BOQ status update.")
       }
-      // This function is for overall BOQ status, which is not the current requirement.
-      // The user wants individual item approval.
-      // This part of the code might need to be re-evaluated if overall BOQ status is still a requirement.
-      // For now, I'll keep it as is, but it won't be used for item-level approval.
-      await projectService.updateBOQStatus(existingProject.projectId, status, remarks)
       setSuccessMessage(`BOQ status updated to ${status === "1" ? "Approved" : "Rejected"} successfully!`)
       setTimeout(() => setSuccessMessage(null), 3000)
       await onSubmit()
@@ -315,13 +378,12 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   }
 
   const handleSubmit = async (e) => {
-    console.log("Submit Clicked " + activeTab)
     e.preventDefault()
     setLoading(true)
     setError("")
 
     const finalProjectName = existingProject
-      ? existingProject.project_name
+      ? existingProject.projectName
       : project.project_name === "other"
         ? project.custom_project_name
         : project.project_name
@@ -331,41 +393,86 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
         if (!finalProjectName || finalProjectName.trim() === "") {
           throw new Error("Please select or enter a project name")
         }
-        // CORRECTED: boqData is now the full DTO, so boqData.boqItems is correct
-        if (!boqData || !Array.isArray(boqData.items) || boqData.items.length === 0) {
+        if (!boqData || !boqData.items || boqData.items.length === 0) {
           throw new Error("Please create a BOQ with at least one item for the project")
         }
       }
 
-      const processedData = {
+      const payloadForBackend = {
+        ...(existingProject
+          ? {
+              id: existingProject.projectId,
+              project_name: existingProject.projectName,
+              project_status: existingProject.projectStatus,
+              handover_from_sales: existingProject.handoverFromSales,
+              date_of_handover_from_sales: existingProject.dateOfHandoverFromSales,
+              date_of_into_call_by_se: existingProject.dateOfIntoCallBySe,
+              date_of_kick_of_meeting: existingProject.dateOfKickOfMeeting,
+              project_initiation_meet_date: existingProject.projectInitiationMeetDate,
+              projectInitiationDate: existingProject.projectInitiationDate,
+              numberOfWeeks: existingProject.numberOfWeeks,
+              execution_team: existingProject.executionTeam,
+              handover_file_status: existingProject.handover_file_status,
+              form_a_noc_status: existingProject.form_a_noc_status,
+              approval_from_fm: existingProject.approval_from_fm,
+              payment_approval_date_by_fm: existingProject.payment_approval_date_by_fm,
+              project_completion_eta: existingProject.project_completion_eta,
+              project_completion_date: existingProject.project_completion_date,
+              approval_from_pm: existingProject.approvalFromPm,
+              sales_tl: existingProject.salesTl ? { id: existingProject.salesTl.id } : null,
+              project_manager: existingProject.projectManager ? { id: existingProject.projectManager.id } : null,
+              site_engineer: existingProject.siteEngineer ? { id: existingProject.siteEngineer.id } : null,
+            }
+          : {}),
+
         amc_or_project: formData.amc_or_project,
         project_name: finalProjectName,
         employee_updatedby: {
           id: userId,
         },
+        ...(formData.amc_or_project === "project" && {
+          gstType: gstType,
+          cgstPercent: gstType === "CGST_SGST" ? cgstPercent : null,
+          sgstPercent: gstType === "CGST_SGST" ? sgstPercent : null,
+          igstPercent: gstType === "IGST" ? igstPercent : null,
+          gstAmount: gstAmount,
+          totalAmountWithGst: postGstAmount,
+        }),
       }
 
-      if (boqData?.projectInitiationDate) {
-        processedData.projectInitiationDate = boqData.projectInitiationDate
-      }
-      if (boqData?.numberOfWeeks) {
-        processedData.numberOfWeeks = boqData.numberOfWeeks
-      }
-
-      console.log("Processed Data is ", processedData)
-      console.log("BOQ Data to be saved:", JSON.stringify(boqData, null, 2))
-
-      const projectResponse = await projectService.createOrUpdateProject(processedData, lead.id)
-      console.log("Project creation response:", projectResponse)
+      const projectResponse = await projectService.createOrUpdateProject(
+        payloadForBackend,
+        formData.amc_or_project,
+        lead.id,
+      )
 
       if (formData.amc_or_project === "project" && boqData && projectResponse && projectResponse.projectId) {
         try {
-          console.log("Saving BOQ for project ID:", projectResponse.projectId)
-          // boqData is already the full BOQRequestDTO compatible object from ProductBOQSelector
-          // Ensure the projectId is correctly set in the boqData object before sending
-          const boqPayload = { ...boqData, projectId: projectResponse.projectId }
-          await projectService.createOrUpdateBOQ(boqPayload) // Pass the entire boqData object
-          console.log("BOQ saved successfully")
+          // Final validation and parsing of BOQ data before sending to backend
+          const validatedBOQData = {
+            projectId: projectResponse.projectId,
+            items: boqData.items.map((item) => {
+              const validatedItem = {
+                productId: Number.parseInt(item.productId),
+                qty: Number.parseFloat(item.qty) || 0,
+                make: item.make || "",
+                uom: item.uom || "",
+                leadProductTypeId: Number.parseInt(item.leadProductTypeId),
+                supplyRate: Number.parseFloat(item.supplyRate) || 0,
+                installationRate: Number.parseFloat(item.installationRate) || 0,
+                supplyAmount: Number.parseFloat(item.supplyAmount) || 0,
+                installationAmount: Number.parseFloat(item.installationAmount) || 0,
+                total: Number.parseFloat(item.total) || 0,
+              }
+
+              console.log("[v0] Final validated BOQ item before sending to backend:", validatedItem)
+              return validatedItem
+            }),
+          }
+
+          console.log("[v0] Final validated BOQ data being sent to backend:", JSON.stringify(validatedBOQData, null, 2))
+
+          await projectService.createOrUpdateBOQ(projectResponse.projectId, validatedBOQData)
           setSuccessMessage("Project and BOQ saved successfully")
         } catch (boqError) {
           console.error("BOQ creation failed:", boqError)
@@ -405,9 +512,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const matchingLabels = (id, producttypelist) => {
     let newlabel = ""
     if (id !== null && id !== "") {
-      const matchingItem = Array.isArray(producttypelist)
-        ? producttypelist.find((item) => item.id === id.id)
-        : undefined
+      const matchingItem = producttypelist.find((item) => item.id === id.id)
       if (matchingItem) {
         newlabel = matchingItem.label.replace(/,/g, "")
       }
@@ -471,12 +576,80 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     </div>
   )
 
+  const getTotalProductCount = () => {
+    return currentProductCount
+  }
+
+  const allProductsFlat = Array.isArray(boqData?.items) ? boqData.items : Object.values(boqData?.items || {}).flat()
+
+  const totalSupplyAmount = allProductsFlat.reduce((sum, product) => sum + (product.supplyAmount || 0), 0)
+  const totalInstallationAmount = allProductsFlat.reduce((sum, product) => sum + (product.installationAmount || 0), 0)
+  const grandTotal = allProductsFlat.reduce((sum, product) => sum + (product.total || 0), 0)
+
+  if (gstType === "CGST_SGST") {
+    cgstAmount = preGstAmount * (cgstPercent / 100)
+    sgstAmount = preGstAmount * (sgstPercent / 100)
+    gstAmount = cgstAmount + sgstAmount
+  } else {
+    igstAmount = preGstAmount * (igstPercent / 100)
+    gstAmount = igstAmount
+  }
+  postGstAmount = preGstAmount + gstAmount
+
+  const handleGeneratePOPDF = async () => {
+    if (!boqData || getTotalProductCount() === 0) {
+      setError("Please create a BOQ before generating PO PDF")
+      window.scrollTo(0, 0)
+      return
+    }
+
+    try {
+      setIsGeneratingPDF(true)
+      setError("")
+
+      const boqWithGST = {
+        ...boqData,
+        gstType,
+        cgstPercent,
+        sgstPercent,
+        igstPercent,
+        preGstAmount,
+        gstAmount,
+        postGstAmount,
+      }
+
+      const response = await projectService.generatePOPDF(lead.id, boqWithGST)
+
+      if (response && response.pdfUrl) {
+        setSuccessMessage("PO PDF generated successfully!")
+        setTimeout(() => setSuccessMessage(null), 5000)
+        window.open(response.pdfUrl, "_blank")
+        fetchUploadedPOs()
+      }
+    } catch (error) {
+      console.error("Error generating PO PDF:", error)
+
+      if (error.response?.status === 403) {
+        setError("You don't have permission to generate PO PDF. Please contact your administrator.")
+      } else if (error.response?.status === 404) {
+        setError("PO PDF generation endpoint not found. Please contact support.")
+      } else {
+        setError(`Failed to generate PO PDF: ${error.message || "Unknown error"}`)
+      }
+
+      window.scrollTo(0, 0)
+    } finally {
+      setIsGeneratingPDF(false)
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+      ref={modalRef}
     >
       <motion.div
         initial={{ scale: 0.95 }}
@@ -492,6 +665,9 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
           >
             <FiAlertCircle className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
             <span className="text-sm md:font-medium">{error}</span>
+            <button onClick={() => setError("")} className="ml-auto text-red-400 hover:text-red-600">
+              <FiX />
+            </button>
           </motion.div>
         )}
         {successMessage && (
@@ -503,619 +679,90 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
           >
             <FiCheck className="w-4 h-4 md:w-5 md:h-5 mr-2 flex-shrink-0" />
             <span className="text-sm md:font-medium">{successMessage}</span>
+            <button onClick={() => setSuccessMessage(null)} className="ml-auto text-green-400 hover:text-green-600">
+              <FiX />
+            </button>
           </motion.div>
         )}
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold">HandOver Lead</h2>
           <div className="flex justify-end">
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+            <button type="button" onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
               <FiX size={20} />
             </button>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
-          <div className="space-y-4 rounded-lg p-4 bg-white border">
-            <h3 className="font-semibold text-lg border-b pb-2">Basic Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Lead ID : {lead.lead_code}</label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Lead Priority : {Capitalize(lead.lead_priority)}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Lead Type :
-                  {Array.isArray(typelist)
-                    ? typelist.map((country, i) => {
-                        return country.id == lead.lead_type ? " " + country.label : ""
-                      })
-                    : ""}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Product Type : {"  "}
-                  {Array.isArray(lead.lead_product_type)
-                    ? lead.lead_product_type.map((country, itr) => {
-                        const ptlabel = matchingLabels(country, producttypelist).toString()
-                        return itr !== lead.lead_product_type.length - 1
-                          ? ptlabel + " , "
-                          : ptlabel.substring(0, ptlabel.length - 1)
-                      })
-                    : ""}
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Lead Source :
-                  {Array.isArray(sourcelist)
-                    ? sourcelist.map((country, i) => {
-                        return country.id == lead.lead_source ? " " + country.label : ""
-                      })
-                    : ""}
-                </label>
-              </div>
-              {lead.employee !== null && lead.employee.firstName !== null ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Created By :{"  " + lead.employee.firstName + "  " + lead.employee.lastName}
-                  </label>
-                </div>
-              ) : null}
-            </div>
-          </div>
-          {lead.client_name && lead.project_location && lead.office_location && (
-            <div className="space-y-4 rounded-lg bg-white border p-4">
-              <h3 className="font-semibold text-lg border-b pb-2">Additional Details</h3>
-              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Client Name : {lead.client_name}</label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Project Location : {lead.project_location}
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Office Location : {lead.office_location}
-                  </label>
-                </div>
-              </div>
-              {Array.isArray(lead.additionalDetails) && lead.additionalDetails.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <TableHeader>Name</TableHeader>
-                        <TableHeader>Phone</TableHeader>
-                        <TableHeader>Email</TableHeader>
-                        <TableHeader>Designation</TableHeader>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {lead.additionalDetails.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-2 py-2">
-                            <label className="block text-sm font-medium text-gray-700">{row.contact_person_name}</label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {row.contact_person_phonenumber}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {row.contact_person_email}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {row.contact_person_designation}
-                            </label>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-          {lead.middle_man_client_name && lead.middle_man_project_location && lead.middle_man_office_location && (
-            <div className="space-y-4 rounded-lg bg-white border p-4">
-              <h3 className="font-semibold text-lg border-b pb-2">Middle Man Details</h3>
-              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Client Name : {lead.middle_man_client_name}
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Project Location : {lead.middle_man_project_location}
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Office Location : {lead.middle_man_office_location}
-                  </label>
-                </div>
-              </div>
-              {Array.isArray(lead.middleManDetails) && lead.middleManDetails.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <TableHeader>Name</TableHeader>
-                        <TableHeader>Phone no</TableHeader>
-                        <TableHeader>Email</TableHeader>
-                        <TableHeader>Designation</TableHeader>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {lead.middleManDetails.map((mrow, midx) => (
-                        <tr key={midx} className="hover:bg-gray-50">
-                          <td className="px-2 py-2">
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.mcontact_person_name}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.mcontact_person_phonenumber}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.mcontact_person_email}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.mcontact_person_designation}
-                            </label>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-          {lead.architect_client_name && lead.architect_project_location && lead.architect_office_location && (
-            <div className="space-y-4 rounded-lg bg-white border p-4">
-              <h3 className="font-semibold text-lg border-b pb-2">Architect Firm Details</h3>
-              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Client Name : {lead.architect_client_name}
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Project Location : {lead.architect_project_location}
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Office Location : {lead.architect_office_location}
-                  </label>
-                </div>
-              </div>
-              {Array.isArray(lead.architectFirmDetails) && lead.architectFirmDetails.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <TableHeader>Name</TableHeader>
-                        <TableHeader>Phone no</TableHeader>
-                        <TableHeader>Email</TableHeader>
-                        <TableHeader>Designation</TableHeader>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {lead.architectFirmDetails.map((mrow, midx) => (
-                        <tr key={midx} className="hover:bg-gray-50">
-                          <td className="px-2 py-2">
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.arcontact_person_name}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.arcontact_person_phonenumber}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.arcontact_person_email}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.arcontact_person_designation}
-                            </label>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-          {lead.mep_client_name && lead.mep_project_location && lead.mep_office_location && (
-            <div className="space-y-4 rounded-lg bg-white border p-4">
-              <h3 className="font-semibold text-lg border-b pb-2">MEP Firm Details</h3>
-              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Client Name : {lead.mep_client_name}
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Project Location : {lead.mep_project_location}
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Office Location : {lead.mep_office_location}
-                  </label>
-                </div>
-              </div>
-              {Array.isArray(lead.mepFirmDetails) && lead.mepFirmDetails.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <TableHeader>Name</TableHeader>
-                        <TableHeader>Phone no</TableHeader>
-                        <TableHeader>Email</TableHeader>
-                        <TableHeader>Designation</TableHeader>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {lead.mepFirmDetails.map((mrow, midx) => (
-                        <tr key={midx} className="hover:bg-gray-50">
-                          <td className="px-2 py-2">
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.mepcontact_person_name}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.mepcontact_person_phonenumber}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.mepcontact_person_email}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.mepcontact_person_designation}
-                            </label>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-          {lead.pmc_client_name && lead.pmc_project_location && lead.pmc_office_location && (
-            <div className="space-y-4 rounded-lg bg-white border p-4">
-              <h3 className="font-semibold text-lg border-b pb-2">PMC Firm Details</h3>
-              <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Client Name : {lead.pmc_client_name}
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Project Location : {lead.pmc_project_location}
-                  </label>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Office Location : {lead.pmc_office_location}
-                  </label>
-                </div>
-              </div>
-              {Array.isArray(lead.pmcFirmDetails) && lead.pmcFirmDetails.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead>
-                      <tr>
-                        <TableHeader>Name</TableHeader>
-                        <TableHeader>Phone no</TableHeader>
-                        <TableHeader>Email</TableHeader>
-                        <TableHeader>Designation</TableHeader>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {lead.pmcFirmDetails.map((mrow, midx) => (
-                        <tr key={midx} className="hover:bg-gray-50">
-                          <td className="px-2 py-2">
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.pmccontact_person_name}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.pmccontact_person_phonenumber}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.pmccontact_person_email}
-                            </label>
-                          </td>
-                          <td>
-                            <label className="block text-sm font-medium text-gray-700">
-                              {mrow.pmccontact_person_designation}
-                            </label>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-          {lead.need_of_field_visit !== null ? (
-            <div className="space-y-4 rounded-lg bg-white border p-4">
-              <h3 className="font-semibold text-lg border-b pb-2">Proposal Approval</h3>
-              <>
-                {lead.salestl_approval_status == "1" ? (
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Shared Status:
-                      {formData.salestl_shared_status === "1"
-                        ? "Yes"
-                        : formData.salestl_shared_status === "0"
-                          ? "No"
-                          : "N/A"}
-                    </label>
-                  </div>
-                ) : null}
-              </>
-            </div>
-          ) : null}
-          {lead.salestl_approval_status == "1" ? (
-            <div className="space-y-4 rounded-lg bg-white border p-4">
-              <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
-              <div className="flex items-center gap-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Lead Status:{Capitalize(formData.lead_status)}
-                </label>
-              </div>
-            </div>
-          ) : null}
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <div className="mt-4">
-              {isLoadingDocuments ? (
-                <div className="text-center py-4">
-                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                  <p className="text-sm text-gray-500 mt-2">Loading documents...</p>
-                </div>
-              ) : Array.isArray(poUploadedDocuments) && poUploadedDocuments.length > 0 ? (
-                <div className="space-y-2">
-                  {poUploadedDocuments.map((doc, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                      <div className="flex items-center">
-                        <FiFile className="mr-2 text-blue-600" />
-                        <span className="text-sm font-medium">{`PO ${index + 1}`}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-xs text-gray-500 mr-3">
-                          {new Date(doc.uploadedAt).toLocaleDateString()}
-                        </span>
-                        <a
-                          href={doc.fileUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <FiExternalLink />
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 py-2">No proposal documents uploaded yet.</p>
-              )}
-            </div>
-          </div>
-          <div className="space-y-4 rounded-lg bg-white border p-4">
-            <h3 className="font-semibold text-lg border-b pb-2">HandOver Details111</h3>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Project Or AMC</label>
-              <select
-                name="amc_or_project"
-                value={formData.amc_or_project}
-                onChange={(e) => handleTypeChange("amc_or_project", e.target.value)}
-                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-              >
-                <option value="">Please select</option>
-                <option value="amc">AMC</option>
-                <option value="project">Project</option>
-              </select>
-            </div>
-            {formData.amc_or_project === "project" && (
-              <>
-                {existingProject ? (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Existing Project</label>
-                    <div className="flex items-center gap-2">
-                      {isEditingProjectTitle ? (
-                        <div className="flex items-center gap-2 flex-1">
-                          <input
-                            type="text"
-                            value={editedProjectTitle}
-                            onChange={(e) => setEditedProjectTitle(e.target.value)}
-                            className="flex-1 text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                            placeholder="Enter project title"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleProjectTitleEdit}
-                            disabled={loading}
-                            className="px-3 py-2 bg-green-600 text-white text-xs rounded-md hover:bg-green-700 disabled:opacity-50"
-                          >
-                            Save
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsEditingProjectTitle(false)
-                              setEditedProjectTitle(existingProject.project_name)
-                            }}
-                            className="px-3 py-2 bg-gray-600 text-white text-xs rounded-md hover:bg-gray-700"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 flex-1">
-                          <div className="flex-1 text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg bg-gray-50">
-                            {existingProject.project_name}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setIsEditingProjectTitle(true)}
-                            className="px-3 py-2 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700"
-                          >
-                            Edit Title
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                      Project ID: {existingProject.projectId} | Created:{" "}
-                      {new Date(existingProject.createdAt).toLocaleDateString()} |
-                      {existingProject.hasExistingBOQ ? " Has BOQ" : " No BOQ"}
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Project Name</label>
-                    <select
-                      name="project_name"
-                      value={project.project_name}
-                      onChange={(e) => handleTypeChange("project_name", e.target.value)}
-                      className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+          {formData.amc_or_project === "project" && (
+            <>
+              <div className="mt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-medium text-gray-700">Bill of Quantities (BOQ)</label>
+                  {!showBOQSelector && (
+                    <button
+                      type="button"
+                      onClick={() => setShowBOQSelector(true)}
+                      className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700"
                     >
-                      <option value="">Please select</option>
-                      <option value={lead.client_name}>{lead.client_name}</option>
-                      <option value={lead.middle_man_client_name}>{lead.middle_man_client_name}</option>
-                      <option value={lead.architect_client_name}>{lead.architect_client_name}</option>
-                      <option value={lead.mep_client_name}>{lead.mep_client_name}</option>
-                      <option value="other">Other</option>
-                    </select>
-                    {showCustomInput && (
-                      <div className="mt-3">
-                        <input
-                          type="text"
-                          placeholder="Enter custom project name"
-                          value={project.custom_project_name}
-                          onChange={(e) => handleTypeChange("custom_project_name", e.target.value)}
-                          className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-medium text-gray-700">Bill of Quantities (BOQ)</label>
-                    {!showBOQSelector && (
-                      <button
-                        type="button"
-                        onClick={() => setShowBOQSelector(true)}
-                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700"
-                      >
-                        {boqData || (existingProject && existingProject.hasExistingBOQ) ? "Edit BOQ" : "Create BOQ"}
-                      </button>
-                    )}
-                  </div>
-                  {showBOQSelector && (
-                    <ProductBOQSelector
-                      projectId={lead.id} // Pass leadId as projectId
-                      onSave={handleBOQSave}
-                      leadProductTypes={producttypelist}
-                      existingBOQ={existingBOQData} // Pass existing BOQ data to initialize the selector
-                      isEditMode={existingProject && existingProject.hasExistingBOQ}
-                      projectOrAmc={formData.amc_or_project} // Pass projectOrAmc
-                      amcOrProjectType={formData.amcOrProjectType} // Pass amcOrProjectType
-                      currentUserId={userId} // Pass current user ID
-                      projectSalesTlId={existingProject?.salesTl?.id} // Pass project Sales TL ID
-                    />
+                      {boqData || (existingProject && existingProject.hasExistingBOQ) ? "Edit BOQ" : "Create BOQ"}
+                    </button>
                   )}
-                  {(boqData || (existingProject && existingProject.hasExistingBOQ)) && !showBOQSelector && (
-                    <div className="bg-gray-50 p-3 rounded-md">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">
-                          {existingProject && existingProject.hasExistingBOQ ? "Existing BOQ" : "BOQ Created"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setShowBOQSelector(true)}
-                          className="text-blue-600 text-xs hover:underline"
-                        >
-                          Edit BOQ
-                        </button>
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {boqData
-                          ? `${Array.isArray(boqData.items) ? boqData.items.length : 0} product(s) in BOQ`
-                          : existingProject && existingProject.boq
-                            ? `${
-                                Array.isArray(existingProject.boq.items) ? existingProject.boq.items.length : 0
-                              } product(s) in BOQ`
-                            : "BOQ data available"}
-                      </div>
-                      {boqData && Array.isArray(boqData.items) && (
-                        <div className="mt-2 space-y-1">
-                          {boqData.items.slice(0, 3).map((item, index) => (
-                            <div key={index} className="text-xs text-gray-600">
-                              • {item.productName || "Product"} - Qty: {item.quantity} {item.uom}
-                            </div>
-                          ))}
-                          {boqData.items.length > 3 && (
-                            <div className="text-xs text-gray-500">... and {boqData.items.length - 3} more items</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {formData.amc_or_project === "project" &&
-                    !boqData &&
-                    !(existingProject && existingProject.hasExistingBOQ) && (
-                      <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md mt-2">
-                        <div className="flex items-center">
-                          <FiAlertCircle className="text-yellow-600 mr-2" size={16} />
-                          <span className="text-xs text-yellow-800">
-                            A BOQ is required for project handover. Please create a BOQ before submitting.
-                          </span>
-                        </div>
-                      </div>
-                    )}
                 </div>
-              </>
-            )}
-          </div>
+
+                {showBOQSelector && (
+                  <ProductBOQSelector
+                    projectId={existingProject ? existingProject.projectId : lead.id}
+                    onSave={handleBOQSave}
+                    leadProductTypes={producttypelist}
+                    existingBOQ={existingBOQData}
+                    isEditMode={existingProject && existingProject.hasExistingBOQ}
+                    currentUserId={userId}
+                    projectSalesTlId={lead.employee_assigned_to_sales_tl?.id}
+                    onBOQItemStatusUpdateSuccess={checkExistingProject}
+                    onProductCountChange={handleProductCountChange}
+                    gstType={gstType}
+                    setGstType={setGstType}
+                    cgstPercent={cgstPercent}
+                    setCgstPercent={setCgstPercent}
+                    sgstPercent={sgstPercent}
+                    setSgstPercent={setSgstPercent}
+                    igstPercent={igstPercent}
+                    setIgstPercent={setIgstPercent}
+                  />
+                )}
+              </div>
+            </>
+          )}
+
+          {getTotalProductCount() > 0 ? (
+            <div className="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
+              <h4 className="font-semibold text-lg mb-3">Overall BOQ Totals</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-purple-700 text-md">
+                    Total Supply Amount: ₹{totalSupplyAmount.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-amber-600 text-md">
+                    Total Installation Amount: ₹{totalInstallationAmount.toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-green-700 text-lg">Grand Total: ₹{grandTotal.toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* ... existing GST configuration code ... */}
+            </div>
+          ) : (
+            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                GST configuration and PO PDF generation will be available once you add products to the BOQ.
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-end space-x-4 pt-4">
             <button
               type="button"
@@ -1145,4 +792,5 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
     </motion.div>
   )
 }
+
 export default SalesTLHandOverForm

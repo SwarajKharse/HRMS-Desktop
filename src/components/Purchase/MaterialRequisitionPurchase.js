@@ -1,9 +1,9 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
 import { materialRequisitionService } from "../../services/materialRequisitionService"
-import { FiSave, FiX, FiEye, FiEdit3, FiUpload } from "react-icons/fi"
-import MTRDetailsModal from "./MTRDetailsModal"
-
+import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
+import { FiSave, FiX, FiEye, FiEdit3 } from "react-icons/fi"
+import PurchaseMTRDetailsModal from "./PurchaseMTRDetailsModal"
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -12,14 +12,18 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
 }
 
-const getWorkflowStatus = (req) => {
+const getWorkflowStatus = async (req) => {
+  const {
+    status,
+    assignedPurchaser,
+    projectManagerStatus,
+    purchaseMTR,
+    poUploaded,
+    purchaseManagerApprovalStatus,
+    purchaseOrderId,
+    poApprovalStatus,
+  } = req
 
-  console.log("req")
-  console.log(JSON.stringify(req))
-
-  const { status, assignedPurchaser, projectManagerStatus, purchaseMTR, poUploaded, pmApprovalStatus } = req
-
-  // If no purchase is needed (purchaseMTR is 0)
   if (purchaseMTR === 0) {
     return {
       text: "No Purchase Required",
@@ -27,7 +31,6 @@ const getWorkflowStatus = (req) => {
     }
   }
 
-  // If purchaser is not assigned
   if (!assignedPurchaser) {
     return {
       text: "Purchaser Not Assigned",
@@ -35,39 +38,105 @@ const getWorkflowStatus = (req) => {
     }
   }
 
-  // If PO is uploaded and pending approval
-  if (poUploaded && !status?.includes("PO_APPROVED")) {
+  const hasPOUploaded = poUploaded || (purchaseOrderId && purchaseOrderId > 0)
+
+  let piData = null
+  if (
+    hasPOUploaded &&
+    purchaseOrderId &&
+    (poApprovalStatus === "APPROVED" || purchaseManagerApprovalStatus === "APPROVED")
+  ) {
+    try {
+      piData = await purchaseInvoiceService.getPurchaseInvoiceByPOId(purchaseOrderId)
+      if (piData && piData.id) {
+        // Valid PI found
+      } else {
+        piData = null
+      }
+    } catch (error) {
+      piData = null
+    }
+  }
+
+  // PI status checks
+  if (piData && piData.id) {
+    if (piData.approvalStatus === "APPROVED") {
+      return {
+        text: "PI Approved - Payment Processing",
+        color: "text-green-600 bg-green-50",
+      }
+    }
+
+    if (piData.approvalStatus === "REJECTED") {
+      return {
+        text: "PI Rejected - Needs Revision",
+        color: "text-red-600 bg-red-50",
+      }
+    }
+
+    if (piData.approvalStatus === "UNDER_REVIEW") {
+      return {
+        text: "PI Under Review",
+        color: "text-yellow-600 bg-yellow-50",
+      }
+    }
+
     return {
-      text: "PO uploaded, Approval on PO pending",
+      text: "PI Uploaded - Approval Pending",
       color: "text-orange-600 bg-orange-50",
     }
   }
 
-  // If vendor is approved but no PO uploaded yet
-  if (pmApprovalStatus === "APPROVED" || projectManagerStatus === "APPROVED") {
+  if (hasPOUploaded) {
+    if (poApprovalStatus === "APPROVED") {
+      return {
+        text: "PO Approved - PI Pending Upload",
+        color: "text-blue-600 bg-blue-50",
+      }
+    }
+
+    if (poApprovalStatus === "REJECTED") {
+      return {
+        text: "PO Rejected - Needs Revision",
+        color: "text-red-600 bg-red-50",
+      }
+    }
+
+    if (poApprovalStatus === "UNDER_REVIEW") {
+      return {
+        text: "PO Under Review",
+        color: "text-yellow-600 bg-yellow-50",
+      }
+    }
+
+    // This is the default case when PO is uploaded but not yet reviewed
     return {
-      text: "Vendor Approved",
+      text: "PO Uploaded - Approval Pending",
+      color: "text-orange-600 bg-orange-50",
+    }
+  }
+
+  if (purchaseManagerApprovalStatus === "APPROVED" || projectManagerStatus === "APPROVED") {
+    return {
+      text: "Vendor Approved - PO Pending Upload",
       color: "text-green-600 bg-green-50",
     }
   }
 
-  // If purchaser is assigned but no project manager approval
   if (assignedPurchaser && !projectManagerStatus) {
     return {
-      text: "Purchaser Assigned - Approval Pending",
+      text: "Purchaser Assigned - PM Approval Pending",
       color: "text-yellow-600 bg-yellow-50",
     }
   }
 
-  // If project manager has rejected
-  if (projectManagerStatus === "REJECTED") {
+  if (projectManagerStatus === "REJECTED" || purchaseManagerApprovalStatus === "REJECTED") {
     return {
       text: "Rejected by Project Manager",
       color: "text-red-600 bg-red-50",
     }
   }
 
-  // Default status based on general status
   switch (status) {
     case "APPROVED":
       return {
@@ -101,9 +170,14 @@ export default function MaterialRequisitionPurchase() {
   const [requisitions, setRequisitions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [currentPage, setCurrentPage] = useState(0) // Backend is 0-indexed
+  const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
-  const [pageSize, setPageSize] = useState(10) // Default page size
+  const [pageSize, setPageSize] = useState(10)
+  const [workflowStatuses, setWorkflowStatuses] = useState({})
+  const [editingMtrId, setEditingMtrId] = useState(null)
+  const [editedMtrData, setEditedMtrData] = useState({})
+  const [editingPaymentStatus, setEditingPaymentStatus] = useState(null)
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("")
   const [filters, setFilters] = useState({
     itemName: "",
     status: "All",
@@ -111,17 +185,8 @@ export default function MaterialRequisitionPurchase() {
     mtrDateFrom: "",
     mtrDateTo: "",
   })
-
-  // State for inline editing
-  const [editingMtrId, setEditingMtrId] = useState(null)
-  const [editedMtrData, setEditedMtrData] = useState({})
-
-  // State for view details modal
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedMTRForDetails, setSelectedMTRForDetails] = useState(null)
-
-  // State for PO upload modal
-  const [showPOUploadModal, setShowPOUploadModal] = useState(false)
 
   const fetchMaterialRequisitions = useCallback(async () => {
     setLoading(true)
@@ -138,12 +203,10 @@ export default function MaterialRequisitionPurchase() {
       }).toString()
 
       const data = await materialRequisitionService.fetchMaterialRequisitions(queryParams)
-      console.log("API Response Data:", data)
 
       const formattedRequisitions = (data.content || []).map((req) => {
         return {
           ...req,
-          // Ensure numeric fields are numbers for calculations
           mtrQty: Number.parseFloat(req.mtrQty || 0),
           stockAlloted: Number.parseFloat(req.stockAlloted || 0),
           purchaseMTR: Number.parseFloat(req.purchaseMTR || 0),
@@ -154,6 +217,18 @@ export default function MaterialRequisitionPurchase() {
       setRequisitions(formattedRequisitions)
       setTotalPages(data.totalPages || 0)
       setCurrentPage(data.number || 0)
+
+      const statusPromises = formattedRequisitions.map(async (req) => {
+        const status = await getWorkflowStatus(req)
+        return { id: req.id, status }
+      })
+
+      const statuses = await Promise.all(statusPromises)
+      const statusMap = {}
+      statuses.forEach(({ id, status }) => {
+        statusMap[id] = status
+      })
+      setWorkflowStatuses(statusMap)
     } catch (e) {
       console.error("Failed to fetch material requisitions:", e)
       setError("Failed to load material requisitions. Please try again.")
@@ -176,7 +251,7 @@ export default function MaterialRequisitionPurchase() {
   }
 
   const handleApplyFilters = () => {
-    setCurrentPage(0) // Reset to first page when applying new filters
+    setCurrentPage(0)
   }
 
   const handlePageChange = (page) => {
@@ -257,15 +332,14 @@ export default function MaterialRequisitionPurchase() {
     return items
   }
 
-  // This function will now be explicitly called by the edit icon
-  const handleEditClick = (e, mtr) => {
-    e.stopPropagation() // Prevent row click from also triggering
-    setEditingMtrId(mtr.id)
-    setEditedMtrData({ ...mtr }) // Copy current MTR data for editing
+  const handleEditClick = (e, req) => {
+    e.stopPropagation()
+    setEditingMtrId(req.id)
+    setEditedMtrData({ ...req })
   }
 
   const handleCancelClick = (e) => {
-    e.stopPropagation() // Prevent row click from re-triggering edit mode
+    e.stopPropagation()
     setEditingMtrId(null)
     setEditedMtrData({})
   }
@@ -274,7 +348,6 @@ export default function MaterialRequisitionPurchase() {
     const { value } = e.target
     setEditedMtrData((prev) => {
       const newData = { ...prev, [field]: value }
-      // Recalculate Purchase MTR
       if (field === "mtrQty" || field === "stockAlloted") {
         const mtrQty = Number.parseFloat(newData.mtrQty || 0)
         const stockAlloted = Number.parseFloat(newData.stockAlloted || 0)
@@ -285,19 +358,14 @@ export default function MaterialRequisitionPurchase() {
   }
 
   const handleSaveClick = async (e, mtrId) => {
-    e.stopPropagation() // Prevent row click from re-triggering edit mode
+    e.stopPropagation()
     setLoading(true)
     setError(null)
     try {
-      // Prepare payload with only editable fields and calculated purchaseMTR
       const payload = {
-        // MTR Qty is read-only, so send its original value
         mtrQty: Number.parseFloat(editedMtrData.mtrQty),
         stockAlloted: Number.parseFloat(editedMtrData.stockAlloted),
-        // Purchase MTR is calculated, send the calculated value
         purchaseMTR: Number.parseFloat(editedMtrData.purchaseMTR),
-        dcQty: Number.parseFloat(editedMtrData.dcQty),
-        // Other fields are read-only, send their original values
         remarks: editedMtrData.remarks,
         expectedDeliveryDate: editedMtrData.expectedDeliveryDate,
         priority: editedMtrData.priority,
@@ -305,13 +373,13 @@ export default function MaterialRequisitionPurchase() {
         status: editedMtrData.status,
       }
 
-      await materialRequisitionService.updateMaterialRequisition(mtrId, payload)
+      const currentUserId = 181 // Replace with actual user ID from context/auth
 
-      // Update the local state with the saved data
+      await materialRequisitionService.updateMaterialRequisition(mtrId, payload, currentUserId)
+
       setRequisitions((prev) => prev.map((req) => (req.id === mtrId ? { ...req, ...editedMtrData } : req)))
       setEditingMtrId(null)
       setEditedMtrData({})
-      alert("Material Requisition updated successfully!")
     } catch (e) {
       console.error("Failed to save material requisition:", e)
       setError(`Failed to save material requisition: ${e.message}`)
@@ -320,11 +388,66 @@ export default function MaterialRequisitionPurchase() {
     }
   }
 
-  const handleViewDetailsClick = (e, mtr) => {
-    e.stopPropagation() // Prevent row click from triggering edit mode
-    setSelectedMTRForDetails(mtr)
+  const handleViewDetailsClick = (e, req) => {
+    e.stopPropagation()
+    setSelectedMTRForDetails(req)
     setShowDetailsModal(true)
   }
+
+  const refreshRequisitionStatus = async (reqId) => {
+    const req = requisitions.find((r) => r.id === reqId)
+    if (req) {
+      const status = await getWorkflowStatus(req)
+      setWorkflowStatuses((prev) => ({
+        ...prev,
+        [reqId]: status,
+      }))
+    }
+  }
+
+  const handlePaymentStatusChange = (piId, currentStatus) => {
+    setEditingPaymentStatus(piId)
+    setSelectedPaymentStatus(currentStatus || "PENDING")
+  }
+
+  const handlePaymentStatusSave = async (piId) => {
+    try {
+      setLoading(true)
+      await purchaseInvoiceService.updatePaymentStatus(piId, selectedPaymentStatus)
+      setEditingPaymentStatus(null)
+      await fetchMaterialRequisitions()
+    } catch (error) {
+      console.error("Error updating payment status:", error)
+      setError("Failed to update payment status")
+      setTimeout(() => setError(null), 3000)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePaymentStatusCancel = () => {
+    setEditingPaymentStatus(null)
+    setSelectedPaymentStatus("")
+  }
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const poApprovedReqs = requisitions.filter(
+        (req) =>
+          req.poUploaded &&
+          req.purchaseOrderId &&
+          (req.poApprovalStatus === "APPROVED" || req.purchaseManagerApprovalStatus === "APPROVED"),
+      )
+
+      if (poApprovedReqs.length > 0) {
+        for (const req of poApprovedReqs) {
+          await refreshRequisitionStatus(req.id)
+        }
+      }
+    }, 30000)
+
+    return () => clearInterval(interval)
+  }, [requisitions])
 
   return (
     <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
@@ -333,16 +456,6 @@ export default function MaterialRequisitionPurchase() {
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">Material Requisitions</h2>
           </div>
-          {/* <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">Material Requisitions</h2>
-            <button
-              onClick={() => setShowPOUploadModal(true)}
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-10 px-4 py-2 gap-2"
-            >
-              <FiUpload size={16} />
-              Upload PO
-            </button>
-          </div> */}
         </div>
         <div className="p-6 pt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -463,125 +576,181 @@ export default function MaterialRequisitionPurchase() {
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Stock Allotted</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Purchase MTR</th>
-                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">DC Qty</th>
-                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Status</th>
+                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">PI Status</th>
+                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Payment Status</th>
+                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Payment Receipt</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="[&_tr:last-child]:border-0">
-                    {requisitions.map((req) => (
-                      <tr
-                        key={req.id}
-                        className={`border-b transition-colors ${
-                          editingMtrId === req.id ? "bg-blue-50" : "hover:bg-gray-50"
-                        }`}
-                      >
-                        <td className="p-4 align-middle text-gray-700 font-medium">{req.mtrCode || "N/A"}</td>
-                        <td className="p-4 align-middle text-gray-700">{req.projectName || "N/A"}</td>
-                        <td className="p-4 align-middle text-gray-700">{req.productName || "N/A"}</td>
-                        <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.mtrQty}
-                              readOnly // MTR Qty is now read-only
-                              className="w-24 p-1 border rounded bg-gray-100 text-gray-600 focus:outline-none"
-                            />
-                          ) : (
-                            req.mtrQty
-                          )}
-                        </td>
-                        <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.stockAlloted}
-                              onChange={(e) => handleInputChange(e, "stockAlloted")}
-                              className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            />
-                          ) : (
-                            req.stockAlloted
-                          )}
-                        </td>
-                        <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.purchaseMTR}
-                              readOnly
-                              className="w-24 p-1 border rounded bg-gray-100 text-gray-600"
-                            />
-                          ) : (
-                            req.purchaseMTR
-                          )}
-                        </td>
-                        <td className="p-4 align-middle text-gray-700">
-                          {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.dcQty}
-                              onChange={(e) => handleInputChange(e, "dcQty")}
-                              className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            />
-                          ) : (
-                            req.dcQty
-                          )}
-                        </td>
-                        <td className="p-4 align-middle">
-                          {(() => {
-                            const statusInfo = getWorkflowStatus(req)
-                            return (
+                    {requisitions.map((req) => {
+                      return (
+                        <tr
+                          key={req.id}
+                          className={`border-b transition-colors ${
+                            editingMtrId === req.id ? "bg-blue-50" : "hover:bg-gray-50"
+                          }`}
+                        >
+                          <td className="p-4 align-middle text-gray-700 font-medium">{req.mtrCode || "N/A"}</td>
+                          <td className="p-4 align-middle text-gray-700">{req.projectName || "N/A"}</td>
+                          <td className="p-4 align-middle text-gray-700">{req.productName || "N/A"}</td>
+                          <td className="p-4 align-middle text-gray-700">
+                            {editingMtrId === req.id ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editedMtrData.mtrQty}
+                                readOnly
+                                className="w-24 p-1 border rounded bg-gray-100 text-gray-600 focus:outline-none"
+                              />
+                            ) : (
+                              req.mtrQty
+                            )}
+                          </td>
+                          <td className="p-4 align-middle text-gray-700">
+                            {editingMtrId === req.id ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editedMtrData.stockAlloted}
+                                onChange={(e) => handleInputChange(e, "stockAlloted")}
+                                className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                              />
+                            ) : (
+                              req.stockAlloted
+                            )}
+                          </td>
+                          <td className="p-4 align-middle text-gray-700">
+                            {editingMtrId === req.id ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editedMtrData.purchaseMTR}
+                                readOnly
+                                className="w-24 p-1 border rounded bg-gray-100 text-gray-600"
+                              />
+                            ) : (
+                              req.purchaseMTR
+                            )}
+                          </td>
+                          <td className="p-4 align-middle">
+                            {req.piId ? (
                               <span
-                                className={`inline-flex items-center px-3 py-1 text-xs font-medium ${statusInfo.color}`}
+                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  req.piStatus === "APPROVED" || req.piStatus === "Approve"
+                                    ? "bg-green-100 text-green-800"
+                                    : req.piStatus === "REJECTED"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-yellow-100 text-yellow-800"
+                                }`}
                               >
-                                {statusInfo.text}
+                                {req.piStatus || "PENDING"}
                               </span>
-                            )
-                          })()}
-                        </td>
-                        <td className="p-4 align-middle">
-                          {editingMtrId === req.id ? (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={(e) => handleSaveClick(e, req.id)}
-                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-9 px-3 py-1"
-                                title="Save changes"
+                            ) : (
+                              <span className="text-xs text-gray-400">N/A</span>
+                            )}
+                          </td>
+                          <td className="p-4 align-middle">
+                            {req.piId ? (
+                              editingPaymentStatus === req.piId ? (
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    value={selectedPaymentStatus}
+                                    onChange={(e) => setSelectedPaymentStatus(e.target.value)}
+                                    className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  >
+                                    <option value="PENDING">PENDING</option>
+                                    <option value="PARTIALLY_PAID">PARTIALLY_PAID</option>
+                                    <option value="PAID">PAID</option>
+                                  </select>
+                                  <button
+                                    onClick={() => handlePaymentStatusSave(req.piId)}
+                                    className="text-green-600 hover:text-green-800"
+                                    title="Save"
+                                  >
+                                    <FiSave size={14} />
+                                  </button>
+                                  <button
+                                    onClick={handlePaymentStatusCancel}
+                                    className="text-red-600 hover:text-red-800"
+                                    title="Cancel"
+                                  >
+                                    <FiX size={14} />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span
+                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 ${
+                                    req.paymentStatus === "PAID"
+                                      ? "bg-green-100 text-green-800"
+                                      : req.paymentStatus === "PARTIALLY_PAID"
+                                        ? "bg-yellow-100 text-yellow-800"
+                                        : "bg-gray-100 text-gray-800"
+                                  }`}
+                                  onClick={() => handlePaymentStatusChange(req.piId, req.paymentStatus)}
+                                  title="Click to edit payment status"
+                                >
+                                  {req.paymentStatus || "PENDING"}
+                                </span>
+                              )
+                            ) : (
+                              <span className="text-xs text-gray-400">N/A</span>
+                            )}
+                          </td>
+                          <td className="p-4 align-middle">
+                            {req.paymentReceiptUrl ? (
+                              <a
+                                href={req.paymentReceiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline hover:text-blue-800 text-xs"
                               >
-                                <FiSave size={16} />
-                              </button>
-                              <button
-                                onClick={handleCancelClick}
-                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-gray-300 text-gray-700 hover:bg-gray-400 h-9 px-3 py-1"
-                                title="Cancel editing"
-                              >
-                                <FiX size={16} />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={(e) => handleEditClick(e, req)}
-                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 h-9 px-3 py-1"
-                                title="Edit Stock Allotted and DC Qty"
-                              >
-                                <FiEdit3 size={16} />
-                              </button>
-                              <button
-                                onClick={(e) => handleViewDetailsClick(e, req)}
-                                className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 h-9 px-3 py-1"
-                                title="View all details"
-                              >
-                                <FiEye size={16} />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                                View Receipt
+                              </a>
+                            ) : (
+                              <span className="text-xs text-gray-400">No Receipt</span>
+                            )}
+                          </td>
+                          <td className="p-4 align-middle">
+                            {editingMtrId === req.id ? (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => handleSaveClick(e, req.id)}
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-9 px-3 py-1"
+                                  title="Save changes"
+                                >
+                                  <FiSave size={16} />
+                                </button>
+                                <button
+                                  onClick={handleCancelClick}
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-gray-300 text-gray-700 hover:bg-gray-400 h-9 px-3 py-1"
+                                  title="Cancel editing"
+                                >
+                                  <FiX size={16} />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={(e) => handleEditClick(e, req)}
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 h-9 px-3 py-1"
+                                  title="Edit Stock Allotted"
+                                >
+                                  <FiEdit3 size={16} />
+                                </button>
+                                <button
+                                  onClick={(e) => handleViewDetailsClick(e, req)}
+                                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 h-9 px-3 py-1"
+                                  title="View all details"
+                                >
+                                  <FiEye size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -642,16 +811,15 @@ export default function MaterialRequisitionPurchase() {
           )}
         </div>
       </div>
-      {showDetailsModal && <MTRDetailsModal mtr={selectedMTRForDetails} onClose={() => setShowDetailsModal(false)} />}
-      {/* {showPOUploadModal && (
-        <POUploadModal
-          onClose={() => setShowPOUploadModal(false)}
-          onSuccess={() => {
-            setShowPOUploadModal(false)
-            fetchMaterialRequisitions() // Refresh the list after successful upload
+      {showDetailsModal && (
+        <PurchaseMTRDetailsModal
+          mtr={selectedMTRForDetails}
+          onClose={() => {
+            setShowDetailsModal(false)
+            fetchMaterialRequisitions()
           }}
         />
-      )} */}
+      )}
     </div>
   )
 }

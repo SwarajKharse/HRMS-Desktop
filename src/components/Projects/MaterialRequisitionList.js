@@ -48,10 +48,10 @@ function MaterialRequisitionList({ materialRequisitions, onRemove, onEdit }) {
                   <span className="text-gray-600">Purchase:</span>
                   <span className="ml-1 font-medium">{mtr.purchaseMTR}</span>
                 </div>
-                <div>
+                {/* <div>
                   <span className="text-gray-600">DC Qty:</span>
                   <span className="ml-1 font-medium">{mtr.dcQty}</span>
-                </div>
+                </div> */}
                 {mtr.expectedDeliveryDate && (
                   <div>
                     <span className="text-gray-600">Delivery:</span>
