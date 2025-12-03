@@ -9,6 +9,7 @@ import { authService } from '../services/authService';
 import { useNotifications } from '../contexts/NotificationsContext';
 import { format } from 'date-fns';
 import { usePermissions } from '../contexts/PermissionsContext';
+import NotificationBell from './NotificationBell';
 
 function NotificationsPanel({ setActiveDropdown }) {
   const { 
@@ -215,7 +216,7 @@ function Navbar({userData}) {
 
       <div className="flex items-center space-x-4 ml-auto">
         <div className="relative">
-          <Tooltip text="Notifications">
+          {/* <Tooltip text="Notifications">
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -235,7 +236,8 @@ function Navbar({userData}) {
             onClose={() => setActiveDropdown(null)}
           >
             <NotificationsPanel setActiveDropdown={setActiveDropdown} />
-          </Dropdown>
+          </Dropdown> */}
+          <NotificationBell userId={userData.id} />
         </div>
 
         {permissions?.webSettings && (

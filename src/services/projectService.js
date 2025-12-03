@@ -432,5 +432,15 @@ uploadNocFile: async (projectId, file) => {
     }
   );
   return response.data;
-},
+  },
+
+  generatePOPDF: async (leadId, boqWithGST) => {
+    try {
+      const response = await axios.post(`${API_URL}/projects/generate-po-pdf/${leadId}`, boqWithGST, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error generating PO PDF:", error)
+      throw error
+    }
+  },
 }
