@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useRef, useCallback } from "react"
 import { motion } from "framer-motion"
-import { FiX, FiUpload, FiAlertCircle, FiCheck } from "react-icons/fi"
+import { FiX, FiUpload, FiAlertCircle, FiCheck, FiDownload } from "react-icons/fi"
 import { authService } from "../../services/authService"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
@@ -607,8 +607,17 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
       setIsGeneratingPDF(true)
       setError("")
 
+      const boqItemsWithCategoryNames = boqData.items.map((item) => {
+        const category = producttypelist.find((cat) => cat.id === item.leadProductTypeId)
+        return {
+          ...item,
+          categoryName: category ? category.label : `Category ${item.leadProductTypeId}`,
+        }
+      })
+
       const boqWithGST = {
         ...boqData,
+        items: boqItemsWithCategoryNames,
         gstType,
         cgstPercent,
         sgstPercent,
@@ -640,6 +649,68 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
       window.scrollTo(0, 0)
     } finally {
       setIsGeneratingPDF(false)
+    }
+  }
+
+  const handleProjectNameChange = async (field, value) => {
+    // Update local state first
+    if (field === "project_name") {
+      if (value === "other") {
+        setShowCustomInput(true)
+        setProject((prev) => ({
+          ...prev,
+          project_name: value,
+          custom_project_name: "",
+        }))
+      } else {
+        setShowCustomInput(false)
+        setProject((prev) => ({
+          ...prev,
+          project_name: value,
+          custom_project_name: "",
+        }))
+
+        // Save project name immediately if it's not "other" and we have an existing project
+        if (existingProject && value && value !== "other") {
+          try {
+            await projectService.createOrUpdateProject(
+              {
+                id: existingProject.projectId,
+                project_name: value,
+                employee_updatedby: { id: userId },
+              },
+              formData.amc_or_project,
+              lead.id,
+            )
+            console.log("[v0] Project name saved successfully")
+          } catch (error) {
+            console.error("[v0] Failed to save project name:", error)
+          }
+        }
+      }
+    } else if (field === "custom_project_name") {
+      setProject((prev) => ({
+        ...prev,
+        custom_project_name: value,
+      }))
+
+      // Save custom project name immediately if we have an existing project
+      if (existingProject && value && value.trim() !== "") {
+        try {
+          await projectService.createOrUpdateProject(
+            {
+              id: existingProject.projectId,
+              project_name: value,
+              employee_updatedby: { id: userId },
+            },
+            formData.amc_or_project,
+            lead.id,
+          )
+          console.log("[v0] Custom project name saved successfully")
+        } catch (error) {
+          console.error("[v0] Failed to save custom project name:", error)
+        }
+      }
     }
   }
 
@@ -693,20 +764,101 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
           </div>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
-          {formData.amc_or_project === "project" && (
+          {!existingProject && (
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700">Type</label>
+              <div className="flex gap-6">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="amc_or_project"
+                    value="project"
+                    checked={formData.amc_or_project === "project"}
+                    onChange={(e) => handleTypeChange("amc_or_project", e.target.value)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-gray-700">Project</span>
+                </label>
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="amc_or_project"
+                    value="amc"
+                    checked={formData.amc_or_project === "amc"}
+                    onChange={(e) => handleTypeChange("amc_or_project", e.target.value)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-gray-700">AMC</span>
+                </label>
+              </div>
+            </div>
+          )}
+          {/* </CHANGE> */}
+
+          {(formData.amc_or_project === "project" || existingProject) && (
             <>
+              {existingProject && existingProject.projectName && (
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Project Name</h3>
+                  <p className="text-lg font-semibold text-gray-900">{existingProject.projectName}</p>
+                </div>
+              )}
+              {/* </CHANGE> */}
+
+              {!existingProject && (
+                <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Project Name</h3>
+
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">Select Project Name Source</label>
+                    <select
+                      value={project.project_name}
+                      onChange={(e) => handleProjectNameChange("project_name", e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Select name source</option>
+                      {lead.client_name && <option value={lead.client_name}>Client Name: {lead.client_name}</option>}
+                      {lead.middle_man_client_name && (
+                        <option value={lead.middle_man_client_name}>
+                          Middleman Name: {lead.middle_man_client_name}
+                        </option>
+                      )}
+                      {lead.architect_client_name && (
+                        <option value={lead.architect_client_name}>Architect Name: {lead.architect_client_name}</option>
+                      )}
+                      <option value="other">Other (Custom Name)</option>
+                    </select>
+
+                    {showCustomInput && (
+                      <div className="mt-3">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Enter Custom Project Name
+                        </label>
+                        <input
+                          type="text"
+                          value={project.custom_project_name}
+                          onChange={(e) => handleProjectNameChange("custom_project_name", e.target.value)}
+                          placeholder="Enter project name"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    )}
+                    {/* </CHANGE> */}
+                  </div>
+                </div>
+              )}
+              {/* </CHANGE> */}
+
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-xs font-medium text-gray-700">Bill of Quantities (BOQ)</label>
-                  {!showBOQSelector && (
-                    <button
-                      type="button"
-                      onClick={() => setShowBOQSelector(true)}
-                      className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700"
-                    >
-                      {boqData || (existingProject && existingProject.hasExistingBOQ) ? "Edit BOQ" : "Create BOQ"}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowBOQSelector(!showBOQSelector)}
+                    className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700"
+                  >
+                    {boqData || (existingProject && existingProject.hasExistingBOQ) ? "Edit BOQ" : "Create BOQ"}
+                  </button>
                 </div>
 
                 {showBOQSelector && (
@@ -731,36 +883,31 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
                   />
                 )}
               </div>
+
+              {getTotalProductCount() > 0 && !showBOQSelector && activeTab === "salestl-won-leads" && (
+                <div className="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handleGeneratePOPDF}
+                    disabled={isGeneratingPDF}
+                    className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  >
+                    {isGeneratingPDF ? (
+                      <div className="flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Generating PDF...
+                      </div>
+                    ) : (
+                      <>
+                        <FiDownload className="inline-block mr-2" />
+                        Generate PO PDF
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+              {/* </CHANGE> */}
             </>
-          )}
-
-          {getTotalProductCount() > 0 ? (
-            <div className="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
-              <h4 className="font-semibold text-lg mb-3">Overall BOQ Totals</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-purple-700 text-md">
-                    Total Supply Amount: ₹{totalSupplyAmount.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-amber-600 text-md">
-                    Total Installation Amount: ₹{totalInstallationAmount.toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium text-green-700 text-lg">Grand Total: ₹{grandTotal.toFixed(2)}</span>
-                </div>
-              </div>
-
-              {/* ... existing GST configuration code ... */}
-            </div>
-          ) : (
-            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                GST configuration and PO PDF generation will be available once you add products to the BOQ.
-              </p>
-            </div>
           )}
 
           <div className="flex justify-end space-x-4 pt-4">
@@ -778,7 +925,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
               disabled={loading}
             >
               {loading ? (
-                <div className="flex items-center">
+                <div className="flex items-center justify-center">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                   Saving...
                 </div>
@@ -792,5 +939,4 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
     </motion.div>
   )
 }
-
 export default SalesTLHandOverForm
