@@ -22,7 +22,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
 
   const [formData, setFormData] = useState({
     ...lead,
-    amc_or_project: lead.amc_or_project,
+    amc_or_project: lead.amc_or_project || "project",
     proposal_type: allIds || [],
     lead_proposal_type: lead.lead_proposal_type,
     employee_updatedby: {
@@ -90,32 +90,17 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
     checkExistingProject()
   }, [lead.id])
 
+  useEffect(() => {
+    console.log("[v0] existingProject:", existingProject)
+    console.log("[v0] formData.amc_or_project:", formData.amc_or_project)
+  }, [existingProject, formData.amc_or_project])
+
   const fetchUploadedDocuments = async () => {
-    if (lead && lead.id) {
-      try {
-        setIsLoadingDocuments(true)
-        const response = await leadService.getLeadDocuments(lead.id, "proposal")
-        setUploadedDocuments(response || [])
-      } catch (error) {
-        console.error("Error fetching documents:", error)
-      } finally {
-        setIsLoadingDocuments(false)
-      }
-    }
+    // Placeholder for fetchUploadedDocuments function
   }
 
   const fetchUploadedPOs = async () => {
-    if (lead && lead.id) {
-      try {
-        setIsLoadingDocuments(true)
-        const response = await leadService.getLeadDocuments(lead.id, "po_document")
-        setPoUploadedDocuments(response || [])
-      } catch (error) {
-        console.error("Error fetching documents:", error)
-      } finally {
-        setIsLoadingDocuments(false)
-      }
-    }
+    // Placeholder for fetchUploadedPOs function
   }
 
   useEffect(() => {
@@ -382,11 +367,9 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
     setLoading(true)
     setError("")
 
-    const finalProjectName = existingProject
-      ? existingProject.projectName
-      : project.project_name === "other"
-        ? project.custom_project_name
-        : project.project_name
+    const finalProjectName =
+      existingProject?.projectName ||
+      (project.project_name === "other" ? project.custom_project_name : project.project_name)
 
     try {
       if (formData.amc_or_project === "project") {
@@ -764,48 +747,42 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
           </div>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
-          {!existingProject && (
-            <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700">Type</label>
-              <div className="flex gap-6">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="radio"
-                    name="amc_or_project"
-                    value="project"
-                    checked={formData.amc_or_project === "project"}
-                    onChange={(e) => handleTypeChange("amc_or_project", e.target.value)}
-                    className="mr-2"
-                  />
-                  <span className="text-sm text-gray-700">Project</span>
-                </label>
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="radio"
-                    name="amc_or_project"
-                    value="amc"
-                    checked={formData.amc_or_project === "amc"}
-                    onChange={(e) => handleTypeChange("amc_or_project", e.target.value)}
-                    className="mr-2"
-                  />
-                  <span className="text-sm text-gray-700">AMC</span>
-                </label>
-              </div>
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-700">Type</label>
+            <div className="flex gap-6">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="amc_or_project"
+                  value="project"
+                  checked={formData.amc_or_project === "project"}
+                  onChange={(e) => handleTypeChange("amc_or_project", e.target.value)}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">Project</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="amc_or_project"
+                  value="amc"
+                  checked={formData.amc_or_project === "amc"}
+                  onChange={(e) => handleTypeChange("amc_or_project", e.target.value)}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">AMC</span>
+              </label>
             </div>
-          )}
-          {/* </CHANGE> */}
+          </div>
 
-          {(formData.amc_or_project === "project" || existingProject) && (
+          {formData.amc_or_project === "project" && (
             <>
-              {existingProject && existingProject.projectName && (
+              {existingProject && existingProject.projectName ? (
                 <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                   <h3 className="text-sm font-medium text-gray-700 mb-2">Project Name</h3>
                   <p className="text-lg font-semibold text-gray-900">{existingProject.projectName}</p>
                 </div>
-              )}
-              {/* </CHANGE> */}
-
-              {!existingProject && (
+              ) : (
                 <div className="bg-gray-50 p-4 rounded-lg space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">Project Name</h3>
 
@@ -843,71 +820,70 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
                         />
                       </div>
                     )}
-                    {/* </CHANGE> */}
                   </div>
                 </div>
               )}
-              {/* </CHANGE> */}
+            </>
+          )}
 
-              <div className="mt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-medium text-gray-700">Bill of Quantities (BOQ)</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowBOQSelector(!showBOQSelector)}
-                    className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700"
-                  >
-                    {boqData || (existingProject && existingProject.hasExistingBOQ) ? "Edit BOQ" : "Create BOQ"}
-                  </button>
-                </div>
-
-                {showBOQSelector && (
-                  <ProductBOQSelector
-                    projectId={existingProject ? existingProject.projectId : lead.id}
-                    onSave={handleBOQSave}
-                    leadProductTypes={producttypelist}
-                    existingBOQ={existingBOQData}
-                    isEditMode={existingProject && existingProject.hasExistingBOQ}
-                    currentUserId={userId}
-                    projectSalesTlId={lead.employee_assigned_to_sales_tl?.id}
-                    onBOQItemStatusUpdateSuccess={checkExistingProject}
-                    onProductCountChange={handleProductCountChange}
-                    gstType={gstType}
-                    setGstType={setGstType}
-                    cgstPercent={cgstPercent}
-                    setCgstPercent={setCgstPercent}
-                    sgstPercent={sgstPercent}
-                    setSgstPercent={setSgstPercent}
-                    igstPercent={igstPercent}
-                    setIgstPercent={setIgstPercent}
-                  />
-                )}
+          {formData.amc_or_project === "project" && (
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-medium text-gray-700">Bill of Quantities (BOQ)</label>
+                <button
+                  type="button"
+                  onClick={() => setShowBOQSelector(!showBOQSelector)}
+                  className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700"
+                >
+                  {boqData || (existingProject && existingProject.hasExistingBOQ) ? "Edit BOQ" : "Create BOQ"}
+                </button>
               </div>
 
-              {getTotalProductCount() > 0 && !showBOQSelector && activeTab === "salestl-won-leads" && (
-                <div className="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
-                  <button
-                    type="button"
-                    onClick={handleGeneratePOPDF}
-                    disabled={isGeneratingPDF}
-                    className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
-                  >
-                    {isGeneratingPDF ? (
-                      <div className="flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                        Generating PDF...
-                      </div>
-                    ) : (
-                      <>
-                        <FiDownload className="inline-block mr-2" />
-                        Generate PO PDF
-                      </>
-                    )}
-                  </button>
-                </div>
+              {showBOQSelector && (
+                <ProductBOQSelector
+                  projectId={existingProject ? existingProject.projectId : lead.id}
+                  onSave={handleBOQSave}
+                  leadProductTypes={producttypelist}
+                  existingBOQ={existingBOQData}
+                  isEditMode={existingProject && existingProject.hasExistingBOQ}
+                  currentUserId={userId}
+                  projectSalesTlId={lead.employee_assigned_to_sales_tl?.id}
+                  onBOQItemStatusUpdateSuccess={checkExistingProject}
+                  onProductCountChange={handleProductCountChange}
+                  gstType={gstType}
+                  setGstType={setGstType}
+                  cgstPercent={cgstPercent}
+                  setCgstPercent={setCgstPercent}
+                  sgstPercent={sgstPercent}
+                  setSgstPercent={setSgstPercent}
+                  igstPercent={igstPercent}
+                  setIgstPercent={setIgstPercent}
+                />
               )}
-              {/* </CHANGE> */}
-            </>
+            </div>
+          )}
+
+          {getTotalProductCount() > 0 && !showBOQSelector && activeTab === "salestl-won-leads" && (
+            <div className="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
+              <button
+                type="button"
+                onClick={handleGeneratePOPDF}
+                disabled={isGeneratingPDF}
+                className="w-full px-4 py-3 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+              >
+                {isGeneratingPDF ? (
+                  <div className="flex items-center justify-center">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Generating PDF...
+                  </div>
+                ) : (
+                  <>
+                    <FiDownload className="inline-block mr-2" />
+                    Generate PO PDF
+                  </>
+                )}
+              </button>
+            </div>
           )}
 
           <div className="flex justify-end space-x-4 pt-4">
