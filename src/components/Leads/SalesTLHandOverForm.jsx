@@ -595,6 +595,10 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
         return {
           ...item,
           categoryName: category ? category.label : `Category ${item.leadProductTypeId}`,
+          productName: item.productName || item.product?.productName || "N/A",
+          hsnCode: item.hsnCode || item.product?.hsnCode || "",
+          uom: item.uom || item.product?.uom || "",
+          make: item.make || "",
         }
       })
 
@@ -609,6 +613,8 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
         gstAmount,
         postGstAmount,
       }
+
+      console.log("[v0] BOQ with product names being sent to PDF generation:", JSON.stringify(boqWithGST, null, 2))
 
       const response = await projectService.generatePOPDF(lead.id, boqWithGST)
 
