@@ -54,12 +54,20 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
   const [showPOManagement, setShowPOManagement] = useState(false)
   const [showCreatePOForm, setShowCreatePOForm] = useState(false)
 
+  const [boqUploadedDocuments, setBoqUploadedDocuments] = useState([])
+  const [poUploadFileName, setPoUploadFileName] = useState("")
+
   // Add a function to fetch uploaded documents for the lead
   const fetchUploadedDocuments = async () => {
     if (lead && lead.id) {
       try {
         setIsLoadingDocuments(true)
         const response = await leadService.getLeadDocuments(lead.id, "proposal")
+        console.log("[v0] Fetched proposal documents:", response)
+        console.log(
+          "[v0] Documents with status:",
+          response?.map((doc) => ({ fileName: doc.fileName, status: doc.status, type: typeof doc.status })),
+        )
         setUploadedDocuments(response || [])
       } catch (error) {
         console.error("Error fetching documents:", error)
@@ -82,6 +90,19 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       }
     }
   }
+  const fetchUploadedBOQs = async () => {
+    if (lead && lead.id) {
+      try {
+        setIsLoadingDocuments(true)
+        const response = await leadService.getLeadDocuments(lead.id, "boq_document")
+        setBoqUploadedDocuments(response || [])
+      } catch (error) {
+        console.error("Error fetching BOQ documents:", error)
+      } finally {
+        setIsLoadingDocuments(false)
+      }
+    }
+  }
   // Add useEffect to fetch documents when the component mounts or lead changes
   useEffect(() => {
     if ((activeTab === "sse-inprogress-leads" || activeTab === "assigned-leads") && lead && lead.id) {
@@ -89,6 +110,8 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     }
     if (activeTab === "salestl-won-leads" && lead && lead.id) {
       fetchUploadedPOs()
+      fetchUploadedBOQs()
+      fetchUploadedDocuments()
     }
   }, [activeTab, lead])
   // Add a function to handle document upload
@@ -109,6 +132,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         ...formData,
         po_document: file,
       })
+      setPoUploadFileName(file.name)
       setPoUploads(file.name)
     }
   }
@@ -1792,46 +1816,141 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     </>
                   ) : null}
                   {/* Shared Status End */}
+                  {activeTab !== "salestl-won-leads" ? (
+                    <>
+                      {lead.salestl_shared_status === "1" ? (
+                        <div className="space-y-4 rounded-lg bg-white border p-4 mt-4">
+                          <h4 className="font-semibold text-sm border-b pb-2">Approved Proposal Documents</h4>
+                          <div className="mt-4">
+                            {uploadedDocuments.filter((doc) => doc.document_type === "proposal" && doc.status === "1")
+                              .length > 0 ? (
+                              <div className="space-y-2">
+                                {uploadedDocuments
+                                  .filter((doc) => doc.document_type === "proposal" && doc.status === "1")
+                                  .map((doc, index) => (
+                                    <div
+                                      key={index}
+                                      className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
+                                    >
+                                      <div className="flex items-center">
+                                        <FiFile className="mr-2 text-green-600" />
+                                        <span className="text-sm font-medium">
+                                          {doc.fileName || `Proposal ${index + 1}`}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <span className="text-xs text-green-600 font-semibold">Approved</span>
+                                        <span className="text-xs text-gray-500">
+                                          {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : "N/A"}
+                                        </span>
+                                        <a
+                                          href={doc.fileUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 hover:text-blue-800"
+                                        >
+                                          <FiExternalLink />
+                                        </a>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500 py-2">No approved proposal documents.</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {activeTab === "salestl-won-leads" ? (
+                    <>
+                      {lead.salestl_shared_status === "1" ? (
+                        <div className="space-y-4 rounded-lg bg-white border p-4 mt-4">
+                          <h4 className="font-semibold text-sm border-b pb-2">Approved Proposal Documents</h4>
+                          {/* Display only approved proposals (status = 1) */}
+                          <div className="mt-4">
+                            {uploadedDocuments.filter((doc) => doc.status === "1").length > 0 ? (
+                              <div className="space-y-2">
+                                {uploadedDocuments
+                                  .filter((doc) => doc.status === "1")
+                                  .map((doc, index) => (
+                                    <div
+                                      key={index}
+                                      className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
+                                    >
+                                      <div className="flex items-center">
+                                        <FiFile className="mr-2 text-green-600" />
+                                        <span className="text-sm font-medium">
+                                          {doc.fileName || `Proposal ${index + 1}`}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <span className="text-xs text-green-600 font-semibold">Approved</span>
+                                        <span className="text-xs text-gray-500">
+                                          {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : "N/A"}
+                                        </span>
+                                        <a
+                                          href={doc.fileUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 hover:text-blue-800"
+                                        >
+                                          <FiExternalLink />
+                                        </a>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-500 py-2">No approved proposal documents.</p>
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+
+                  {/* Lead Status */}
+                  {activeTab === "salestl-won-leads" ? (
+                    <>
+                      {lead.salestl_approval_status == "1" ? (
+                        <div className="space-y-4 rounded-lg bg-white border p-4">
+                          <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium text-gray-700">
+                              Lead Status:{Capitalize(formData.lead_status)}
+                            </label>
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+                  {activeTab !== "salestl-won-leads" ? (
+                    <>
+                      {lead.salestl_shared_status === "1" ? (
+                        <div className="space-y-4 rounded-lg bg-white border p-4">
+                          <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium text-gray-700">Lead Status:</label>
+                            <select
+                              name="lead_status"
+                              //value={formData.need_of_field_visit || ""}
+                              value={formData.lead_status !== null ? formData.lead_status : ""}
+                              className="mt-1 rounded-md border border-gray-300 px-3 py-2"
+                              onChange={(e) => handleLeadStatus(e)}
+                            >
+                              <option value={null}>Please select</option>
+                              <option value="won">Won</option>
+                              <option value="lost">Lost</option>
+                            </select>
+                          </div>
+                        </div>
+                      ) : null}
+                      {/* Lead Status End */}
+                    </>
+                  ) : null}
                 </div>
-              ) : null}
-              {/* Lead Status */}
-              {activeTab === "salestl-won-leads" ? (
-                <>
-                  {lead.salestl_approval_status == "1" ? (
-                    <div className="space-y-4 rounded-lg bg-white border p-4">
-                      <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-gray-700">
-                          Lead Status:{Capitalize(formData.lead_status)}
-                        </label>
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
-              {activeTab !== "salestl-won-leads" ? (
-                <>
-                  {lead.salestl_shared_status === "1" ? (
-                    <div className="space-y-4 rounded-lg bg-white border p-4">
-                      <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-gray-700">Lead Status:</label>
-                        <select
-                          name="lead_status"
-                          //value={formData.need_of_field_visit || ""}
-                          value={formData.lead_status !== null ? formData.lead_status : ""}
-                          className="mt-1 rounded-md border border-gray-300 px-3 py-2"
-                          onChange={(e) => handleLeadStatus(e)}
-                        >
-                          <option value={null}>Please select</option>
-                          <option value="won">Won</option>
-                          <option value="lost">Lost</option>
-                        </select>
-                      </div>
-                    </div>
-                  ) : null}
-                  {/* Lead Status End */}
-                </>
               ) : null}
             </>
           ) : null}
@@ -1865,14 +1984,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   <div className="flex gap-3 mb-4">
                     <button
                       type="button"
-                      onClick={() => setShowCreatePOForm(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                    >
-                      <FiPlus className="mr-2" />
-                      Create PO
-                    </button>
-                    <button
-                      type="button"
                       onClick={triggerPOFileInput}
                       className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center"
                     >
@@ -1880,6 +1991,16 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                       Upload PO
                     </button>
                   </div>
+
+                  {poUploadFileName && (
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-center justify-between">
+                      <div className="flex items-center">
+                        <FiFile className="mr-2 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-900">{poUploadFileName}</span>
+                      </div>
+                      <span className="text-xs text-blue-600">Ready to save</span>
+                    </div>
+                  )}
 
                   {/* List of existing PO documents */}
                   <div className="mt-4">
@@ -1894,7 +2015,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                           <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
                             <div className="flex items-center">
                               <FiFile className="mr-2 text-blue-600" />
-                              <span className="text-sm font-medium">{`PO ${index + 1}`}</span>
+                              <span className="text-sm font-medium">{doc.fileName}</span>
                             </div>
                             <div className="flex items-center">
                               <span className="text-sm font-medium text-blue-500 mr-1">Status:</span>
@@ -1933,6 +2054,61 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             </>
           ) : null}
           {/* END Upload PO, or update Rejection Reason */}
+
+          {lead.lead_status === "won" ? (
+            <div className="space-y-4 rounded-lg bg-white border p-4">
+              <h3 className="font-semibold text-lg border-b pb-2">BOQ Management</h3>
+
+              <div className="flex gap-3 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePOForm(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+                >
+                  <FiPlus className="mr-2" />
+                  Create BOQ - List
+                </button>
+              </div>
+
+              {/* List of generated BOQ documents */}
+              <div className="mt-4">
+                {isLoadingDocuments ? (
+                  <div className="text-center py-4">
+                    <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                    <p className="text-sm text-gray-500 mt-2">Loading documents...</p>
+                  </div>
+                ) : boqUploadedDocuments.length > 0 ? (
+                  <div className="space-y-2">
+                    {boqUploadedDocuments.map((doc, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
+                        <div className="flex items-center">
+                          <FiFile className="mr-2 text-green-600" />
+                          <span className="text-sm font-medium">{doc.fileName || `BOQ ${index + 1}`}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium text-blue-500 mr-1">Status:</span>
+                          <span className="text-xs text-orange-500 mr-6">{doc.status}</span>
+                          <span className="text-xs text-gray-500 mr-6">
+                            {new Date(doc.uploadedAt).toLocaleDateString()}
+                          </span>
+                          <a
+                            href={doc.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            <FiExternalLink />
+                          </a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 py-2">No BOQ documents generated yet.</p>
+                )}
+              </div>
+            </div>
+          ) : null}
 
           <div className="flex justify-end space-x-4 pt-4">
             <button

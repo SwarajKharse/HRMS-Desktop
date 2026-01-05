@@ -104,7 +104,7 @@ const NotificationBell = ({ userId }) => {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              d="M12 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
             />
           </svg>
         )
@@ -126,7 +126,7 @@ const NotificationBell = ({ userId }) => {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              d="M13 16h-1v-4h-1m1-4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
         )
@@ -168,7 +168,12 @@ const NotificationBell = ({ userId }) => {
   return (
     <>
       {showToast && latestNotification && (
-        <div className="fixed top-4 right-4 z-[9999] transition-all duration-300 ease-in-out transform animate-slide-in">
+        <div
+          className="fixed top-4 right-4 z-[9999] transition-all duration-300 ease-in-out transform"
+          style={{
+            animation: "slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+          }}
+        >
           <div
             className={`${getToastBgGradient(latestNotification.type)} rounded-xl shadow-2xl p-[2px] min-w-[340px] max-w-md`}
           >
@@ -329,8 +334,8 @@ const NotificationBell = ({ userId }) => {
         )}
       </div>
 
-      <style jsx>{`
-        @keyframes slide-in {
+      <style>{`
+        @keyframes slideIn {
           0% {
             transform: translateX(400px);
             opacity: 0;
@@ -339,10 +344,6 @@ const NotificationBell = ({ userId }) => {
             transform: translateX(0);
             opacity: 1;
           }
-        }
-        
-        .animate-slide-in {
-          animation: slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
       `}</style>
     </>

@@ -108,7 +108,7 @@ function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, o
 
       const formData = new FormData()
       formData.append("file", newInvoice.file)
-      formData.append("approvalStatus","PENDING")
+      formData.append("approvalStatus", "PENDING")
       formData.append("invoiceNumber", newInvoice.invoiceNumber)
       formData.append("invoiceType", newInvoice.invoiceType)
       formData.append("uploadedBy", user.userId)
@@ -380,57 +380,64 @@ function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, o
                       </div>
                     )}
 
-                    <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <FiCalendar className="text-amber-600" />
-                          <span className="text-sm font-medium">Shared Date:</span>
-                          {invoice.sharedDate && editingSharedDate !== invoice.id ? (
-                            <span className="text-sm font-semibold text-amber-700">{invoice.sharedDate}</span>
-                          ) : !invoice.sharedDate && editingSharedDate !== invoice.id ? (
-                            <span className="text-sm text-gray-500 italic">Not set</span>
-                          ) : null}
-                        </div>
-                        {editingSharedDate !== invoice.id && (
-                          <button
-                            onClick={() => {
-                              setEditingSharedDate(invoice.id)
-                              setSharedDateValue(invoice.sharedDate || "")
-                            }}
-                            className="text-sm text-amber-600 hover:text-amber-800 font-medium"
-                          >
-                            {invoice.sharedDate ? "Edit" : "Set Date"}
-                          </button>
-                        )}
-                      </div>
+                    
+                      {invoice.approvalStatus === "APPROVED" && (
+                      <>
+                        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <FiCalendar className="text-amber-600" />
+                              <span className="text-sm font-medium">Shared Date:</span>
+                              {invoice.sharedDate && editingSharedDate !== invoice.id ? (
+                                <span className="text-sm font-semibold text-amber-700">{invoice.sharedDate}</span>
+                              ) : !invoice.sharedDate && editingSharedDate !== invoice.id ? (
+                                <span className="text-sm text-gray-500 italic">Not set</span>
+                              ) : null}
+                            </div>
+                            {editingSharedDate !== invoice.id && (
+                              <button
+                                onClick={() => {
+                                  setEditingSharedDate(invoice.id)
+                                  setSharedDateValue(invoice.sharedDate || "")
+                                }}
+                                className="text-sm text-amber-600 hover:text-amber-800 font-medium"
+                              >
+                                {invoice.sharedDate ? "Edit" : "Set Date"}
+                              </button>
+                            )}
+                          </div>
 
-                      {editingSharedDate === invoice.id && (
-                        <div className="mt-2 flex gap-2">
-                          <input
-                            type="date"
-                            value={sharedDateValue}
-                            onChange={(e) => setSharedDateValue(e.target.value)}
-                            className="flex-1 p-2 border border-gray-300 rounded-md text-sm"
-                          />
-                          <button
-                            onClick={() => handleSharedDateUpdate(invoice.id)}
-                            disabled={loading}
-                            className="px-3 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 text-sm"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingSharedDate(null)
-                              setSharedDateValue("")
-                            }}
-                            className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
-                          >
-                            Cancel
-                          </button>
-                        </div>
+                          {editingSharedDate === invoice.id && (
+                            <div className="mt-2 flex gap-2">
+                              <input
+                                type="date"
+                                value={sharedDateValue}
+                                onChange={(e) => setSharedDateValue(e.target.value)}
+                                className="flex-1 p-2 border border-gray-300 rounded-md text-sm"
+                              />
+                              <button
+                                onClick={() => handleSharedDateUpdate(invoice.id)}
+                                disabled={loading}
+                                className="px-3 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 text-sm"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingSharedDate(null)
+                                  setSharedDateValue("")
+                                }}
+                                className="px-3 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+                          </div>
+                        </>
                       )}
-                    </div>
+                      {/* End of Shared Date section */}
+                    
 
                     {/* Payment Documents */}
                     {invoice.paymentDocuments && invoice.paymentDocuments.length > 0 && (
@@ -451,12 +458,14 @@ function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, o
                       </div>
                     )}
 
-                    <button
-                      onClick={() => setSelectedInvoiceForPayment(invoice.id)}
-                      className="mt-2 text-sm text-indigo-600 hover:text-indigo-800"
-                    >
-                      + Add Payment Document
-                    </button>
+                    {invoice.approvalStatus === "APPROVED" && (
+                      <button
+                        onClick={() => setSelectedInvoiceForPayment(invoice.id)}
+                        className="mt-2 text-sm text-indigo-600 hover:text-indigo-800"
+                      >
+                        + Add Payment Document
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

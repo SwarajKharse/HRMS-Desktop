@@ -6,11 +6,11 @@ import {
   FiCheck,
   FiChevronRight,
   FiUser,
-  FiEye,
   FiX,
   FiFileText,
   FiUpload,
   FiSave,
+  FiDownload,
 } from "react-icons/fi"
 import { receivableService } from "../../services/receivableService"
 
@@ -638,8 +638,20 @@ function InvoiceManagementModal({ isOpen, onClose, onSuccess, projectId, project
                               </a>
                             )}
                             {invoice.paymentDocuments && invoice.paymentDocuments.length > 0 && (
-                              <div className="text-xs text-gray-600">
-                                {invoice.paymentDocuments.length} payment doc(s)
+                              <div className="space-y-1">
+                                {invoice.paymentDocuments.map((doc, idx) => (
+                                  <a
+                                    key={doc.id || idx}
+                                    href={doc.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:text-blue-800 underline block"
+                                    title={doc.fileName}
+                                  >
+                                    <FiDownload className="inline mr-1" size={12} />
+                                    {doc.documentType} {idx + 1}
+                                  </a>
+                                ))}
                               </div>
                             )}
                           </div>
@@ -1002,24 +1014,33 @@ function Recievable() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1">
-                          {project.poFileUrl ? (
-                            <a
-                              href={project.poFileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <FiEye size={14} />
-                              <span className="text-xs">View</span>
-                            </a>
+                          {project.leadDocuments && project.leadDocuments.length > 0 ? (
+                            <>
+                              {(() => {
+                                const latestPO = project.leadDocuments.find((doc) => doc.documentType === "po_document")
+                                return latestPO ? (
+                                  <a
+                                    href={latestPO.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                    title={latestPO.fileName}
+                                  >
+                                    <FiDownload size={14} />
+                                    <span className="text-xs font-medium">PO</span>
+                                  </a>
+                                ) : (
+                                  <span className="text-xs text-gray-400">No PO</span>
+                                )
+                              })()}
+                            </>
                           ) : (
                             <span className="text-xs text-gray-400">No PO</span>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-1">
+                        <div className="flex flex-col items-start gap-2">
                           {project.hasBOQ ? (
                             <button
                               onClick={(e) => handleViewBOQ(e, project.id)}
@@ -1027,26 +1048,58 @@ function Recievable() {
                               title="View BOQ Details"
                             >
                               <FiFileText size={14} />
-                              <span className="text-xs font-medium">View BOQ</span>
+                              <span className="text-xs font-medium">View</span>
                             </button>
                           ) : (
                             <span className="text-xs text-gray-400">No BOQ</span>
+                          )}
+                          {project.leadDocuments && project.leadDocuments.length > 0 && (
+                            <>
+                              {(() => {
+                                const latestBOQ = project.leadDocuments.find(
+                                  (doc) => doc.documentType === "boq_document",
+                                )
+                                return latestBOQ ? (
+                                  <a
+                                    href={latestBOQ.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-xs"
+                                    title={latestBOQ.fileName}
+                                  >
+                                    <FiDownload size={14} />
+                                    <span className="text-xs font-medium">PDF</span>
+                                  </a>
+                                ) : null
+                              })()}
+                            </>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1">
-                          {project.proposalFileUrl ? (
-                            <a
-                              href={project.proposalFileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <FiEye size={14} />
-                              <span className="text-xs">View</span>
-                            </a>
+                          {project.leadDocuments && project.leadDocuments.length > 0 ? (
+                            <>
+                              {(() => {
+                                const latestProposal = project.leadDocuments.find(
+                                  (doc) => doc.documentType === "proposal" && doc.status === "1",
+                                )
+                                return latestProposal ? (
+                                  <a
+                                    href={latestProposal.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                    title={latestProposal.fileName}
+                                  >
+                                    <FiDownload size={14} />
+                                    <span className="text-xs font-medium">Proposal</span>
+                                  </a>
+                                ) : (
+                                  <span className="text-xs text-gray-400">No Proposal</span>
+                                )
+                              })()}
+                            </>
                           ) : (
                             <span className="text-xs text-gray-400">No Proposal</span>
                           )}
@@ -1131,16 +1184,26 @@ function Recievable() {
                       <div className="flex gap-4 mt-2">
                         <div>
                           <span className="font-medium">PO:</span>{" "}
-                          {project.poFileUrl ? (
-                            <a
-                              href={project.poFileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              View
-                            </a>
+                          {project.leadDocuments && project.leadDocuments.length > 0 ? (
+                            <>
+                              {(() => {
+                                const latestPO = project.leadDocuments.find((doc) => doc.documentType === "po_document")
+                                return latestPO ? (
+                                  <a
+                                    href={latestPO.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title={latestPO.fileName}
+                                  >
+                                    View ({latestPO.fileName.substring(0, 5)}...)
+                                  </a>
+                                ) : (
+                                  <span className="text-gray-400">No PO</span>
+                                )
+                              })()}
+                            </>
                           ) : (
                             <span className="text-gray-400">No PO</span>
                           )}
@@ -1149,11 +1212,28 @@ function Recievable() {
                           <span className="font-medium">BOQ:</span>{" "}
                           {project.hasBOQ ? (
                             <button onClick={(e) => handleViewBOQ(e, project.id)} className="text-green-600 underline">
-                              View BOQ
+                              View
                             </button>
                           ) : (
                             <span className="text-gray-400">No BOQ</span>
                           )}
+                          {project.leadDocuments &&
+                            project.leadDocuments.length > 0 &&
+                            (() => {
+                              const latestBOQ = project.leadDocuments.find((doc) => doc.documentType === "boq_document")
+                              return latestBOQ ? (
+                                <a
+                                  href={latestBOQ.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline ml-2"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title={latestBOQ.fileName}
+                                >
+                                  PDF
+                                </a>
+                              ) : null
+                            })()}
                         </div>
                         <div>
                           <span className="font-medium">Proposal:</span>{" "}

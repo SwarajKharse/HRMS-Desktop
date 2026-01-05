@@ -616,7 +616,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
 
       console.log("[v0] BOQ with product names being sent to PDF generation:", JSON.stringify(boqWithGST, null, 2))
 
-      const response = await projectService.generatePOPDF(lead.id, boqWithGST)
+      const response = await projectService.generatePOPDF(lead.id, boqWithGST, "boq_document")
 
       if (response && response.pdfUrl) {
         setSuccessMessage("PO PDF generated successfully!")
