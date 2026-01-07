@@ -84,27 +84,16 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
       setDataLoading(true)
       setError("")
       try {
-        console.log("[v0] Fetching data for leadId:", leadId) // Added debug log
-        const [
-          leadDetails,
-          projectdetailsResponse,
-          leadSource,
-          leadType,
-          leadProductType,
-          managers,
-          siteEngineers,
-        ] = await Promise.all([
-          projectService.getLeadByLeadId(leadId),
-          projectService.getProjectByLeadId(leadId),
-          leadService.getLeadSourceList(),
-          leadService.getLeadTypeList(),
-          leadService.getLeadProductTypeList(),
-          projectService.getProjectManagerList(),
-          projectService.getSiteEngineerList(),
-        ])
-
-        console.log("[v0] Project details response:", projectdetailsResponse) // Added debug log
-        console.log("[v0] Project ID from response:", projectdetailsResponse?.id) // Added debug log
+        const [leadDetails, projectdetailsResponse, leadSource, leadType, leadProductType, managers, siteEngineers] =
+          await Promise.all([
+            projectService.getLeadByLeadId(leadId),
+            projectService.getProjectByLeadId(leadId),
+            leadService.getLeadSourceList(),
+            leadService.getLeadTypeList(),
+            leadService.getLeadProductTypeList(),
+            projectService.getProjectManagerList(),
+            projectService.getSiteEngineerList(),
+          ])
 
         setLead(leadDetails)
         setSourcelist(leadSource)
@@ -114,52 +103,29 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
         setSEList(siteEngineers)
 
         if (projectdetailsResponse && projectdetailsResponse.id) {
-          console.log("[v0] Setting projectId to:", projectdetailsResponse.id) // Added debug log
           setProjectId(projectdetailsResponse.id)
         } else if (projectdetailsResponse && projectdetailsResponse.projectId) {
-          console.log("[v0] Setting projectId from projectId field:", projectdetailsResponse.projectId) // Added debug log
           setProjectId(projectdetailsResponse.projectId)
-        } else {
-          console.log("[v0] No project ID found in response") // Added debug log
         }
 
-        let initialProjectManager = projectdetailsResponse.projectManager?.id
+        const initialProjectManager = projectdetailsResponse.projectManager?.id
           ? Number.parseInt(projectdetailsResponse.projectManager.id, 10)
           : ""
-        const initialSiteEngineer = projectdetailsResponse.siteEngineer?.id
+        const initialSiteEngineer = projectdetailsResponse?.siteEngineer?.id
           ? Number.parseInt(projectdetailsResponse.siteEngineer.id, 10)
           : ""
-        let initialProjectName = ""
-        let initialProjectStatus = "planning"
-        let initialHandoverFileStatus = ""
-        let initialFormANOCStatus = ""
-        let initialApprovalFromFM = ""
-        let initialPaymentApprovalDateByFM = ""
-        let initialProjectCompletionETA = ""
-        let initialProjectCompletionDate = ""
-        let initialHandoverFilePath = ""
-        let initialHandoverFileName = ""
-        let initialNocFilePath = ""
-        let initialNocFileName = ""
-
-        if (projectdetailsResponse) {
-          initialProjectName = projectdetailsResponse.projectName || ""
-          initialProjectStatus = projectdetailsResponse.projectStatus || "planning"
-          initialHandoverFileStatus = projectdetailsResponse.handover_file_status || ""
-          initialFormANOCStatus = projectdetailsResponse.form_a_noc_status || ""
-          initialApprovalFromFM = projectdetailsResponse.handoverFromFinance || ""
-          initialPaymentApprovalDateByFM = projectdetailsResponse.payment_approval_date_by_fm || ""
-          initialProjectCompletionETA = projectdetailsResponse.project_completion_eta || ""
-          initialProjectCompletionDate = projectdetailsResponse.project_completion_date || ""
-          initialHandoverFilePath = projectdetailsResponse.handoverFilePath || ""
-          initialHandoverFileName = projectdetailsResponse.handoverFileName || ""
-          initialNocFilePath = projectdetailsResponse.nocFilePath || ""
-          initialNocFileName = projectdetailsResponse.nocFileName || ""
-        }
-
-        if (!initialProjectManager && managers.some((manager) => manager.id === userId)) {
-          initialProjectManager = userId
-        }
+        const initialProjectName = projectdetailsResponse.projectName || ""
+        const initialProjectStatus = projectdetailsResponse.projectStatus || "planning"
+        const initialHandoverFileStatus = projectdetailsResponse.handover_file_status || ""
+        const initialFormANOCStatus = projectdetailsResponse.form_a_noc_status || ""
+        const initialApprovalFromFM = projectdetailsResponse.approval_from_fm || ""
+        const initialPaymentApprovalDateByFM = projectdetailsResponse.payment_approval_date_by_fm || ""
+        const initialProjectCompletionETA = projectdetailsResponse.project_completion_eta || ""
+        const initialProjectCompletionDate = projectdetailsResponse.project_completion_date || ""
+        const initialHandoverFilePath = projectdetailsResponse.handoverFilePath || ""
+        const initialHandoverFileName = projectdetailsResponse.handoverFileName || ""
+        const initialNocFilePath = projectdetailsResponse.nocFilePath || ""
+        const initialNocFileName = projectdetailsResponse.nocFileName || ""
 
         setProjectData({
           projectName: initialProjectName,
@@ -229,128 +195,103 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     }
   }, [leadId, userId])
 
-
   const handleHandoverFileUpload = async (e) => {
-    console.log("[v0] Handover file upload triggered")
     const file = e.target.files[0]
-    console.log("[v0] File selected:", file?.name)
-    
+
     if (!file) {
-      console.log("[v0] No file selected, returning")
       return
     }
 
-    console.log("[v0] Current projectId:", projectId)
     if (!projectId) {
       const errorMsg = "Please save the project first before uploading files"
-      console.log("[v0] Error:", errorMsg)
       setError(errorMsg)
       return
     }
 
     setHandoverFileUploading(true)
     setError("")
-    console.log("[v0] Starting handover file upload for projectId:", projectId)
 
     try {
-      console.log("[v0] Calling projectService.uploadHandoverFile...")
       const response = await projectService.uploadHandoverFile(projectId, file)
-      console.log("[v0] Upload response:", response)
-      
-      setProjectData(prev => ({
+
+      setProjectData((prev) => ({
         ...prev,
         handoverFilePath: response.handoverFilePath || response.fileUrl,
         handoverFileName: response.handoverFileName || file.name,
         project_completion_date: response.project_completion_date || prev.project_completion_date,
-        projectStatus: response.projectStatus || prev.projectStatus
+        projectStatus: response.projectStatus || prev.projectStatus,
       }))
       alert("Handover file uploaded successfully!")
-      console.log("[v0] State updated, fetching updated project...")
-      
+
       const updatedProject = await projectService.getProjectByLeadId(leadId)
-      console.log("[v0] Updated project data:", updatedProject)
-      
+
       if (updatedProject) {
-        setProjectData(prev => ({
+        setProjectData((prev) => ({
           ...prev,
           handoverFilePath: updatedProject.handoverFilePath || prev.handoverFilePath,
           handoverFileName: updatedProject.handoverFileName || prev.handoverFileName,
           nocFilePath: updatedProject.nocFilePath || prev.nocFilePath,
           nocFileName: updatedProject.nocFileName || prev.nocFileName,
           project_completion_date: updatedProject.project_completion_date || prev.project_completion_date,
-          projectStatus: updatedProject.projectStatus || prev.projectStatus
+          projectStatus: updatedProject.projectStatus || prev.projectStatus,
         }))
       }
     } catch (err) {
-      console.error("[v0] Upload error:", err)
-      console.error("[v0] Error response:", err.response)
+      console.error(err)
       const errorMsg = err.response?.data?.message || err.message || "Failed to upload handover file"
       setError(errorMsg)
     } finally {
       setHandoverFileUploading(false)
-      console.log("[v0] Handover file upload completed")
     }
   }
 
   const handleNocFileUpload = async (e) => {
-    console.log("[v0] NOC file upload triggered")
     const file = e.target.files[0]
-    console.log("[v0] File selected:", file?.name)
-    
+
     if (!file) {
-      console.log("[v0] No file selected, returning")
       return
     }
 
-    console.log("[v0] Current projectId:", projectId)
     if (!projectId) {
       const errorMsg = "Please save the project first before uploading files"
-      console.log("[v0] Error:", errorMsg)
       setError(errorMsg)
       return
     }
 
     setNocFileUploading(true)
     setError("")
-    console.log("[v0] Starting NOC file upload for projectId:", projectId)
 
     try {
-      console.log("[v0] Calling projectService.uploadNocFile...")
       const response = await projectService.uploadNocFile(projectId, file)
-      console.log("[v0] Upload response:", response)
-      
-      setProjectData(prev => ({
+
+      setProjectData((prev) => ({
         ...prev,
         nocFilePath: response.nocFilePath || response.fileUrl,
         nocFileName: response.nocFileName || file.name,
         project_completion_date: response.project_completion_date || prev.project_completion_date,
-        projectStatus: response.projectStatus || prev.projectStatus
+        projectStatus: response.projectStatus || prev.projectStatus,
       }))
       alert("NOC file uploaded successfully!")
-      console.log("[v0] State updated, fetching updated project...")
-      
+
       const updatedProject = await projectService.getProjectByLeadId(leadId)
-      console.log("[v0] Updated project data:", updatedProject)
-      
+
       if (updatedProject) {
-        setProjectData(prev => ({
+        setProjectData((prev) => ({
           ...prev,
           handoverFilePath: updatedProject.handoverFilePath || prev.handoverFilePath,
           handoverFileName: updatedProject.handoverFileName || prev.handoverFileName,
           nocFilePath: updatedProject.nocFilePath || prev.nocFilePath,
           nocFileName: updatedProject.nocFileName || prev.nocFileName,
           project_completion_date: updatedProject.project_completion_date || prev.project_completion_date,
-          projectStatus: updatedProject.projectStatus || prev.projectStatus
+          projectStatus: updatedProject.projectStatus || prev.projectStatus,
         }))
       }
     } catch (err) {
-      console.error("[v0] Upload error:", err)
-      console.error("[v0] Error response:", err.response)
+      console.error(err)
       const errorMsg = err.response?.data?.message || err.message || "Failed to upload NOC file"
       setError(errorMsg)
     } finally {
       setNocFileUploading(false)
-      console.log("[v0] NOC file upload completed")
     }
   }
 
@@ -395,10 +336,16 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     }
 
     if (projectData.siteEngineer) {
-      payload.site_engineer = { id: Number.parseInt(projectData.siteEngineer, 10) }
+      const siteEngineerId = Number.parseInt(projectData.siteEngineer, 10)
+      console.log("[v0] Site Engineer Value:", projectData.siteEngineer)
+      console.log("[v0] Site Engineer ID (parsed):", siteEngineerId)
+      payload.site_engineer = { id: siteEngineerId }
     } else {
+      console.log("[v0] Site Engineer is empty:", projectData.siteEngineer)
       payload.site_engineer = null
     }
+
+    console.log("[v0] Final Payload:", JSON.stringify(payload, null, 2))
 
     try {
       await projectService.createOrUpdateProject(payload, "project", leadId)
@@ -412,7 +359,6 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
     }
   }
 
-
   const Capitalize = (str) => {
     if (!str) return ""
     return str.charAt(0).toUpperCase() + str.slice(1)
@@ -421,7 +367,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   const matchingLabels = (id, producttypelist) => {
     let newlabel = ""
     if (id !== null && id !== "") {
-      const matchingItem = producttypelist.find((item) => item.id === id.id)
+      const matchingItem = producttypelist.find((item) => item.id === id)
       if (matchingItem) {
         newlabel = matchingItem.label.replace(/,/g, "")
       }
@@ -434,6 +380,18 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
       {children}
     </th>
   )
+
+  const getSourceLabel = (sourceId) => {
+    if (!sourceId) return "N/A"
+    const source = sourcelist.find((s) => s.id === Number.parseInt(sourceId))
+    return source?.label || "N/A"
+  }
+
+  const getTypeLabel = (typeId) => {
+    if (!typeId) return "N/A"
+    const type = typelist.find((t) => t.id === Number.parseInt(typeId))
+    return type?.label || "N/A"
+  }
 
   if (dataLoading) {
     return (
@@ -524,7 +482,36 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
             borderColor="border-purple-300"
             headerTextColor="text-purple-800"
           >
-            {/* ... existing lead details code ... */}
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Company Name</label>
+                  <p className="mt-1 text-gray-900 p-2 bg-gray-50 rounded">{lead?.client_name || "N/A"}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Contact Person</label>
+                  <p className="mt-1 text-gray-900 p-2 bg-gray-50 rounded">
+                    {lead?.employee ? `${lead.employee.firstName} ${lead.employee.lastName}` : "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Lead Source</label>
+                  <p className="mt-1 text-gray-900 p-2 bg-gray-50 rounded">{getSourceLabel(lead?.lead_source)}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Lead Type</label>
+                  <p className="mt-1 text-gray-900 p-2 bg-gray-50 rounded">{getTypeLabel(lead?.lead_type)}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Product Type</label>
+                  <p className="mt-1 text-gray-900 p-2 bg-gray-50 rounded">
+                    {lead?.lead_product_type && lead.lead_product_type.length > 0
+                      ? lead.lead_product_type.map((pt) => matchingLabels(pt.id, producttypelist)).join(", ")
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
           </ExpandableSection>
 
           {/* Project Details Section */}
@@ -561,25 +548,26 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2">
-                    Assign Site Engineer <span className="text-red-500">*</span>
+                  <label htmlFor="siteEngineer" className="block text-sm font-medium text-gray-700">
+                    Site Engineer
                   </label>
                   <select
-                    name="site_engineer"
+                    id="siteEngineer"
                     value={projectData.siteEngineer}
                     onChange={(e) =>
-                      setProjectData({ ...projectData, siteEngineer: Number.parseInt(e.target.value, 10) })
+                      setProjectData((prev) => ({
+                        ...prev,
+                        siteEngineer: e.target.value ? Number.parseInt(e.target.value, 10) : "",
+                      }))
                     }
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="">Select Engineer</option>
-                    {seData.map((engineer, i) => {
-                      return (
-                        <option key={i} value={engineer.id}>
-                          {engineer.firstName + " " + engineer.lastName}
-                        </option>
-                      )
-                    })}
+                    <option value="">Select a Site Engineer</option>
+                    {seData.map((se) => (
+                      <option key={se.id} value={se.id}>
+                        {se.firstName} {se.lastName}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -617,16 +605,24 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
 
                 {projectData.handover_file_status === "Completed" && (
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Upload Handover File
-                    </label>
-                    
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Upload Handover File</label>
+
                     {projectData.handoverFileName && projectData.handoverFilePath && (
                       <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-md">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg
+                              className="w-5 h-5 text-green-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
                             </svg>
                             <span className="text-sm font-medium text-green-800">
                               Current File: {projectData.handoverFileName}
@@ -688,16 +684,24 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
 
                 {projectData.form_a_noc_status === "Received" && (
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Upload NOC Form File
-                    </label>
-                    
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Upload NOC Form File</label>
+
                     {projectData.nocFileName && projectData.nocFilePath && (
                       <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-md">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg
+                              className="w-5 h-5 text-green-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
                             </svg>
                             <span className="text-sm font-medium text-green-800">
                               Current File: {projectData.nocFileName}
@@ -746,7 +750,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                   <input
                     type="text"
                     id="approval_from_fm"
-                    value={projectData.approval_from_fm || "PENDING"}
+                    value={projectData.approval_from_fm || ""}
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 bg-gray-50"
                     readOnly
                   />

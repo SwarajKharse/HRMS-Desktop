@@ -544,7 +544,7 @@ function BOQEditComponent({
 
             const formattedItem = {
               id: item.id, // CRITICAL CHANGE: Use item.id directly for existing BOQ items
-              product_id: product.id || 0, // This is ProductsMaster ID
+              product_id: product.id || 0, // This is the ProductsMaster ID
               product_name: product.productName || product.product_name || product.name || "Unknown Product", // Prioritize productName
               hsn_code: product.hsnCode || product.hsn_code || "",
               product_description: product.productDescription || product.product_description || "",
@@ -1303,27 +1303,10 @@ function BOQEditComponent({
 
       const enhancedBOQData = {
         items: boqProducts.map((product) => {
-          const installmentData = {}
-          // Note: The backend's saveBOQWithMaterialRequisition deletes and recreates MTRs.
-          // So, the `id` field for MTRs sent from frontend is not used for updates, only for new ones.
-          // The `mtrCode` is important for tracking.
-          product.materialRequisitions.forEach((mtr, index) => {
-            installmentData[`mtr_${index}`] = {
-              mtrQty: Number.parseFloat(mtr.mtrQty || 0),
-              stockAlloted: Number.parseFloat(mtr.stockAlloted || 0),
-              purchaseMTR: Number.parseFloat(mtr.purchaseMTR || 0),
-              dcQty: Number.parseFloat(mtr.dcQty || 0),
-              remarks: mtr.remarks || "",
-              expectedDeliveryDate: mtr.expectedDeliveryDate || null,
-              priority: mtr.priority || "MEDIUM",
-              mtrCode: mtr.mtrCode || "", // mtrCode is included here
-            }
-          })
-
           return {
-            id: product.id, // Ensure this is null for new items, and actual ID for existing BOQItems
-            productId: product.product_id?.toString() || "", // This is the ProductsMaster ID
-            productName: product.product_name || "", // Use productName
+            id: typeof product.id === "number" ? product.id : null,
+            productId: product.product_id?.toString() || "",
+            productName: product.product_name || "",
             hsnCode: product.hsn_code || "",
             qty: Number.parseFloat(product.qty) || 0,
             make: product.make || "",
@@ -1333,9 +1316,8 @@ function BOQEditComponent({
             salestlApprovalStatus: product.salestlApprovalStatus,
             pmApprovalRemarks: product.pmApprovalRemarks,
             salestlApprovalRemarks: product.salestlApprovalRemarks,
-            pmApprovalDate: product.pmApprovalDate, // Pass date string
-            salestlApprovalDate: product.salestlApprovalDate, // Pass date string
-            // Ensure these fields are passed in camelCase as per DTO
+            pmApprovalDate: product.pmApprovalDate,
+            salestlApprovalDate: product.salestlApprovalDate,
             supplyRate: Number.parseFloat(product.supply_rate || 0),
             installationRate: Number.parseFloat(product.installation_rate || 0),
             supplyAmount: Number.parseFloat(product.supply_amount || 0),
@@ -1343,15 +1325,15 @@ function BOQEditComponent({
             total: Number.parseFloat(product.total || 0),
             nonBillable: (product.nonBillable || []).map((item) => ({
               ...item,
-              id: typeof item.id === "number" ? item.id : null, // Preserve actual IDs (numbers), set to null for temporary frontend IDs (strings)
+              id: typeof item.id === "number" ? item.id : null,
               materialRequisitions: (item.materialRequisitions || []).map((mtr) => ({
                 ...mtr,
-                id: typeof mtr.id === "number" ? mtr.id : null, // Preserve actual MTR IDs if they are numbers
+                id: typeof mtr.id === "number" ? mtr.id : null,
               })),
             })),
             skillSet: (product.skillSet || []).map((item) => ({
               ...item,
-              id: typeof item.id === "number" ? item.id : null, // Preserve actual IDs (numbers), set to null for temporary frontend IDs (strings)
+              id: typeof item.id === "number" ? item.id : null,
               make: null,
               materialRequisitions: (item.materialRequisitions || []).map((mtr) => ({
                 ...mtr,
@@ -1360,13 +1342,13 @@ function BOQEditComponent({
             })),
             tools: (product.tools || []).map((item) => ({
               ...item,
-              id: typeof item.id === "number" ? item.id : null, // Preserve actual IDs (numbers), set to null for temporary frontend IDs (strings)
+              id: typeof item.id === "number" ? item.id : null,
               materialRequisitions: (item.materialRequisitions || []).map((mtr) => ({
                 ...mtr,
                 id: typeof mtr.id === "number" ? mtr.id : null,
               })),
             })),
-            installmentData: installmentData, // This seems to be an old/alternative way of sending MTRs
+            // installmentData: installmentData, // This seems to be an old/alternative way of sending MTRs
             materialRequisitions: (product.materialRequisitions || []).map((mtr) => ({
               id: null, // CRITICAL: Always send null for MTR IDs as backend recreates them
               mtrQty: Number.parseFloat(mtr.mtrQty || 0),
@@ -1593,20 +1575,43 @@ function BOQEditComponent({
   }
 
   const handleMTRSubmit = (mainProductId, category, productIndex, mtrData) => {
+    console.log("[v0] handleMTRSubmit called with:", { mainProductId, category, mtrData })
+
     setBOQProducts((prev) =>
       prev.map((p) => {
         if (p.id === mainProductId) {
           if (category === "billable") {
             if (editingBillableMTR) {
-              // Editing existing billable MTR
+              console.log("[v0] Editing existing billable MTR:", editingBillableMTR.id)
               return {
                 ...p,
                 materialRequisitions: p.materialRequisitions.map((mtr) =>
-                  mtr.id === editingBillableMTR.id ? { ...mtr, ...mtrData } : mtr,
+                  mtr.id === editingBillableMTR.id
+                    ? {
+                        ...mtr,
+                        ...mtrData,
+                        mtrQty: mtrData.mtrQty ? Number(mtrData.mtrQty) : 0, // Ensure mtrQty is a number
+                      }
+                    : mtr,
                 ),
               }
             } else {
+              const isDuplicate = (p.materialRequisitions || []).some(
+                (mtr) =>
+                  mtr.remarks === mtrData.remarks &&
+                  mtr.expectedDeliveryDate === mtrData.expectedDeliveryDate &&
+                  mtr.priority === mtrData.priority &&
+                  mtr.mtrQty === Number(mtrData.mtrQty || 0) && // Compare quantity as well
+                  (mtr.id === null || !mtr.id), // Check both null and undefined/falsy IDs
+              )
+
+              if (isDuplicate) {
+                console.warn("[v0] Duplicate MTR detected - skipping:", mtrData.remarks)
+                return p
+              }
+
               // Adding new billable MTR
+              console.log("[v0] Adding new billable MTR:", mtrData.remarks)
               return {
                 ...p,
                 materialRequisitions: [
@@ -1614,8 +1619,9 @@ function BOQEditComponent({
                   {
                     id: null, // New MTR, ID should be null
                     ...mtrData,
+                    mtrQty: mtrData.mtrQty ? Number(mtrData.mtrQty) : 0, // Ensure mtrQty is persisted as number
                     createdAt: new Date().toISOString(),
-                    salestlApprovalStatus: "PENDING", // Default Salestl approval status
+                    salestlApprovalStatus: "PENDING",
                     salestlApprovalRemarks: "",
                     salestlApprovalDate: null,
                   },
@@ -1628,23 +1634,44 @@ function BOQEditComponent({
             const targetItem = updatedCategory[productIndex]
 
             if (editingCategoryMTR) {
-              // Editing existing MTR for a category item
               const updatedMTRs = (targetItem.materialRequisitions || []).map((mtr) =>
-                mtr.id === editingCategoryMTR.id ? { ...mtr, ...mtrData } : mtr,
+                mtr.id === editingCategoryMTR.id
+                  ? {
+                      ...mtr,
+                      ...mtrData,
+                      mtrQty: mtrData.mtrQty ? Number(mtrData.mtrQty) : 0,
+                    }
+                  : mtr,
               )
               updatedCategory[productIndex] = {
                 ...targetItem,
                 materialRequisitions: updatedMTRs,
               }
             } else {
+              const isDuplicate = (targetItem.materialRequisitions || []).some(
+                (mtr) =>
+                  mtr.remarks === mtrData.remarks &&
+                  mtr.expectedDeliveryDate === mtrData.expectedDeliveryDate &&
+                  mtr.priority === mtrData.priority &&
+                  mtr.mtrQty === Number(mtrData.mtrQty || 0) &&
+                  (mtr.id === null || !mtr.id),
+              )
+
+              if (isDuplicate) {
+                console.warn("[v0] Duplicate category MTR detected - skipping:", mtrData.remarks)
+                return p
+              }
+
               // Adding new MTR for a category item
+              console.log("[v0] Adding new category MTR:", mtrData.remarks)
               const newMTRs = [
                 ...(targetItem.materialRequisitions || []),
                 {
-                  id: null, // New category MTR, ID should be null
+                  id: null,
                   ...mtrData,
+                  mtrQty: mtrData.mtrQty ? Number(mtrData.mtrQty) : 0, // Ensure mtrQty is persisted as number
                   createdAt: new Date().toISOString(),
-                  salestlApprovalStatus: "PENDING", // Default Salestl approval status
+                  salestlApprovalStatus: "PENDING",
                   salestlApprovalRemarks: "",
                   salestlApprovalDate: null,
                 },
@@ -1663,8 +1690,8 @@ function BOQEditComponent({
         return p
       }),
     )
-    setEditingBillableMTR(null) // Clear the editing state for billable MTRs
-    setEditingCategoryMTR(null) // Clear the editing state for category MTRs
+    setEditingBillableMTR(null)
+    setEditingCategoryMTR(null)
   }
 
   const removeMTRFromProduct = (mainProductId, category, productIndex, mtrId) => {
