@@ -128,14 +128,27 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
   const [approvalStatus, setApprovalStatus] = useState("")
   const [paymentDoneDate, setPaymentDoneDate] = useState("")
   const [paymentReceipt, setPaymentReceipt] = useState(null)
+  const [receiptFileName, setReceiptFileName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     if (isOpen && invoice) {
-      // Reset form when modal opens
       setApprovalStatus(invoice.accountManagerApprovalStatus || "")
-      setPaymentDoneDate("")
+
+      // Check if payment has already been completed
+      if (invoice.paymentDoneDate) {
+        setPaymentDoneDate(invoice.paymentDoneDate.split("T")[0]) // Convert to date format
+      } else {
+        setPaymentDoneDate("")
+      }
+
+      if (invoice.paymentReceiptUrl) {
+        setReceiptFileName(invoice.paymentReceiptFilename || "Payment Receipt Uploaded")
+      } else {
+        setReceiptFileName("")
+      }
+
       setPaymentReceipt(null)
       setError(null)
     }
@@ -144,8 +157,13 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!approvalStatus || !paymentDoneDate || !paymentReceipt) {
+    if (!approvalStatus || !paymentDoneDate) {
       setError("Please fill all required fields")
+      return
+    }
+
+    if (!paymentReceipt && !invoice.paymentReceiptUrl) {
+      setError("Please upload a payment receipt")
       return
     }
 
@@ -159,7 +177,8 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
       formData.append("paymentDoneDate", paymentDoneDate)
       formData.append("paymentReceipt", paymentReceipt)
 
-      await purchaseInvoiceService.completePayment(formData)
+      await purchaseInvoiceService.completePayment(invoice.id, approvalStatus, paymentDoneDate, paymentReceipt)
+
       onComplete()
       onClose()
     } catch (err) {
@@ -172,6 +191,8 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
 
   if (!isOpen || !invoice) return null
 
+  const isPaymentComplete = invoice.paymentDoneDate && invoice.paymentReceiptUrl
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
@@ -181,6 +202,13 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
           <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 flex items-center gap-2">
             <FiAlertCircle className="w-4 h-4" />
             <span className="text-sm">{error}</span>
+          </div>
+        )}
+
+        {isPaymentComplete && (
+          <div className="bg-green-50 text-green-600 p-3 rounded-lg mb-4 flex items-center gap-2">
+            <FiCheck className="w-4 h-4" />
+            <span className="text-sm">Payment has been completed successfully</span>
           </div>
         )}
 
@@ -253,7 +281,7 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
                 onChange={(e) => setApprovalStatus(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 required
-                disabled={loading}
+                disabled={loading || isPaymentComplete}
               >
                 <option value="">Select Status</option>
                 <option value="APPROVED">Approve</option>
@@ -272,21 +300,41 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
                 onChange={(e) => setPaymentDoneDate(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 required
-                disabled={loading}
+                disabled={loading || isPaymentComplete}
               />
             </div>
 
             {/* Payment Receipt Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Receipt <span className="text-red-500">*</span>
+                Payment Receipt {!isPaymentComplete && <span className="text-red-500">*</span>}
               </label>
+              {receiptFileName && (
+                <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                  <span className="text-sm text-blue-800">
+                    Uploaded:
+                    {invoice.paymentReceiptUrl && (
+                      <>
+                        {" "}
+                        <a
+                          href={invoice.paymentReceiptUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline text-blue-600 hover:text-blue-800"
+                        >
+                          {receiptFileName}
+                        </a>
+                      </>
+                    )}
+                  </span>
+                </div>
+              )}
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
                 onChange={(e) => setPaymentReceipt(e.target.files[0])}
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                required
+                required={!isPaymentComplete}
                 disabled={loading}
               />
               <p className="text-xs text-gray-500 mt-1">Accepted formats: PDF, JPG, PNG</p>
@@ -302,13 +350,15 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {loading ? "Processing..." : "Complete Payment"}
-            </button>
+            {!isPaymentComplete && (
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {loading ? "Processing..." : "Complete Payment"}
+              </button>
+            )}
           </div>
         </form>
       </div>

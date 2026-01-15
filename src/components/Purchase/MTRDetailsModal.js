@@ -226,7 +226,7 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
     setSuccess("")
 
     try {
-      const currentUserId = user?.userId || user?.id
+      const currentUserId = user.userId || user.id
       await comparisonSheetService.approvePO(selectedPO.id, poApprovalStatus, poApprovalRemarks, currentUserId)
       setSuccess("PO approval status updated successfully!")
 

@@ -185,7 +185,7 @@ export const purchaseInvoiceService = {
     }
   },
 
-  completePayment: async (piId, approvalStatus, paymentDoneDate, receiptFile) => {
+  /* completePayment: async (piId, approvalStatus, paymentDoneDate, receiptFile) => {
     try {
       const formData = new FormData()
       formData.append("accountManagerApprovalStatus", approvalStatus)
@@ -206,6 +206,76 @@ export const purchaseInvoiceService = {
       return response.data
     } catch (error) {
       console.error("Error completing payment:", error)
+      throw error
+    }
+  }, */
+
+
+  completePayment: async (piId, approvalStatus, paymentDoneDate, receiptFile) => {
+    try {
+      // Log actual parameters received to debug
+      console.log(
+        "[v0] completePayment called with piId:",
+        piId,
+        "type:",
+        typeof piId,
+        "approvalStatus:",
+        approvalStatus,
+        "paymentDoneDate:",
+        paymentDoneDate,
+        "receiptFile:",
+        receiptFile,
+      )
+
+      // If piId is FormData, it means the call is malformed - check if parameters are shifted
+      if (piId instanceof FormData) {
+        console.error(
+          "[v0] ERROR: piId is FormData object. Parameters may be in wrong order or FormData incorrectly passed as first argument.",
+        )
+        throw new Error(
+          "Invalid parameters: piId cannot be FormData. Check the order of parameters being passed to completePayment.",
+        )
+      }
+
+      // Ensure piId is a valid number or string ID
+      if (!piId || (typeof piId !== "string" && typeof piId !== "number")) {
+        throw new Error(`Invalid piId: expected string or number, got ${typeof piId}`)
+      }
+
+      const invoiceId = String(piId)
+      console.log("[v0] Converted invoiceId:", invoiceId)
+
+      // Build request body - only add file if provided
+      let requestBody = null
+      const headers = {}
+
+      if (receiptFile) {
+        requestBody = new FormData()
+        requestBody.append("file", receiptFile)
+        // Don't manually set Content-Type - let axios handle it
+      }
+
+      const url = `${API_BASE_URL}/purchase-invoices/${invoiceId}/complete-payment`
+      const params = {}
+
+      if (approvalStatus) params.accountManagerApprovalStatus = approvalStatus
+      if (paymentDoneDate) params.paymentDoneDate = paymentDoneDate
+
+      console.log("[v0] Final URL:", url)
+      console.log("[v0] Request params:", params)
+      console.log("[v0] Request body type:", requestBody ? requestBody.constructor.name : "null")
+
+      const response = await axios.put(url, requestBody, {
+        params,
+        headers: receiptFile ? { "Content-Type": "multipart/form-data" } : headers,
+      })
+
+      console.log("[v0] Payment completion response:", response.data)
+      return response.data
+    } catch (error) {
+      console.error("[v0] Error completing payment:", error)
+      console.error("[v0] Error response data:", error.response?.data)
+      console.error("[v0] Error request URL:", error.config?.url)
       throw error
     }
   },
