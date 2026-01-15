@@ -43,6 +43,7 @@ const POManagementGrid = () => {
   const [selectedGRN, setSelectedGRN] = useState(null)
   const [showGRNApprovalModal, setShowGRNApprovalModal] = useState(false)
   const [grnApprovalRemarks, setGrnApprovalRemarks] = useState("")
+  const [grnApprovalStatus, setGrnApprovalStatus] = useState("") // New state for GRN status
   const [processingGRN, setProcessingGRN] = useState(false)
 
   const showMessage = (type, text) => {
@@ -61,7 +62,7 @@ const POManagementGrid = () => {
         poStatus: poStatusFilter,
         approvalStatus: approvalStatusFilter,
       })
-      
+
       setPurchaseOrders(data.content || [])
       setTotalPages(data.totalPages || 0)
     } catch (error) {
@@ -83,7 +84,7 @@ const POManagementGrid = () => {
       const poWithGRNs = await purchaseOrderService.getPOWithGRNs(po.id)
       const grns = await grnService.getGRNsByPO(po.id)
       const pis = await purchaseInvoiceService.getPurchaseInvoicesByPO(po.id)
-      
+
       setPODetails({
         ...poWithGRNs,
         grns: grns || [],
@@ -163,20 +164,56 @@ const POManagementGrid = () => {
       formData.append("uploadedBy", user?.userId || user?.id || 1)
       if (grnRemarks) formData.append("remarks", grnRemarks)
 
-      await grnService.uploadGRN(formData)
+      console.log("[v0] Uploading GRN with formData:", {
+        poId: selectedPO.id,
+        payableAmount,
+        expectedPayableDate,
+        files: {
+          grnFile: grnCopyFile?.name,
+          testCert: testCertificateFile?.name,
+          invoiceCopy: invoiceCopyFile?.name,
+        },
+      })
+
+      const response = await grnService.uploadGRN(formData)
+      console.log("[v0] GRN upload response:", response)
+
       showMessage("success", "GRN uploaded successfully!")
+
+      if (selectedPO) {
+        console.log("[v0] Fetching updated GRN data for PO:", selectedPO.id)
+        try {
+          const grns = await grnService.getGRNsByPO(selectedPO.id)
+          const pis = await purchaseInvoiceService.getPurchaseInvoicesByPO(selectedPO.id)
+          const updatedPO = await purchaseOrderService.getPurchaseOrderById(selectedPO.id)
+
+          console.log("[v0] Updated GRNs:", grns)
+
+          setPODetails({
+            ...updatedPO,
+            grns: grns || [],
+            pis: pis || [],
+          })
+
+          setShowGRNModal(false)
+          await fetchPurchaseOrders()
+        } catch (fetchError) {
+          console.error("[v0] Error fetching updated data:", fetchError)
+          showMessage("warning", "GRN uploaded but could not refresh data. Please refresh the page.")
+          setShowGRNModal(false)
+        }
+      }
+
       resetGRNModal()
-      fetchPurchaseOrders()
+      setUploadingGRN(false)
     } catch (error) {
-      console.error("Error uploading GRN:", error)
-      showMessage("error", "Failed to upload GRN")
-    } finally {
+      console.error("[v0] Error uploading GRN:", error)
+      showMessage("error", error.response?.data?.message || "Failed to upload GRN")
       setUploadingGRN(false)
     }
   }
 
   const resetGRNModal = () => {
-    setShowGRNModal(false)
     setSelectedPO(null)
     setGrnCopyFile(null)
     setTestCertificateFile(null)
@@ -191,23 +228,24 @@ const POManagementGrid = () => {
     setShowGRNApprovalModal(true)
   }
 
-  const handleSubmitGRNApproval = async (approved) => {
-    if (!selectedGRN) return
+  const handleSubmitGRNApproval = async () => {
+    if (!selectedGRN || !grnApprovalStatus) return
 
     try {
       setProcessingGRN(true)
       const approvalData = {
         approverId: user?.userId || user?.id || 1,
         remarks: grnApprovalRemarks,
-        approved: approved,
+        approvalStatus: grnApprovalStatus,
       }
-      
+
       await grnService.approveGRN(selectedGRN.id, approvalData)
-      showMessage("success", `GRN ${approved ? 'approved' : 'rejected'} successfully!`)
+      showMessage("success", `GRN ${grnApprovalStatus === "APPROVED" ? "approved" : "rejected"} successfully!`)
       setShowGRNApprovalModal(false)
       setGrnApprovalRemarks("")
+      setGrnApprovalStatus("")
       setSelectedGRN(null)
-      
+
       // Refresh details if modal is open
       if (showDetailsModal && selectedPO) {
         handleViewDetails(selectedPO)
@@ -226,7 +264,7 @@ const POManagementGrid = () => {
       try {
         await grnService.transferToAccounts(grn.id, user?.userId || user?.id || 1)
         showMessage("success", "GRN transferred to Accounts successfully!")
-        
+
         // Refresh details if modal is open
         if (showDetailsModal && selectedPO) {
           handleViewDetails(selectedPO)
@@ -246,8 +284,12 @@ const POManagementGrid = () => {
       RECEIVED: { color: "bg-yellow-100 text-yellow-800", label: "Received" },
       GRN_DONE: { color: "bg-green-100 text-green-800", label: "GRN Done" },
     }[status] || { color: "bg-gray-100 text-gray-800", label: "Unknown" }
-    
-    return <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>{config.label}</span>
+
+    return (
+      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+        {config.label}
+      </span>
+    )
   }
 
   const getPOStatusBadge = (status, po) => {
@@ -271,7 +313,9 @@ const POManagementGrid = () => {
         </div>
 
         {message.text && (
-          <div className={`mx-6 mt-4 p-3 rounded-md ${message.type === "success" ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800"}`}>
+          <div
+            className={`mx-6 mt-4 p-3 rounded-md ${message.type === "success" ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800"}`}
+          >
             {message.text}
           </div>
         )}
@@ -351,11 +395,15 @@ const POManagementGrid = () => {
                       <td className="px-4 py-3">{getMaterialStatusBadge(po.materialStatus)}</td>
                       <td className="px-4 py-3">{getPOStatusBadge(po.poStatus, po)}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          po.approvalStatus === "APPROVED" ? "bg-green-100 text-green-800" :
-                          po.approvalStatus === "REJECTED" ? "bg-red-100 text-red-800" :
-                          "bg-yellow-100 text-yellow-800"
-                        }`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            po.approvalStatus === "APPROVED"
+                              ? "bg-green-100 text-green-800"
+                              : po.approvalStatus === "REJECTED"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
                           {po.approvalStatus}
                         </span>
                       </td>
@@ -370,7 +418,7 @@ const POManagementGrid = () => {
                           </button>
                           <button
                             onClick={() => handleChangeMaterialStatus(po)}
-                            className="px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 text-sm"
+                            className="px-3 py-1 text-blue-600 border border-blue-600 rounded hover:bg-blue-50 text-sm font-medium"
                           >
                             Change Status
                           </button>
@@ -395,15 +443,17 @@ const POManagementGrid = () => {
           {totalPages > 1 && (
             <div className="flex justify-center gap-2 mt-4">
               <button
-                onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
                 disabled={currentPage === 0}
                 className="px-4 py-2 border rounded disabled:opacity-50"
               >
                 Previous
               </button>
-              <span className="px-4 py-2">Page {currentPage + 1} of {totalPages}</span>
+              <span className="px-4 py-2">
+                Page {currentPage + 1} of {totalPages}
+              </span>
               <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
                 disabled={currentPage === totalPages - 1}
                 className="px-4 py-2 border rounded disabled:opacity-50"
               >
@@ -428,16 +478,25 @@ const POManagementGrid = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 space-y-6">
               {/* PO Info */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="font-semibold mb-2">Purchase Order Information</h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div><span className="font-medium">PO Number:</span> {poDetails.poNumber}</div>
-                  <div><span className="font-medium">Material Status:</span> {getMaterialStatusBadge(poDetails.materialStatus)}</div>
-                  <div><span className="font-medium">PO Status:</span> {getPOStatusBadge(poDetails.poStatus)}</div>
-                  <div><span className="font-medium">Created:</span> {new Date(poDetails.createdAt).toLocaleDateString()}</div>
+                  <div>
+                    <span className="font-medium">PO Number:</span> {poDetails.poNumber}
+                  </div>
+                  <div>
+                    <span className="font-medium">Material Status:</span>{" "}
+                    {getMaterialStatusBadge(poDetails.materialStatus)}
+                  </div>
+                  <div>
+                    <span className="font-medium">PO Status:</span> {getPOStatusBadge(poDetails.poStatus)}
+                  </div>
+                  <div>
+                    <span className="font-medium">Created:</span> {new Date(poDetails.createdAt).toLocaleDateString()}
+                  </div>
                 </div>
               </div>
 
@@ -449,45 +508,76 @@ const POManagementGrid = () => {
                     {poDetails.grns.map((grn) => (
                       <div key={grn.id} className="border border-gray-200 p-4 rounded-lg bg-gray-50">
                         <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                          <div><span className="font-medium">GRN Number:</span> {grn.grnNumber}</div>
-                          <div><span className="font-medium">Payable Amount:</span> ₹{grn.payableAmount?.toLocaleString()}</div>
-                          <div><span className="font-medium">Expected Date:</span> {new Date(grn.expectedPayableDate).toLocaleDateString()}</div>
+                          <div>
+                            <span className="font-medium">GRN Number:</span> {grn.grnNumber}
+                          </div>
+                          <div>
+                            <span className="font-medium">Payable Amount:</span> ₹{grn.payableAmount?.toLocaleString()}
+                          </div>
+                          <div>
+                            <span className="font-medium">Expected Date:</span>{" "}
+                            {new Date(grn.expectedPayableDate).toLocaleDateString()}
+                          </div>
                           <div>
                             <span className="font-medium">PM Approval:</span>{" "}
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              grn.purchaseManagerApprovalStatus === "APPROVED" ? "bg-green-100 text-green-800" :
-                              grn.purchaseManagerApprovalStatus === "REJECTED" ? "bg-red-100 text-red-800" :
-                              "bg-yellow-100 text-yellow-800"
-                            }`}>
+                            <span
+                              className={`px-2 py-1 rounded text-xs ${
+                                grn.purchaseManagerApprovalStatus === "APPROVED"
+                                  ? "bg-green-100 text-green-800"
+                                  : grn.purchaseManagerApprovalStatus === "REJECTED"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
                               {grn.purchaseManagerApprovalStatus}
                             </span>
                           </div>
                           <div>
                             <span className="font-medium">Handed to Accounts:</span>{" "}
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              grn.handedOverToAccounts ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                            }`}>
+                            <span
+                              className={`px-2 py-1 rounded text-xs ${
+                                grn.handedOverToAccounts ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
                               {grn.handedOverToAccounts ? "Yes" : "No"}
                             </span>
                           </div>
-                          <div><span className="font-medium">Uploaded:</span> {new Date(grn.createdAt).toLocaleDateString()}</div>
+                          <div>
+                            <span className="font-medium">Uploaded:</span>{" "}
+                            {new Date(grn.createdAt).toLocaleDateString()}
+                          </div>
                           {grn.grnCopyUrl && (
                             <div>
-                              <a href={grn.grnCopyUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                              <a
+                                href={grn.grnCopyUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-sm"
+                              >
                                 View GRN Copy
                               </a>
                             </div>
                           )}
                           {grn.testCertificateUrl && (
                             <div>
-                              <a href={grn.testCertificateUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                              <a
+                                href={grn.testCertificateUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-sm"
+                              >
                                 View Test Certificate
                               </a>
                             </div>
                           )}
                           {grn.invoiceCopyUrl && (
                             <div>
-                              <a href={grn.invoiceCopyUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
+                              <a
+                                href={grn.invoiceCopyUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-sm"
+                              >
                                 View Invoice Copy
                               </a>
                             </div>
@@ -503,9 +593,9 @@ const POManagementGrid = () => {
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="flex gap-2 mt-3 pt-3 border-t border-gray-200">
-                          {grn.purchaseManagerApprovalStatus === "PENDING" || !grn.purchaseManagerApprovalStatus  && (
+                          {(grn.purchaseManagerApprovalStatus === "PENDING" || !grn.purchaseManagerApprovalStatus) && (
                             <button
                               onClick={() => handleApproveGRN(grn)}
                               className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
@@ -541,10 +631,54 @@ const POManagementGrid = () => {
                     {poDetails.pis.map((pi) => (
                       <div key={pi.id} className="border border-gray-200 p-4 rounded-lg">
                         <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div><span className="font-medium">PI Number:</span> {pi.piNumber}</div>
-                          <div><span className="font-medium">Amount:</span> ₹{pi.payableAmount}</div>
-                          <div><span className="font-medium">Project:</span> {pi.projectName}</div>
-                          <div><span className="font-medium">Status:</span> {pi.approvalStatus}</div>
+                          <div>
+                            <span className="font-medium">PI Number:</span>{" "}
+                            <a
+                              href={`/purchase-invoices/${pi.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline font-medium"
+                            >
+                              {pi.piNumber}
+                            </a>
+                          </div>
+                          <div>
+                            <span className="font-medium">Amount:</span> ₹{pi.payableAmount}
+                          </div>
+                          <div>
+                            <span className="font-medium">Project:</span> {pi.projectName}
+                          </div>
+                          <div>
+                            <span className="font-medium">Status:</span> {pi.approvalStatus}
+                          </div>
+                          <div>
+                            <span className="font-medium">Payment Status:</span>{" "}
+                            <span
+                              className={`px-2 py-1 rounded text-xs ${
+                                pi.paymentDoneDate ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {pi.paymentDoneDate ? "Paid" : "Pending"}
+                            </span>
+                          </div>
+                          {pi.paymentDoneDate && (
+                            <div>
+                              <span className="font-medium">Payment Date:</span>{" "}
+                              {new Date(pi.paymentDoneDate).toLocaleDateString()}
+                            </div>
+                          )}
+                          {pi.paymentReceiptUrl && (
+                            <div>
+                              <a
+                                href={pi.paymentReceiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-sm font-medium"
+                              >
+                                View Payment Receipt
+                              </a>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -567,7 +701,9 @@ const POManagementGrid = () => {
             </div>
             <div className="p-4 space-y-4">
               <div className="bg-blue-50 p-3 rounded">
-                <p className="text-sm"><span className="font-medium">PO Number:</span> {selectedPO.poNumber}</p>
+                <p className="text-sm">
+                  <span className="font-medium">PO Number:</span> {selectedPO.poNumber}
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Material Status</label>
@@ -583,10 +719,16 @@ const POManagementGrid = () => {
                 </select>
               </div>
               <div className="flex justify-end gap-3">
-                <button onClick={() => setShowMaterialStatusModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">
+                <button
+                  onClick={() => setShowMaterialStatusModal(false)}
+                  className="px-4 py-2 border rounded hover:bg-gray-50"
+                >
                   Cancel
                 </button>
-                <button onClick={handleUpdateMaterialStatus} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                <button
+                  onClick={handleUpdateMaterialStatus}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
                   Update
                 </button>
               </div>
@@ -595,32 +737,36 @@ const POManagementGrid = () => {
         </div>
       )}
 
+      {/* Change PO Status Modal */}
       {showPOStatusModal && selectedPO && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold">Update PO Status</h3>
+              <h3 className="text-lg font-semibold">Change PO Status - {selectedPO.poNumber}</h3>
             </div>
             <div className="p-4 space-y-4">
-              <div className="bg-blue-50 p-3 rounded">
-                <p className="text-sm"><span className="font-medium">PO Number:</span> {selectedPO.poNumber}</p>
-              </div>
               <div>
                 <label className="block text-sm font-medium mb-2">PO Status</label>
                 <select
                   value={newPOStatus}
                   onChange={(e) => setNewPOStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="OPEN">Open</option>
                   <option value="CLOSED">Closed</option>
                 </select>
               </div>
-              <div className="flex justify-end gap-3">
-                <button onClick={() => setShowPOStatusModal(false)} className="px-4 py-2 border rounded hover:bg-gray-50">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowPOStatusModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                >
                   Cancel
                 </button>
-                <button onClick={handleUpdatePOStatus} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                <button
+                  onClick={handleUpdatePOStatus}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
                   Update
                 </button>
               </div>
@@ -637,10 +783,28 @@ const POManagementGrid = () => {
             </div>
             <div className="p-4 space-y-4">
               <div className="bg-blue-50 p-3 rounded space-y-2 text-sm">
-                <div><span className="font-medium">Payable Amount:</span> ₹{selectedGRN.payableAmount?.toLocaleString()}</div>
-                <div><span className="font-medium">Expected Date:</span> {new Date(selectedGRN.expectedPayableDate).toLocaleDateString()}</div>
+                <div>
+                  <span className="font-medium">Payable Amount:</span> ₹{selectedGRN.payableAmount?.toLocaleString()}
+                </div>
+                <div>
+                  <span className="font-medium">Expected Date:</span>{" "}
+                  {new Date(selectedGRN.expectedPayableDate).toLocaleDateString()}
+                </div>
               </div>
-              
+
+              <div>
+                <label className="block text-sm font-medium mb-2">GRN Status</label>
+                <select
+                  value={grnApprovalStatus}
+                  onChange={(e) => setGrnApprovalStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium mb-2">Approval Remarks</label>
                 <textarea
@@ -651,32 +815,26 @@ const POManagementGrid = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
-              
+
               <div className="flex justify-end gap-3">
-                <button 
+                <button
                   onClick={() => {
                     setShowGRNApprovalModal(false)
                     setGrnApprovalRemarks("")
+                    setGrnApprovalStatus("")
                     setSelectedGRN(null)
-                  }} 
+                  }}
                   className="px-4 py-2 border rounded hover:bg-gray-50"
                   disabled={processingGRN}
                 >
                   Cancel
                 </button>
-                <button 
-                  onClick={() => handleSubmitGRNApproval(false)} 
-                  className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-300"
-                  disabled={processingGRN}
-                >
-                  {processingGRN ? "Processing..." : "Reject"}
-                </button>
-                <button 
-                  onClick={() => handleSubmitGRNApproval(true)} 
+                <button
+                  onClick={handleSubmitGRNApproval}
                   className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300"
                   disabled={processingGRN}
                 >
-                  {processingGRN ? "Processing..." : "Approve"}
+                  {processingGRN ? "Processing..." : "Submit"}
                 </button>
               </div>
             </div>
@@ -698,25 +856,33 @@ const POManagementGrid = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">GRN Copy <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-2">
+                  GRN Copy <span className="text-red-500">*</span>
+                </label>
                 <input type="file" onChange={(e) => setGrnCopyFile(e.target.files[0])} className="w-full text-sm" />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">Test Certificate</label>
-                <input type="file" onChange={(e) => setTestCertificateFile(e.target.files[0])} className="w-full text-sm" />
+                <input
+                  type="file"
+                  onChange={(e) => setTestCertificateFile(e.target.files[0])}
+                  className="w-full text-sm"
+                />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">Invoice Copy</label>
                 <input type="file" onChange={(e) => setInvoiceCopyFile(e.target.files[0])} className="w-full text-sm" />
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium mb-2">Payable Amount <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-2">
+                  Payable Amount <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="number"
                   step="0.01"
@@ -725,9 +891,11 @@ const POManagementGrid = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
-              
+
               <div>
-                <label className="block text-sm font-medium mb-2">Expected Payable Date <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium mb-2">
+                  Expected Payable Date <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   value={expectedPayableDate}
@@ -735,7 +903,7 @@ const POManagementGrid = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">Remarks</label>
                 <textarea
@@ -745,7 +913,7 @@ const POManagementGrid = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
-              
+
               <div className="flex justify-end gap-3">
                 <button onClick={resetGRNModal} className="px-4 py-2 border rounded hover:bg-gray-50">
                   Cancel

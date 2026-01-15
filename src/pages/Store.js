@@ -49,7 +49,7 @@ function Projects() {
 
     // Filter tabs based on designation
     if (designation.includes("store-incharge")) {
-      return [allTabs[2]] 
+      return [allTabs[3], allTabs[2]] 
     } else if (designation.includes("manager")) {
       return [allTabs[0], allTabs[1], allTabs[2]] // BDM can see unassigned and BDM assigne
     } 

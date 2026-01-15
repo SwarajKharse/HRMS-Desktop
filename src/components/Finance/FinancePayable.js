@@ -79,19 +79,19 @@ function ApprovalModal({ isOpen, onClose, invoice, onSuccess }) {
                 <span className="ml-2 text-gray-900">{invoice.poNumber || "N/A"}</span>
               </div>
               <div>
-                <span className="font-medium text-gray-700">PI Number:</span>
+                <span className="font-medium text-gray-700">PI Number1111:</span>
                 <span className="ml-2 text-gray-900">{invoice.piNumber || "N/A"}</span>
               </div>
               <div>
                 <span className="font-medium text-gray-700">Project:</span>
                 <span className="ml-2 text-gray-900">{invoice.projectName}</span>
               </div>
-              <div>
+              {/* <div>
                 <span className="font-medium text-gray-700">Amount:</span>
                 <span className="ml-2 text-gray-900 font-semibold">
                   ₹{Number.parseFloat(invoice.payableAmount || invoice.amount || 0).toLocaleString("en-IN")}
                 </span>
-              </div>
+              </div> */}
               <div>
                 <span className="font-medium text-gray-700">Expected Date:</span>
                 <span className="ml-2 text-gray-900">
@@ -469,7 +469,6 @@ function FinancePayable() {
                   {[
                     "PO Number",
                     "PI Number",
-                    "Amount",
                     "Project Name",
                     "Expected Date",
                     "Documents",
@@ -508,11 +507,11 @@ function FinancePayable() {
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">{invoice.piNumber || "N/A"}</div>
                       </td>
-                      <td className="px-6 py-4">
+                      {/* <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-gray-900">
                           {formatCurrency(invoice.payableAmount)}
                         </div>
-                      </td>
+                      </td> */}
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">{invoice.projectName}</div>
                       </td>

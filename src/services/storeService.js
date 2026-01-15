@@ -2,6 +2,8 @@ import axios from "axios"
 
 const BASE_URL = `${process.env.REACT_APP_API_URL}/store`
 
+const VENDOR_BASE_URL = `${process.env.REACT_APP_API_URL}/vendors`
+
 const getAuthHeaders = () => {
   return {
     headers: {
@@ -398,4 +400,90 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
+
+
+  /************** Vendor Management  **********************/
+  // Replace fetch-based vendor methods with axios using BASE_URL
+   getVendors: async (page = 0, size = 10, search = "", status = "") => {
+    try {
+      const params = {
+        page,
+        size,
+        ...(search && { search }),
+        ...(status && { status }),
+      }
+      const response = await axios.get(`${VENDOR_BASE_URL}/getvendors`, {
+        params,
+        ...getAuthHeaders(),
+      })
+      return response
+    } catch (error) {
+      console.error("Error fetching vendors:", error)
+      throw error
+    }
+  },
+
+  // Check if email exists
+  checkVendorEmailExists: async (email, vendorId = null) => {
+    try {
+      const params = vendorId ? { vendorId } : {}
+      const response = await axios.get(`${VENDOR_BASE_URL}/check-email/${encodeURIComponent(email)}`, {
+        params,
+        ...getAuthHeaders(),
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error checking email:", error)
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Check if phone exists
+  checkVendorPhoneExists: async (phone, vendorId = null) => {
+    try {
+      const params = vendorId ? { vendorId } : {}
+      const response = await axios.get(`${VENDOR_BASE_URL}/check-phone/${encodeURIComponent(phone)}`, {
+        params,
+        ...getAuthHeaders(),
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error checking phone:", error)
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Create new vendor
+  createVendor: async (vendorData) => {
+    try {
+      const response = await axios.post(`${VENDOR_BASE_URL}/createvendor`, vendorData, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error creating vendor:", error)
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Update vendor
+  updateVendor: async (vendorId, vendorData) => {
+    try {
+      const response = await axios.put(`${VENDOR_BASE_URL}/updatevendor/${vendorId}`, vendorData, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error updating vendor:", error)
+      throw error.response?.data || error.message
+    }
+  },
+
+  // Delete vendor
+  deleteVendor: async (vendorId) => {
+    try {
+      const response = await axios.delete(`${VENDOR_BASE_URL}/deletevendor/${vendorId}`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error deleting vendor:", error)
+      throw error.response?.data || error.message
+    }
+  },
+  /************** Vendor Management End  ******************/
 }

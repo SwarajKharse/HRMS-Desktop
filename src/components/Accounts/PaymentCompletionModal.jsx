@@ -8,14 +8,33 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
   const [approvalStatus, setApprovalStatus] = useState("APPROVED")
   const [paymentDoneDate, setPaymentDoneDate] = useState("")
   const [receiptFile, setReceiptFile] = useState(null)
+  const [existingReceiptUrl, setExistingReceiptUrl] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     if (isOpen && invoice) {
-      // Set default payment done date to today
-      const today = new Date().toISOString().split("T")[0]
-      setPaymentDoneDate(today)
+      console.log("[v0] Modal opened with invoice:", invoice)
+      console.log("[v0] paymentDoneDate:", invoice.paymentDoneDate)
+      console.log("[v0] paymentReceiptUrl:", invoice.paymentReceiptUrl)
+
+      if (invoice.paymentDoneDate) {
+        const dateObj = new Date(invoice.paymentDoneDate)
+        const formattedDate = dateObj.toISOString().split("T")[0]
+        setPaymentDoneDate(formattedDate)
+      } else {
+        const today = new Date().toISOString().split("T")[0]
+        setPaymentDoneDate(today)
+      }
+
+      if (invoice.paymentReceiptUrl) {
+        setExistingReceiptUrl(invoice.paymentReceiptUrl)
+      } else if (invoice.payment_receipt_url) {
+        setExistingReceiptUrl(invoice.payment_receipt_url)
+      } else {
+        setExistingReceiptUrl(null)
+      }
+
       setApprovalStatus("APPROVED")
       setReceiptFile(null)
       setError(null)
@@ -25,14 +44,12 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
   const handleFileChange = (e) => {
     const file = e.target.files[0]
     if (file) {
-      // Validate file type (PDF or images)
       const allowedTypes = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/gif"]
       if (!allowedTypes.includes(file.type)) {
         setError("Please upload a PDF or image file (JPEG, PNG, GIF)")
         return
       }
 
-      // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         setError("File size must be less than 10MB")
         return
@@ -55,7 +72,8 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
 
       await purchaseInvoiceService.completePayment(invoice.id, approvalStatus, paymentDoneDate, receiptFile)
 
-      onComplete()
+      const updatedInvoice = await purchaseInvoiceService.getPurchaseInvoiceById(invoice.id)
+      onComplete(updatedInvoice)
       onClose()
     } catch (err) {
       setError(err.response?.data?.error || "Failed to complete payment")
@@ -99,7 +117,6 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
             </div>
           )}
 
-          {/* Invoice Details */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <h4 className="font-medium text-gray-900 mb-3">Invoice Details</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -160,7 +177,6 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
             </div>
           </div>
 
-          {/* Payment Completion Form */}
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -198,6 +214,22 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
                 <FiUpload className="w-4 h-4 inline mr-2" />
                 Payment Receipt (Optional)
               </label>
+
+              {existingReceiptUrl && !receiptFile && (
+                <div className="mb-4 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <p className="text-sm text-blue-700 font-medium mb-2">Previously uploaded receipt:</p>
+                  <a
+                    href={existingReceiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 underline text-sm flex items-center gap-2"
+                  >
+                    <FiFileText className="w-4 h-4" />
+                    View Receipt
+                  </a>
+                </div>
+              )}
+
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
                 <input
                   type="file"
