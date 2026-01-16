@@ -144,11 +144,11 @@ export const comparisonSheetService = {
     }
   },
 
-  saveComparisonSheet: async (comparisonData) => {
+  saveComparisonSheet: async (comparisonData,currentUserId) => {
     try {
       const response = await axios.post(`${API_BASE_URL}/material-requisitions/comparison-sheet`, comparisonData, {
         params: {
-          currentUserId: 1,
+          currentUserId: currentUserId,
         },
       })
       return response.data
