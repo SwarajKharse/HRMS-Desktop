@@ -265,7 +265,7 @@ export default function ComparisionSheetPurchaser() {
   const handleSaveComparisonSheet = async (comparisonData) => {
     try {
       console.log("[v0] Saving comparison sheet data:", comparisonData)
-      const result = await comparisonSheetService.saveComparisonSheet(comparisonData)
+      const result = await comparisonSheetService.saveComparisonSheet(comparisonData,currentUserId)
       console.log("[v0] Comparison sheet saved successfully:", result)
       return result
     } catch (error) {
