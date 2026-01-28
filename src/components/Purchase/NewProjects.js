@@ -338,7 +338,7 @@ function NewProjects() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Project ID", "Project Name", "Project Initiation", "Scope of Work", "Actions"]
+                    {["Project ID", "Project Name", "Project Initiation", "Scope of Work"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -390,17 +390,16 @@ function NewProjects() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
-                            {/* <button
+                            <button
                               className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
                               onClick={(e) => handleBOQEdit(e, project)}
                               title="Edit BOQ"
                             >
                               BOQ
-                            </button> */}
-                            BOQ
+                            </button>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        {/* <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <button
                               className="text-gray-400 hover:text-indigo-600 transition-colors"
@@ -410,7 +409,7 @@ function NewProjects() {
                               <FiEdit2 size={18} />
                             </button>
                           </div>
-                        </td>
+                        </td> */}
                       </motion.tr>
                     ))
                   )}

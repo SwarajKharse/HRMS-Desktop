@@ -694,9 +694,11 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                                       }}
                                       placeholder="Qty"
                                       className={`w-16 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                        product.isExisting ? "bg-gray-100 text-gray-700 cursor-not-allowed" : ""
+                                      //product.isExisting ? "bg-gray-100 text-gray-700 cursor-not-allowed" : ""
+                                        product.isExisting ? "" : ""
+                                        
                                       }`}
-                                      readOnly={product.isExisting} // Make qty read-only for existing items
+                                      // readOnly={product.isExisting} // Make qty read-only for existing items
                                     />
                                   </td>
                                   {/* Removed Rate, Amount, and Total cells */}

@@ -25,6 +25,8 @@ export default function MaterialRequisition() {
     priority: "All",
     mtrDateFrom: "",
     mtrDateTo: "",
+    pmApprovalStatus: "APPROVED",
+    salestlApprovalStatus: "APPROVED",
   })
 
   const currentUserId = user.userId
@@ -47,6 +49,8 @@ export default function MaterialRequisition() {
         ...(filters.priority !== "All" && { priority: filters.priority }),
         ...(filters.mtrDateFrom && { mtrDateFrom: filters.mtrDateFrom }),
         ...(filters.mtrDateTo && { mtrDateTo: filters.mtrDateTo }),
+        ...(filters.pmApprovalStatus !== "All" && { pmApprovalStatus: filters.pmApprovalStatus }),
+        ...(filters.salestlApprovalStatus !== "All" && { salestlApprovalStatus: filters.salestlApprovalStatus }),
       }).toString()
 
       const data = await materialRequisitionService.fetchMaterialRequisitions(queryParams)

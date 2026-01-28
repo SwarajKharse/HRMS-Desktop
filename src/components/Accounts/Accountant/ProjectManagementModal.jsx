@@ -5,6 +5,32 @@ import { FiX, FiUpload, FiFile, FiCheck, FiAlertCircle, FiCalendar } from "react
 import { projectManagementService } from "../../../services/projectManagementService"
 import { useAuth } from "../../../contexts/AuthContext"
 
+// Approval Status Badge Component
+const ApprovalStatusBadge = ({ status }) => {
+  const statusStyles = {
+    PENDING: "bg-yellow-100 text-yellow-800 border border-yellow-300",
+    APPROVED: "bg-green-100 text-green-800 border border-green-300",
+    REJECTED: "bg-red-100 text-red-800 border border-red-300",
+  }
+
+  const statusIcons = {
+    PENDING: "⏳",
+    APPROVED: "✓",
+    REJECTED: "✕",
+  }
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
+        statusStyles[status] || statusStyles.PENDING
+      }`}
+    >
+      <span>{statusIcons[status]}</span>
+      {status}
+    </span>
+  )
+}
+
 function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, onSuccess }) {
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
@@ -365,7 +391,12 @@ function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, o
                         </a>
                       </div>
                     </div>
-
+                    <div className="text-sm text-gray-600 mb-2">
+                      <span className="font-medium">Approval Status:</span>
+                      <span className="ml-2">
+                        <ApprovalStatusBadge status={invoice.approvalStatus} />
+                      </span>
+                    </div>
                     {invoice.supportDocumentUrl && (
                       <div className="text-sm text-gray-600 mb-2">
                         Support Doc:{" "}

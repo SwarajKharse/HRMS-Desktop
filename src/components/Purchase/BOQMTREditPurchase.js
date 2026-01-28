@@ -227,7 +227,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
 
   const fetchSkillsets = async () => {
     try {
-      const response = await storeService.getSkillSetList()
+      const response = await storeService.getSkillSets()
       console.log("Skillsets API Raw Response:", response)
       let skillsetsData = []
       if (Array.isArray(response)) {
@@ -253,7 +253,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
 
   const fetchTools = async () => {
     try {
-      const response = await storeService.getToolsList()
+      const response = await storeService.getTools()
       console.log("Tools API Raw Response:", response)
       let toolsData = []
       if (Array.isArray(response)) {
@@ -1987,7 +1987,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
             )}
           </div>
         </div>
-        <div className="flex items-center justify-end gap-4 p-6 border-t bg-gray-50">
+        {/* <div className="flex items-center justify-end gap-4 p-6 border-t bg-gray-50">
           <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
             Cancel
           </button>
@@ -2008,7 +2008,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
               </>
             )}
           </button>
-        </div>
+        </div> */}
         {showAddProductModal && (
           <div
             className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"

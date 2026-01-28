@@ -4,11 +4,13 @@ import { useState, useEffect, useCallback } from "react"
 import { purchaseOrderService } from "../../services/purchaseOrderService"
 import { grnService } from "../../services/grnService"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
+import { materialRequisitionService } from "../../services/materialRequisitionService"
 import { useAuth } from "../../contexts/AuthContext"
 
 const POManagementGrid = () => {
   const { user } = useAuth()
   const [purchaseOrders, setPurchaseOrders] = useState([])
+  const [mtrMap, setMtrMap] = useState({}) // Map of MTR ID to project name
   const [loading, setLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -30,6 +32,11 @@ const POManagementGrid = () => {
   const [newMaterialStatus, setNewMaterialStatus] = useState("")
   const [showPOStatusModal, setShowPOStatusModal] = useState(false)
   const [newPOStatus, setNewPOStatus] = useState("")
+  const [showApprovalStatusModal, setShowApprovalStatusModal] = useState(false)
+  const [selectedPOForApproval, setSelectedPOForApproval] = useState(null)
+  const [newApprovalStatus, setNewApprovalStatus] = useState("")
+  const [approvalRemarks, setApprovalRemarks] = useState("")
+  const [updatingApproval, setUpdatingApproval] = useState(false)
 
   // GRN Upload fields
   const [grnCopyFile, setGrnCopyFile] = useState(null)
@@ -62,6 +69,28 @@ const POManagementGrid = () => {
         poStatus: poStatusFilter,
         approvalStatus: approvalStatusFilter,
       })
+
+      // Fetch MTRs to get project information
+      try {
+        const queryParams = new URLSearchParams({
+          page: 0,
+          size: 1000,
+        }).toString()
+        const mtrsData = await materialRequisitionService.fetchApprovedMTRsForPurchase(queryParams)
+        console.log("[v0] MTRs Response:", mtrsData)
+        const newMtrMap = {}
+
+        // Build a map of MTR ID to project name
+        ;(mtrsData.content || []).forEach((mtr) => {
+          console.log("[v0] MTR", mtr.id, "projectName:", mtr.projectName)
+          newMtrMap[mtr.id] = mtr.projectName || "N/A"
+        })
+
+        console.log("[v0] Final MTR Map:", newMtrMap)
+        setMtrMap(newMtrMap)
+      } catch (e) {
+        console.log("[v0] Could not fetch MTR data for project names:", e.message)
+      }
 
       setPurchaseOrders(data.content || [])
       setTotalPages(data.totalPages || 0)
@@ -123,6 +152,17 @@ const POManagementGrid = () => {
     setShowPOStatusModal(true)
   }
 
+  const getProjectName = (po) => {
+    // Get project name from MTR map using the boqMtr ID
+    console.log("[v0] Getting project name for PO", po.id, "boqMtr.id:", po?.boqMtr?.id, "mtrMap:", mtrMap)
+    if (po?.boqMtr?.id && mtrMap[po.boqMtr.id]) {
+      console.log("[v0] Found project name:", mtrMap[po.boqMtr.id])
+      return mtrMap[po.boqMtr.id]
+    }
+    console.log("[v0] Project name not found, returning N/A")
+    return "N/A"
+  }
+
   const handleUpdatePOStatus = async () => {
     if (!selectedPO || !newPOStatus) return
 
@@ -134,6 +174,30 @@ const POManagementGrid = () => {
     } catch (error) {
       console.error("Error updating PO status:", error)
       showMessage("error", "Failed to update PO status")
+    }
+  }
+
+  const handleUpdateApprovalStatus = async () => {
+    if (!selectedPOForApproval || !newApprovalStatus) return
+
+    try {
+      setUpdatingApproval(true)
+      await purchaseOrderService.updateApprovalStatus(
+        selectedPOForApproval.id,
+        newApprovalStatus,
+        approvalRemarks,
+      )
+      showMessage("success", "Approval status updated successfully!")
+      setShowApprovalStatusModal(false)
+      setSelectedPOForApproval(null)
+      setNewApprovalStatus("")
+      setApprovalRemarks("")
+      fetchPurchaseOrders()
+    } catch (error) {
+      console.error("Error updating approval status:", error)
+      showMessage("error", "Failed to update approval status")
+    } finally {
+      setUpdatingApproval(false)
     }
   }
 
@@ -380,10 +444,13 @@ const POManagementGrid = () => {
               <table className="w-full">
                 <thead className="bg-gray-100">
                   <tr>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Project Name</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">PO Number</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">PO Document</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Material Status</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">PO Status</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Approval Status</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">PM Approval</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">FM Approval</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created Date</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
                   </tr>
@@ -391,12 +458,33 @@ const POManagementGrid = () => {
                 <tbody>
                   {purchaseOrders.map((po) => (
                     <tr key={po.id} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium text-gray-800">{getProjectName(po)}</td>
                       <td className="px-4 py-3">{po.poNumber}</td>
+                      <td className="px-4 py-3">
+                        {po.fileUrl ? (
+                          <a
+                            href={po.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium"
+                          >
+                            View Document
+                          </a>
+                        ) : (
+                          <span className="text-gray-400 text-sm">No Document</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">{getMaterialStatusBadge(po.materialStatus)}</td>
                       <td className="px-4 py-3">{getPOStatusBadge(po.poStatus, po)}</td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        <button
+                          onClick={() => {
+                            setSelectedPOForApproval(po)
+                            setNewApprovalStatus(po.approvalStatus || "PENDING")
+                            setApprovalRemarks(po.approvalRemarks || "")
+                            setShowApprovalStatusModal(true)
+                          }}
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 ${
                             po.approvalStatus === "APPROVED"
                               ? "bg-green-100 text-green-800"
                               : po.approvalStatus === "REJECTED"
@@ -404,7 +492,20 @@ const POManagementGrid = () => {
                                 : "bg-yellow-100 text-yellow-800"
                           }`}
                         >
-                          {po.approvalStatus}
+                          {po.approvalStatus || "PENDING"}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            po.financeManagerApprovalStatus === "APPROVED"
+                              ? "bg-green-100 text-green-800"
+                              : po.financeManagerApprovalStatus === "REJECTED"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {po.financeManagerApprovalStatus || "PENDING"}
                         </span>
                       </td>
                       <td className="px-4 py-3">{new Date(po.createdAt).toLocaleDateString()}</td>
@@ -775,73 +876,6 @@ const POManagementGrid = () => {
         </div>
       )}
 
-      {showGRNApprovalModal && selectedGRN && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="p-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold">GRN Approval - {selectedGRN.grnNumber}</h3>
-            </div>
-            <div className="p-4 space-y-4">
-              <div className="bg-blue-50 p-3 rounded space-y-2 text-sm">
-                <div>
-                  <span className="font-medium">Payable Amount:</span> ₹{selectedGRN.payableAmount?.toLocaleString()}
-                </div>
-                <div>
-                  <span className="font-medium">Expected Date:</span>{" "}
-                  {new Date(selectedGRN.expectedPayableDate).toLocaleDateString()}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">GRN Status</label>
-                <select
-                  value={grnApprovalStatus}
-                  onChange={(e) => setGrnApprovalStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                >
-                  <option value="PENDING">Pending</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="REJECTED">Rejected</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Approval Remarks</label>
-                <textarea
-                  value={grnApprovalRemarks}
-                  onChange={(e) => setGrnApprovalRemarks(e.target.value)}
-                  rows={3}
-                  placeholder="Enter remarks for approval/rejection..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => {
-                    setShowGRNApprovalModal(false)
-                    setGrnApprovalRemarks("")
-                    setGrnApprovalStatus("")
-                    setSelectedGRN(null)
-                  }}
-                  className="px-4 py-2 border rounded hover:bg-gray-50"
-                  disabled={processingGRN}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmitGRNApproval}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300"
-                  disabled={processingGRN}
-                >
-                  {processingGRN ? "Processing..." : "Submit"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* GRN Upload Modal */}
       {showGRNModal && selectedPO && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -924,6 +958,132 @@ const POManagementGrid = () => {
                   className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300"
                 >
                   {uploadingGRN ? "Uploading..." : "Upload GRN"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GRN Approval Modal */}
+      {showGRNApprovalModal && selectedGRN && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold">GRN Approval - {selectedGRN.grnNumber}</h3>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 p-3 rounded space-y-2 text-sm">
+                <div>
+                  <span className="font-medium">Payable Amount:</span> ₹{selectedGRN.payableAmount?.toLocaleString()}
+                </div>
+                <div>
+                  <span className="font-medium">Expected Date:</span>{" "}
+                  {new Date(selectedGRN.expectedPayableDate).toLocaleDateString()}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">GRN Status</label>
+                <select
+                  value={grnApprovalStatus}
+                  onChange={(e) => setGrnApprovalStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Approval Remarks</label>
+                <textarea
+                  value={grnApprovalRemarks}
+                  onChange={(e) => setGrnApprovalRemarks(e.target.value)}
+                  rows={3}
+                  placeholder="Enter remarks for approval/rejection..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowGRNApprovalModal(false)
+                    setGrnApprovalRemarks("")
+                    setGrnApprovalStatus("")
+                    setSelectedGRN(null)
+                  }}
+                  className="px-4 py-2 border rounded hover:bg-gray-50"
+                  disabled={processingGRN}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitGRNApproval}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-300"
+                  disabled={processingGRN}
+                >
+                  {processingGRN ? "Processing..." : "Submit"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval Status Modal */}
+      {showApprovalStatusModal && selectedPOForApproval && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold">Update Approval Status - {selectedPOForApproval.poNumber}</h3>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Approval Status</label>
+                <select
+                  value={newApprovalStatus}
+                  onChange={(e) => setNewApprovalStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Remarks (Optional)</label>
+                <textarea
+                  value={approvalRemarks}
+                  onChange={(e) => setApprovalRemarks(e.target.value)}
+                  placeholder="Enter approval remarks..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="4"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowApprovalStatusModal(false)
+                    setSelectedPOForApproval(null)
+                    setNewApprovalStatus("")
+                    setApprovalRemarks("")
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateApprovalStatus}
+                  disabled={updatingApproval}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updatingApproval ? "Updating..." : "Update"}
                 </button>
               </div>
             </div>

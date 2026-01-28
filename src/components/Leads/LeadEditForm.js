@@ -1125,7 +1125,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           {/* PMC Firm Details Section */}
           {lead.pmc_client_name && lead.pmc_project_location && lead.pmc_office_location && (
             <div className="space-y-4 rounded-lg bg-white border p-4">
-              <h3 className="font-semibold text-lg border-b pb-2">PMC Firm Details</h3>
+              <h3 className="font-semibold text-lg border-b pb-2">PMC Firm Details {activeTab} { hasBdmFieldVisitData}</h3>
               <div className="grid grid-cols-3 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
@@ -1297,7 +1297,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
               {/* Lead Status End */}
             </>
           ) : null}
-          {activeTab === "bdm-assigned-field-visit" ? (
+          {activeTab === "bdm-assigned-field-visit"  ? (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">Field Visit Details</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1567,7 +1567,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
             activeTab === "unassigned-leads") &&
           hasBdmFieldVisitData ? (
             <div className="space-y-4 rounded-lg bg-white border p-4">
-              <h3 className="font-semibold text-lg border-b pb-2">BDM Field Visit Data</h3>
+                <h3 className="font-semibold text-lg border-b pb-2">BDM Field Visit Data</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Visit confirmation call date */}
                 {lead.visit_confirmation_call_date && (

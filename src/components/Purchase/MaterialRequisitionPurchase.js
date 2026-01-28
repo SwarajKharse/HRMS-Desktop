@@ -180,7 +180,6 @@ export default function MaterialRequisitionPurchase() {
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("")
   const [filters, setFilters] = useState({
     itemName: "",
-    status: "All",
     priority: "All",
     mtrDateFrom: "",
     mtrDateTo: "",
@@ -196,13 +195,15 @@ export default function MaterialRequisitionPurchase() {
         page: currentPage,
         size: pageSize,
         ...(filters.itemName && { itemName: filters.itemName }),
-        ...(filters.status !== "All" && { status: filters.status }),
         ...(filters.priority !== "All" && { priority: filters.priority }),
         ...(filters.mtrDateFrom && { mtrDateFrom: filters.mtrDateFrom }),
         ...(filters.mtrDateTo && { mtrDateTo: filters.mtrDateTo }),
       }).toString()
 
-      const data = await materialRequisitionService.fetchMaterialRequisitions(queryParams)
+      // Call the new endpoint that filters by approval statuses:
+      // 1. MTR pmApprovalStatus = 'APPROVED'
+      // 2. Product salestlApprovalStatus = 'APPROVED'
+      const data = await materialRequisitionService.fetchApprovedMTRsForPurchase(queryParams)
 
       const formattedRequisitions = (data.content || []).map((req) => {
         return {
@@ -613,8 +614,9 @@ export default function MaterialRequisitionPurchase() {
                                 type="number"
                                 step="0.01"
                                 value={editedMtrData.stockAlloted}
+                                readOnly
                                 onChange={(e) => handleInputChange(e, "stockAlloted")}
-                                className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                                className="w-24 p-1 border rounded bg-gray-100 text-gray-600"
                               />
                             ) : (
                               req.stockAlloted
