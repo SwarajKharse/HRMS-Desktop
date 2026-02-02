@@ -58,6 +58,22 @@ export const financePayableService = {
     }
   },
 
+  approvePIApproval: async (piId, approvalStatus, remarks, financeUserId) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/finance-payables/${piId}/approve-reject-pi`,
+        { approvalStatus, remarks, userId: financeUserId },
+        {
+          ...getAuthHeaders(),
+        },
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error approving PI:", error)
+      throw error
+    }
+  },
+
   handoverToPurchase: async (piId, financeUserId) => {
     try {
       const response = await axios.post(

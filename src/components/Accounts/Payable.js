@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import { FiAlertCircle, FiCheck, FiChevronRight, FiUser } from "react-icons/fi"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
+import { useAuth } from "../../contexts/AuthContext"
 
 function AssignAccountantModal({ isOpen, onClose, piId, onAssign }) {
   const [accountants, setAccountants] = useState([])
@@ -12,6 +13,7 @@ function AssignAccountantModal({ isOpen, onClose, piId, onAssign }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [currentAssignee, setCurrentAssignee] = useState(null)
+  const { user } = useAuth()
 
   useEffect(() => {
     if (isOpen) {
@@ -401,7 +403,13 @@ function Payable() {
         projectNameFilter,
         statusFilter,
       )
-      setPurchaseInvoices(data.content || [])
+      
+      // Filter PIs to only show those with handoverFromFinance === "APPROVED"
+      const filteredInvoices = (data.content || []).filter(
+        (invoice) => invoice.handoverFromFinance === "COMPLETE"
+      )
+      
+      setPurchaseInvoices(filteredInvoices)
       setTotalPages(data.totalPages || 1)
       setTotalResults(data.totalItems || 0)
       setLoading(false)

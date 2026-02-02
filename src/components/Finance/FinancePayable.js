@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FiAlertCircle, FiCheck, FiX, FiFileText, FiExternalLink } from "react-icons/fi"
 import { financePayableService } from "../../services/financePayableService"
+import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
+import { useAuth } from "../../contexts/AuthContext" // Import useAuth hook
 
 function ApprovalModal({ isOpen, onClose, invoice, onSuccess }) {
   const [approvalStatus, setApprovalStatus] = useState("")
@@ -57,7 +59,7 @@ function ApprovalModal({ isOpen, onClose, invoice, onSuccess }) {
       >
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-semibold text-gray-900">Approve/Reject Invoice</h3>
+            <h3 className="text-xl font-semibold text-gray-900">Approve/Reject PO</h3>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
               <FiX size={24} />
             </button>
@@ -69,81 +71,6 @@ function ApprovalModal({ isOpen, onClose, invoice, onSuccess }) {
               <span className="text-sm">{error}</span>
             </div>
           )}
-
-          {/* Invoice Details */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-6">
-            <h4 className="font-semibold text-gray-900 mb-3">Invoice Details</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <div>
-                <span className="font-medium text-gray-700">PO Number:</span>
-                <span className="ml-2 text-gray-900">{invoice.poNumber || "N/A"}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">PI Number1111:</span>
-                <span className="ml-2 text-gray-900">{invoice.piNumber || "N/A"}</span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Project:</span>
-                <span className="ml-2 text-gray-900">{invoice.projectName}</span>
-              </div>
-              {/* <div>
-                <span className="font-medium text-gray-700">Amount:</span>
-                <span className="ml-2 text-gray-900 font-semibold">
-                  ₹{Number.parseFloat(invoice.payableAmount || invoice.amount || 0).toLocaleString("en-IN")}
-                </span>
-              </div> */}
-              <div>
-                <span className="font-medium text-gray-700">Expected Date:</span>
-                <span className="ml-2 text-gray-900">
-                  {invoice.expectedPaymentDate ? new Date(invoice.expectedPaymentDate).toLocaleDateString() : "N/A"}
-                </span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700">Current Status:</span>
-                <span
-                  className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
-                    invoice.financeManagerApprovalStatus === "APPROVED"
-                      ? "bg-green-100 text-green-700"
-                      : invoice.financeManagerApprovalStatus === "REJECTED"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-yellow-100 text-yellow-700"
-                  }`}
-                >
-                  {invoice.financeManagerApprovalStatus || "PENDING"}
-                </span>
-              </div>
-            </div>
-
-            {/* File Links */}
-            <div className="mt-3 pt-3 border-t border-gray-200">
-              <span className="font-medium text-gray-700 text-sm">Files: </span>
-              {invoice.fileUrl ? (
-                <a
-                  href={invoice.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline hover:text-blue-800 text-sm"
-                >
-                  {invoice.fileName || "PO File"}
-                </a>
-              ) : (
-                <span className="text-gray-400 text-sm">No PO file</span>
-              )}
-              {invoice.piFileUrl && (
-                <>
-                  <span className="mx-2 text-gray-400">|</span>
-                  <a
-                    href={invoice.piFileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 underline hover:text-blue-800 text-sm"
-                  >
-                    {invoice.piFileName || "PI File"}
-                  </a>
-                </>
-              )}
-            </div>
-          </div>
 
           <form onSubmit={handleSubmit}>
             <div className="space-y-4">
@@ -204,6 +131,7 @@ function ApprovalModal({ isOpen, onClose, invoice, onSuccess }) {
 }
 
 function FinancePayable() {
+  const { user } = useAuth() // Declare useAuth hook at the top level
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [purchaseInvoices, setPurchaseInvoices] = useState([])
@@ -222,7 +150,18 @@ function FinancePayable() {
   const [showApprovalModal, setShowApprovalModal] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
 
+  // PI approval modal states
+  const [showPIApprovalModal, setShowPIApprovalModal] = useState(false)
+  const [selectedPOForPIApproval, setSelectedPOForPIApproval] = useState(null)
+  const [newPIApprovalStatus, setNewPIApprovalStatus] = useState("")
+  const [piApprovalRemarks, setPiApprovalRemarks] = useState("")
+  const [updatingPIApproval, setUpdatingPIApproval] = useState(false)
+
+  // PI data map
+  const [piDataMap, setPiDataMap] = useState({})
+
   const [expandedRows, setExpandedRows] = useState({})
+  const [expandedPIHistory, setExpandedPIHistory] = useState({})
 
   const fetchPurchaseInvoices = useCallback(async () => {
     try {
@@ -241,8 +180,60 @@ function FinancePayable() {
       setPurchaseInvoices(data.content || [])
       setTotalPages(data.totalPages || 1)
       setTotalResults(data.totalItems || 0)
+
+      // Fetch PI data for each PO
+      const piMap = {}
+      for (const po of data.content || []) {
+        try {
+          // Fetch PI data based on PO ID or MTR ID
+          const piList = await purchaseInvoiceService.getPurchaseInvoicesByPO(po.id)
+          console.log("[v0] PI List received:", piList)
+          if (piList && piList.length > 0) {
+            // Get the latest PI
+            const latestPI = piList[piList.length - 1]
+            piMap[po.id] = {
+              piNumber: latestPI.piNumber,
+              piFileUrl: latestPI.fileUrl,
+              expectedPaymentDate: latestPI.expectedPaymentDate,
+              payableAmount: latestPI.payableAmount,
+              approvalStatus: latestPI.approvalStatus || "PENDING",
+              financeManagerApprovalStatus: latestPI.approvedFromFinance || "PENDING",
+              handoverFromFinance: latestPI.handoverFromFinance || "PENDING",
+              piList: piList,
+              id: latestPI.id,
+            }
+          } else {
+            piMap[po.id] = {
+              piNumber: null,
+              piFileUrl: null,
+              expectedPaymentDate: null,
+              payableAmount: null,
+              approvalStatus: "PENDING",
+              financeManagerApprovalStatus: "PENDING",
+              handoverFromFinance: "PENDING",
+              piList: [],
+              id: null,
+            }
+          }
+        } catch (error) {
+          console.log("[v0] Error fetching PI data for PO", po.id, error.message)
+          piMap[po.id] = {
+            piNumber: null,
+            piFileUrl: null,
+            expectedPaymentDate: null,
+            payableAmount: null,
+            approvalStatus: "PENDING",
+            financeManagerApprovalStatus: "PENDING",
+            handoverFromFinance: "PENDING",
+            piList: [],
+            id: null,
+          }
+        }
+      }
+      setPiDataMap(piMap)
     } catch (error) {
       setError("Failed to fetch purchase invoices")
+      console.error("[v0] Error fetching purchase invoices:", error)
     } finally {
       setLoading(false)
     }
@@ -277,8 +268,8 @@ function FinancePayable() {
   const handleHandoverToPurchase = async (e, invoice) => {
     e.stopPropagation()
 
-    if (invoice.financeManagerApprovalStatus !== "APPROVED") {
-      setError("Cannot handover to purchase. Invoice must be approved first.")
+    if (invoice.financeManagerApprovalStatus !== "APPROVED" || piDataMap[invoice.id]?.financeManagerApprovalStatus !== "APPROVED") {
+      setError("Cannot handover to purchase. Both PO and PI must be approved first.")
       setTimeout(() => setError(null), 3000)
       return
     }
@@ -286,12 +277,17 @@ function FinancePayable() {
     if (window.confirm("Are you sure you want to handover this invoice to purchase?")) {
       try {
         setLoading(true)
-        const currentUserId = localStorage.getItem("userId") || 1
-        await financePayableService.handoverToPurchase(invoice.id, currentUserId)
+        const currentUserId = user?.userId || 1
+        const piId = piDataMap[invoice.id]?.id
+        
+        console.log("[v0] Handover to Purchase - PI ID:", piId, "User ID:", currentUserId)
+        
+        await financePayableService.handoverToPurchase(piId, currentUserId)
         setSuccessMessage("Successfully handed over to purchase!")
         await fetchPurchaseInvoices()
         setTimeout(() => setSuccessMessage(null), 3000)
       } catch (err) {
+        console.error("[v0] Handover error:", err)
         setError(err.response?.data?.error || "Failed to handover to purchase")
         setTimeout(() => setError(null), 3000)
       } finally {
@@ -304,6 +300,44 @@ function FinancePayable() {
     setSuccessMessage("Invoice status updated successfully!")
     await fetchPurchaseInvoices()
     setTimeout(() => setSuccessMessage(null), 3000)
+  }
+
+  const handleUpdatePIApproval = async () => {
+    if (!selectedPOForPIApproval || !newPIApprovalStatus) return
+
+    try {
+      setUpdatingPIApproval(true)
+      setError(null)
+
+      const currentUserId = user?.userId || 1
+
+      console.log("[v0] Updating PI Approval - PI ID:", selectedPOForPIApproval.piId, "Status:", newPIApprovalStatus, "User ID:", currentUserId)
+
+      // Call the backend API to update PI approval using PI ID, not PO ID
+      await financePayableService.approvePIApproval(
+        selectedPOForPIApproval.piId,
+        newPIApprovalStatus,
+        piApprovalRemarks,
+        currentUserId
+      )
+
+      setSuccessMessage("PI approval updated successfully!")
+      setShowPIApprovalModal(false)
+      setSelectedPOForPIApproval(null)
+      setNewPIApprovalStatus("")
+      setPiApprovalRemarks("")
+      
+      // Refresh the data to get updated values from backend
+      await fetchPurchaseInvoices()
+      
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (error) {
+      console.error("[v0] Error updating PI approval:", error)
+      setError(error.response?.data?.error || "Failed to update PI approval")
+      setTimeout(() => setError(null), 3000)
+    } finally {
+      setUpdatingPIApproval(false)
+    }
   }
 
   const clearFilters = () => {
@@ -466,17 +500,7 @@ function FinancePayable() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  {[
-                    "PO Number",
-                    "PI Number",
-                    "Project Name",
-                    "Expected Date",
-                    "Documents",
-                    "PM Status",
-                    "PO Status",
-                    "Handover",
-                    "Actions",
-                  ].map((header) => (
+                  {[ "Project Name", "Number", "Documents", "PM Status", "PO Status", "Expected Payment Date", "Payable Amount", "Handover", "Actions", ].map((header) => (
                     <th
                       key={header}
                       className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
@@ -501,105 +525,239 @@ function FinancePayable() {
                       animate={{ opacity: 1 }}
                       className="hover:bg-gray-50 transition-colors"
                     >
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{invoice.poNumber || "N/A"}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">{invoice.piNumber || "N/A"}</div>
-                      </td>
-                      {/* <td className="px-6 py-4">
-                        <div className="text-sm font-semibold text-gray-900">
-                          {formatCurrency(invoice.payableAmount)}
-                        </div>
-                      </td> */}
+                      {/* Project Name */}
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">{invoice.projectName}</div>
                       </td>
+
+                      {/* Number (PO & PI combined) */}
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">{formatDate(invoice.expectedPaymentDate)}</div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          {invoice.fileUrl ? (
-                            <a
-                              href={invoice.fileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium transition-colors"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <FiFileText className="w-3.5 h-3.5" />
-                              <span>PO Doc</span>
-                              <FiExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            <span className="text-xs text-gray-400">No PO</span>
-                          )}
-                          {invoice.piFileUrl ? (
-                            <a
-                              href={invoice.piFileUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium transition-colors"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <FiFileText className="w-3.5 h-3.5" />
-                              <span>PI Doc</span>
-                              <FiExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            <span className="text-xs text-gray-400">No PI</span>
+                        <div className="space-y-0.5 text-xs">
+                          <div>PO: {invoice.poNumber}</div>
+                          {piDataMap[invoice.id]?.piNumber && (
+                            <div>PI: {piDataMap[invoice.id].piNumber}</div>
                           )}
                         </div>
                       </td>
+
+                      {/* Documents */}
                       <td className="px-6 py-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                            invoice.purchaseManagerApprovalStatus || "PENDING",
-                          )}`}
-                        >
-                          {invoice.purchaseManagerApprovalStatus || "PENDING"}
-                        </span>
+                        <div className="flex flex-wrap gap-3 text-xs">
+                          <div>
+                            <span className="font-medium">PO:</span>{" "}
+                            {invoice.fileUrl ? (
+                              <a
+                                href={invoice.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Document
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">No Document</span>
+                            )}
+                          </div>
+                          {piDataMap[invoice.id]?.piFileUrl && (
+                            <div>
+                              <span className="font-medium">PI:</span>{" "}
+                              <a
+                                href={piDataMap[invoice.id].piFileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                Document
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </td>
+
+                      {/* PM Status - No click handler */}
                       <td className="px-6 py-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                            invoice.financeManagerApprovalStatus || "PENDING",
-                          )}`}
-                        >
-                          {invoice.financeManagerApprovalStatus || "PENDING"}
-                        </span>
+                        <div className="space-y-1">
+                          <div>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusBadge(
+                                invoice.purchaseManagerApprovalStatus || "PENDING",
+                              )}`}
+                            >
+                              PO: {invoice.purchaseManagerApprovalStatus || "PENDING"}
+                            </span>
+                          </div>
+                          {piDataMap[invoice.id]?.piNumber && (
+                            <div>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusBadge(
+                                  piDataMap[invoice.id]?.approvalStatus || "PENDING",
+                                )}`}
+                              >
+                                PI: {piDataMap[invoice.id]?.approvalStatus || "PENDING"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </td>
+
+                      {/* PO Status - Clickable */}
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          <div>
+                            <button
+                              onClick={() => {
+                                setSelectedInvoice(invoice)
+                                setShowApprovalModal(true)
+                              }}
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 ${getStatusBadge(
+                                invoice.financeManagerApprovalStatus || "PENDING",
+                              )}`}
+                            >
+                              PO: {invoice.financeManagerApprovalStatus || "PENDING"}
+                            </button>
+                          </div>
+                          {piDataMap[invoice.id]?.piNumber && (
+                            <div>
+                              <button
+                                onClick={() => {
+                                  // Pass both PO data and PI ID
+                                  setSelectedPOForPIApproval({
+                                    ...invoice,
+                                    piId: piDataMap[invoice.id]?.id,
+                                  })
+                                  setNewPIApprovalStatus(piDataMap[invoice.id]?.financeManagerApprovalStatus || "PENDING")
+                                  setPiApprovalRemarks("")
+                                  setShowPIApprovalModal(true)
+                                }}
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 ${getStatusBadge(
+                                  piDataMap[invoice.id]?.financeManagerApprovalStatus || "PENDING",
+                                )}`}
+                              >
+                                PI: {piDataMap[invoice.id]?.financeManagerApprovalStatus || "PENDING"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Expected Payment Date */}
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          {piDataMap[invoice.id]?.expectedPaymentDate
+                            ? formatDate(piDataMap[invoice.id].expectedPaymentDate)
+                            : "N/A"}
+                        </div>
+                      </td>
+
+                      {/* Payable Amount with PI History */}
+                      <td className="px-6 py-4">
+                        <div className="space-y-2">
+                          {piDataMap[invoice.id]?.piList && piDataMap[invoice.id].piList.length > 0 ? (
+                            <div>
+                              {/* Latest PI Amount */}
+                              <div className="border border-gray-200 rounded p-2 bg-gray-50">
+                                <button
+                                  onClick={() => {
+                                    setExpandedPIHistory((prev) => ({
+                                      ...prev,
+                                      [invoice.id]: !prev[invoice.id],
+                                    }))
+                                  }}
+                                  className="w-full text-left flex items-center justify-between hover:bg-gray-100 p-1 rounded"
+                                >
+                                  <div className="font-medium text-gray-900 text-sm">
+                                    {formatCurrency(piDataMap[invoice.id]?.payableAmount)}
+                                  </div>
+                                  <svg
+                                    className={`w-4 h-4 text-gray-600 transition-transform ${
+                                      expandedPIHistory[invoice.id] ? "rotate-180" : ""
+                                    }`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                                  </svg>
+                                </button>
+                              </div>
+
+                              {/* PI History - Expandable */}
+                              {expandedPIHistory[invoice.id] && piDataMap[invoice.id].piList.length > 1 && (
+                                <div className="border border-gray-300 rounded p-2 bg-white">
+                                  <div className="text-xs font-semibold text-gray-700 mb-2">PI History ({piDataMap[invoice.id].piList.length} total)</div>
+                                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {piDataMap[invoice.id].piList
+                                      .slice()
+                                      .reverse()
+                                      .map((pi, index) => (
+                                        <div key={pi.id || index} className="border-l-2 border-gray-300 pl-2 py-1">
+                                          <div className="flex justify-between items-center">
+                                            <div className="text-xs text-gray-700">
+                                              <span className="font-medium">PI #{piDataMap[invoice.id].piList.length - index}:</span>{" "}
+                                              {pi.piNumber || "N/A"}
+                                            </div>
+                                            <span className="text-xs font-medium text-gray-900">{formatCurrency(pi.payableAmount)}</span>
+                                          </div>
+                                          <div className="flex flex-wrap gap-1 mt-1">
+                                            <span
+                                              className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${
+                                                pi.approvalStatus === "APPROVED"
+                                                  ? "bg-green-100 text-green-800"
+                                                  : pi.approvalStatus === "REJECTED"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : "bg-yellow-100 text-gray-800"
+                                              }`}
+                                            >
+                                              PM: {pi.approvalStatus || "PENDING"}
+                                            </span>
+                                            <span
+                                              className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${
+                                                pi.approvedFromFinance === "APPROVED"
+                                                  ? "bg-green-100 text-green-800"
+                                                  : pi.approvedFromFinance === "REJECTED"
+                                                    ? "bg-red-100 text-red-800"
+                                                    : "bg-yellow-100 text-gray-800"
+                                              }`}
+                                            >
+                                              FM: {pi.approvedFromFinance || "PENDING"}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500 text-xs">N/A</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Handover */}
                       <td className="px-6 py-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            invoice.handoverFromFinance === "COMPLETE"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-gray-100 text-gray-700"
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            piDataMap[invoice.id]?.handoverFromFinance === "PENDING"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-green-100 text-green-800"
                           }`}
                         >
-                          {invoice.handoverFromFinance}
+                          {piDataMap[invoice.id]?.handoverFromFinance || "PENDING"}
                         </span>
                       </td>
+
+                      {/* Actions */}
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={(e) => handleApproveReject(e, invoice)}
-                            className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                          >
-                            Approve/Reject
-                          </button>
-                          <button
-                            onClick={(e) => handleHandoverToPurchase(e, invoice)}
-                            disabled={
-                              invoice.financeManagerApprovalStatus !== "APPROVED" ||
-                              invoice.handoverFromFinance === "COMPLETE"
-                            }
-                            className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Handover
-                          </button>
-                        </div>
+                        <button
+                          onClick={(e) => handleHandoverToPurchase(e, invoice)}
+                          disabled={invoice.financeManagerApprovalStatus !== "APPROVED" || piDataMap[invoice.id]?.financeManagerApprovalStatus !== "APPROVED" || piDataMap[invoice.id]?.handoverFromFinance === "COMPLETE"}
+                          className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Handover
+                        </button>
                       </td>
                     </motion.tr>
                   ))
@@ -705,12 +863,12 @@ function FinancePayable() {
                         <div>
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              invoice.handoverFromFinance === "COMPLETE"
+                              piDataMap[invoice.id]?.handoverFromFinance === "COMPLETE"
                                 ? "bg-blue-100 text-blue-700"
                                 : "bg-gray-100 text-gray-700"
                             }`}
                           >
-                            {invoice.handoverFromFinance}
+                            {piDataMap[invoice.id]?.handoverFromFinance || "PENDING"}
                           </span>
                         </div>
                       </div>
@@ -718,17 +876,17 @@ function FinancePayable() {
 
                     <div className="flex gap-2 pt-2">
                       <button
-                        onClick={(e) => handleApproveReject(e, invoice)}
+                        onClick={() => {
+                          setSelectedInvoice(invoice)
+                          setShowApprovalModal(true)
+                        }}
                         className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                       >
                         Approve/Reject
                       </button>
                       <button
                         onClick={(e) => handleHandoverToPurchase(e, invoice)}
-                        disabled={
-                          invoice.financeManagerApprovalStatus !== "APPROVED" ||
-                          invoice.handoverFromFinance === "COMPLETE"
-                        }
+                        disabled={invoice.financeManagerApprovalStatus !== "APPROVED" || piDataMap[invoice.id]?.financeManagerApprovalStatus !== "APPROVED" || piDataMap[invoice.id]?.handoverFromFinance === "COMPLETE"}
                         className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Handover
@@ -808,6 +966,69 @@ function FinancePayable() {
         invoice={selectedInvoice}
         onSuccess={handleApprovalSuccess}
       />
+
+      {/* PI Approval Modal */}
+      {showPIApprovalModal && selectedPOForPIApproval && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-white rounded-xl shadow-xl w-full max-w-md"
+          >
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Update PI Approval Status</h3>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700">Approval Status</label>
+                <select
+                  value={newPIApprovalStatus}
+                  onChange={(e) => setNewPIApprovalStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-700">Remarks (Optional)</label>
+                <textarea
+                  value={piApprovalRemarks}
+                  onChange={(e) => setPiApprovalRemarks(e.target.value)}
+                  placeholder="Enter approval remarks..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="4"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowPIApprovalModal(false)
+                    setSelectedPOForPIApproval(null)
+                    setNewPIApprovalStatus("")
+                    setPiApprovalRemarks("")
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdatePIApproval}
+                  disabled={updatingPIApproval}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updatingPIApproval ? "Updating..." : "Update"}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }

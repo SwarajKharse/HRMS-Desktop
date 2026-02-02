@@ -11,6 +11,7 @@ const POManagementGrid = () => {
   const { user } = useAuth()
   const [purchaseOrders, setPurchaseOrders] = useState([])
   const [mtrMap, setMtrMap] = useState({}) // Map of MTR ID to project name
+  const [piDataMap, setPiDataMap] = useState({}) // Map of PO ID to PI data
   const [loading, setLoading] = useState(false)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
@@ -37,6 +38,22 @@ const POManagementGrid = () => {
   const [newApprovalStatus, setNewApprovalStatus] = useState("")
   const [approvalRemarks, setApprovalRemarks] = useState("")
   const [updatingApproval, setUpdatingApproval] = useState(false)
+  
+  // PM Approval modal state
+  const [showPMApprovalModal, setShowPMApprovalModal] = useState(false)
+  const [selectedPOForPMApproval, setSelectedPOForPMApproval] = useState(null)
+  const [pmApprovalType, setPmApprovalType] = useState("") // "PO" or "PI"
+  const [newPMApprovalStatus, setNewPMApprovalStatus] = useState("")
+  const [pmApprovalRemarks, setPmApprovalRemarks] = useState("")
+  const [updatingPMApproval, setUpdatingPMApproval] = useState(false)
+  
+  // FM Approval modal state
+  const [showFMApprovalModal, setShowFMApprovalModal] = useState(false)
+  const [selectedPOForFMApproval, setSelectedPOForFMApproval] = useState(null)
+  const [fmApprovalType, setFmApprovalType] = useState("") // "PO" or "PI"
+  const [newFMApprovalStatus, setNewFMApprovalStatus] = useState("")
+  const [fmApprovalRemarks, setFmApprovalRemarks] = useState("")
+  const [updatingFMApproval, setUpdatingFMApproval] = useState(false)
 
   // GRN Upload fields
   const [grnCopyFile, setGrnCopyFile] = useState(null)
@@ -94,6 +111,20 @@ const POManagementGrid = () => {
 
       setPurchaseOrders(data.content || [])
       setTotalPages(data.totalPages || 0)
+
+      // Fetch PI data for each PO
+      const piMap = {}
+      for (const po of data.content || []) {
+        try {
+          const piList = await purchaseInvoiceService.getPurchaseInvoicesByPO(po.id)
+          if (piList && piList.length > 0) {
+            piMap[po.id] = piList[piList.length - 1] // Store latest PI
+          }
+        } catch (error) {
+          console.log("[v0] No PI found for PO", po.id)
+        }
+      }
+      setPiDataMap(piMap)
     } catch (error) {
       console.error("Error fetching purchase orders:", error)
       showMessage("error", "Failed to fetch purchase orders")
@@ -198,6 +229,80 @@ const POManagementGrid = () => {
       showMessage("error", "Failed to update approval status")
     } finally {
       setUpdatingApproval(false)
+    }
+  }
+
+  const handleUpdatePMApproval = async () => {
+    if (!selectedPOForPMApproval || !newPMApprovalStatus) return
+
+    try {
+      setUpdatingPMApproval(true)
+      if (pmApprovalType === "PO") {
+        // Update PO PM approval
+        await purchaseOrderService.updateApprovalStatus(
+          selectedPOForPMApproval.id,
+          newPMApprovalStatus,
+          pmApprovalRemarks,
+        )
+      } else {
+        // Update PI PM approval
+        const piData = piDataMap[selectedPOForPMApproval.id]
+        if (piData) {
+          const approvalData = {
+            approvalStatus: newPMApprovalStatus,
+            remarks: pmApprovalRemarks,
+          }
+          await purchaseInvoiceService.approvePurchaseInvoice(piData.id, approvalData)
+        }
+      }
+      showMessage("success", "PM Approval updated successfully!")
+      setShowPMApprovalModal(false)
+      setSelectedPOForPMApproval(null)
+      setNewPMApprovalStatus("")
+      setPmApprovalRemarks("")
+      fetchPurchaseOrders()
+    } catch (error) {
+      console.error("Error updating PM approval:", error)
+      showMessage("error", "Failed to update PM approval")
+    } finally {
+      setUpdatingPMApproval(false)
+    }
+  }
+
+  const handleUpdateFMApproval = async () => {
+    if (!selectedPOForFMApproval || !newFMApprovalStatus) return
+
+    try {
+      setUpdatingFMApproval(true)
+      if (fmApprovalType === "PO") {
+        // Update PO FM approval
+        await purchaseOrderService.updateFinanceManagerApproval(
+          selectedPOForFMApproval.id,
+          newFMApprovalStatus,
+          fmApprovalRemarks,
+        )
+      } else {
+        // Update PI FM approval
+        const piData = piDataMap[selectedPOForFMApproval.id]
+        if (piData) {
+          const approvalData = {
+            approvalStatus: newFMApprovalStatus,
+            remarks: fmApprovalRemarks,
+          }
+          await purchaseInvoiceService.approvePurchaseInvoice(piData.id, approvalData)
+        }
+      }
+      showMessage("success", "FM Approval updated successfully!")
+      setShowFMApprovalModal(false)
+      setSelectedPOForFMApproval(null)
+      setNewFMApprovalStatus("")
+      setFmApprovalRemarks("")
+      fetchPurchaseOrders()
+    } catch (error) {
+      console.error("Error updating FM approval:", error)
+      showMessage("error", "Failed to update FM approval")
+    } finally {
+      setUpdatingFMApproval(false)
     }
   }
 
@@ -445,13 +550,12 @@ const POManagementGrid = () => {
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Project Name</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">PO Number</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">PO Document</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Number</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Documents</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Material Status</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">PO Status</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">PM Approval</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">FM Approval</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created Date</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
@@ -459,56 +563,144 @@ const POManagementGrid = () => {
                   {purchaseOrders.map((po) => (
                     <tr key={po.id} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium text-gray-800">{getProjectName(po)}</td>
-                      <td className="px-4 py-3">{po.poNumber}</td>
                       <td className="px-4 py-3">
-                        {po.fileUrl ? (
-                          <a
-                            href={po.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 hover:underline text-sm font-medium"
-                          >
-                            View Document
-                          </a>
-                        ) : (
-                          <span className="text-gray-400 text-sm">No Document</span>
-                        )}
+                        <div className="space-y-1 text-sm">
+                          <div>
+                            <span className="font-medium">PO:</span> {po.poNumber}
+                          </div>
+                          {piDataMap[po.id]?.piNumber && (
+                            <div>
+                              <span className="font-medium">PI:</span> {piDataMap[po.id].piNumber}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-3 text-sm">
+                          <div>
+                            <span className="font-medium">PO:</span>{" "}
+                            {po.fileUrl ? (
+                              <a
+                                href={po.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                Document
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">No Document</span>
+                            )}
+                          </div>
+                          {piDataMap[po.id]?.fileUrl && (
+                            <div>
+                              <span className="font-medium">PI:</span>{" "}
+                              <a
+                                href={piDataMap[po.id].fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 hover:underline"
+                              >
+                                Document
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">{getMaterialStatusBadge(po.materialStatus)}</td>
                       <td className="px-4 py-3">{getPOStatusBadge(po.poStatus, po)}</td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => {
-                            setSelectedPOForApproval(po)
-                            setNewApprovalStatus(po.approvalStatus || "PENDING")
-                            setApprovalRemarks(po.approvalRemarks || "")
-                            setShowApprovalStatusModal(true)
-                          }}
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 ${
-                            po.approvalStatus === "APPROVED"
-                              ? "bg-green-100 text-green-800"
-                              : po.approvalStatus === "REJECTED"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {po.approvalStatus || "PENDING"}
-                        </button>
+                        <div className="space-y-1">
+                          <div>
+                            <button
+                              onClick={() => {
+                                setSelectedPOForPMApproval(po)
+                                setNewPMApprovalStatus(po.approvalStatus || "PENDING")
+                                setPmApprovalRemarks("")
+                                setPmApprovalType("PO")
+                                setShowPMApprovalModal(true)
+                              }}
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 ${
+                                po.approvalStatus === "APPROVED"
+                                  ? "bg-green-100 text-green-800"
+                                  : po.approvalStatus === "REJECTED"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              PO: {po.approvalStatus || "PENDING"}
+                            </button>
+                          </div>
+                          {piDataMap[po.id] && (
+                            <div>
+                              <button
+                                onClick={() => {
+                                  setSelectedPOForPMApproval(po)
+                                  setNewPMApprovalStatus(piDataMap[po.id]?.approvalStatus || "PENDING")
+                                  setPmApprovalRemarks("")
+                                  setPmApprovalType("PI")
+                                  setShowPMApprovalModal(true)
+                                }}
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 ${
+                                  piDataMap[po.id]?.approvalStatus === "APPROVED"
+                                    ? "bg-green-100 text-green-800"
+                                    : piDataMap[po.id]?.approvalStatus === "REJECTED"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-yellow-100 text-yellow-800"
+                                }`}
+                              >
+                                PI: {piDataMap[po.id]?.approvalStatus || "PENDING"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            po.financeManagerApprovalStatus === "APPROVED"
-                              ? "bg-green-100 text-green-800"
-                              : po.financeManagerApprovalStatus === "REJECTED"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {po.financeManagerApprovalStatus || "PENDING"}
-                        </span>
+                        <div className="space-y-1">
+                          <div>
+                            <button
+                             /*  onClick={() => {
+                                setSelectedPOForFMApproval(po)
+                                setNewFMApprovalStatus(po.financeManagerApprovalStatus || "PENDING")
+                                setFmApprovalRemarks("")
+                                setFmApprovalType("PO")
+                                setShowFMApprovalModal(true)
+                              }} */
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                po.financeManagerApprovalStatus === "APPROVED"
+                                  ? "bg-green-100 text-green-800"
+                                  : po.financeManagerApprovalStatus === "REJECTED"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-amber-100 text-amber-800"
+                              }`}
+                            >
+                              PO: {po.financeManagerApprovalStatus || "PENDING"}
+                            </button>
+                          </div>
+                          {piDataMap[po.id] && (
+                            <div>
+                              <button
+                                /* onClick={() => {
+                                  setSelectedPOForFMApproval(po)
+                                  setNewFMApprovalStatus(piDataMap[po.id]?.financeManagerApprovalStatus || "PENDING")
+                                  setFmApprovalRemarks("")
+                                  setFmApprovalType("PI")
+                                  setShowFMApprovalModal(true)
+                                }} */
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                  piDataMap[po.id]?.financeManagerApprovalStatus === "APPROVED"
+                                    ? "bg-green-100 text-green-800"
+                                    : piDataMap[po.id]?.financeManagerApprovalStatus === "REJECTED"
+                                      ? "bg-red-100 text-red-800"
+                                      : "bg-amber-100 text-amber-800"
+                                }`}
+                              >
+                                PI: {piDataMap[po.id]?.financeManagerApprovalStatus || "PENDING"}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-3">{new Date(po.createdAt).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
                           <button
@@ -1084,6 +1276,126 @@ const POManagementGrid = () => {
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
                   {updatingApproval ? "Updating..." : "Update"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PM Approval Modal */}
+      {showPMApprovalModal && selectedPOForPMApproval && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold">
+                Update PM Approval ({pmApprovalType}) - {selectedPOForPMApproval.poNumber}
+              </h3>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">PM Approval Status</label>
+                <select
+                  value={newPMApprovalStatus}
+                  onChange={(e) => setNewPMApprovalStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Remarks (Optional)</label>
+                <textarea
+                  value={pmApprovalRemarks}
+                  onChange={(e) => setPmApprovalRemarks(e.target.value)}
+                  placeholder="Enter approval remarks..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="4"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowPMApprovalModal(false)
+                    setSelectedPOForPMApproval(null)
+                    setNewPMApprovalStatus("")
+                    setPmApprovalRemarks("")
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdatePMApproval}
+                  disabled={updatingPMApproval}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updatingPMApproval ? "Updating..." : "Update"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FM Approval Modal */}
+      {showFMApprovalModal && selectedPOForFMApproval && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold">
+                Update FM Approval ({fmApprovalType}) - {selectedPOForFMApproval.poNumber}
+              </h3>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">FM Approval Status</label>
+                <select
+                  value={newFMApprovalStatus}
+                  onChange={(e) => setNewFMApprovalStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Remarks (Optional)</label>
+                <textarea
+                  value={fmApprovalRemarks}
+                  onChange={(e) => setFmApprovalRemarks(e.target.value)}
+                  placeholder="Enter approval remarks..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="4"
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => {
+                    setShowFMApprovalModal(false)
+                    setSelectedPOForFMApproval(null)
+                    setNewFMApprovalStatus("")
+                    setFmApprovalRemarks("")
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateFMApproval}
+                  disabled={updatingFMApproval}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {updatingFMApproval ? "Updating..." : "Update"}
                 </button>
               </div>
             </div>

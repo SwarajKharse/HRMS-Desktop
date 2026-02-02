@@ -448,8 +448,8 @@ const PIUploadTab = () => {
             {approvedPOs.map((po) => {
               const poId = po.poId
               const piList = piListByPO[poId] || []
-                const latestPI = piList.length > 0 ? piList[piList.length - 1] : null
-                
+              const latestPI = piList.length > 0 ? piList[piList.length - 1] : null
+
               return (
                 <tr key={po.mtrId} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="p-4 text-sm text-gray-900">{po.projectName || "N/A"}</td>
@@ -486,33 +486,117 @@ const PIUploadTab = () => {
                     </div>
                   </td>
                   <td className="p-4 text-sm">
-                    {latestPI ? (
-                      <div className="space-y-1">
-                        <div className="text-xs text-gray-600">
-                          <span className="font-medium">PI:</span> {latestPI.piNumber || "N/A"}
-                        </div>
-                        {latestPI.fileName && (
-                          <a
-                            href={latestPI.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 underline hover:text-blue-800 block truncate max-w-[150px]"
-                            title={latestPI.fileName}
+                    {piList.length > 0 ? (
+                      <div className="space-y-2">
+                        {/* Latest PI Summary */}
+                        <div className="border border-gray-200 rounded p-2 bg-gray-50">
+                          <button
+                            onClick={() => {
+                              setExpandedPIHistory((prev) => ({
+                                ...prev,
+                                [po.poId]: !prev[po.poId],
+                              }))
+                            }}
+                            className="w-full text-left flex items-center justify-between hover:bg-gray-100 p-1 rounded"
                           >
-                            {latestPI.fileName}
-                          </a>
-                        )}
-                        <div
-                          className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                            latestPI.purchaseManagerApprovalStatus === "APPROVED"
-                              ? "bg-green-100 text-green-800"
-                              : latestPI.purchaseManagerApprovalStatus === "REJECTED"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {latestPI.purchaseManagerApprovalStatus || "PENDING"}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-medium text-gray-900 truncate">
+                                PI: {latestPI.piNumber || "N/A"}
+                              </div>
+                              <div className="text-xs text-gray-500 truncate">{latestPI.fileName}</div>
+                            </div>
+                            <svg
+                              className={`w-4 h-4 text-gray-600 flex-shrink-0 ml-2 transition-transform ${
+                                expandedPIHistory[po.poId] ? "rotate-180" : ""
+                              }`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            </svg>
+                          </button>
+
+                          {/* Latest PI Status Badges */}
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            <span
+                              className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                                latestPI.approvalStatus === "APPROVED"
+                                  ? "bg-green-100 text-green-800"
+                                  : latestPI.approvalStatus === "REJECTED"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-yellow-100 text-gray-800"
+                              }`}
+                            >
+                              PM: {latestPI.approvalStatus || "PENDING"}
+                            </span>
+                            <span
+                              className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                                latestPI.financeManagerApprovalStatus === "APPROVED"
+                                  ? "bg-green-100 text-green-800"
+                                  : latestPI.financeManagerApprovalStatus === "REJECTED"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-yellow-100 text-gray-800"
+                              }`}
+                            >
+                              FM: {latestPI.financeManagerApprovalStatus || "PENDING"}
+                            </span>
+                          </div>
                         </div>
+
+                        {/* Previous PIs History - Expandable */}
+                        {expandedPIHistory[po.poId] && piList.length > 1 && (
+                          <div className="border border-gray-300 rounded p-2 bg-white">
+                            <div className="text-xs font-semibold text-gray-700 mb-2">PI History ({piList.length} total)</div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {piList
+                                .slice()
+                                .reverse()
+                                .map((pi, index) => (
+                                  <div key={pi.id || index} className="border-l-2 border-gray-300 pl-2 py-1">
+                                    <div className="text-xs text-gray-700">
+                                      <span className="font-medium">PI #{piList.length - index}:</span> {pi.piNumber || "N/A"}
+                                    </div>
+                                    {pi.fileName && (
+                                      <a
+                                        href={pi.fileUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-blue-600 hover:text-blue-800 underline block truncate"
+                                        title={pi.fileName}
+                                      >
+                                        {pi.fileName}
+                                      </a>
+                                    )}
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      <span
+                                        className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${
+                                          pi.approvalStatus === "APPROVED"
+                                            ? "bg-green-100 text-green-800"
+                                            : pi.approvalStatus === "REJECTED"
+                                              ? "bg-red-100 text-red-800"
+                                              : "bg-yellow-100 text-gray-800"
+                                        }`}
+                                      >
+                                        PM: {pi.approvalStatus || "PENDING"}
+                                      </span>
+                                      <span
+                                        className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${
+                                          pi.financeManagerApprovalStatus === "APPROVED"
+                                            ? "bg-green-100 text-green-800"
+                                            : pi.financeManagerApprovalStatus === "REJECTED"
+                                              ? "bg-red-100 text-red-800"
+                                              : "bg-yellow-100 text-gray-800"
+                                        }`}
+                                      >
+                                        FM: {pi.financeManagerApprovalStatus || "PENDING"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <span className="text-gray-500 text-xs">No PI yet</span>
