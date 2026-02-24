@@ -10,6 +10,7 @@ import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./ProjectLeadDetails"
 import BOQEditComponent from "./BOQEditComponent"
 import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
+import ProjectSummary from "./ProjectSummary"
 
 function NewProjects() {
   const navigate = useNavigate()
@@ -25,6 +26,8 @@ function NewProjects() {
   const [selectedProject, setSelectedProject] = useState(null)
   const [showWarningForm, setShowWarningForm] = useState(false)
   const [showTerminationForm, setShowTerminationForm] = useState(false)
+  const [showSummary, setShowSummary] = useState(false)
+  const [summaryProjectId, setSummaryProjectId] = useState(null)
   const { user } = useAuth()
   var userId = ""
 
@@ -141,6 +144,12 @@ function NewProjects() {
     } catch (error) {
       setError("Failed to add employee")
     }
+  }
+
+  const handleSummary = (e, project) => {
+    e.stopPropagation()
+    setSummaryProjectId(project.id)
+    setShowSummary(true)
   }
 
   const handleEdit = (e, id) => {
@@ -334,7 +343,7 @@ function NewProjects() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Project ID", "Project Name","Project Initiation", "Scope of Work", "Actions"].filter(Boolean).map((header) => (
+                    {["Project ID", "Project Name111111","Project Initiation", "Scope of Work", "Summary", "Actions"].filter(Boolean).map((header) => (
                       <th
                         key={header}
                         className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
@@ -399,6 +408,16 @@ function NewProjects() {
                         </td>
 
                         <td className="px-6 py-4">
+                          <button
+                            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium"
+                            onClick={(e) => handleSummary(e, project)}
+                            title="View Summary"
+                          >
+                            Summary
+                          </button>
+                        </td>
+
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <button
                               className="text-gray-400 hover:text-indigo-600 transition-colors"
@@ -434,6 +453,13 @@ function NewProjects() {
                       <div className="flex justify-between items-start mb-2">
                         <div className="text-sm font-semibold text-gray-900">{project.lead.lead_code}</div>
                         <div className="flex items-center gap-2">
+                          <button
+                            className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-medium"
+                            onClick={(e) => handleSummary(e, project)}
+                            title="View Summary"
+                          >
+                            Summary
+                          </button>
                           <button
                             className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
                             onClick={(e) => handleBOQEdit(e, project)}
@@ -569,6 +595,16 @@ function NewProjects() {
             onClose={() => {
               setShowBOQEdit(false)
               setSelectedProject(null)
+            }}
+          />
+        )}
+
+        {showSummary && summaryProjectId && (
+          <ProjectSummary
+            projectId={summaryProjectId}
+            onClose={() => {
+              setShowSummary(false)
+              setSummaryProjectId(null)
             }}
           />
         )}

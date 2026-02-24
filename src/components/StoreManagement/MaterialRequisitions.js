@@ -37,6 +37,11 @@ export default function MaterialRequisition() {
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [selectedMTRForDetails, setSelectedMTRForDetails] = useState(null)
 
+  // DC Qty state
+  const [dcQtyData, setDcQtyData] = useState({})
+  const [dcQtyHistory, setDcQtyHistory] = useState({})
+  const [hoveredMtrId, setHoveredMtrId] = useState(null)
+
   const fetchMaterialRequisitions = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -80,6 +85,36 @@ export default function MaterialRequisition() {
   useEffect(() => {
     fetchMaterialRequisitions()
   }, [fetchMaterialRequisitions])
+
+  // Fetch DC Qty data for all requisitions
+  useEffect(() => {
+    const fetchDCQtyForAllMTRs = async () => {
+      const qtyMap = {}
+      const historyMap = {}
+      
+      for (const req of requisitions) {
+        try {
+          const totalDcQty = await materialRequisitionService.getTotalDCQtyByMtrId(req.id)
+          qtyMap[req.id] = totalDcQty.totalQuantity || 0
+          
+          // Fetch DC Qty history (list of all DC entries)
+          const dcList = await materialRequisitionService.getDCQtyByMtrId(req.id)
+          historyMap[req.id] = dcList || []
+        } catch (e) {
+          console.error(`Failed to fetch DC Qty for MTR ${req.id}:`, e)
+          qtyMap[req.id] = 0
+          historyMap[req.id] = []
+        }
+      }
+      
+      setDcQtyData(qtyMap)
+      setDcQtyHistory(historyMap)
+    }
+
+    if (requisitions.length > 0) {
+      fetchDCQtyForAllMTRs()
+    }
+  }, [requisitions])
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target
@@ -359,6 +394,7 @@ export default function MaterialRequisition() {
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Stock Allotted</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Purchase MTR</th>
+                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Total DC Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
@@ -411,6 +447,36 @@ export default function MaterialRequisition() {
                           ) : (
                             req.purchaseMTR
                           )}
+                        </td>
+                        <td className="p-4 align-middle">
+                          <div className="relative group">
+                            <div className="flex items-center gap-1 cursor-pointer">
+                              <span className="text-gray-700 font-medium">{dcQtyData[req.id] || 0}</span>
+                              <span 
+                                onMouseEnter={() => setHoveredMtrId(req.id)}
+                                onMouseLeave={() => setHoveredMtrId(null)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                title="Click to see DC history"
+                              >
+                                ▼
+                              </span>
+                            </div>
+                            
+                            {hoveredMtrId === req.id && dcQtyHistory[req.id] && dcQtyHistory[req.id].length > 0 && (
+                              <div className="absolute left-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 min-w-48 max-h-64 overflow-y-auto">
+                                <div className="p-2 bg-gray-100 border-b border-gray-300 text-xs font-semibold text-gray-700">
+                                  DC Qty History ({dcQtyHistory[req.id].length})
+                                </div>
+                                {dcQtyHistory[req.id].map((dcEntry, idx) => (
+                                  <div key={idx} className="p-2 border-b border-gray-100 text-xs hover:bg-blue-50">
+                                    <div className="font-medium text-gray-700">Qty: {dcEntry.dcQty || 0}</div>
+                                    <div className="text-gray-600">{formatDate(dcEntry.createdAt)}</div>
+                                    {dcEntry.remarks && <div className="text-gray-500 italic">"{dcEntry.remarks}"</div>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="p-4 align-middle">
                           {editingMtrId === req.id ? (

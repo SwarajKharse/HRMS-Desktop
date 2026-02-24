@@ -203,6 +203,46 @@ export const materialRequisitionService = {
     }
   },
 
+   getMaterialRequisitionsByStoreIncharge: async (
+    storeInchargeId,
+    filters = {},
+    page = 0,
+    size = 10,
+    sortBy = "createdAt",
+    sortDir = "DESC",
+  ) => {
+    try {
+      const params = {
+        storeInchargeId,
+        page,
+        size,
+        sortBy,
+        sortDir,
+        ...filters,
+      }
+
+      // Remove undefined/null values
+      Object.keys(params).forEach((key) => {
+        if (params[key] === undefined || params[key] === null || params[key] === "") {
+          delete params[key]
+        }
+      })
+
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/store-incharge`, {
+        params,
+        ...getAuthHeaders(),
+      })
+
+      return response.data
+    } catch (error) {
+      console.error(
+        "Error fetching material requisitions by store incharge:",
+        error.response ? error.response.data : error.message,
+      )
+      throw error
+    }
+  },
+
   // Create material requisition
   createMaterialRequisition: async (data, currentUserId) => {
     try {
@@ -315,6 +355,19 @@ export const materialRequisitionService = {
       return response.data
     } catch (error) {
       console.error("Error deleting DC Qty:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+   getTotalDCQtyByMtrId: async (mtrId) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/material-requisitions/${mtrId}/total-dc-qty`,
+        getAuthHeaders(),
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error fetching total DC Qty for MTR:", error.response ? error.response.data : error.message)
       throw error
     }
   },

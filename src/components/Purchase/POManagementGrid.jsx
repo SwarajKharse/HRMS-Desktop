@@ -713,7 +713,7 @@ const POManagementGrid = () => {
                             onClick={() => handleChangeMaterialStatus(po)}
                             className="px-3 py-1 text-blue-600 border border-blue-600 rounded hover:bg-blue-50 text-sm font-medium"
                           >
-                            Change Status
+                            Change Material Status
                           </button>
                           {po.materialStatus === "GRN_DONE" && (
                             <button
@@ -942,7 +942,10 @@ const POManagementGrid = () => {
                             <span className="font-medium">Project:</span> {pi.projectName}
                           </div>
                           <div>
-                            <span className="font-medium">Status:</span> {pi.approvalStatus}
+                            <span className="font-medium">Finance Manager Status:</span> {pi.financeManagerApproval}
+                          </div>
+                          <div>
+                            <span className="font-medium">Accounts Manager Status:</span> {pi.accountManagerApprovalStatus}
                           </div>
                           <div>
                             <span className="font-medium">Payment Status:</span>{" "}

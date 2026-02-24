@@ -124,88 +124,94 @@ const PurchaseInvoiceForm = ({ invoice, onSubmit, onCancel, loading = false, err
               </select>
             </div>
 
-            {/* Payment Cycle Selection */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Cycle</label>
-              <select
-                value={formData.paymentCycle}
-                onChange={(e) => handleInputChange("paymentCycle", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="">Select Payment Cycle</option>
-                {getPaymentCycleOptions().map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Expected Payment Date */}
-            <div className="relative">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Expected Payment Date</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={formatDateForDisplay(formData.expectedPaymentDate)}
-                  onClick={() => setShowCalendar(true)}
-                  placeholder="Select date"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
-                  readOnly
+            {/* Payment Cycle Selection - Hidden when Status is "Revision from Purchase" */}
+            {formData.status !== "Revision from Purchase" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Cycle</label>
+                <select
+                  value={formData.paymentCycle}
+                  onChange={(e) => handleInputChange("paymentCycle", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   required
-                />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                </div>
-              </div>
-
-              {showCalendar && (
-                <div
-                  className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-25"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (e.target === e.currentTarget) {
-                      setShowCalendar(false)
-                    }
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
                 >
-                  <div className="relative">
-                    <SmartCalendar
-                      paymentCycle={formData.paymentCycle}
-                      onDateSelect={handleDateSelect}
-                      onClose={() => setShowCalendar(false)}
-                      selectedDate={formData.expectedPaymentDate}
-                    />
+                  <option value="">Select Payment Cycle</option>
+                  {getPaymentCycleOptions().map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Expected Payment Date - Hidden when Status is "Revision from Purchase" */}
+            {formData.status !== "Revision from Purchase" && (
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Expected Payment Date</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formatDateForDisplay(formData.expectedPaymentDate)}
+                    onClick={() => setShowCalendar(true)}
+                    placeholder="Select date"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+                    readOnly
+                    required
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Payment Amount */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Amount</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-500">₹</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.payableAmount}
-                  onChange={(e) => handleInputChange("payableAmount", e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0.00"
-                  required
-                />
+                {showCalendar && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-25"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (e.target === e.currentTarget) {
+                        setShowCalendar(false)
+                      }
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                  >
+                    <div className="relative">
+                      <SmartCalendar
+                        paymentCycle={formData.paymentCycle}
+                        onDateSelect={handleDateSelect}
+                        onClose={() => setShowCalendar(false)}
+                        selectedDate={formData.expectedPaymentDate}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
+
+            {/* Payment Amount - Hidden when Status is "Revision from Purchase" */}
+            {formData.status !== "Revision from Purchase" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Payment Amount</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-500">₹</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.payableAmount}
+                    onChange={(e) => handleInputChange("payableAmount", e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Form Actions */}
             <div className="flex justify-end space-x-4 pt-6 border-t">

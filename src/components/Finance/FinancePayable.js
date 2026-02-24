@@ -500,10 +500,10 @@ function FinancePayable() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  {[ "Project Name", "Number", "Documents", "PM Status", "PO Status", "Expected Payment Date", "Payable Amount", "Handover", "Actions", ].map((header) => (
+                  {[ "Project Name", "Number", "PM Approval", "FM Approval", "Account Manager Approval", "Expected Payment Date", "Payable Amount", "Actions", ].map((header) => (
                     <th
                       key={header}
-                      className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
                     >
                       {header}
                     </th>
@@ -511,13 +511,13 @@ function FinancePayable() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {purchaseInvoices.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" className="px-6 py-12 text-center text-gray-500 font-medium">
-                      No purchase invoices found
-                    </td>
-                  </tr>
-                ) : (
+                  {purchaseInvoices.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="px-4 py-12 text-center text-gray-500 font-medium">
+                        No purchase invoices found
+                      </td>
+                    </tr>
+                  ) : (
                   purchaseInvoices.map((invoice) => (
                     <motion.tr
                       key={invoice.id}
@@ -526,12 +526,12 @@ function FinancePayable() {
                       className="hover:bg-gray-50 transition-colors"
                     >
                       {/* Project Name */}
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <div className="text-sm text-gray-900">{invoice.projectName}</div>
                       </td>
 
                       {/* Number (PO & PI combined) */}
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <div className="space-y-0.5 text-xs">
                           <div>PO: {invoice.poNumber}</div>
                           {piDataMap[invoice.id]?.piNumber && (
@@ -540,44 +540,8 @@ function FinancePayable() {
                         </div>
                       </td>
 
-                      {/* Documents */}
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-3 text-xs">
-                          <div>
-                            <span className="font-medium">PO:</span>{" "}
-                            {invoice.fileUrl ? (
-                              <a
-                                href={invoice.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 hover:underline"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                Document
-                              </a>
-                            ) : (
-                              <span className="text-gray-400">No Document</span>
-                            )}
-                          </div>
-                          {piDataMap[invoice.id]?.piFileUrl && (
-                            <div>
-                              <span className="font-medium">PI:</span>{" "}
-                              <a
-                                href={piDataMap[invoice.id].piFileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-800 hover:underline"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                Document
-                              </a>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* PM Status - No click handler */}
-                      <td className="px-6 py-4">
+                      {/* PM Approval - No click handler */}
+                      <td className="px-4 py-3">
                         <div className="space-y-1">
                           <div>
                             <span
@@ -602,8 +566,8 @@ function FinancePayable() {
                         </div>
                       </td>
 
-                      {/* PO Status - Clickable */}
-                      <td className="px-6 py-4">
+                      {/* FM Approval - Clickable */}
+                      <td className="px-4 py-3">
                         <div className="space-y-1">
                           <div>
                             <button
@@ -642,8 +606,35 @@ function FinancePayable() {
                         </div>
                       </td>
 
+                      {/* Account Manager Approval - PI only */}
+                      <td className="px-4 py-3">
+                        <div className="space-y-1">
+                          {/* PO Account Manager Status - Commented out as it's not applicable for PO level */}
+                          {/* <div>
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusBadge(
+                                invoice.accountManagerApprovalStatus || "PENDING",
+                              )}`}
+                            >
+                              PO: {invoice.accountManagerApprovalStatus || "PENDING"}
+                            </span>
+                          </div> */}
+                          {piDataMap[invoice.id]?.piNumber && (
+                            <div>
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusBadge(
+                                  piDataMap[invoice.id]?.accountManagerApprovalStatus || "PENDING",
+                                )}`}
+                              >
+                                {piDataMap[invoice.id]?.accountManagerApprovalStatus || "PENDING"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
                       {/* Expected Payment Date */}
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <div className="text-sm text-gray-900">
                           {piDataMap[invoice.id]?.expectedPaymentDate
                             ? formatDate(piDataMap[invoice.id].expectedPaymentDate)
@@ -652,7 +643,7 @@ function FinancePayable() {
                       </td>
 
                       {/* Payable Amount with PI History */}
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <div className="space-y-2">
                           {piDataMap[invoice.id]?.piList && piDataMap[invoice.id].piList.length > 0 ? (
                             <div>
@@ -736,25 +727,12 @@ function FinancePayable() {
                         </div>
                       </td>
 
-                      {/* Handover */}
-                      <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            piDataMap[invoice.id]?.handoverFromFinance === "PENDING"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {piDataMap[invoice.id]?.handoverFromFinance || "PENDING"}
-                        </span>
-                      </td>
-
                       {/* Actions */}
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <button
                           onClick={(e) => handleHandoverToPurchase(e, invoice)}
                           disabled={invoice.financeManagerApprovalStatus !== "APPROVED" || piDataMap[invoice.id]?.financeManagerApprovalStatus !== "APPROVED" || piDataMap[invoice.id]?.handoverFromFinance === "COMPLETE"}
-                          className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                         >
                           Handover
                         </button>
@@ -802,7 +780,7 @@ function FinancePayable() {
                         <div className="text-gray-900">{invoice.projectName}</div>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">PM Status:</span>
+                        <span className="font-medium text-gray-700">PM Approval:</span>
                         <div>
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
@@ -814,7 +792,7 @@ function FinancePayable() {
                         </div>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-700">PO Status:</span>
+                        <span className="font-medium text-gray-700">FM Approval:</span>
                         <div>
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
@@ -822,6 +800,18 @@ function FinancePayable() {
                             )}`}
                           >
                             {invoice.financeManagerApprovalStatus || "PENDING"}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Account Manager Approval:</span>
+                        <div>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
+                              invoice.accountManagerApprovalStatus || "PENDING",
+                            )}`}
+                          >
+                            {invoice.accountManagerApprovalStatus || "PENDING"}
                           </span>
                         </div>
                       </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
 import { purchaseInvoiceService } from "../../../services/purchaseInvoiceService"
+import { grnService } from "../../../services/grnService"
 import { useAuth } from "../../../contexts/AuthContext"
 
 const PIUploadTab = () => {
@@ -35,6 +36,17 @@ const PIUploadTab = () => {
 
   // Message state
   const [message, setMessage] = useState({ type: "", text: "" })
+
+  // GRN Upload state
+  const [showGRNModal, setShowGRNModal] = useState(false)
+  const [selectedPIForGRN, setSelectedPIForGRN] = useState(null)
+  const [grnCopyFile, setGrnCopyFile] = useState(null)
+  const [testCertificateFile, setTestCertificateFile] = useState(null)
+  const [invoiceCopyFile, setInvoiceCopyFile] = useState(null)
+  const [grnPayableAmount, setGrnPayableAmount] = useState("")
+  const [grnExpectedPayableDate, setGrnExpectedPayableDate] = useState("")
+  const [grnRemarks, setGrnRemarks] = useState("")
+  const [uploadingGRN, setUploadingGRN] = useState(false)
 
   const showMessage = (type, text) => {
     setMessage({ type, text })
@@ -77,6 +89,7 @@ const PIUploadTab = () => {
             approvedData.push({
               id: req.id,
               mtrId: req.id,
+              fileUrl: poStatus.latestPO?.fileUrl,
               projectName: req.projectName,
               materialDescription: materialDesc,
               purchaseMTR: req.purchaseMTR || poStatus.latestPO?.boqMtr?.purchaseMTR,
@@ -86,7 +99,7 @@ const PIUploadTab = () => {
               poDate: poStatus.latestPO?.createdAt,
               poId: poStatus.latestPO?.id,
               pmApproval: poStatus.latestPO?.approvalStatus,
-              fmApproval: poStatus.latestPO?.financeManagerApprovalStatus,
+              fmApproval: poStatus.latestPO?.financeManagerApproval,
             })
 
             // Fetch PI list if PO exists
@@ -219,6 +232,64 @@ const PIUploadTab = () => {
   const openPIModal = (poData) => {
     setSelectedPOForPI(poData)
     setShowPIModal(true)
+  }
+
+  // Open GRN modal with both PI and PO data
+  const openGRNModal = (piData, poId) => {
+    setSelectedPIForGRN({ ...piData, poId })
+    setShowGRNModal(true)
+  }
+
+  // Handle GRN upload - Use PO ID instead of PI ID
+  const handleUploadGRN = async () => {
+    if (!grnCopyFile || !grnPayableAmount || !grnExpectedPayableDate) {
+      showMessage("error", "Please fill in all required GRN fields")
+      return
+    }
+
+    try {
+      setUploadingGRN(true)
+      const formData = new FormData()
+      
+      // Extract PO ID from the selected PI data
+      const poId = selectedPIForGRN.poId
+      
+      formData.append("poId", poId)
+      if (grnCopyFile) formData.append("grnCopyFile", grnCopyFile)
+      if (testCertificateFile) formData.append("testCertificateFile", testCertificateFile)
+      if (invoiceCopyFile) formData.append("invoiceCopyFile", invoiceCopyFile)
+      formData.append("payableAmount", grnPayableAmount)
+      formData.append("expectedPayableDate", grnExpectedPayableDate)
+      formData.append("uploadedBy", user?.userId || user?.id || 1)
+      if (grnRemarks) formData.append("remarks", grnRemarks)
+
+      await grnService.uploadGRN(formData)
+      showMessage("success", "GRN uploaded successfully!")
+      closeGRNModal()
+      fetchApprovedPOs()
+    } catch (error) {
+      console.error("Error uploading GRN:", error)
+      showMessage("error", error.response?.data?.message || "Failed to upload GRN")
+    } finally {
+      setUploadingGRN(false)
+    }
+  }
+
+  // Reset GRN modal
+  const resetGRNModal = () => {
+    setSelectedPIForGRN(null)
+    setGrnCopyFile(null)
+    setTestCertificateFile(null)
+    setInvoiceCopyFile(null)
+    setGrnPayableAmount("")
+    setGrnExpectedPayableDate("")
+    setGrnRemarks("")
+  }
+
+  // Close GRN modal
+  const closeGRNModal = () => {
+    resetGRNModal()
+    setShowGRNModal(false)
   }
 
   // Render PI upload modal
@@ -412,7 +483,193 @@ const PIUploadTab = () => {
     )
   }
 
-  // Render approved POs table
+  // Render GRN upload modal
+  const renderGRNModal = () => {
+    if (!showGRNModal || !selectedPIForGRN) return null
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 flex flex-col" style={{ height: "auto", maxHeight: "90vh" }}>
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900">Upload GRN (Goods Received Note)</h2>
+            <button onClick={closeGRNModal} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Message */}
+          {message.text && (
+            <div
+              className={`mx-6 mt-4 p-3 rounded-md ${
+                message.type === "success"
+                  ? "bg-green-50 border border-green-200 text-green-800"
+                  : "bg-red-50 border border-red-200 text-red-800"
+              }`}
+            >
+              <div className="flex items-center">
+                {message.type === "success" ? (
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 01-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+                <span className="text-sm font-medium">{message.text}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            {/* PI Details */}
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h3 className="font-semibold text-blue-900 mb-2">Purchase Invoice Details</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-blue-600 font-medium">PI Number:</span>
+                  <p className="text-blue-900">{selectedPIForGRN.piNumber || "N/A"}</p>
+                </div>
+                <div>
+                  <span className="text-blue-600 font-medium">PO Number:</span>
+                  <p className="text-blue-900">{selectedPIForGRN.poNumber || "N/A"}</p>
+                </div>
+                <div>
+                  <span className="text-blue-600 font-medium">Project Name:</span>
+                  <p className="text-blue-900">{selectedPIForGRN.projectName || "N/A"}</p>
+                </div>
+                <div>
+                  <span className="text-blue-600 font-medium">PI Amount:</span>
+                  <p className="text-blue-900">₹{selectedPIForGRN.payableAmount || "0.00"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-4">
+              {/* GRN Copy File */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  GRN Copy <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                  onChange={(e) => setGrnCopyFile(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  disabled={uploadingGRN}
+                />
+                {grnCopyFile && <p className="text-xs text-green-600 mt-1">✓ {grnCopyFile.name}</p>}
+              </div>
+
+              {/* Test Certificate File */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Test Certificate
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                  onChange={(e) => setTestCertificateFile(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  disabled={uploadingGRN}
+                />
+                {testCertificateFile && <p className="text-xs text-green-600 mt-1">✓ {testCertificateFile.name}</p>}
+              </div>
+
+              {/* Invoice Copy File */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Invoice Copy
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                  onChange={(e) => setInvoiceCopyFile(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  disabled={uploadingGRN}
+                />
+                {invoiceCopyFile && <p className="text-xs text-green-600 mt-1">✓ {invoiceCopyFile.name}</p>}
+              </div>
+
+              {/* GRN Payable Amount */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payable Amount <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={grnPayableAmount}
+                  onChange={(e) => setGrnPayableAmount(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  placeholder="0.00"
+                  disabled={uploadingGRN}
+                />
+              </div>
+
+              {/* GRN Expected Payable Date */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Expected Payable Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={grnExpectedPayableDate}
+                  onChange={(e) => setGrnExpectedPayableDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  disabled={uploadingGRN}
+                />
+              </div>
+
+              {/* GRN Remarks */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Remarks</label>
+                <textarea
+                  value={grnRemarks}
+                  onChange={(e) => setGrnRemarks(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  rows={3}
+                  placeholder="Add any additional remarks about the GRN..."
+                  disabled={uploadingGRN}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+            <button
+              onClick={closeGRNModal}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 font-medium text-sm"
+              disabled={uploadingGRN}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleUploadGRN}
+              disabled={uploadingGRN}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-sm disabled:bg-gray-400"
+            >
+              {uploadingGRN ? "Uploading..." : "Upload GRN"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
   const renderApprovedPOsTable = () => {
     if (tableLoading) {
       return (
@@ -437,7 +694,7 @@ const PIUploadTab = () => {
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="text-left p-4 font-semibold text-gray-900 text-sm">Project Name</th>
               <th className="text-left p-4 font-semibold text-gray-900 text-sm">Product Name</th>
-              <th className="text-left p-4 font-semibold text-gray-900 text-sm">Quantity</th>
+              <th className="text-left p-4 font-semibold text-gray-900 text-sm">PO Details</th>
               <th className="text-left p-4 font-semibold text-gray-900 text-sm">PM Approval</th>
               <th className="text-left p-4 font-semibold text-gray-900 text-sm">FM Approval</th>
               <th className="text-left p-4 font-semibold text-gray-900 text-sm">PI Details</th>
@@ -458,37 +715,59 @@ const PIUploadTab = () => {
                       {po.materialDescription || "N/A"}
                     </div>
                   </td>
-                  <td className="p-4 text-sm font-medium text-gray-900">{po.purchaseMTR || "N/A"}</td>
                   <td className="p-4 text-sm">
-                    <div
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        latestPI?.purchaseManagerApprovalStatus === "APPROVED"
-                          ? "bg-green-100 text-green-800"
-                          : latestPI?.purchaseManagerApprovalStatus === "REJECTED"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-yellow-100 text-gray-800"
-                      }`}
-                    >
-                      {latestPI?.purchaseManagerApprovalStatus || "PENDING"}
+                    <div className="border border-gray-200 rounded p-2 bg-gray-50">
+                      <div className="text-xs font-medium text-gray-900 truncate">
+                        PO: {po.poNumber || "N/A"}
+                      </div>
+                      <div className="text-xs text-gray-500 mb-2">
+                        {new Date(po.poDate).toLocaleDateString("en-IN")}
+                      </div>
+                      {po.fileUrl && (
+                        <a 
+                          href={po.fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1 text-xs"
+                        >
+                          View Document
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      )}
                     </div>
                   </td>
                   <td className="p-4 text-sm">
                     <div
                       className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        latestPI?.financeManagerApprovalStatus === "APPROVED"
+                        latestPI?.approvalStatus === "APPROVED"
                           ? "bg-green-100 text-green-800"
-                          : latestPI?.financeManagerApprovalStatus === "REJECTED"
+                          : latestPI?.approvalStatus === "REJECTED"
                             ? "bg-red-100 text-red-800"
                             : "bg-yellow-100 text-gray-800"
                       }`}
                     >
-                      {latestPI?.financeManagerApprovalStatus || "PENDING"}
+                      {latestPI?.approvalStatus || "PENDING"}
+                    </div>
+                  </td>
+                  <td className="p-4 text-sm">
+                    <div
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        latestPI?.financeManagerApproval === "APPROVED"
+                          ? "bg-green-100 text-green-800"
+                          : latestPI?.financeManagerApproval === "REJECTED"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-gray-800"
+                      }`}
+                    >
+                      {latestPI?.financeManagerApproval || "PENDING"}
                     </div>
                   </td>
                   <td className="p-4 text-sm">
                     {piList.length > 0 ? (
                       <div className="space-y-2">
-                        {/* Latest PI Summary */}
+                          {/* Latest PI Summary */}
                         <div className="border border-gray-200 rounded p-2 bg-gray-50">
                           <button
                             onClick={() => {
@@ -532,14 +811,14 @@ const PIUploadTab = () => {
                             </span>
                             <span
                               className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
-                                latestPI.financeManagerApprovalStatus === "APPROVED"
+                                latestPI.financeManagerApproval === "APPROVED"
                                   ? "bg-green-100 text-green-800"
-                                  : latestPI.financeManagerApprovalStatus === "REJECTED"
+                                  : latestPI.financeManagerApproval === "REJECTED"
                                     ? "bg-red-100 text-red-800"
                                     : "bg-yellow-100 text-gray-800"
                               }`}
                             >
-                              FM: {latestPI.financeManagerApprovalStatus || "PENDING"}
+                              FM: {latestPI.financeManagerApproval || "PENDING"}
                             </span>
                           </div>
                         </div>
@@ -547,6 +826,22 @@ const PIUploadTab = () => {
                         {/* Previous PIs History - Expandable */}
                         {expandedPIHistory[po.poId] && piList.length > 1 && (
                           <div className="border border-gray-300 rounded p-2 bg-white">
+                            <div className="text-xs font-semibold text-gray-700 mb-2">
+                              PO: {po.poNumber || "N/A"}
+                              {po.poFileUrl && (
+                                <a 
+                                  href={po.poFileUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="ml-2 text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                                >
+                                  View
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                  </svg>
+                                </a>
+                              )}
+                            </div>
                             <div className="text-xs font-semibold text-gray-700 mb-2">PI History ({piList.length} total)</div>
                             <div className="space-y-2 max-h-48 overflow-y-auto">
                               {piList
@@ -582,14 +877,14 @@ const PIUploadTab = () => {
                                       </span>
                                       <span
                                         className={`inline-flex items-center px-1 py-0.5 rounded text-xs font-medium ${
-                                          pi.financeManagerApprovalStatus === "APPROVED"
+                                          pi.financeManagerApproval === "APPROVED"
                                             ? "bg-green-100 text-green-800"
-                                            : pi.financeManagerApprovalStatus === "REJECTED"
+                                            : pi.financeManagerApproval === "REJECTED"
                                               ? "bg-red-100 text-red-800"
                                               : "bg-yellow-100 text-gray-800"
                                         }`}
                                       >
-                                        FM: {pi.financeManagerApprovalStatus || "PENDING"}
+                                        FM: {pi.financeManagerApproval || "PENDING"}
                                       </span>
                                     </div>
                                   </div>
@@ -603,12 +898,22 @@ const PIUploadTab = () => {
                     )}
                   </td>
                   <td className="p-4 text-sm">
-                    <button
-                      onClick={() => openPIModal(po)}
-                      className="inline-flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 font-medium"
-                    >
-                      Upload PI
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => openPIModal(po)}
+                        className="inline-flex items-center justify-center px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 font-medium"
+                      >
+                        Upload PI
+                      </button>
+                      {piList.length > 0 && latestPI && (
+                        <button
+                          onClick={() => openGRNModal(latestPI, poId)}
+                          className="inline-flex items-center justify-center px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 font-medium"
+                        >
+                          Upload GRN
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               )
@@ -664,6 +969,9 @@ const PIUploadTab = () => {
 
       {/* PI Upload Modal */}
       {renderPIModal()}
+
+      {/* GRN Upload Modal */}
+      {renderGRNModal()}
     </div>
   )
 }

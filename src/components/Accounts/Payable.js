@@ -1,4 +1,4 @@
-"use client"
+'use client';
 
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { FiAlertCircle, FiCheck, FiChevronRight, FiUser } from "react-icons/fi"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { useAuth } from "../../contexts/AuthContext"
+
 
 function AssignAccountantModal({ isOpen, onClose, piId, onAssign }) {
   const [accountants, setAccountants] = useState([])
@@ -133,6 +134,7 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
   const [receiptFileName, setReceiptFileName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [isPaymentComplete, setIsPaymentComplete] = useState(false)
 
   useEffect(() => {
     if (isOpen && invoice) {
@@ -141,8 +143,10 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
       // Check if payment has already been completed
       if (invoice.paymentDoneDate) {
         setPaymentDoneDate(invoice.paymentDoneDate.split("T")[0]) // Convert to date format
+        setIsPaymentComplete(true)
       } else {
         setPaymentDoneDate("")
+        setIsPaymentComplete(false)
       }
 
       if (invoice.paymentReceiptUrl) {
@@ -159,14 +163,22 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!approvalStatus || !paymentDoneDate) {
-      setError("Please fill all required fields")
+    if (!approvalStatus) {
+      setError("Please select an approval status")
       return
     }
 
-    if (!paymentReceipt && !invoice.paymentReceiptUrl) {
-      setError("Please upload a payment receipt")
-      return
+    // Only require payment fields if status is APPROVED
+    if (approvalStatus === "APPROVED") {
+      if (!paymentDoneDate) {
+        setError("Please fill in the Payment Done Date")
+        return
+      }
+
+      if (!paymentReceipt && !invoice.paymentReceiptUrl) {
+        setError("Please upload a payment receipt")
+        return
+      }
     }
 
     try {
@@ -193,8 +205,6 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
 
   if (!isOpen || !invoice) return null
 
-  const isPaymentComplete = invoice.paymentDoneDate && invoice.paymentReceiptUrl
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
@@ -207,22 +217,41 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
           </div>
         )}
 
-        {isPaymentComplete && (
-          <div className="bg-green-50 text-green-600 p-3 rounded-lg mb-4 flex items-center gap-2">
-            <FiCheck className="w-4 h-4" />
-            <span className="text-sm">Payment has been completed successfully</span>
-          </div>
-        )}
-
         {/* Invoice Details */}
         <div className="bg-gray-50 p-4 rounded-lg mb-4">
           <h4 className="font-medium text-gray-900 mb-2">Invoice Details</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
             <div>
-              <span className="font-medium">PO Number:</span> {invoice.purchaseOrder?.poNumber || "N/A"}
+              <span className="font-medium">PO Number:</span>{" "}
+              {invoice.purchaseOrder?.fileUrl ? (
+                <button
+                  onClick={() => {
+                    window.open(invoice.purchaseOrder.fileUrl, '_blank')
+                  }}
+                  className="text-blue-600 underline hover:text-blue-800 cursor-pointer"
+                  type="button"
+                >
+                  {invoice.purchaseOrder?.poNumber || "N/A"}
+                </button>
+              ) : (
+                <span>{invoice.purchaseOrder?.poNumber || "N/A"}</span>
+              )}
             </div>
             <div>
-              <span className="font-medium">PI Number:</span> {invoice.piNumber}
+              <span className="font-medium">PI Number:</span>{" "}
+              {invoice.fileUrl ? (
+                <button
+                  onClick={() => {
+                    window.open(invoice.fileUrl, '_blank')
+                  }}
+                  className="text-blue-600 underline hover:text-blue-800 cursor-pointer"
+                  type="button"
+                >
+                  {invoice.piNumber}
+                </button>
+              ) : (
+                <span>{invoice.piNumber}</span>
+              )}
             </div>
             <div>
               <span className="font-medium">Project:</span> {invoice.projectName}
@@ -283,7 +312,7 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
                 onChange={(e) => setApprovalStatus(e.target.value)}
                 className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 required
-                disabled={loading || isPaymentComplete}
+                disabled={loading}
               >
                 <option value="">Select Status</option>
                 <option value="APPROVED">Approve</option>
@@ -291,56 +320,60 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
               </select>
             </div>
 
-            {/* Payment Done Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Done Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                value={paymentDoneDate}
-                onChange={(e) => setPaymentDoneDate(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                required
-                disabled={loading || isPaymentComplete}
-              />
-            </div>
+            {/* Payment Done Date - Only show if APPROVED */}
+            {approvalStatus === "APPROVED" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Done Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={paymentDoneDate}
+                  onChange={(e) => setPaymentDoneDate(e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  required
+                  disabled={loading}
+                />
+              </div>
+            )}
 
-            {/* Payment Receipt Upload */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Receipt {!isPaymentComplete && <span className="text-red-500">*</span>}
-              </label>
-              {receiptFileName && (
-                <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-                  <span className="text-sm text-blue-800">
-                    Uploaded:
-                    {invoice.paymentReceiptUrl && (
-                      <>
-                        {" "}
-                        <a
-                          href={invoice.paymentReceiptUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline text-blue-600 hover:text-blue-800"
-                        >
-                          {receiptFileName}
-                        </a>
-                      </>
-                    )}
-                  </span>
-                </div>
-              )}
-              <input
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                onChange={(e) => setPaymentReceipt(e.target.files[0])}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                required={!isPaymentComplete}
-                disabled={loading}
-              />
-              <p className="text-xs text-gray-500 mt-1">Accepted formats: PDF, JPG, PNG</p>
-            </div>
+            {/* Payment Receipt Upload - Only show if APPROVED */}
+            {approvalStatus === "APPROVED" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Receipt <span className="text-red-500">*</span>
+                </label>
+                {receiptFileName && (
+                  <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                    <span className="text-sm text-blue-800">
+                      Uploaded:
+                      {invoice.paymentReceiptUrl && (
+                        <>
+                          {" "}
+                          <a
+                            href={invoice.paymentReceiptUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline text-blue-600 hover:text-blue-800"
+                          >
+                            {receiptFileName}
+                          </a>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onChange={(e) => setPaymentReceipt(e.target.files[0])}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  required={!invoice.paymentReceiptUrl}
+                  disabled={loading}
+                />
+                <p className="text-xs text-gray-500 mt-1">Accepted formats: PDF, JPG, PNG</p>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 mt-6">
@@ -352,15 +385,13 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
             >
               Cancel
             </button>
-            {!isPaymentComplete && (
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {loading ? "Processing..." : "Complete Payment"}
-              </button>
-            )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {loading ? "Processing..." : "Complete Payment"}
+            </button>
           </div>
         </form>
       </div>
@@ -647,9 +678,26 @@ function Payable() {
                           <div className="text-sm text-gray-900">{formatDate(invoice.expectedPaymentDate)}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-col gap-2">
+                            {invoice.purchaseOrder?.fileUrl ? (
+                              <div className="text-xs">
+                                <span className="font-semibold text-gray-700">PO: </span>
+                                <a
+                                  href={invoice.purchaseOrder.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline hover:text-blue-800"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {invoice.purchaseOrder.fileName && invoice.purchaseOrder.fileName.length > 15
+                                    ? `${invoice.purchaseOrder.fileName.substring(0, 15)}...`
+                                    : invoice.purchaseOrder.fileName || "PO File"}
+                                </a>
+                              </div>
+                            ) : null}
                             {invoice.fileUrl ? (
                               <div className="text-xs">
+                                <span className="font-semibold text-gray-700">PI: </span>
                                 <a
                                   href={invoice.fileUrl}
                                   target="_blank"
@@ -657,12 +705,13 @@ function Payable() {
                                   className="text-blue-600 underline hover:text-blue-800"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  {invoice.fileName && invoice.fileName.length > 10
-                                    ? `${invoice.fileName.substring(0, 10)}...`
-                                    : invoice.fileName || "File"}
+                                  {invoice.fileName && invoice.fileName.length > 15
+                                    ? `${invoice.fileName.substring(0, 15)}...`
+                                    : invoice.fileName || "PI File"}
                                 </a>
                               </div>
-                            ) : (
+                            ) : null}
+                            {!invoice.fileUrl && !invoice.purchaseOrder?.fileUrl && (
                               <span className="text-xs text-gray-400">No files</span>
                             )}
                           </div>
@@ -702,9 +751,9 @@ function Payable() {
                             <button
                               className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"
                               onClick={(e) => handleCompletePayment(e, invoice)}
-                              title="Complete Payment"
+                              title="Action"
                             >
-                              Complete Payment
+                              Action
                             </button>
                           </div>
                         </td>
@@ -773,9 +822,26 @@ function Payable() {
                         </div>
                         <div>
                           <span className="font-medium">Files:</span>{" "}
-                          {invoice.fileUrl ? (
-                            <div className="flex flex-wrap gap-1 mt-1">
+                          <div className="flex flex-col gap-1 mt-1">
+                            {invoice.purchaseOrder?.fileUrl ? (
                               <div className="text-xs">
+                                <span className="font-semibold">PO: </span>
+                                <a
+                                  href={invoice.purchaseOrder.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline hover:text-blue-800"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {invoice.purchaseOrder.fileName && invoice.purchaseOrder.fileName.length > 8
+                                    ? `${invoice.purchaseOrder.fileName.substring(0, 8)}...`
+                                    : invoice.purchaseOrder.fileName || "PO File"}
+                                </a>
+                              </div>
+                            ) : null}
+                            {invoice.fileUrl ? (
+                              <div className="text-xs">
+                                <span className="font-semibold">PI: </span>
                                 <a
                                   href={invoice.fileUrl}
                                   target="_blank"
@@ -785,13 +851,14 @@ function Payable() {
                                 >
                                   {invoice.fileName && invoice.fileName.length > 8
                                     ? `${invoice.fileName.substring(0, 8)}...`
-                                    : invoice.fileName || "File"}
+                                    : invoice.fileName || "PI File"}
                                 </a>
                               </div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">No files</span>
-                          )}
+                            ) : null}
+                            {!invoice.fileUrl && !invoice.purchaseOrder?.fileUrl && (
+                              <span className="text-gray-400">No files</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="mt-2 flex justify-center">

@@ -118,7 +118,11 @@ const SmartCalendar = ({ paymentCycle, onDateSelect, onClose, selectedDate }) =>
   const handleDateClick = (dayObj) => {
     if (dayObj.isEnabled) {
       setLocalSelectedDate(dayObj.date)
-      const formattedDate = dayObj.date.toISOString().split("T")[0]
+      // Format date in local timezone to avoid timezone offset issues
+      const year = dayObj.date.getFullYear()
+      const month = String(dayObj.date.getMonth() + 1).padStart(2, "0")
+      const day = String(dayObj.date.getDate()).padStart(2, "0")
+      const formattedDate = `${year}-${month}-${day}`
       onDateSelect(formattedDate)
     }
   }

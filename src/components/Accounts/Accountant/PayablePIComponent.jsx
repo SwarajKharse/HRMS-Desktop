@@ -173,6 +173,8 @@ function PayablePIComponent() {
         return <FiXCircle className="w-4 h-4 text-red-500" />
       case "pending":
         return <FiClock className="w-4 h-4 text-yellow-500" />
+      case "paid":
+        return <FiCheckCircle className="w-4 h-4 text-blue-500" />
       default:
         return <FiAlertCircle className="w-4 h-4 text-gray-500" />
     }
@@ -191,6 +193,14 @@ function PayablePIComponent() {
       default:
         return "bg-gray-100 text-gray-800"
     }
+  }
+
+  // Get the correct payment status - prioritize rejection over payment status
+  const getDisplayPaymentStatus = (invoice) => {
+    if (invoice.accountManagerApprovalStatus === "REJECTED") {
+      return "REJECTED"
+    }
+    return invoice.paymentStatus || "PENDING"
   }
 
   if (loading && invoices.length === 0) {
@@ -302,13 +312,12 @@ function PayablePIComponent() {
                 <thead className="bg-gray-50">
                   <tr>
                     {[
-                      "PO Number",
-                      "PI Number",
+                      "PO / PI Number",
                       "Pay Amount",
                       "Project Name",
                       "Expected Payment Date",
-                      "PI Status", // Added PI Status column
-                      "Payment Status", // Added Payment Status column
+                      "PI Status",
+                      "Payment Status",
                       "Files",
                       "Actions",
                     ].map((header) => (
@@ -324,7 +333,7 @@ function PayablePIComponent() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {invoices.length === 0 ? (
                     <tr>
-                      <td colSpan="9" className="px-6 py-8 text-center text-gray-500 font-medium">
+                      <td colSpan="8" className="px-6 py-8 text-center text-gray-500 font-medium">
                         No purchase invoices found
                       </td>
                     </tr>
@@ -338,13 +347,16 @@ function PayablePIComponent() {
                         className="hover:bg-gray-50 cursor-pointer transition-colors group"
                         onClick={() => handleRowClick(invoice)}
                       >
+                        {/* Combined PO Number and PI Number Column */}
                         <td className="px-6 py-4">
-                          <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                            {invoice.purchaseOrder?.poNumber || "N/A"}
+                          <div className="flex flex-col gap-1">
+                            <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                              PO: {invoice.purchaseOrder?.poNumber || "N/A"}
+                            </div>
+                            <div className="text-sm font-medium text-gray-600">
+                              PI: {invoice.piNumber}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{invoice.piNumber}</div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">
@@ -367,16 +379,33 @@ function PayablePIComponent() {
                         </td>
                         <td className="px-6 py-4">
                           <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.paymentStatus)}`}
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(getDisplayPaymentStatus(invoice))}`}
                           >
-                            {getStatusIcon(invoice.paymentStatus)}
-                            <span className="ml-1">{invoice.paymentStatus || "PENDING"}</span>
+                            {getStatusIcon(getDisplayPaymentStatus(invoice))}
+                            <span className="ml-1">{getDisplayPaymentStatus(invoice)}</span>
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1">
+                          <div className="flex flex-col gap-2">
+                            {invoice.purchaseOrder?.fileUrl ? (
+                              <div className="text-xs">
+                                <span className="font-semibold text-gray-700">PO: </span>
+                                <a
+                                  href={invoice.purchaseOrder.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline hover:text-blue-800"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {invoice.purchaseOrder.fileName && invoice.purchaseOrder.fileName.length > 15
+                                    ? `${invoice.purchaseOrder.fileName.substring(0, 15)}...`
+                                    : invoice.purchaseOrder.fileName || "PO File"}
+                                </a>
+                              </div>
+                            ) : null}
                             {invoice.fileUrl && (
                               <div className="text-xs">
+                                <span className="font-semibold text-gray-700">PI: </span>
                                 <a
                                   href={invoice.fileUrl}
                                   target="_blank"
@@ -384,12 +413,15 @@ function PayablePIComponent() {
                                   className="text-blue-600 underline hover:text-blue-800"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  PI: {invoice.fileName}
+                                  {invoice.fileName && invoice.fileName.length > 15
+                                    ? `${invoice.fileName.substring(0, 15)}...`
+                                    : invoice.fileName || "PI File"}
                                 </a>
                               </div>
                             )}
                             {invoice.paymentReceiptUrl && (
                               <div className="text-xs">
+                                <span className="font-semibold text-gray-700">Receipt: </span>
                                 <a
                                   href={invoice.paymentReceiptUrl}
                                   target="_blank"
@@ -397,11 +429,13 @@ function PayablePIComponent() {
                                   className="text-green-600 underline hover:text-green-800"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  Receipt: {invoice.paymentReceiptFilename}
+                                  {invoice.paymentReceiptFilename && invoice.paymentReceiptFilename.length > 12
+                                    ? `${invoice.paymentReceiptFilename.substring(0, 12)}...`
+                                    : invoice.paymentReceiptFilename || "Receipt"}
                                 </a>
                               </div>
                             )}
-                            {!invoice.fileUrl && !invoice.paymentReceiptUrl && (
+                            {!invoice.fileUrl && !invoice.paymentReceiptUrl && !invoice.purchaseOrder?.fileUrl && (
                               <span className="text-xs text-gray-400">No files</span>
                             )}
                           </div>
@@ -505,6 +539,62 @@ function PayablePIComponent() {
                             {getStatusIcon(invoice.paymentStatus)}
                             <span className="ml-1">{invoice.paymentStatus || "PENDING"}</span>
                           </span>
+                        </div>
+                        <div>
+                          <span className="font-medium">Files:</span>{" "}
+                          <div className="flex flex-col gap-1 mt-1">
+                            {invoice.purchaseOrder?.fileUrl ? (
+                              <div className="text-xs">
+                                <span className="font-semibold">PO: </span>
+                                <a
+                                  href={invoice.purchaseOrder.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline hover:text-blue-800"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {invoice.purchaseOrder.fileName && invoice.purchaseOrder.fileName.length > 8
+                                    ? `${invoice.purchaseOrder.fileName.substring(0, 8)}...`
+                                    : invoice.purchaseOrder.fileName || "PO File"}
+                                </a>
+                              </div>
+                            ) : null}
+                            {invoice.fileUrl ? (
+                              <div className="text-xs">
+                                <span className="font-semibold">PI: </span>
+                                <a
+                                  href={invoice.fileUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 underline hover:text-blue-800"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {invoice.fileName && invoice.fileName.length > 8
+                                    ? `${invoice.fileName.substring(0, 8)}...`
+                                    : invoice.fileName || "PI File"}
+                                </a>
+                              </div>
+                            ) : null}
+                            {invoice.paymentReceiptUrl ? (
+                              <div className="text-xs">
+                                <span className="font-semibold">Receipt: </span>
+                                <a
+                                  href={invoice.paymentReceiptUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-600 underline hover:text-green-800"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {invoice.paymentReceiptFilename && invoice.paymentReceiptFilename.length > 8
+                                    ? `${invoice.paymentReceiptFilename.substring(0, 8)}...`
+                                    : invoice.paymentReceiptFilename || "Receipt"}
+                                </a>
+                              </div>
+                            ) : null}
+                            {!invoice.fileUrl && !invoice.paymentReceiptUrl && !invoice.purchaseOrder?.fileUrl && (
+                              <span className="text-gray-400">No files</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="flex justify-center mt-2">
