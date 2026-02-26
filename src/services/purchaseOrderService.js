@@ -186,4 +186,18 @@ export const purchaseOrderService = {
       throw error
     }
   },
+
+  updateApprovalStatus: async (poId, approvalStatus, remarks = "",currentUserId) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/material-requisitions/purchase-orders/${poId}/approval`, {
+        approvalStatus: approvalStatus,
+        approvalRemarks: remarks,
+        currentUserId: currentUserId,
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error updating PO approval:", error)
+      throw error
+    }
+  },
 }

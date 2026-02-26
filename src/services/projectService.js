@@ -457,4 +457,15 @@ uploadNocFile: async (projectId, file) => {
       throw error
     }
   }, */
+
+
+   getProjectSummary: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/summary`)
+      return response.data
+    } catch (error) {
+      console.error("Error fetching project summary:", error)
+      throw error
+    }
+  },
 }

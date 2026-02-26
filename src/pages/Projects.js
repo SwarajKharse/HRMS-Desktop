@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import NewProjects from "../components/Projects/NewProjects"
+import ProjectMaterialRequisition from "../components/Projects/ProjectMaterialRequisition"
 import SiteEngineerProjects from "../components/Projects/SiteEngineerProjects"
 import { GrWorkshop } from "react-icons/gr"
+import { SiMaterialformkdocs } from "react-icons/si";
 import { useAuth } from "../contexts/AuthContext"
 
 function Projects() {
@@ -22,6 +24,12 @@ function Projects() {
         component: NewProjects,
       },
       {
+        id: "projects-mtrs",
+        label: "Projects Material Requisitions",
+        icon: SiMaterialformkdocs,
+        component: ProjectMaterialRequisition,
+      },
+      {
         id: "site-engineer-projects",
         label: "My Projects",
         icon: GrWorkshop,
@@ -36,9 +44,9 @@ function Projects() {
     console.log(designation)
 
     if (designation.includes("project-manager")) {
-      return [allTabs[0]] // Admin/Manager can see all tabs
+      return [allTabs[0],allTabs[1]] // Admin/Manager can see all tabs
     } else if (designation.includes("sr.-site-engineer")) {
-      return [allTabs[1]]
+      return [allTabs[2]]
     } else {
       return []
     }

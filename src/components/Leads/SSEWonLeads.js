@@ -392,7 +392,7 @@ function SSEWonLeads() {
           </div>
 
           <div>
-            <label className="text-xs text-gray-700 mb-1 block">Assigned BDM </label>
+            <label className="text-xs text-gray-700 mb-1 block">Assigned BDM</label>
             <select
               value={filters.assignedBdm}
               onChange={(e) => handleFilterChange("assignedBdm", e.target.value)}

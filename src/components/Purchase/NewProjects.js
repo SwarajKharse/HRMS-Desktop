@@ -10,6 +10,7 @@ import { projectService } from "../../services/projectService" // Adjusted path
 import ProjectLeadDetails from "./ProjectLeadDetails"
 import BOQMTREditPurchase from "./BOQMTREditPurchase"
 import ProjectProcurement from "./ProjectProcurement" // Changed from ProjectInitiationIntegration
+import ProjectSummary from "./ProjectSummary"
 
 function NewProjects() {
   const navigate = useNavigate()
@@ -64,6 +65,10 @@ function NewProjects() {
   // New state for Project Procurement modal
   const [showProjectProcurement, setShowProjectProcurement] = useState(false)
   const [selectedProjectForProcurement, setSelectedProjectForProcurement] = useState(null)
+
+  // New state for Project Summary modal
+  const [showSummary, setShowSummary] = useState(false)
+  const [summaryProjectId, setSummaryProjectId] = useState(null)
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -276,6 +281,13 @@ function NewProjects() {
     setTimeout(() => setSuccessMessage(null), 3000)
   }
 
+  // Handler for opening Project Summary modal
+  const handleSummary = (e, project) => {
+    e.stopPropagation()
+    setSummaryProjectId(project.id)
+    setShowSummary(true)
+  }
+
   if (loading && unassignedleads.length === 0) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -338,7 +350,7 @@ function NewProjects() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Project ID", "Project Name", "Project Initiation", "Scope of Work", "Actions"]
+                    {["Project ID", "Project Name", "Project Initiation", "Scope of Work", "Summary"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -353,7 +365,7 @@ function NewProjects() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {unassignedleads.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="px-6 py-8 text-center text-gray-500 font-medium">
+                      <td colSpan="5" className="px-6 py-8 text-center text-gray-500 font-medium">
                         No projects found
                       </td>
                     </tr>
@@ -390,17 +402,27 @@ function NewProjects() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
-                            {/* <button
+                            <button
                               className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
                               onClick={(e) => handleBOQEdit(e, project)}
                               title="Edit BOQ"
                             >
                               BOQ
-                            </button> */}
-                            BOQ
+                            </button>
                           </div>
                         </td>
+
                         <td className="px-6 py-4">
+                          <button
+                            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium"
+                            onClick={(e) => handleSummary(e, project)}
+                            title="View Summary"
+                          >
+                            Summary
+                          </button>
+                        </td>
+
+                        {/* <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <button
                               className="text-gray-400 hover:text-indigo-600 transition-colors"
@@ -410,7 +432,7 @@ function NewProjects() {
                               <FiEdit2 size={18} />
                             </button>
                           </div>
-                        </td>
+                        </td> */}
                       </motion.tr>
                     ))
                   )}
@@ -577,6 +599,16 @@ function NewProjects() {
             project={selectedProjectForProcurement}
             onClose={handleProcurementClose}
             onSave={handleProcurementSave}
+          />
+        )}
+
+        {showSummary && summaryProjectId && (
+          <ProjectSummary
+            projectId={summaryProjectId}
+            onClose={() => {
+              setShowSummary(false)
+              setSummaryProjectId(null)
+            }}
           />
         )}
       </AnimatePresence>

@@ -6,7 +6,7 @@ import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
-import ProjectLeadDetails from "./ProjectLeadDetails"
+import ProjectLeadDetails from "./SiteEngineerProjectLeadDetails"
 import BOQEditComponent from "./SiteEngineerBOQEditComponent"
 import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
 

@@ -8,6 +8,7 @@ import { TiFlowChildren } from "react-icons/ti";
 import { TbCategoryPlus, TbBrandProducthunt, TbPackageExport  } from "react-icons/tb";
 import { GiSkills } from "react-icons/gi";
 import { BsTools } from "react-icons/bs";
+import { FcMoneyTransfer } from "react-icons/fc";
 import { MdStorefront } from "react-icons/md"
 import { useAuth } from "../contexts/AuthContext"
 import ProductList from "../components/Store/ProductList"
@@ -15,6 +16,7 @@ import SkillSetList from "../components/Store/SkillSetList"
 import ToolsList from "../components/Store/ToolsList"
 import ExportLeads from "../components/Store/ExportLeads"
 import VendorList from "../components/Store/VendorList"
+import PaymentCycleList from "../components/Store/PaymentCycleList"
 
 function ProductManagement() {
   const { employee } = useAuth()
@@ -48,6 +50,12 @@ function ProductManagement() {
         label: "Vendor Management",
         icon: MdStorefront,
         component: VendorList,
+      },
+      {
+        id: "payment-cycle",
+        label: "Payment Cycle",
+        icon: FcMoneyTransfer,
+        component: PaymentCycleList,
       },
       {
         id: "export-leads",

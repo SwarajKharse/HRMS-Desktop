@@ -3,14 +3,26 @@
 import { useState, useEffect, useCallback } from "react"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
 import { purchaseOrderService } from "../../../services/purchaseOrderService"
-import { purchaseInvoiceService } from "../../../services/purchaseInvoiceService"
 import { useAuth } from "../../../contexts/AuthContext"
 import VendorDropdownPOUpload from "./VendorDropdownPOUpload"
 
 const POUploadWithVendorSelection = () => {
   const { user } = useAuth()
-  const [showModal, setShowModal] = useState(true) // Opens modal on page load
+
+  // STEP 1 - Modal Controller (Only PO modal now)
+  const MODAL = {
+    NONE: null,
+    PO: "PO",
+  }
+
+  const [activeModal, setActiveModal] = useState(MODAL.NONE)
+
+  // Keep existing states but derive from activeModal (STEP 3)
+  const [showModal, setShowModal] = useState(false) // Don't open modal on page load
   const [showTableView, setShowTableView] = useState(false)
+  
+  // STEP 3 - Derived modal visibility
+  const isPOModalOpen = activeModal === MODAL.PO
 
   const [requisitions, setRequisitions] = useState([])
   const [tableLoading, setTableLoading] = useState(false)
@@ -18,8 +30,8 @@ const POUploadWithVendorSelection = () => {
   const [totalPages, setTotalPages] = useState(0)
   const [pageSize] = useState(10)
   const [poStatusMap, setPOStatusMap] = useState({}) // Adding state to track PO status for each MTR
-  const [piListByPO, setPIListByPO] = useState({})
   const [transferringToAccounts, setTransferringToAccounts] = useState(false)
+  const [expandedPOHistory, setExpandedPOHistory] = useState({}) // Track which MTRs have expanded PO history
 
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedVendor, setSelectedVendor] = useState("")
@@ -38,19 +50,14 @@ const POUploadWithVendorSelection = () => {
   const [editPOFile, setEditPOFile] = useState(null)
   const [editPONumber, setEditPONumber] = useState("")
 
-  const [showPIModal, setShowPIModal] = useState(false)
-  const [selectedPOForPI, setSelectedPOForPI] = useState(null)
-  const [piFile, setPIFile] = useState(null)
-  const [shareStatus, setShareStatus] = useState("")
+  const [existingPIData, setExistingPIData] = useState(null)
+  const [loadingPIData, setLoadingPIData] = useState(false)
   const [payableAmount, setPayableAmount] = useState("")
   const [selectedProjectName, setSelectedProjectName] = useState("")
   const [expectedPaymentDate, setExpectedPaymentDate] = useState("")
-  const [piRemarks, setPIRemarks] = useState("")
-  const [uploadingPI, setUploadingPI] = useState(false)
-
+  const [PIRemarks, setPIRemarks] = useState("")
+  const [shareStatus, setShareStatus] = useState("")
   const [projectNames, setProjectNames] = useState([])
-  const [existingPIData, setExistingPIData] = useState(null)
-  const [loadingPIData, setLoadingPIData] = useState(false)
 
   const showMessage = (type, text) => {
     setMessage({ type, text })
@@ -58,49 +65,6 @@ const POUploadWithVendorSelection = () => {
       setMessage({ type: "", text: "" })
     }, 5000)
   }
-
-  const fetchProjectNames = useCallback(async () => {
-    try {
-      const names = await purchaseInvoiceService.getProjectNames()
-      setProjectNames(names || [])
-    } catch (error) {
-      console.error("Error fetching project names:", error)
-      setProjectNames([])
-    }
-  }, [])
-
-  const fetchExistingPIData = useCallback(async (poId) => {
-    if (!poId) return
-
-    try {
-      setLoadingPIData(true)
-      // Try to get existing PI data for this PO
-      const allPIs = await purchaseInvoiceService.getAllPurchaseInvoices()
-      const existingPI = allPIs.find((pi) => pi.purchaseOrder?.id === poId)
-
-      if (existingPI) {
-        setExistingPIData(existingPI)
-        // Pre-populate form with existing data
-        setPayableAmount(existingPI.payableAmount?.toString() || "")
-        setSelectedProjectName(existingPI.projectName || "")
-        setExpectedPaymentDate(existingPI.expectedPaymentDate || "")
-        setPIRemarks(existingPI.remarks || "")
-        // Pre-populate share status if available
-        setShareStatus(existingPI.shareStatus || "")
-      } else {
-        setExistingPIData(null)
-      }
-    } catch (error) {
-      console.error("Error fetching existing PI data:", error)
-      setExistingPIData(null)
-    } finally {
-      setLoadingPIData(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchProjectNames()
-  }, [fetchProjectNames])
 
   const fetchTableData = useCallback(async () => {
     setTableLoading(true)
@@ -113,15 +77,40 @@ const POUploadWithVendorSelection = () => {
       }
 
       const data = await comparisonSheetService.getPMApprovedMaterialRequisitions(requisitionFilters)
-      setRequisitions(data.content || [])
-      setTotalPages(data.totalPages || 0)
-
+      
       const poStatuses = {}
-      const pisByPO = {}
+      const requisitionsWithMaterialDesc = []
 
       for (const req of data.content || []) {
         try {
           const poStatus = await comparisonSheetService.checkPOStatus(req.id)
+          console.log("[v0] PO Status for MTR", req.id, ":", poStatus)
+          
+          // Get material description from boqMtr or req
+          const materialDesc = req.materialDescription || poStatus.latestPO?.boqMtr?.materialDescription || "N/A"
+          
+          // Fetch all POs if poCount > 1
+          let allPOsList = []
+          if (poStatus.poCount && poStatus.poCount > 1) {
+            try {
+              allPOsList = await comparisonSheetService.getPOsByMtrIdWithDetails(req.id)
+              console.log("[v0] Fetched", allPOsList.length, "POs for MTR", req.id)
+            } catch (e) {
+              console.log("[v0] Error fetching all POs:", e.message)
+              if (poStatus.latestPO) {
+                allPOsList = [poStatus.latestPO]
+              }
+            }
+          } else if (poStatus.latestPO) {
+            allPOsList = [poStatus.latestPO]
+          }
+          
+          // Add material description to requisition
+          requisitionsWithMaterialDesc.push({
+            ...req,
+            materialDescription: materialDesc,
+          })
+          
           poStatuses[req.id] = {
             hasPO: poStatus.hasPO,
             poNumber: poStatus.latestPO?.poNumber || null,
@@ -131,30 +120,19 @@ const POUploadWithVendorSelection = () => {
             financeManagerApprovalStatus: poStatus.latestPO?.financeManagerApprovalStatus || "PENDING",
             fileUrl: poStatus.latestPO?.fileUrl || null,
             poId: poStatus.latestPO?.id || null,
+            allPOs: allPOsList,
+            poCount: poStatus.poCount || 0,
           }
-
-          if (poStatus.hasPO && poStatus.latestPO?.id) {
-            try {
-              const piList = await purchaseInvoiceService.getPurchaseInvoicesByPO(poStatus.latestPO.id)
-              if (piList && piList.length > 0) {
-                pisByPO[req.id] = piList
-                // Get the latest PI for status display
-                const latestPI = piList[piList.length - 1]
-                poStatuses[req.id].latestPIStatus = latestPI.purchaseManagerApprovalStatus || "PENDING"
-                poStatuses[req.id].latestPIId = latestPI.id
-                poStatuses[req.id].handedOverToAccounts = latestPI.handoverFromFinance || false
-              }
-            } catch (error) {
-              console.log(`No PI found for PO ${poStatus.latestPO.id}`)
-            }
-          }
+          console.log("[v0] Stored", allPOsList.length, "POs for MTR", req.id)
         } catch (error) {
           console.error(`Error checking PO status for MTR ${req.id}:`, error)
           poStatuses[req.id] = { hasPO: false, poNumber: null, uploadDate: null }
+          requisitionsWithMaterialDesc.push(req)
         }
       }
+      setRequisitions(requisitionsWithMaterialDesc)
+      setTotalPages(data.totalPages || 0)
       setPOStatusMap(poStatuses)
-      setPIListByPO(pisByPO)
     } catch (error) {
       console.error("Failed to fetch material requisitions:", error)
       setRequisitions([])
@@ -163,12 +141,15 @@ const POUploadWithVendorSelection = () => {
     }
   }, [currentPage, pageSize, user?.id])
 
+  // STEP 5 - REMOVED dangerous effect that reopens PO modal implicitly
+
+  // Show table when all modals are closed
   useEffect(() => {
-    if (!showModal) {
+    if (activeModal === MODAL.NONE) {
       setShowTableView(true)
       fetchTableData()
     }
-  }, [showModal, fetchTableData])
+  }, [activeModal])
 
   useEffect(() => {
     if (selectedVendor && currentStep === 2) {
@@ -293,10 +274,13 @@ const POUploadWithVendorSelection = () => {
 
   const handleEditPO = (mtrId) => {
     const poData = poStatusMap[mtrId]
-    if (poData) {
+    
+    if (poData?.hasPO && poData?.poId) {
       setEditingPO({ mtrId, ...poData })
       setEditPONumber(poData.poNumber || "")
       setShowEditModal(true)
+    } else {
+      showMessage("error", "Unable to load PO details. Please try again.")
     }
   }
 
@@ -363,89 +347,12 @@ const POUploadWithVendorSelection = () => {
     }
   }
 
-  // Pass the mtrId to fetch existing PIs correctly
-  const handleOpenPIModal = async (poData, mtrId) => {
-    setSelectedPOForPI(poData)
-    setExistingPIData(piListByPO[mtrId] || [])
-    setShowPIModal(true)
-  }
-
-  const resetPIModal = () => {
-    setSelectedPOForPI(null)
-    setPIFile(null)
-    setShareStatus("")
-    setPayableAmount("")
-    setSelectedProjectName("")
-    setExpectedPaymentDate("")
-    setPIRemarks("")
-    setShowPIModal(false)
-    setExistingPIData(null)
-  }
-
-  const handleUploadPI = async () => {
-    if (!piFile || !shareStatus || !payableAmount || !selectedProjectName || !expectedPaymentDate) {
-      showMessage("error", "Please fill in all required fields to submit")
-      return
-    }
-
-    try {
-      setUploadingPI(true)
-      const formData = new FormData()
-      formData.append("file", piFile)
-      formData.append("shareStatus", shareStatus)
-      formData.append("payableAmount", payableAmount)
-      formData.append("projectName", selectedProjectName)
-      formData.append("expectedPaymentDate", expectedPaymentDate)
-      formData.append("remarks", piRemarks)
-      formData.append("poId", selectedPOForPI.poId)
-      formData.append("uploadedBy", user?.userId || user?.id || 1)
-
-      await purchaseInvoiceService.uploadPurchaseInvoice(formData)
-
-      showMessage("success", "PI submitted successfully to Accounts!")
-
-      resetPIModal()
-      fetchTableData() // Refresh table to show updated PI status
-    } catch (error) {
-      console.error("Error submitting PI:", error)
-      showMessage("error", "Error submitting PI. Please try again.")
-    } finally {
-      setUploadingPI(false)
-    }
-  }
-
-  // Use latestPIId from poStatusMap
-  const handleTransferToAccounts = async (mtrId) => {
-    const poData = poStatusMap[mtrId]
-    if (!poData || !poData.latestPIId) {
-      showMessage("error", "No approved PI found for this MTR")
-      return
-    }
-
-    if (
-      !window.confirm(
-        "Are you sure you want to transfer this PI to Accounts? This action will mark it as ready for payment processing.",
-      )
-    ) {
-      return
-    }
-
-    try {
-      setTransferringToAccounts(true)
-
-      // Call backend to mark PI as handed over to accounts
-      await purchaseInvoiceService.transferToAccounts(poData.latestPIId)
-
-      showMessage("success", "PI successfully transferred to Accounts!")
-
-      // Update local state
-      await fetchTableData()
-    } catch (error) {
-      console.error("Error transferring to accounts:", error)
-      showMessage("error", "Error transferring to accounts. Please try again.")
-    } finally {
-      setTransferringToAccounts(false)
-    }
+  // STEP 6 - Centralized close function (CRITICAL)
+  const closeAllModals = () => {
+    setActiveModal(MODAL.NONE)
+    setShowModal(false)
+    setShowPODetails(false)
+    resetModal()
   }
 
   const resetModal = () => {
@@ -460,278 +367,68 @@ const POUploadWithVendorSelection = () => {
   }
 
   const handleClose = () => {
-    setShowModal(false)
-    resetModal()
+    closeAllModals()
   }
 
   const handleOpenModal = () => {
-    setShowModal(true)
+    setActiveModal(MODAL.PO)
     setShowTableView(false)
     resetModal()
   }
 
   const renderEditModal = () => {
-    if (!showEditModal || !editingPO) return null
+    if (!showEditModal || !editingPO) {
+      return null
+    }
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Edit Purchase Order</h3>
-            <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-center justify-center" onClick={() => {
+        setShowEditModal(false)
+        setEditingPO(null)
+        setEditPONumber("")
+        setEditPOFile(null)
+      }}>
+        <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <h2 className="text-xl font-semibold mb-4">Edit Purchase Order</h2>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">PO Number</label>
+            <input
+              type="text"
+              value={editPONumber}
+              onChange={(e) => setEditPONumber(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter PO Number"
+            />
           </div>
 
-          <div className="p-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                PO Number <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={editPONumber}
-                onChange={(e) => setEditPONumber(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Replace File (Optional)</label>
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx"
-                onChange={(e) => setEditPOFile(e.target.files[0])}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-              {editPOFile && <p className="mt-2 text-sm text-green-600">New file: {editPOFile.name}</p>}
-              <p className="mt-1 text-sm text-gray-500">Current file: {editingPO.fileName}</p>
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleUpdatePO}
-                disabled={uploading || !editPONumber.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                {uploading ? "Updating..." : "Update PO"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const renderPITransferModal = () => {
-    if (!showPIModal || !selectedPOForPI) return null
-
-    const latestPI =
-      Array.isArray(existingPIData) && existingPIData.length > 0 ? existingPIData[existingPIData.length - 1] : null
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-60">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <h3 className="text-lg font-semibold text-gray-900">Upload PI - Submit to Accounts</h3>
-              {latestPI && (
-                <div
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                    latestPI.purchaseManagerApprovalStatus === "APPROVED"
-                      ? "bg-green-100 text-green-800"
-                      : latestPI.purchaseManagerApprovalStatus === "REJECTED"
-                        ? "bg-red-100 text-red-800"
-                        : "bg-yellow-100 text-yellow-800"
-                  }`}
-                >
-                  Latest PI: {latestPI.purchaseManagerApprovalStatus || "PENDING"}
-                </div>
-              )}
-            </div>
-            <button onClick={resetPIModal} className="text-gray-400 hover:text-gray-600">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Upload New PO File (Optional)</label>
+            <input
+              type="file"
+              onChange={(e) => setEditPOFile(e.target.files?.[0] || null)}
+              className="w-full"
+              accept=".pdf,.doc,.docx,.xlsx,.xls"
+            />
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {/* PO Information */}
-            <div className="bg-blue-50 p-4 rounded-md">
-              <h4 className="font-medium text-blue-900 mb-2">Purchase Order Details</h4>
-              <p className="text-sm text-blue-800">
-                <span className="font-medium">PO Number:</span> {selectedPOForPI.poNumber}
-              </p>
-              <p className="text-sm text-blue-800">
-                <span className="font-medium">Status:</span> {selectedPOForPI.approvalStatus}
-              </p>
-            </div>
-
-            {Array.isArray(existingPIData) && existingPIData.length > 0 && (
-              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <h4 className="font-medium text-gray-900 mb-3">Existing Purchase Invoices ({existingPIData.length})</h4>
-                <div className="space-y-3 max-h-48 overflow-y-auto">
-                  {existingPIData.map((pi, index) => (
-                    <div key={pi.id} className="bg-white p-3 rounded border border-gray-200">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">
-                            PI #{index + 1}: {pi.piNumber}
-                          </p>
-                          <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600">
-                            <div>
-                              <span className="font-medium">Amount:</span> ₹{pi.payableAmount}
-                            </div>
-                            <div>
-                              <span className="font-medium">Expected Date:</span>{" "}
-                              {pi.expectedPaymentDate ? new Date(pi.expectedPaymentDate).toLocaleDateString() : "N/A"}
-                            </div>
-                            <div>
-                              <span className="font-medium">Project:</span> {pi.projectName || "N/A"}
-                            </div>
-                            <div>
-                              <span className="font-medium">Uploaded:</span>{" "}
-                              {pi.createdAt ? new Date(pi.createdAt).toLocaleDateString() : "N/A"}
-                            </div>
-                          </div>
-                          {pi.remarks && (
-                            <p className="mt-2 text-xs text-gray-500">
-                              <span className="font-medium">Remarks:</span> {pi.remarks}
-                            </p>
-                          )}
-                        </div>
-                        <div className="ml-3">
-                          <div
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              pi.purchaseManagerApprovalStatus === "APPROVED"
-                                ? "bg-green-100 text-green-800"
-                                : pi.purchaseManagerApprovalStatus === "REJECTED"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
-                            {pi.purchaseManagerApprovalStatus || "PENDING"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* PI Upload Form */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upload PI/TI File <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx"
-                  onChange={(e) => setPIFile(e.target.files[0])}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-                {piFile && <p className="mt-2 text-sm text-green-600">Selected: {piFile.name}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Share Status <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={shareStatus}
-                  onChange={(e) => setShareStatus(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                  <option value="">Select Status</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payable Amount <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={payableAmount}
-                  onChange={(e) => setPayableAmount(e.target.value)}
-                  placeholder="Enter payable amount"
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Associated Project <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedProjectName}
-                  onChange={(e) => setSelectedProjectName(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                  <option value="">Select Project</option>
-                  {projectNames.map((name, index) => (
-                    <option key={index} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Expected Payment Date <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={expectedPaymentDate}
-                  onChange={(e) => setExpectedPaymentDate(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Remarks (Optional)</label>
-                <textarea
-                  value={piRemarks}
-                  onChange={(e) => setPIRemarks(e.target.value)}
-                  rows={3}
-                  placeholder="Enter any additional remarks"
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 flex-shrink-0 bg-white">
+          <div className="flex gap-3 justify-end">
             <button
-              onClick={resetPIModal}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              onClick={() => {
+                setShowEditModal(false)
+                setEditingPO(null)
+                setEditPONumber("")
+                setEditPOFile(null)
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
-              onClick={handleUploadPI}
-              disabled={
-                uploadingPI || !piFile || !shareStatus || !payableAmount || !selectedProjectName || !expectedPaymentDate
-              }
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              onClick={() => handleUpdatePO()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
-              {uploadingPI ? "Submitting..." : "Submit"}
+              Update
             </button>
           </div>
         </div>
@@ -763,116 +460,90 @@ const POUploadWithVendorSelection = () => {
           ) : requisitions.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No approved material requisitions found.</div>
           ) : (
-            <div className="relative w-full overflow-auto rounded-lg border border-gray-200 shadow-sm">
-              <table className="w-full caption-bottom text-sm">
+            <div className="relative w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+              <table className="w-full caption-bottom text-sm border-collapse">
                 <thead className="[&_tr]:border-b bg-gray-100">
                   <tr className="border-b transition-colors hover:bg-gray-100">
-                    <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Code</th>
                     <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Project Name</th>
                     <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Product Name</th>
-                    <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Qty</th>
-                    <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Purchase MTR</th>
-                    <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">PO Status</th>
+                    <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Quantity</th>
+                    <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">PM Approval</th>
+                    <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">FM Approval</th>
+                    <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">PO Details</th>
+                    <th className="h-12 px-4 text-center align-middle font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
                   {requisitions.map((req) => (
                     <tr key={req.id} className="border-b transition-colors hover:bg-gray-50">
                       <td
-                        className="p-4 align-middle text-gray-700 font-medium break-words overflow-hidden"
-                        title={req.mtrCode}
-                      >
-                        {req.mtrCode || "N/A"}
-                      </td>
-                      <td
                         className="p-4 align-middle text-gray-700 break-words overflow-hidden"
                         title={req.projectName}
                       >
                         {req.projectName || "N/A"}
                       </td>
-                      <td
-                        className="p-4 align-middle text-gray-700 break-words overflow-hidden"
-                        title={req.productName}
-                      >
-                        {req.productName || "N/A"}
+                      <td className="p-4 max-w-[200px]">
+                        <div className="truncate text-sm" title={req.productName}>
+                          {req.productName}
+                        </div>
                       </td>
-                      <td className="p-4 align-middle text-gray-700">{req.mtrQty}</td>
-                      <td className="p-4 align-middle text-gray-700">{req.purchaseMTR}</td>
+                      <td className="p-4 align-middle text-gray-700 font-semibold">{req.purchaseMTR || "N/A"}</td>
                       <td className="p-4 align-middle">
                         {poStatusMap[req.id]?.hasPO ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  poStatusMap[req.id]?.approvalStatus === "APPROVED"
-                                    ? "bg-green-100 text-green-800"
-                                    : poStatusMap[req.id]?.approvalStatus === "REJECTED"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-yellow-100 text-yellow-800"
-                                }`}
-                              >
-                                PM: {poStatusMap[req.id]?.approvalStatus || "PENDING"}
-                              </div>
-                              {poStatusMap[req.id]?.approvalStatus === "APPROVED" && (
-                                <div
-                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                    poStatusMap[req.id]?.financeManagerApprovalStatus === "APPROVED"
-                                      ? "bg-green-100 text-green-800"
-                                      : poStatusMap[req.id]?.financeManagerApprovalStatus === "REJECTED"
-                                        ? "bg-red-100 text-red-800"
-                                        : "bg-yellow-100 text-yellow-800"
-                                  }`}
-                                >
-                                  FM: {poStatusMap[req.id]?.financeManagerApprovalStatus || "PENDING"}
+                          <div
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              poStatusMap[req.id]?.approvalStatus === "APPROVED"
+                                ? "bg-green-100 text-green-800"
+                                : poStatusMap[req.id]?.approvalStatus === "REJECTED"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-yellow-100 text-gray-800"
+                            }`}
+                          >
+                            {poStatusMap[req.id]?.approvalStatus || "PENDING"}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">No PO</span>
+                        )}
+                      </td>
+                      <td className="p-4 align-middle">
+                        {poStatusMap[req.id]?.hasPO ? (
+                          <div
+                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              poStatusMap[req.id]?.financeManagerApprovalStatus === "APPROVED"
+                                ? "bg-green-100 text-green-800"
+                                : poStatusMap[req.id]?.financeManagerApprovalStatus === "REJECTED"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-yellow-100 text-gray-800"
+                            }`}
+                          >
+                            {poStatusMap[req.id]?.financeManagerApprovalStatus || "PENDING"}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">No PO</span>
+                        )}
+                      </td>
+                      <td className="p-4 align-middle">
+                        <div className="text-xs space-y-1">
+                          {/* PO Information */}
+                          {poStatusMap[req.id]?.poNumber && (
+                            <>
+                              <div className="text-gray-600">PO: {poStatusMap[req.id]?.poNumber}</div>
+                              {poStatusMap[req.id]?.fileName && (
+                                <div>
+                                  <a
+                                    href={poStatusMap[req.id]?.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline hover:text-blue-800 truncate block max-w-[150px]"
+                                  >
+                                    {poStatusMap[req.id]?.fileName}
+                                  </a>
                                 </div>
                               )}
-                            </div>
-                            {piListByPO[req.id] && piListByPO[req.id].length > 0 && (
-                              <div className="flex items-center gap-2">
-                                <div className="text-xs text-gray-600 font-medium">
-                                  PIs: {piListByPO[req.id].length}
-                                </div>
-                                <div
-                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                    poStatusMap[req.id]?.latestPIStatus === "APPROVED"
-                                      ? "bg-purple-100 text-purple-800"
-                                      : poStatusMap[req.id]?.latestPIStatus === "REJECTED"
-                                        ? "bg-red-100 text-red-800"
-                                        : "bg-yellow-100 text-yellow-800"
-                                  }`}
-                                >
-                                  Latest PI: {poStatusMap[req.id]?.latestPIStatus || "PENDING"}
-                                </div>
-                                {poStatusMap[req.id]?.handedOverToAccounts && (
-                                  <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    ✓ Transferred
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            <div className="text-xs text-gray-600">PO: {poStatusMap[req.id]?.poNumber}</div>
-                            {poStatusMap[req.id]?.fileName && (
-                              <div className="text-xs">
-                                <a
-                                  href={poStatusMap[req.id]?.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 underline hover:text-blue-800"
-                                >
-                                  {poStatusMap[req.id].fileName}
-                                </a>
-                              </div>
-                            )}
-                            <div className="flex gap-1">
-                              {poStatusMap[req.id]?.approvalStatus !== "APPROVED" && (
-                                <>
-                                  <button
-                                    onClick={() => handleEditPO(req.id)}
-                                    className="inline-flex items-center justify-center text-xs px-2 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded"
-                                    title="Edit PO"
-                                  >
-                                    Edit
-                                  </button>
+
+                              {/* Remove Button */}
+                              {poStatusMap[req.id]?.hasPO && poStatusMap[req.id]?.approvalStatus !== "APPROVED" && (
+                                <div className="mt-2">
                                   <button
                                     onClick={() => handleRemovePO(req.id)}
                                     className="inline-flex items-center justify-center text-xs px-2 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded"
@@ -880,39 +551,69 @@ const POUploadWithVendorSelection = () => {
                                   >
                                     Remove
                                   </button>
-                                </>
+                                </div>
                               )}
-                              {poStatusMap[req.id]?.approvalStatus === "APPROVED" &&
-                                poStatusMap[req.id]?.financeManagerApprovalStatus === "APPROVED" && (
+
+                              {/* Previous POs */}
+                              {poStatusMap[req.id]?.allPOs && poStatusMap[req.id].allPOs.length > 1 && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
                                   <button
-                                    onClick={() => handleOpenPIModal(poStatusMap[req.id], req.id)}
-                                    className="inline-flex items-center justify-center text-xs px-2 py-1 bg-blue-600 text-white hover:bg-blue-700 rounded"
-                                    title="Upload PI"
+                                    onClick={() => setExpandedPOHistory({ ...expandedPOHistory, [req.id]: !expandedPOHistory[req.id] })}
+                                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
                                   >
-                                    Upload PI
+                                    {expandedPOHistory[req.id] ? "▼" : "▶"} Previous POs ({poStatusMap[req.id].allPOs.length - 1})
                                   </button>
-                                )}
-                              {poStatusMap[req.id]?.latestPIStatus === "APPROVED" &&
-                                !poStatusMap[req.id]?.handedOverToAccounts && (
-                                  <button
-                                    onClick={() => handleTransferToAccounts(req.id)}
-                                    disabled={transferringToAccounts}
-                                    className="inline-flex items-center justify-center text-xs px-2 py-1 bg-green-600 text-white hover:bg-green-700 rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
-                                    title="Transfer to Accounts"
-                                  >
-                                    {transferringToAccounts ? "Transferring..." : "Transfer to Accounts"}
-                                  </button>
-                                )}
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={handleOpenModal}
-                            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-green-100 text-green-700 hover:bg-green-200 h-9 px-3 py-1"
-                            title="Upload PO for this MTR"
-                          >
-                            Upload PO
-                          </button>
+
+                                  {expandedPOHistory[req.id] && (
+                                    <div className="mt-2 space-y-2">
+                                      {poStatusMap[req.id].allPOs.slice(1).map((po, idx) => (
+                                        <div key={idx} className="text-xs bg-gray-50 p-2 rounded border border-gray-200">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="font-medium text-gray-800">{po.poNumber}</span>
+                                            <span
+                                              className={`px-2 py-0.5 rounded text-[11px] font-medium ${
+                                                po.approvalStatus === "APPROVED"
+                                                  ? "bg-green-100 text-green-700"
+                                                  : po.approvalStatus === "REJECTED"
+                                                    ? "bg-red-100 text-red-700"
+                                                    : "bg-yellow-100 text-gray-800"
+                                              }`}
+                                            >
+                                              {po.approvalStatus || "PENDING"}
+                                            </span>
+                                          </div>
+                                          {po.fileName && (
+                                            <div className="text-[11px] mt-1">
+                                              <a
+                                                href={po.fileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-blue-600 underline hover:text-blue-800"
+                                              >
+                                                {po.fileName}
+                                              </a>
+                                            </div>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Actions Column */}
+                      <td className="p-4 align-middle text-center min-w-[120px]">
+                        {poStatusMap[req.id]?.approvalStatus === "APPROVED" &&
+                          poStatusMap[req.id]?.financeManagerApprovalStatus === "APPROVED" && (
+                          <span className="text-xs text-green-600 font-medium">Ready for PI</span>
+                        )}
+                        {!(poStatusMap[req.id]?.approvalStatus === "APPROVED" &&
+                          poStatusMap[req.id]?.financeManagerApprovalStatus === "APPROVED") && (
+                          <span className="text-xs text-gray-500">Not Ready</span>
                         )}
                       </td>
                     </tr>
@@ -923,8 +624,6 @@ const POUploadWithVendorSelection = () => {
           )}
         </div>
       </div>
-      {renderEditModal()}
-      {renderPITransferModal()}
     </div>
   )
 
@@ -932,11 +631,12 @@ const POUploadWithVendorSelection = () => {
     return renderTableView()
   }
 
-  if (!showModal) return null
+  // STEP 7 - Gate rendering (NO OVERLAP POSSIBLE)
+  if (activeModal !== MODAL.PO) return null
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 flex flex-col" style={{ height: "90vh" }}>
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl px-4 flex flex-col" style={{ height: "90vh" }}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Upload Purchase Order</h2>
@@ -983,7 +683,7 @@ const POUploadWithVendorSelection = () => {
           <div className="flex items-center space-x-4">
             <div className={`flex items-center space-x-2 ${currentStep >= 1 ? "text-blue-600" : "text-gray-400"}`}>
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium $$
                   currentStep >= 1 ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
                 }`}
               >
@@ -993,7 +693,7 @@ const POUploadWithVendorSelection = () => {
             </div>
             <div className={`flex items-center space-x-2 ${currentStep >= 2 ? "text-blue-600" : "text-gray-400"}`}>
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium $$
                   currentStep >= 2 ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
                 }`}
               >
@@ -1003,7 +703,7 @@ const POUploadWithVendorSelection = () => {
             </div>
             <div className={`flex items-center space-x-2 ${currentStep >= 3 ? "text-blue-600" : "text-gray-400"}`}>
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium $$
                   currentStep >= 3 ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"
                 }`}
               >
@@ -1077,10 +777,9 @@ const POUploadWithVendorSelection = () => {
                       <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                         <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
                           <div className="col-span-1">Select</div>
-                          <div className="col-span-2">MTR ID</div>
                           <div className="col-span-3">Project Name</div>
+                          <div className="col-span-4">Product Name</div>
                           <div className="col-span-2">Quantity</div>
-                          <div className="col-span-2">Status</div>
                           <div className="col-span-2">Created Date</div>
                         </div>
                       </div>
@@ -1097,23 +796,18 @@ const POUploadWithVendorSelection = () => {
                                 />
                               </div>
                               <div
-                                className="col-span-2 font-medium break-words overflow-hidden text-ellipsis"
-                                title={mtr.id}
-                              >
-                                {mtr.id}
-                              </div>
-                              <div
                                 className="col-span-3 break-words overflow-hidden"
                                 title={mtr.projectName || mtr.description}
                               >
                                 {mtr.projectName || mtr.description || "N/A"}
                               </div>
-                              <div className="col-span-2">{mtr.quantity || "N/A"}</div>
-                              <div className="col-span-2">
-                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                                  {mtr.pmApprovalStatus || mtr.status || "Pending"}
-                                </span>
+                              <div
+                                className="col-span-4 truncate text-gray-700"
+                                title={mtr.productName || mtr.product?.product_name || "N/A"}
+                              >
+                                {mtr.productName || mtr.product?.product_name || "N/A"}
                               </div>
+                              <div className="col-span-2 font-semibold">{mtr.quantity || mtr.purchaseMTR || "N/A"}</div>
                               <div className="col-span-2">
                                 {mtr.createdAt ? new Date(mtr.createdAt).toLocaleDateString() : "N/A"}
                               </div>
@@ -1122,7 +816,6 @@ const POUploadWithVendorSelection = () => {
                         ))}
                       </div>
                     </div>
-
                     <div className="flex justify-end">
                       <button
                         onClick={() => setCurrentStep(3)}
@@ -1169,7 +862,7 @@ const POUploadWithVendorSelection = () => {
                       value={poNumber}
                       onChange={(e) => setPONumber(e.target.value)}
                       placeholder="Enter Purchase Order Number"
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                       required
                     />
                   </div>
@@ -1208,6 +901,7 @@ const POUploadWithVendorSelection = () => {
           </div>
         </div>
       </div>
+      {renderEditModal()}
     </div>
   )
 }

@@ -1,24 +1,24 @@
 import axios from "axios"
 
-const API_URL = `${process.env.REACT_APP_API_URL}`
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8080/api"
+
 
 const getAuthHeaders = () => {
-  // This function should ideally retrieve authentication tokens (e.g., from localStorage or a context)
-  // and include them in the headers. For now, it's a placeholder.
   return {
     headers: {
       "Content-Type": "application/json",
-      // Example: "Authorization": `Bearer ${localStorage.getItem("authToken")}`,
     },
   }
 }
 
 export const materialRequisitionService = {
+  // Fetch all material requisitions with filters
   fetchMaterialRequisitions: async (queryParams) => {
     try {
-      const response = await axios.get(`${API_URL}/material-requisitions?${queryParams}`, {
-        ...getAuthHeaders(),
-      })
+      const response = await axios.get(
+        `${API_BASE_URL}/material-requisitions?${queryParams}`,
+        getAuthHeaders(),
+      )
       return response.data
     } catch (error) {
       console.error("Error fetching material requisitions:", error.response ? error.response.data : error.message)
@@ -26,58 +26,184 @@ export const materialRequisitionService = {
     }
   },
 
-  updateMaterialRequisition: async (mtrId, updatedData, currentUserId) => {
+  // Fetch approved MTRs for purchase
+  // This filters MTRs where:
+  // 1. BOQMTR.pmApprovalStatus = 'APPROVED' (MTR approved by project manager)
+  // 2. BOQItem.salestlApprovalStatus = 'APPROVED' (Product approved by sales TL)
+  fetchApprovedMTRsForPurchase: async (queryParams) => {
     try {
-      const response = await axios.put(
-        `${API_URL}/material-requisitions/${mtrId}?currentUserId=${currentUserId}`,
-        updatedData,
-        {
-          ...getAuthHeaders(),
-        },
+      const response = await axios.get(
+        `${API_BASE_URL}/material-requisitions/approved-for-purchase?${queryParams}`,
+        getAuthHeaders(),
       )
       return response.data
     } catch (error) {
       console.error(
-        `Error updating material requisition ${mtrId}:`,
+        "Error fetching approved MTRs for purchase:",
         error.response ? error.response.data : error.message,
       )
       throw error
     }
   },
 
-  deleteMaterialRequisition: async (id) => {
+  // Get material requisition details by ID
+  getMaterialRequisitionDetails: async (id) => {
     try {
-      const response = await axios.delete(`${API_URL}/material-requisitions/${id}`)
-      return response.data
-    } catch (error) {
-      console.error("Error deleting material requisition:", error)
-      throw error
-    }
-  },
-
-  approveMaterialRequisition: async (id, approvalData) => {
-    try {
-      const response = await axios.put(`${API_URL}/material-requisitions/${id}/approve`, approvalData)
-      return response.data
-    } catch (error) {
-      console.error("Error approving material requisition:", error)
-      throw error
-    }
-  },
-
-  getMaterialRequisitionById: async (id) => {
-    try {
-      const response = await axios.get(`${API_URL}/api/material-requisitions/${id}`, {
-        ...getAuthHeaders(),
+      const response = await fetch(`${API_BASE_URL}/material-requisitions/${id}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       })
-      return response.data
+      if (!response.ok) {
+        throw new Error("Failed to fetch material requisition details")
+      }
+      return await response.json()
     } catch (error) {
-      console.error("Error fetching material requisition:", error)
+      console.error("Error fetching MTR details:", error)
       throw error
     }
   },
 
-  getMaterialRequisitionsByStoreIncharge: async (
+  // Update material requisition
+  updateMaterialRequisition: async (id, data, currentUserId) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/material-requisitions/${id}?currentUserId=${currentUserId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      )
+      if (!response.ok) {
+        throw new Error("Failed to update material requisition")
+      }
+      return await response.json()
+    } catch (error) {
+      console.error("Error updating MTR:", error)
+      throw error
+    }
+  },
+
+  // Update PM (Project Manager) approval status
+  updatePMApprovalStatus: async (id, status, remarks, currentUserId) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/material-requisitions/${id}/pm-approval?status=${status}&remarks=${remarks || ""}&currentUserId=${currentUserId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+      if (!response.ok) {
+        throw new Error("Failed to update PM approval status")
+      }
+      return await response.json()
+    } catch (error) {
+      console.error("Error updating PM approval status:", error)
+      throw error
+    }
+  },
+
+  // Create comparison sheet for MTR
+  createComparisonSheet: async (mtrId, currentUserId) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/material-requisitions/${mtrId}/comparison-sheet?currentUserId=${currentUserId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+      if (!response.ok) {
+        throw new Error("Failed to create comparison sheet")
+      }
+      return await response.json()
+    } catch (error) {
+      console.error("Error creating comparison sheet:", error)
+      throw error
+    }
+  },
+
+  // Save comparison sheet with items and selected vendor
+  saveComparisonSheet: async (boqMtrId, items, selectedVendor, currentUserId) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/material-requisitions/comparison-sheet?currentUserId=${currentUserId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            boqMtrId,
+            items,
+            selectedVendor,
+          }),
+        }
+      )
+      if (!response.ok) {
+        throw new Error("Failed to save comparison sheet")
+      }
+      return await response.json()
+    } catch (error) {
+      console.error("Error saving comparison sheet:", error)
+      throw error
+    }
+  },
+
+  // Get comparison sheets by MTR ID
+  getComparisonSheetsByMtrId: async (mtrId) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/material-requisitions/${mtrId}/comparison-sheets`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+      if (!response.ok) {
+        throw new Error("Failed to fetch comparison sheets")
+      }
+      return await response.json()
+    } catch (error) {
+      console.error("Error fetching comparison sheets:", error)
+      throw error
+    }
+  },
+
+  // Get material requisitions by project ID
+  getMaterialRequisitionsByProjectId: async (projectId, currentUserId) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/material-requisitions/project/${projectId}?currentUserId=${currentUserId}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      )
+      if (!response.ok) {
+        throw new Error("Failed to fetch material requisitions by project")
+      }
+      return await response.json()
+    } catch (error) {
+      console.error("Error fetching MTRs by project:", error)
+      throw error
+    }
+  },
+
+   getMaterialRequisitionsByStoreIncharge: async (
     storeInchargeId,
     filters = {},
     page = 0,
@@ -102,7 +228,7 @@ export const materialRequisitionService = {
         }
       })
 
-      const response = await axios.get(`${API_URL}/material-requisitions/store-incharge`, {
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/store-incharge`, {
         params,
         ...getAuthHeaders(),
       })
@@ -117,14 +243,85 @@ export const materialRequisitionService = {
     }
   },
 
+  // Create material requisition
+  createMaterialRequisition: async (data, currentUserId) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/material-requisitions?currentUserId=${currentUserId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        }
+      )
+      if (!response.ok) {
+        throw new Error("Failed to create material requisition")
+      }
+      return await response.json()
+    } catch (error) {
+      console.error("Error creating MTR:", error)
+      throw error
+    }
+  },
+
+  // Upload file (if needed for MTR documents)
+  uploadFile: async (file, mtrId) => {
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("mtrId", mtrId)
+
+      const response = await fetch(`${API_BASE_URL}/material-requisitions/upload`, {
+        method: "POST",
+        body: formData,
+      })
+      if (!response.ok) {
+        throw new Error("Failed to upload file")
+      }
+      return await response.json()
+    } catch (error) {
+      console.error("Error uploading file:", error)
+      throw error
+    }
+  },
+
+  selectVendorForComparisonSheet: async (comparisonSheetId, selectedVendor) => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/material-requisitions/comparison-sheet/${comparisonSheetId}/select-vendor?selectedVendor=${encodeURIComponent(selectedVendor)}`,
+        {},
+        getAuthHeaders(),
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error selecting vendor:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+  // Get DC quantities by MTR ID
+  getDCQtyByMtrId: async (mtrId) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/material-requisitions/${mtrId}/dc-qty`,
+        getAuthHeaders(),
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error fetching DC Qty by MTR ID:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+  // Add new DC quantity
   addDCQty: async (mtrId, dcQtyData, currentUserId) => {
     try {
       const response = await axios.post(
-        `${API_URL}/material-requisitions/${mtrId}/dc-qty?currentUserId=${currentUserId}`,
+        `${API_BASE_URL}/material-requisitions/${mtrId}/dc-qty?currentUserId=${currentUserId}`,
         dcQtyData,
-        {
-          ...getAuthHeaders(),
-        },
+        getAuthHeaders(),
       )
       return response.data
     } catch (error) {
@@ -133,26 +330,13 @@ export const materialRequisitionService = {
     }
   },
 
-  getDCQtyByMtrId: async (mtrId) => {
-    try {
-      const response = await axios.get(`${API_URL}/material-requisitions/${mtrId}/dc-qty`, {
-        ...getAuthHeaders(),
-      })
-      return response.data
-    } catch (error) {
-      console.error("Error fetching DC Qty:", error.response ? error.response.data : error.message)
-      throw error
-    }
-  },
-
+  // Update DC quantity
   updateDCQty: async (dcQtyId, dcQtyData, currentUserId) => {
     try {
       const response = await axios.put(
-        `${API_URL}/material-requisitions/dc-qty/${dcQtyId}?currentUserId=${currentUserId}`,
+        `${API_BASE_URL}/material-requisitions/dc-qty/${dcQtyId}?currentUserId=${currentUserId}`,
         dcQtyData,
-        {
-          ...getAuthHeaders(),
-        },
+        getAuthHeaders(),
       )
       return response.data
     } catch (error) {
@@ -161,11 +345,13 @@ export const materialRequisitionService = {
     }
   },
 
+  // Delete DC quantity
   deleteDCQty: async (dcQtyId) => {
     try {
-      const response = await axios.delete(`${API_URL}/material-requisitions/dc-qty/${dcQtyId}`, {
-        ...getAuthHeaders(),
-      })
+      const response = await axios.delete(
+        `${API_BASE_URL}/material-requisitions/dc-qty/${dcQtyId}`,
+        getAuthHeaders(),
+      )
       return response.data
     } catch (error) {
       console.error("Error deleting DC Qty:", error.response ? error.response.data : error.message)
@@ -173,4 +359,16 @@ export const materialRequisitionService = {
     }
   },
 
+   getTotalDCQtyByMtrId: async (mtrId) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/material-requisitions/${mtrId}/total-dc-qty`,
+        getAuthHeaders(),
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error fetching total DC Qty for MTR:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
 }

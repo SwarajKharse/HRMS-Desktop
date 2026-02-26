@@ -24,7 +24,7 @@ const NotificationBell = ({ userId }) => {
           setLatestNotification(newestNotification)
           setShowToast(true)
 
-          setTimeout(() => setShowToast(false), 5000)
+          setTimeout(() => setShowToast(false), 10000)
         }
 
         previousNotificationIds.current = currentIds

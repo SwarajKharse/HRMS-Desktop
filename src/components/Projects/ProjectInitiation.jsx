@@ -25,6 +25,9 @@ function ProjectInstallation({ project, onClose, onSave }) {
   // State to track if the project prop itself is valid
   const [isProjectPropValid, setIsProjectPropValid] = useState(false)
 
+  // New state for editing mode
+  const [isEditingProjectDetails, setIsEditingProjectDetails] = useState(false)
+
   // Helper to format Date object to YYYY-MM-DD string for input type="date"
   const toISODateString = (date) => {
     if (!date) return ""
@@ -239,11 +242,10 @@ function ProjectInstallation({ project, onClose, onSave }) {
       setNumWeeks(updatedProjectDetails.numberOfWeeks)
       generateWeeks(new Date(updatedProjectDetails.projectInitiationDate), updatedProjectDetails.numberOfWeeks)
       setShowInitialSetup(false)
-
-      const boqData = await projectService.getBOQByProjectId(project.id)
       const existingPlans = await projectService.getProjectPlansByProjectId(project.id)
       const historyData = await projectService.getProjectPlanHistory(project.id, "INSTALLATION")
 
+      const boqData = await projectService.getBOQByProjectId(project.id)
       const combinedItems = []
       ;(boqData.items || []).forEach((item) => {
         combinedItems.push({
@@ -544,6 +546,49 @@ function ProjectInstallation({ project, onClose, onSave }) {
     }
   }
 
+  // New handler for updating project details (initiation date and weeks)
+  const handleUpdateProjectDetails = async () => {
+    if (!tempProjectInitDate || !tempNumWeeks || Number.parseInt(tempNumWeeks) <= 0) {
+      setError("Please enter a valid project initiation date and a positive number of weeks.")
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    try {
+      const updatedProjectDetails = await projectService.updateProjectDetails(project.id, {
+        projectInitiationDate: tempProjectInitDate,
+        numberOfWeeks: Number.parseInt(tempNumWeeks),
+      })
+
+      setProjectInitDate(new Date(updatedProjectDetails.projectInitiationDate))
+      setNumWeeks(updatedProjectDetails.numberOfWeeks)
+      generateWeeks(new Date(updatedProjectDetails.projectInitiationDate), updatedProjectDetails.numberOfWeeks)
+      setIsEditingProjectDetails(false)
+
+      // Clear installation plan if weeks changed since it may be invalid
+      setInstallationPlan({})
+    } catch (error) {
+      console.error("Error updating project details:", error)
+      setError("Failed to update project details")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Handler to enter edit mode
+  const handleEditProjectDetails = () => {
+    setTempProjectInitDate(toISODateString(projectInitDate))
+    setTempNumWeeks(numWeeks)
+    setIsEditingProjectDetails(true)
+  }
+
+  // Handler to cancel editing
+  const handleCancelEdit = () => {
+    setIsEditingProjectDetails(false)
+    setError(null)
+  }
+
   if (!isProjectPropValid) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -634,30 +679,91 @@ function ProjectInstallation({ project, onClose, onSave }) {
           </div>
         ) : (
           <>
-            {/* Project Details */}
-            <div className="mb-6 rounded-lg bg-blue-50 p-4 shadow-sm">
-              <h3 className="mb-2 font-semibold text-blue-800">Project Details</h3>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div>
-                  <label className="mb-1 block text-sm text-blue-700">Project Name</label>
-                  <div className="font-medium text-gray-900">{project.projectName || project.project_name}</div>
+            {/* Project Details - Editable */}
+            {!isEditingProjectDetails ? (
+              <div className="mb-6 rounded-lg bg-blue-50 p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-blue-800">Project Details</h3>
+                  <button
+                    onClick={handleEditProjectDetails}
+                    className="rounded-md border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Edit Details
+                  </button>
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm text-blue-700">Project ID</label>
-                  <div className="font-medium text-gray-900">{project.lead?.lead_code || project.id || "N/A"}</div>
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm text-blue-700">Initiation Date</label>
-                  <div className="font-medium text-gray-900">
-                    {projectInitDate ? formatDate(projectInitDate) : "N/A"}
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <div>
+                    <label className="mb-1 block text-sm text-blue-700">Project Name</label>
+                    <div className="font-medium text-gray-900">{project.projectName || project.project_name}</div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm text-blue-700">Project ID</label>
+                    <div className="font-medium text-gray-900">{project.lead?.lead_code || project.id || "N/A"}</div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm text-blue-700">Initiation Date</label>
+                    <div className="font-medium text-gray-900">
+                      {projectInitDate ? formatDate(projectInitDate) : "N/A"}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm text-blue-700">No of Weeks</label>
+                    <div className="font-medium text-gray-900">{numWeeks !== null ? numWeeks : "N/A"}</div>
                   </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm text-blue-700">No of Weeks</label>
-                  <div className="font-medium text-gray-900">{numWeeks !== null ? numWeeks : "N/A"}</div>
+              </div>
+            ) : (
+              <div className="mb-6 rounded-lg bg-yellow-50 p-4 shadow-sm border border-yellow-200">
+                <h3 className="mb-4 font-semibold text-yellow-800">Edit Project Details</h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div>
+                    <label htmlFor="editProjectInitDate" className="block text-sm font-medium text-gray-700 mb-1">
+                      Project Initiation Date
+                    </label>
+                    <input
+                      type="date"
+                      id="editProjectInitDate"
+                      value={tempProjectInitDate}
+                      onChange={(e) => setTempProjectInitDate(e.target.value)}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="editNumWeeks" className="block text-sm font-medium text-gray-700 mb-1">
+                      Number of Weeks
+                    </label>
+                    <input
+                      type="number"
+                      id="editNumWeeks"
+                      min="1"
+                      value={tempNumWeeks}
+                      onChange={(e) => setTempNumWeeks(e.target.value)}
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-3 mt-4">
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    disabled={loading}
+                    className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUpdateProjectDetails}
+                    disabled={loading}
+                    className="rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                  >
+                    {loading ? "Updating..." : "Update Details"}
+                  </button>
                 </div>
               </div>
-            </div>
+            )}
             {/* Main Content - Planning Table */}
             <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
               <table className="min-w-full divide-y divide-gray-200">
