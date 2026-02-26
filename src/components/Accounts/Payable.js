@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { FiAlertCircle, FiCheck, FiChevronRight, FiUser } from "react-icons/fi"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { useAuth } from "../../contexts/AuthContext"
+import GRNReceipts from "./GRNReceipts"
 
 
 function AssignAccountantModal({ isOpen, onClose, piId, onAssign }) {
@@ -624,12 +625,11 @@ function Payable() {
                 <thead className="bg-gray-50">
                   <tr>
                     {[
-                      "PO Number",
-                      "PI Number",
-                      "Pay Amount",
                       "Project Name",
+                      "Pay Amount",
                       "Expected Payment Date",
-                      "Files",
+                      "PO / PI Number",
+                      "GRN Receipts",
                       "Actions",
                     ].map((header) => (
                       <th
@@ -644,7 +644,7 @@ function Payable() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {purchaseInvoices.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="px-6 py-8 text-center text-gray-500 font-medium">
+                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500 font-medium">
                         No purchase invoices found
                       </td>
                     </tr>
@@ -658,30 +658,28 @@ function Payable() {
                         className="hover:bg-gray-50 cursor-pointer transition-colors group"
                         onClick={() => handleRowClick(invoice)}
                       >
+                        {/* Project Name Column (First) */}
                         <td className="px-6 py-4">
-                          <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                            {invoice.purchaseOrder?.poNumber || "N/A"}
-                          </div>
+                          <div className="text-sm text-gray-900">{invoice.projectName}</div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">{invoice.piNumber}</div>
-                        </td>
+
+                        {/* Pay Amount Column */}
                         <td className="px-6 py-4">
                           <div className="text-sm font-medium text-gray-900">
                             {formatCurrency(invoice.payableAmount)}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{invoice.projectName}</div>
-                        </td>
+
+                        {/* Expected Payment Date Column */}
                         <td className="px-6 py-4">
                           <div className="text-sm text-gray-900">{formatDate(invoice.expectedPaymentDate)}</div>
                         </td>
+
+                        {/* PO / PI Number Column */}
                         <td className="px-6 py-4">
-                          <div className="flex flex-col gap-2">
-                            {invoice.purchaseOrder?.fileUrl ? (
-                              <div className="text-xs">
-                                <span className="font-semibold text-gray-700">PO: </span>
+                          <div className="flex flex-col gap-1">
+                            <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                              {invoice.purchaseOrder?.fileUrl ? (
                                 <a
                                   href={invoice.purchaseOrder.fileUrl}
                                   target="_blank"
@@ -689,15 +687,14 @@ function Payable() {
                                   className="text-blue-600 underline hover:text-blue-800"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  {invoice.purchaseOrder.fileName && invoice.purchaseOrder.fileName.length > 15
-                                    ? `${invoice.purchaseOrder.fileName.substring(0, 15)}...`
-                                    : invoice.purchaseOrder.fileName || "PO File"}
+                                  PO: {invoice.purchaseOrder?.poNumber || "N/A"}
                                 </a>
-                              </div>
-                            ) : null}
-                            {invoice.fileUrl ? (
-                              <div className="text-xs">
-                                <span className="font-semibold text-gray-700">PI: </span>
+                              ) : (
+                                <span>PO: {invoice.purchaseOrder?.poNumber || "N/A"}</span>
+                              )}
+                            </div>
+                            <div className="text-sm font-medium text-gray-600">
+                              {invoice.fileUrl ? (
                                 <a
                                   href={invoice.fileUrl}
                                   target="_blank"
@@ -705,17 +702,25 @@ function Payable() {
                                   className="text-blue-600 underline hover:text-blue-800"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  {invoice.fileName && invoice.fileName.length > 15
-                                    ? `${invoice.fileName.substring(0, 15)}...`
-                                    : invoice.fileName || "PI File"}
+                                  PI: {invoice.piNumber}
                                 </a>
-                              </div>
-                            ) : null}
-                            {!invoice.fileUrl && !invoice.purchaseOrder?.fileUrl && (
-                              <span className="text-xs text-gray-400">No files</span>
-                            )}
+                              ) : (
+                                <span>PI: {invoice.piNumber}</span>
+                              )}
+                            </div>
                           </div>
                         </td>
+
+                        {/* GRN Receipts Column */}
+                        <td className="px-6 py-4">
+                          {invoice.purchaseOrder?.id ? (
+                            <GRNReceipts poId={invoice.purchaseOrder.id} />
+                          ) : (
+                            <span className="text-xs text-gray-400">N/A</span>
+                          )}
+                        </td>
+
+                        {/* Actions Column */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             {invoice.assignedEmployee ? (
