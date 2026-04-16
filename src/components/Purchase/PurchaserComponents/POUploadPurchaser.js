@@ -181,6 +181,7 @@ function PODetailsModal({ isOpen, onClose, po }) {
                           </div>
                           <div><span className="text-gray-500">Amount:</span> <span className="font-medium">₹{pi.payableAmount || "0"}</span></div>
                           <div><span className="text-gray-500">Project:</span> <span className="font-medium">{pi.projectName || "N/A"}</span></div>
+                          <div><span className="text-gray-500">PM Approval:</span> <StatusBadge status={pi.approvalStatus} /></div>
                           <div><span className="text-gray-500">Finance Manager:</span> <StatusBadge status={pi.financeManagerApproval} /></div>
                           <div><span className="text-gray-500">Accounts Manager:</span> <StatusBadge status={pi.accountManagerApprovalStatus} /></div>
                           <div><span className="text-gray-500">Payment Status:</span> <StatusBadge status={pi.paymentStatus} /></div>
@@ -715,6 +716,8 @@ const POUploadPurchaser = () => {
   const [filterProjectName, setFilterProjectName] = useState("")
   const [filterPMApproval, setFilterPMApproval] = useState("")
   const [filterFMApproval, setFilterFMApproval] = useState("")
+  const [filterPOStatus, setFilterPOStatus] = useState("")
+  const [filterMaterialStatus, setFilterMaterialStatus] = useState("")
 
   // Modal state
   const [showUploadPOModal, setShowUploadPOModal] = useState(false)
@@ -816,16 +819,20 @@ const POUploadPurchaser = () => {
     const fmStatus = po.financeManagerApprovalStatus || "PENDING"
     const matchPM = !filterPMApproval || pmStatus === filterPMApproval
     const matchFM = !filterFMApproval || fmStatus === filterFMApproval
-    return matchPO && matchVendor && matchProject && matchPM && matchFM
+    const matchPOStatus = !filterPOStatus || (po.poStatus || "OPEN") === filterPOStatus
+    const matchMaterialStatus = !filterMaterialStatus || (po.materialStatus || "MATERIAL_YET_TO_DISPATCH") === filterMaterialStatus
+    return matchPO && matchVendor && matchProject && matchPM && matchFM && matchPOStatus && matchMaterialStatus
   })
 
-  const clearFilters = () => {
-    setFilterPONumber("")
-    setFilterVendor("")
-    setFilterProjectName("")
-    setFilterPMApproval("")
-    setFilterFMApproval("")
-  }
+ const clearFilters = () => {
+  setFilterPONumber("")
+  setFilterVendor("")
+  setFilterProjectName("")
+  setFilterPMApproval("")
+  setFilterFMApproval("")
+  setFilterPOStatus("")           // ← ADD
+  setFilterMaterialStatus("")     // ← ADD
+}
 
   return (
     <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
@@ -853,7 +860,7 @@ const POUploadPurchaser = () => {
 
         {/* Filters */}
         <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-3">
             <input
               type="text"
               placeholder="PO Number..."
@@ -885,22 +892,42 @@ const POUploadPurchaser = () => {
               <option value="REJECTED">Rejected</option>
               <option value="PENDING">Pending</option>
             </select>
-            <select
-              value={filterFMApproval}
-              onChange={(e) => setFilterFMApproval(e.target.value)}
-              className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="">All FM Status</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-              <option value="PENDING">Pending</option>
-            </select>
-            <button
-              onClick={clearFilters}
-              className="p-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm font-medium"
-            >
-              Clear Filters
-            </button>
+                  <select
+                  value={filterFMApproval}
+                  onChange={(e) => setFilterFMApproval(e.target.value)}
+                  className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All FM Status</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="PENDING">Pending</option>
+                </select>
+                <select
+                  value={filterPOStatus}
+                  onChange={(e) => setFilterPOStatus(e.target.value)}
+                  className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All PO Status</option>
+                  <option value="OPEN">Open</option>
+                  <option value="CLOSED">Closed</option>
+                </select>
+                <select
+                  value={filterMaterialStatus}
+                  onChange={(e) => setFilterMaterialStatus(e.target.value)}
+                  className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Material Status</option>
+                  <option value="MATERIAL_YET_TO_DISPATCH">Yet to Dispatch</option>
+                  <option value="IN_TRANSIT">In Transit</option>
+                  <option value="RECEIVED">Received</option>
+                  <option value="GRN_DONE">GRN Done</option>
+                </select>
+                <button
+  onClick={clearFilters}
+  className="p-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm font-medium"
+>
+  Clear Filters
+</button>
           </div>
         </div>
 
@@ -920,7 +947,7 @@ const POUploadPurchaser = () => {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {["Vendor", "Project Name(s)", "PO Number / Copy", "PM Approval", "FM Approval", "Actions"].map((h) => (
+                    {["Vendor", "Project Name(s)", "PO Number / Copy", "PM Approval", "FM Approval", "PO Status", "Material Status", "Actions"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -1001,6 +1028,48 @@ const POUploadPurchaser = () => {
                         </div>
                       </td>
 
+                      {/* PO Status */}
+                      <td className="px-4 py-4">
+                        <select
+                          value={po.poStatus || "OPEN"}
+                          onChange={async (e) => {
+                            try {
+                              await purchaseOrderService.updatePOStatus(po.id, e.target.value)
+                              showSuccess("PO status updated!")
+                              fetchPOs()
+                            } catch (err) {
+                              console.error("Error updating PO status:", err)
+                            }
+                          }}
+                          className="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="OPEN">Open</option>
+                          <option value="CLOSED">Closed</option>
+                        </select>
+                      </td>
+
+                      {/* Material Status */}
+                      <td className="px-4 py-4">
+                        <select
+                          value={po.materialStatus || "MATERIAL_YET_TO_DISPATCH"}
+                          onChange={async (e) => {
+                            try {
+                              await purchaseOrderService.updateMaterialStatus(po.id, e.target.value)
+                              showSuccess("Material status updated!")
+                              fetchPOs()
+                            } catch (err) {
+                              console.error("Error updating material status:", err)
+                            }
+                          }}
+                          className="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="MATERIAL_YET_TO_DISPATCH">Yet to Dispatch</option>
+                          <option value="IN_TRANSIT">In Transit</option>
+                          <option value="RECEIVED">Received</option>
+                          <option value="GRN_DONE">GRN Done</option>
+                        </select>
+                      </td>
+
                       {/* Actions */}
                       <td className="px-4 py-4">
                         <div className="flex flex-col gap-2">
@@ -1022,10 +1091,11 @@ const POUploadPurchaser = () => {
                           >
                             Upload PI
                           </button>
-                          {/* Upload GRN/TI */}
+                          {/* Upload GRN/TI — only enabled when material status is GRN_DONE */}
                           <button
                             onClick={() => { setSelectedPO(po); setShowGRNModal(true) }}
-                            className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 font-medium"
+                            disabled={po.materialStatus !== "GRN_DONE"}
+                            className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             Upload GRN/TI
                           </button>
