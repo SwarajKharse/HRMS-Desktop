@@ -1,958 +1,328 @@
-'use client';
+"use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { useNavigate } from "react-router-dom"
-import { FiAlertCircle, FiCheck, FiChevronRight, FiUser } from "react-icons/fi"
+import { financePayableService } from "../../services/financePayableService"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { useAuth } from "../../contexts/AuthContext"
-import GRNReceipts from "./GRNReceipts"
+import PODetailsModal from "../Purchase/PurchaserComponents/PODetailsModal"
 
+const formatDate = (d) => {
+  if (!d) return "N/A"
+  return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+}
 
-function AssignAccountantModal({ isOpen, onClose, piId, onAssign }) {
+const StatusBadge = ({ status }) => {
+  const color =
+    status === "APPROVED"
+      ? "bg-green-100 text-green-800"
+      : status === "REJECTED"
+      ? "bg-red-100 text-red-800"
+      : "bg-yellow-100 text-yellow-800"
+  return (
+    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${color}`}>
+      {status || "PENDING"}
+    </span>
+  )
+}
+
+// ─── Assign Accountant Dropdown ───────────────────────────────────────────────
+function AssignAccountantCell({ po, onAssigned }) {
   const [accountants, setAccountants] = useState([])
-  const [selectedAccountant, setSelectedAccountant] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [currentAssignee, setCurrentAssignee] = useState(null)
-  const { user } = useAuth()
+  const [selectedId, setSelectedId] = useState("")
+  const [assigning, setAssigning] = useState(false)
+  const [assigned, setAssigned] = useState(false)
 
   useEffect(() => {
-    if (isOpen) {
-      fetchAccountants()
-      fetchCurrentAssignee()
-    }
-  }, [isOpen, piId])
-
-  const fetchAccountants = async () => {
-    try {
-      setLoading(true)
-      const data = await purchaseInvoiceService.getAccountants()
-      setAccountants(data)
-    } catch (err) {
-      setError("Failed to fetch accountants")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchCurrentAssignee = async () => {
-    try {
-      const invoices = await purchaseInvoiceService.getPurchaseInvoices(0, 1000, "", "", "")
-      const invoice = invoices.content?.find((inv) => inv.id === piId)
-
-      console.log("invoices")
-      console.log(invoice)
-
-      if (invoice?.assignedAccountant) {
-        setCurrentAssignee(invoice.assignedAccountant)
-        setSelectedAccountant(invoice.assignedAccountant.id.toString())
-      } else {
-        setCurrentAssignee(null)
-        setSelectedAccountant("")
-      }
-    } catch (err) {
-      console.error("Failed to fetch current assignee:", err)
-    }
-  }
+    purchaseInvoiceService.getAccountants()
+      .then(setAccountants)
+      .catch(() => setAccountants([]))
+  }, [])
 
   const handleAssign = async () => {
-    if (!selectedAccountant) return
-
+    if (!selectedId) return
     try {
-      setLoading(true)
-      await purchaseInvoiceService.assignAccountant(piId, selectedAccountant)
-      onAssign()
-      onClose()
-    } catch (err) {
-      setError("Failed to assign accountant")
+      setAssigning(true)
+      // Get all PIs for this PO and assign accountant to each
+      const pis = await purchaseInvoiceService.getPurchaseInvoicesByPO(po.id)
+      await Promise.all(
+       (pis || []).map((pi) => purchaseInvoiceService.assignAccountant(pi.id, Number(selectedId)))
+      )
+      setAssigned(true)
+      setTimeout(() => setAssigned(false), 2000)
+      if (onAssigned) onAssigned()
+    } catch (e) {
+      console.error("Error assigning accountant:", e)
     } finally {
-      setLoading(false)
+      setAssigning(false)
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <h3 className="text-lg font-semibold mb-4">Assign Accountant</h3>
-
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 flex items-center gap-2">
-            <FiAlertCircle className="w-4 h-4" />
-            <span className="text-sm">{error}</span>
-          </div>
-        )}
-
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Select Accountant</label>
-          {currentAssignee && (
-            <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-              <span className="text-sm text-blue-800">Currently assigned: {currentAssignee.name}</span>
-            </div>
-          )}
-          <select
-            value={selectedAccountant}
-            onChange={(e) => setSelectedAccountant(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            disabled={loading}
-          >
-            <option value="">Choose an accountant...</option>
-            {accountants.map((accountant) => (
-              <option key={accountant.id} value={accountant.id}>
-                {accountant.firstName} {accountant.lastName} - {accountant.designation?.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleAssign}
-            disabled={!selectedAccountant || loading}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {loading ? "Assigning..." : "Assign"}
-          </button>
-        </div>
-      </div>
+    <div className="flex flex-col gap-1.5 min-w-[160px]">
+      <select
+        value={selectedId}
+        onChange={(e) => setSelectedId(e.target.value)}
+        className="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">Select Accountant</option>
+        {accountants.map((a) => (
+          <option key={a.id} value={a.id}>
+            {a.firstName} {a.lastName}
+          </option>
+        ))}
+      </select>
+      <button
+        onClick={handleAssign}
+        disabled={!selectedId || assigning}
+        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+      >
+        {assigning ? "Assigning..." : assigned ? "✓ Assigned" : "Assign"}
+      </button>
     </div>
   )
 }
 
-function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
-  const [approvalStatus, setApprovalStatus] = useState("")
-  const [paymentDoneDate, setPaymentDoneDate] = useState("")
-  const [paymentReceipt, setPaymentReceipt] = useState(null)
-  const [receiptFileName, setReceiptFileName] = useState("")
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [isPaymentComplete, setIsPaymentComplete] = useState(false)
+// ─── Main AM Payable Page ─────────────────────────────────────────────────────
+const Payable = () => {
+  const { user } = useAuth()
 
-  useEffect(() => {
-    if (isOpen && invoice) {
-      setApprovalStatus(invoice.accountManagerApprovalStatus || "")
-
-      // Check if payment has already been completed
-      if (invoice.paymentDoneDate) {
-        setPaymentDoneDate(invoice.paymentDoneDate.split("T")[0]) // Convert to date format
-        setIsPaymentComplete(true)
-      } else {
-        setPaymentDoneDate("")
-        setIsPaymentComplete(false)
-      }
-
-      if (invoice.paymentReceiptUrl) {
-        setReceiptFileName(invoice.paymentReceiptFilename || "Payment Receipt Uploaded")
-      } else {
-        setReceiptFileName("")
-      }
-
-      setPaymentReceipt(null)
-      setError(null)
-    }
-  }, [isOpen, invoice])
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-
-    if (!approvalStatus) {
-      setError("Please select an approval status")
-      return
-    }
-
-    // Only require payment fields if status is APPROVED
-    if (approvalStatus === "APPROVED") {
-      if (!paymentDoneDate) {
-        setError("Please fill in the Payment Done Date")
-        return
-      }
-
-      if (!paymentReceipt && !invoice.paymentReceiptUrl) {
-        setError("Please upload a payment receipt")
-        return
-      }
-    }
-
-    try {
-      setLoading(true)
-      setError(null)
-
-      const formData = new FormData()
-      formData.append("piId", invoice.id)
-      formData.append("approvalStatus", approvalStatus)
-      formData.append("paymentDoneDate", paymentDoneDate)
-      formData.append("paymentReceipt", paymentReceipt)
-
-      await purchaseInvoiceService.completePayment(invoice.id, approvalStatus, paymentDoneDate, paymentReceipt)
-
-      onComplete()
-      onClose()
-    } catch (err) {
-      setError("Failed to complete payment")
-      console.error("Payment completion error:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (!isOpen || !invoice) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        <h3 className="text-lg font-semibold mb-4">Complete Payment - {invoice.piNumber}</h3>
-
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 flex items-center gap-2">
-            <FiAlertCircle className="w-4 h-4" />
-            <span className="text-sm">{error}</span>
-          </div>
-        )}
-
-        {/* Invoice Details */}
-        <div className="bg-gray-50 p-4 rounded-lg mb-4">
-          <h4 className="font-medium text-gray-900 mb-2">Invoice Details</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-            <div>
-              <span className="font-medium">PO Number:</span>{" "}
-              {invoice.purchaseOrder?.fileUrl ? (
-                <button
-                  onClick={() => {
-                    window.open(invoice.purchaseOrder.fileUrl, '_blank')
-                  }}
-                  className="text-blue-600 underline hover:text-blue-800 cursor-pointer"
-                  type="button"
-                >
-                  {invoice.purchaseOrder?.poNumber || "N/A"}
-                </button>
-              ) : (
-                <span>{invoice.purchaseOrder?.poNumber || "N/A"}</span>
-              )}
-            </div>
-            <div>
-              <span className="font-medium">PI Number:</span>{" "}
-              {invoice.fileUrl ? (
-                <button
-                  onClick={() => {
-                    window.open(invoice.fileUrl, '_blank')
-                  }}
-                  className="text-blue-600 underline hover:text-blue-800 cursor-pointer"
-                  type="button"
-                >
-                  {invoice.piNumber}
-                </button>
-              ) : (
-                <span>{invoice.piNumber}</span>
-              )}
-            </div>
-            <div>
-              <span className="font-medium">Project:</span> {invoice.projectName}
-            </div>
-            <div>
-              <span className="font-medium">Amount:</span> ₹
-              {Number.parseFloat(invoice.payableAmount || 0).toLocaleString("en-IN")}
-            </div>
-            <div>
-              <span className="font-medium">Expected Date:</span>{" "}
-              {invoice.expectedPaymentDate ? new Date(invoice.expectedPaymentDate).toLocaleDateString() : "N/A"}
-            </div>
-            <div>
-              <span className="font-medium">Status:</span> {invoice.status}
-            </div>
-          </div>
-
-          {/* File Links */}
-          <div className="mt-2">
-            <span className="font-medium text-sm">Files: </span>
-            {invoice.fileUrl ? (
-              <a
-                href={invoice.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline hover:text-blue-800 text-sm"
-              >
-                {invoice.fileName || "PI File"}
-              </a>
-            ) : (
-              <span className="text-gray-400 text-sm">No PI file</span>
-            )}
-            {invoice.purchaseOrder?.fileUrl && (
-              <>
-                <span className="mx-2">|</span>
-                <a
-                  href={invoice.purchaseOrder.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline hover:text-blue-800 text-sm"
-                >
-                  {invoice.purchaseOrder.fileName || "PO File"}
-                </a>
-              </>
-            )}
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            {/* Approval Status */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Approval Status <span className="text-red-500">*</span>
-              </label>
-              <select
-                value={approvalStatus}
-                onChange={(e) => setApprovalStatus(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                required
-                disabled={loading}
-              >
-                <option value="">Select Status</option>
-                <option value="APPROVED">Approve</option>
-                <option value="REJECTED">Reject</option>
-              </select>
-            </div>
-
-            {/* Payment Done Date - Only show if APPROVED */}
-            {approvalStatus === "APPROVED" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Done Date <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  value={paymentDoneDate}
-                  onChange={(e) => setPaymentDoneDate(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  required
-                  disabled={loading}
-                />
-              </div>
-            )}
-
-            {/* Payment Receipt Upload - Only show if APPROVED */}
-            {approvalStatus === "APPROVED" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Payment Receipt <span className="text-red-500">*</span>
-                </label>
-                {receiptFileName && (
-                  <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
-                    <span className="text-sm text-blue-800">
-                      Uploaded:
-                      {invoice.paymentReceiptUrl && (
-                        <>
-                          {" "}
-                          <a
-                            href={invoice.paymentReceiptUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline text-blue-600 hover:text-blue-800"
-                          >
-                            {receiptFileName}
-                          </a>
-                        </>
-                      )}
-                    </span>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => setPaymentReceipt(e.target.files[0])}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                  required={!invoice.paymentReceiptUrl}
-                  disabled={loading}
-                />
-                <p className="text-xs text-gray-500 mt-1">Accepted formats: PDF, JPG, PNG</p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-            >
-              {loading ? "Processing..." : "Complete Payment"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  )
-}
-
-function Payable() {
-  const navigate = useNavigate()
+  const [pos, setPOs] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [purchaseInvoices, setPurchaseInvoices] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [projectNameFilter, setProjectNameFilter] = useState("")
-  const [statusFilter, setStatusFilter] = useState("")
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [pageSize] = useState(10)
   const [successMessage, setSuccessMessage] = useState(null)
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [totalResults, setTotalResults] = useState(0)
-  const itemsPerPage = 10
+  // Filters
+  const [filterPONumber, setFilterPONumber] = useState("")
+  const [filterVendor, setFilterVendor] = useState("")
+  const [filterProjectName, setFilterProjectName] = useState("")
+  const [filterPMApproval, setFilterPMApproval] = useState("")
+  const [filterPOStatus, setFilterPOStatus] = useState("")
+  const [filterMaterialStatus, setFilterMaterialStatus] = useState("")
 
-  const [showAssignModal, setShowAssignModal] = useState(false)
-  const [selectedPiId, setSelectedPiId] = useState(null)
+  const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [selectedPO, setSelectedPO] = useState(null)
 
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [selectedInvoiceForPayment, setSelectedInvoiceForPayment] = useState(null)
+  const showSuccess = (msg) => {
+    setSuccessMessage(msg)
+    setTimeout(() => setSuccessMessage(null), 3000)
+  }
 
-  const [expandedRows, setExpandedRows] = useState({})
-
-  const fetchPurchaseInvoices = useCallback(async () => {
+  const fetchPOs = useCallback(async () => {
+    setLoading(true)
     try {
-      setLoading(true)
-      setError(null)
-      const page = currentPage - 1
-      const data = await purchaseInvoiceService.getPurchaseInvoices(
-        page,
-        itemsPerPage,
-        searchQuery,
-        projectNameFilter,
-        statusFilter,
+      const data = await financePayableService.getAllPayables(0, 100)
+      const rawList = Array.isArray(data) ? data : (data.content || [])
+
+      // Only show POs where FM has approved
+      const fmApproved = rawList.filter(
+        (po) => po.financeManagerApprovalStatus === "APPROVED"
       )
-      
-      // Filter PIs to only show those with handoverFromFinance === "APPROVED"
-      const filteredInvoices = (data.content || []).filter(
-        (invoice) => invoice.handoverFromFinance === "COMPLETE"
-      )
-      
-      setPurchaseInvoices(filteredInvoices)
-      setTotalPages(data.totalPages || 1)
-      setTotalResults(data.totalItems || 0)
-      setLoading(false)
-    } catch (error) {
-      setError("Failed to fetch purchase invoices")
-      setLoading(false)
-    }
-  }, [currentPage, itemsPerPage, searchQuery, projectNameFilter, statusFilter])
 
-  useEffect(() => {
-    fetchPurchaseInvoices()
-  }, [fetchPurchaseInvoices])
+      // Group by poNumber
+      const poMap = new Map()
+      fmApproved.forEach((po) => {
+        const key = po.poNumber
+        if (!poMap.has(key)) {
+          poMap.set(key, {
+            ...po,
+            projectNames: po.projectName ? [po.projectName] : [],
+            allMTRIds: [po.id],
+            allMTRData: [po],
+          })
+        } else {
+          const existing = poMap.get(key)
+          const latest = po.id > existing.id ? po : existing
+          const mergedProjects = [...new Set([...existing.projectNames, ...(po.projectName ? [po.projectName] : [])])]
+          poMap.set(key, {
+            ...latest,
+            projectNames: mergedProjects,
+            allMTRIds: [...existing.allMTRIds, po.id],
+            allMTRData: [...existing.allMTRData, po],
+          })
+        }
+      })
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, projectNameFilter, statusFilter])
+      const grouped = Array.from(poMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      const start = currentPage * pageSize
+      setPOs(grouped.slice(start, start + pageSize))
+      setTotalPages(Math.ceil(grouped.length / pageSize) || 1)
+    } catch (e) {
+      console.error("Error fetching payables:", e)
+      setPOs([])
+    } finally { setLoading(false) }
+  }, [currentPage, pageSize])
 
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber)
-    if (window.innerWidth < 768) {
-      window.scrollTo(0, 0)
-    }
-  }
+  useEffect(() => { fetchPOs() }, [fetchPOs])
 
-  const handleRowClick = (invoice) => {
-    setExpandedRows((prev) => ({
-      ...prev,
-      [invoice.id]: !prev[invoice.id],
-    }))
-  }
-
-  const handleAssignAccountant = (e, piId) => {
-    e.stopPropagation()
-    setSelectedPiId(piId)
-    setShowAssignModal(true)
-  }
-
-  const handleCompletePayment = (e, invoice) => {
-    e.stopPropagation()
-    setSelectedInvoiceForPayment(invoice)
-    setShowPaymentModal(true)
-  }
-
-  const handleAssignSuccess = async () => {
-    setSuccessMessage("Accountant assigned successfully!")
-    await fetchPurchaseInvoices()
-    setTimeout(() => setSuccessMessage(null), 3000)
-  }
-
-  const handlePaymentSuccess = async () => {
-    setSuccessMessage("Payment completed successfully!")
-    await fetchPurchaseInvoices()
-    setTimeout(() => setSuccessMessage(null), 3000)
-  }
+  const filteredPOs = pos.filter((po) => {
+    const matchPO = !filterPONumber || po.poNumber?.toLowerCase().includes(filterPONumber.toLowerCase())
+    const matchVendor = !filterVendor || (po.vendorName || "").toLowerCase().includes(filterVendor.toLowerCase())
+    const matchProject = !filterProjectName || po.projectNames?.some((p) => p.toLowerCase().includes(filterProjectName.toLowerCase()))
+    const matchPM = !filterPMApproval || (po.approvalStatus || "PENDING") === filterPMApproval
+    const matchPOStatus = !filterPOStatus || (po.poStatus || "OPEN") === filterPOStatus
+    const matchMaterialStatus = !filterMaterialStatus || (po.materialStatus || "MATERIAL_YET_TO_DISPATCH") === filterMaterialStatus
+    return matchPO && matchVendor && matchProject && matchPM && matchPOStatus && matchMaterialStatus
+  })
 
   const clearFilters = () => {
-    setSearchQuery("")
-    setProjectNameFilter("")
-    setStatusFilter("")
-    setCurrentPage(1)
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return ""
-    const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    })
-  }
-
-  const formatCurrency = (amount) => {
-    if (!amount) return "₹0"
-    return `₹${Number.parseFloat(amount).toLocaleString("en-IN")}`
-  }
-
-  if (loading && purchaseInvoices.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="relative w-16 h-16">
-          <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-200 rounded-full animate-pulse"></div>
-          <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-600 rounded-full animate-spin border-t-transparent"></div>
-        </div>
-      </div>
-    )
+    setFilterPONumber(""); setFilterVendor(""); setFilterProjectName("")
+    setFilterPMApproval(""); setFilterPOStatus(""); setFilterMaterialStatus("")
   }
 
   return (
-    <div className="flex flex-col gap-4 md:gap-8">
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-red-50 text-red-600 p-3 md:p-4 rounded-lg flex items-center gap-2 md:gap-3 border border-red-100 mx-2 md:mx-0"
-        >
-          <FiAlertCircle className="w-4 h-4 md:w-5 md:h-5 flex-shrink-0" />
-          <span className="text-sm md:font-medium">{error}</span>
-        </motion.div>
-      )}
-
+    <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
       {successMessage && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          className="bg-green-50 text-green-600 p-3 md:p-4 rounded-lg border border-green-100 flex items-center shadow-sm mx-2 md:mx-0"
-        >
-          <FiCheck className="w-4 h-4 md:w-5 md:h-5 mr-2 flex-shrink-0" />
-          <span className="text-sm md:font-medium">{successMessage}</span>
-        </motion.div>
+        <div className="mb-4 bg-green-50 border border-green-200 text-green-800 p-3 rounded-lg text-sm flex items-center gap-2">
+          <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+          {successMessage}
+        </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm p-4 mx-2 md:mx-0">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-lg">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b">
           <div>
-            <input
-              type="text"
-              placeholder="Search PO, PI, Project..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
+            <h2 className="text-2xl font-semibold text-blue-700">Accounts Payable</h2>
+            <p className="text-sm text-gray-500 mt-1">FM approved POs — assign accountants and review</p>
           </div>
-          <div>
-            <input
-              type="text"
-              placeholder="Filter by Project Name"
-              value={projectNameFilter}
-              onChange={(e) => setProjectNameFilter(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-          </div>
-          <div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">All Status</option>
-              <option value="PENDING">Pending</option>
+        </div>
+
+        {/* Filters */}
+        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+            <input type="text" placeholder="PO Number..." value={filterPONumber} onChange={(e) => setFilterPONumber(e.target.value)} className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500" />
+            <input type="text" placeholder="Vendor Name..." value={filterVendor} onChange={(e) => setFilterVendor(e.target.value)} className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500" />
+            <input type="text" placeholder="Project Name..." value={filterProjectName} onChange={(e) => setFilterProjectName(e.target.value)} className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500" />
+            <select value={filterPMApproval} onChange={(e) => setFilterPMApproval(e.target.value)} className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500">
+              <option value="">All PM Status</option>
               <option value="APPROVED">Approved</option>
               <option value="REJECTED">Rejected</option>
+              <option value="PENDING">Pending</option>
             </select>
-          </div>
-          <div>
-            <button
-              onClick={clearFilters}
-              className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
-            >
-              Clear Filters
-            </button>
+            <select value={filterPOStatus} onChange={(e) => setFilterPOStatus(e.target.value)} className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500">
+              <option value="">All PO Status</option>
+              <option value="OPEN">Open</option>
+              <option value="CLOSED">Closed</option>
+            </select>
+            <select value={filterMaterialStatus} onChange={(e) => setFilterMaterialStatus(e.target.value)} className="p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500">
+              <option value="">All Material Status</option>
+              <option value="MATERIAL_YET_TO_DISPATCH">Yet to Dispatch</option>
+              <option value="IN_TRANSIT">In Transit</option>
+              <option value="RECEIVED">Received</option>
+              <option value="GRN_DONE">GRN Done</option>
+            </select>
+            <button onClick={clearFilters} className="p-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm font-medium">Clear Filters</button>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-3 md:p-6 mx-2 md:mx-0">
-        <div className="md:hidden flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">Purchase Invoices</h2>
-        </div>
-
-        {loading && (
-          <div className="flex justify-center my-4">
-            <div className="relative w-8 h-8">
-              <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-200 rounded-full animate-pulse"></div>
-              <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-600 rounded-full animate-spin border-t-transparent"></div>
+        {/* Table */}
+        <div className="p-6">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="relative w-10 h-10">
+                <div className="absolute top-0 left-0 w-full h-full border-4 border-blue-200 rounded-full animate-pulse"></div>
+                <div className="absolute top-0 left-0 w-full h-full border-4 border-blue-600 rounded-full animate-spin border-t-transparent"></div>
+              </div>
             </div>
-          </div>
-        )}
-
-        <AnimatePresence mode="wait">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden rounded-lg border border-gray-200"
-          >
-            <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+          ) : filteredPOs.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">No FM-approved POs found.</div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-gray-200">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {[
-                      "Project Name",
-                      "Pay Amount",
-                      "Expected Payment Date",
-                      "PO / PI Number",
-                      "GRN Receipts",
-                      "Actions",
-                    ].map((header) => (
-                      <th
-                        key={header}
-                        className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider"
-                      >
-                        {header}
-                      </th>
+                    {["Vendor", "Project Name(s)", "PO Number / Copy", "PM Approval", "FM Approval", "PO Status", "Material Status", "Assign Accountant", "Actions"].map((h) => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {purchaseInvoices.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="px-6 py-8 text-center text-gray-500 font-medium">
-                        No purchase invoices found
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {filteredPOs.map((po) => (
+                    <tr key={po.id} className="hover:bg-gray-50 transition-colors">
+                      {/* Vendor */}
+                      <td className="px-4 py-4 text-sm text-gray-900 font-medium">
+                        {po.vendorName || "N/A"}
+                      </td>
+                      {/* Project Names */}
+                      <td className="px-4 py-4 max-w-[160px]">
+                        <div className="space-y-1">
+                          {po.projectNames?.length > 0 ? (
+                            po.projectNames.map((name, i) => (
+                              <div key={i} className="truncate text-xs bg-gray-100 px-2 py-0.5 rounded" title={name}>{name}</div>
+                            ))
+                          ) : <span className="text-gray-400 text-xs">N/A</span>}
+                        </div>
+                      </td>
+                      {/* PO Number */}
+                      <td className="px-4 py-4">
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium text-gray-900">{po.poNumber}</div>
+                          <div className="text-xs text-gray-500">{formatDate(po.createdAt)}</div>
+                          {po.fileUrl && <a href={po.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs underline">View PO</a>}
+                        </div>
+                      </td>
+                      {/* PM Approval — read only */}
+                      <td className="px-4 py-4">
+                        <StatusBadge status={po.approvalStatus} />
+                      </td>
+                      {/* FM Approval — read only */}
+                      <td className="px-4 py-4">
+                        <StatusBadge status={po.financeManagerApprovalStatus} />
+                      </td>
+                      {/* PO Status */}
+                      <td className="px-4 py-4">
+                        <StatusBadge status={po.poStatus || "OPEN"} />
+                      </td>
+                      {/* Material Status */}
+                      <td className="px-4 py-4">
+                        <StatusBadge status={po.materialStatus} />
+                      </td>
+                      {/* Assign Accountant */}
+                      <td className="px-4 py-4">
+                        <AssignAccountantCell
+                          po={po}
+                          onAssigned={() => showSuccess("Accountant assigned!")}
+                        />
+                      </td>
+                      {/* Actions */}
+                      <td className="px-4 py-4">
+                        <button
+                          onClick={() => { setSelectedPO(po); setShowDetailsModal(true) }}
+                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 font-medium flex items-center gap-1"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          View Details
+                        </button>
                       </td>
                     </tr>
-                  ) : (
-                    purchaseInvoices.map((invoice) => (
-                      <motion.tr
-                        key={invoice.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="hover:bg-gray-50 cursor-pointer transition-colors group"
-                        onClick={() => handleRowClick(invoice)}
-                      >
-                        {/* Project Name Column (First) */}
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{invoice.projectName}</div>
-                        </td>
-
-                        {/* Pay Amount Column */}
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {formatCurrency(invoice.payableAmount)}
-                          </div>
-                        </td>
-
-                        {/* Expected Payment Date Column */}
-                        <td className="px-6 py-4">
-                          <div className="text-sm text-gray-900">{formatDate(invoice.expectedPaymentDate)}</div>
-                        </td>
-
-                        {/* PO / PI Number Column */}
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col gap-1">
-                            <div className="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                              {invoice.purchaseOrder?.fileUrl ? (
-                                <a
-                                  href={invoice.purchaseOrder.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 underline hover:text-blue-800"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  PO: {invoice.purchaseOrder?.poNumber || "N/A"}
-                                </a>
-                              ) : (
-                                <span>PO: {invoice.purchaseOrder?.poNumber || "N/A"}</span>
-                              )}
-                            </div>
-                            <div className="text-sm font-medium text-gray-600">
-                              {invoice.fileUrl ? (
-                                <a
-                                  href={invoice.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 underline hover:text-blue-800"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  PI: {invoice.piNumber}
-                                </a>
-                              ) : (
-                                <span>PI: {invoice.piNumber}</span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* GRN Receipts Column */}
-                        <td className="px-6 py-4">
-                          {invoice.purchaseOrder?.id ? (
-                            <GRNReceipts poId={invoice.purchaseOrder.id} />
-                          ) : (
-                            <span className="text-xs text-gray-400">N/A</span>
-                          )}
-                        </td>
-
-                        {/* Actions Column */}
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            {invoice.assignedEmployee ? (
-                              <div className="flex items-center gap-2">
-                                <div className="text-sm">
-                                  <div className="font-medium text-gray-900">
-                                    {invoice.assignedEmployee.firstName} {invoice.assignedEmployee.lastName}
-                                  </div>
-                                  {invoice.assignedEmployee.designation?.name && (
-                                    <div className="text-xs text-gray-500">
-                                      {invoice.assignedEmployee.designation.name}
-                                    </div>
-                                  )}
-                                </div>
-                                <button
-                                  className="px-2 py-1 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors text-xs"
-                                  onClick={(e) => handleAssignAccountant(e, invoice.id)}
-                                  title="Reassign Accountant"
-                                >
-                                  Change
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium flex items-center gap-1"
-                                onClick={(e) => handleAssignAccountant(e, invoice.id)}
-                                title="Assign Accountant"
-                              >
-                                <FiUser size={14} />
-                                Assign
-                              </button>
-                            )}
-                            <button
-                              className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"
-                              onClick={(e) => handleCompletePayment(e, invoice)}
-                              title="Action"
-                            >
-                              Action
-                            </button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
+          )}
 
-            <div className="md:hidden">
-              {purchaseInvoices.length === 0 ? (
-                <div className="p-4 text-center text-gray-500 font-medium">No purchase invoices found</div>
-              ) : (
-                <div className="divide-y divide-gray-200">
-                  {purchaseInvoices.map((invoice) => (
-                    <motion.div
-                      key={invoice.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => handleRowClick(invoice)}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="text-sm font-semibold text-gray-900">{invoice.piNumber}</div>
-                        {invoice.assignedEmployee ? (
-                          <div className="text-right">
-                            <div className="text-xs font-medium text-gray-900">
-                              {invoice.assignedEmployee.firstName} {invoice.assignedEmployee.lastName}
-                            </div>
-                            {invoice.assignedEmployee.designation?.name && (
-                              <div className="text-xs text-gray-500">{invoice.assignedEmployee.designation.name}</div>
-                            )}
-                            <button
-                              className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs mt-1"
-                              onClick={(e) => handleAssignAccountant(e, invoice.id)}
-                              title="Reassign Accountant"
-                            >
-                              Change
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium flex items-center gap-1"
-                            onClick={(e) => handleAssignAccountant(e, invoice.id)}
-                            title="Assign Accountant"
-                          >
-                            <FiUser size={12} />
-                            Assign
-                          </button>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 gap-y-1 text-xs">
-                        <div>
-                          <span className="font-medium">PO:</span> {invoice.purchaseOrder?.poNumber || "N/A"}
-                        </div>
-                        <div>
-                          <span className="font-medium">Amount:</span> {formatCurrency(invoice.payableAmount)}
-                        </div>
-                        <div>
-                          <span className="font-medium">Project:</span> {invoice.projectName}
-                        </div>
-                        <div>
-                          <span className="font-medium">Expected Date:</span> {formatDate(invoice.expectedPaymentDate)}
-                        </div>
-                        <div>
-                          <span className="font-medium">Files:</span>{" "}
-                          <div className="flex flex-col gap-1 mt-1">
-                            {invoice.purchaseOrder?.fileUrl ? (
-                              <div className="text-xs">
-                                <span className="font-semibold">PO: </span>
-                                <a
-                                  href={invoice.purchaseOrder.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 underline hover:text-blue-800"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {invoice.purchaseOrder.fileName && invoice.purchaseOrder.fileName.length > 8
-                                    ? `${invoice.purchaseOrder.fileName.substring(0, 8)}...`
-                                    : invoice.purchaseOrder.fileName || "PO File"}
-                                </a>
-                              </div>
-                            ) : null}
-                            {invoice.fileUrl ? (
-                              <div className="text-xs">
-                                <span className="font-semibold">PI: </span>
-                                <a
-                                  href={invoice.fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 underline hover:text-blue-800"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {invoice.fileName && invoice.fileName.length > 8
-                                    ? `${invoice.fileName.substring(0, 8)}...`
-                                    : invoice.fileName || "PI File"}
-                                </a>
-                              </div>
-                            ) : null}
-                            {!invoice.fileUrl && !invoice.purchaseOrder?.fileUrl && (
-                              <span className="text-gray-400">No files</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-2 flex justify-center">
-                        <button
-                          className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-medium"
-                          onClick={(e) => handleCompletePayment(e, invoice)}
-                          title="Complete Payment"
-                        >
-                          Complete Payment
-                        </button>
-                      </div>
-                      <div className="flex justify-center mt-2">
-                        <FiChevronRight
-                          className={`text-gray-400 transition-transform ${expandedRows[invoice.id] ? "rotate-90" : ""}`}
-                          size={16}
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
+          {totalPages > 1 && (
+            <div className="mt-6 flex justify-center items-center gap-2">
+              <button onClick={() => setCurrentPage((p) => Math.max(0, p - 1))} disabled={currentPage === 0} className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 hover:bg-gray-50">Previous</button>
+              <span className="text-sm text-gray-600">Page {currentPage + 1} of {totalPages}</span>
+              <button onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))} disabled={currentPage >= totalPages - 1} className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 hover:bg-gray-50">Next</button>
             </div>
-          </motion.div>
-        </AnimatePresence>
-
-        {totalPages > 1 && (
-          <div className="mt-4 flex justify-center items-center gap-2 flex-wrap">
-            <button
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1 || loading}
-              className="px-3 py-1 rounded-md border text-sm disabled:opacity-50"
-            >
-              Prev
-            </button>
-            <div className="md:hidden px-3 py-1 text-sm">
-              Page {currentPage} of {totalPages}
-            </div>
-            <div className="hidden md:flex">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum
-                if (totalPages <= 5) {
-                  pageNum = i + 1
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i
-                } else {
-                  pageNum = currentPage - 2 + i
-                }
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => handlePageChange(pageNum)}
-                    disabled={loading}
-                    className={`px-3 py-1 rounded-md border text-sm ${currentPage === pageNum ? "bg-indigo-600 text-white" : "bg-white text-gray-600"}`}
-                  >
-                    {pageNum}
-                  </button>
-                )
-              })}
-            </div>
-            <button
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages || loading}
-              className="px-3 py-1 rounded-md border text-sm disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        )}
-
-        <div className="mt-2 text-xs md:text-sm text-gray-500 text-center">
-          Showing {purchaseInvoices.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to{" "}
-          {Math.min(currentPage * itemsPerPage, totalResults)} of {totalResults} purchase invoices
+          )}
         </div>
       </div>
 
-      <AssignAccountantModal
-        isOpen={showAssignModal}
-        onClose={() => setShowAssignModal(false)}
-        piId={selectedPiId}
-        onAssign={handleAssignSuccess}
-      />
-
-      <PaymentCompletionModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        invoice={selectedInvoiceForPayment}
-        onComplete={handlePaymentSuccess}
+      <PODetailsModal
+        isOpen={showDetailsModal && selectedPO !== null}
+        onClose={() => { setShowDetailsModal(false); setTimeout(() => setSelectedPO(null), 200) }}
+        po={selectedPO || {}}
+        currentUserId={user?.userId}
+        onRefresh={() => { showSuccess("Updated!"); fetchPOs() }}
+        isAM={true}
       />
     </div>
   )
