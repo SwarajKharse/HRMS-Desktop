@@ -1466,15 +1466,15 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
           </div>
         )}
         <div className="flex-1 overflow-auto p-6">
-          <div className="mb-6 flex justify-end">
+          {/* <div className="mb-6 flex justify-end">
             <button
               onClick={() => setShowAddProductModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
               <FiPlus size={16} />
-              Edit Billable Products
+              Edit Billable Productsss
             </button>
-          </div>
+          </div> */}
           <div className="space-y-6">
             {boqProducts.length > 0 ? (
               <>

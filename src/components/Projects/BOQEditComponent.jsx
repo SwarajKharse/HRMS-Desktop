@@ -1916,7 +1916,7 @@ function BOQEditComponent({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-6 border-b">
-          <h3 className="text-xl font-bold text-blue-600">Edit BOQ - {projectName}</h3>
+          <h3 className="text-xl font-bold text-blue-600">Edit12112 BOQ - {projectName}</h3>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
             <FiX className="w-6 h-6 text-gray-500" />
           </button>

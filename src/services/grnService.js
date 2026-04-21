@@ -58,4 +58,44 @@ export const grnService = {
       throw error
     }
   },
+
+   updateGRNForm: async (grnId, formData) => {
+  try {
+    const response = await axios.put(
+      `${API_BASE_URL}/goods-receipt-notes/${grnId}/update-form`,
+      formData
+    )
+    return response.data
+  } catch (error) {
+    console.error("Error updating GRN form:", error)
+    throw error
+  }
+},
+
+  completeGRNPayment: async (grnId, approvalStatus, paymentDoneDate, receiptFile) => {
+    try {
+      const params = {}
+      if (approvalStatus) params.accountManagerApprovalStatus = approvalStatus
+      if (paymentDoneDate) params.paymentDoneDate = paymentDoneDate
+
+      let requestBody = null
+      if (receiptFile) {
+        requestBody = new FormData()
+        requestBody.append("file", receiptFile)
+      }
+
+      const response = await axios.put(
+        `${API_BASE_URL}/goods-receipt-notes/${grnId}/complete-payment`,
+        requestBody,
+        {
+          params,
+          headers: receiptFile ? { "Content-Type": "multipart/form-data" } : {}
+        }
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error completing GRN payment:", error)
+      throw error
+    }
+  },
 }
