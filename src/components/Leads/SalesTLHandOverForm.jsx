@@ -853,7 +853,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
                   existingBOQ={existingBOQData}
                   isEditMode={existingProject && existingProject.hasExistingBOQ}
                   currentUserId={userId}
-                  projectSalesTlId={lead.employee_assigned_to_sales_tl?.id}
+                  projectSalesTlId={lead.assigned_sse?.id === userId ? null : userId}
                   onBOQItemStatusUpdateSuccess={checkExistingProject}
                   onProductCountChange={handleProductCountChange}
                   gstType={gstType}

@@ -66,7 +66,7 @@ function ProductBOQSelector({
     return { supplyAmount, installationAmount, total }
   }
 
-  const ApprovalStatusBadge = ({ status, type, onUpdate, productId, remarks, approvalDate }) => {
+  const ApprovalStatusBadge = ({ status, type, onUpdate, productId, remarks, approvalDate, readOnly = false }) => {
     const getStatusColor = (status) => {
       switch (status) {
         case "APPROVED":
@@ -97,7 +97,8 @@ function ProductBOQSelector({
           <span className="text-xs font-medium text-gray-600">{type} Approval:</span>
           <button
             type="button" // Added type="button"
-            onClick={() =>
+            onClick={() => {
+              if (readOnly) return
               setShowApprovalModal({
                 productId, // This is the BOQItem ID
                 type,
@@ -105,7 +106,7 @@ function ProductBOQSelector({
                 currentRemarks: remarks,
                 projectId: projectId, // Pass projectId here
               })
-            }
+            }}
             className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
               status,
             )} hover:opacity-80 transition-opacity`}
@@ -497,9 +498,6 @@ function ProductBOQSelector({
   const handleProductSelect = (product) => {
     if (!activeProductSearch) return
     const categoryProducts = selectedProductsByCategory[activeProductSearch] || []
-    if (categoryProducts.some((p) => p.productId === product.id)) {
-      return
-    }
     const { supplyAmount, installationAmount, total } = calculateAmounts(
       1,
       product.supplyRate || 0,
@@ -702,7 +700,6 @@ function ProductBOQSelector({
   }
   postGstAmount = preGstAmount + gstAmount
   // </CHANGE>
-
   return (
     <div className="space-y-6">
       {showApprovalModal && (
@@ -833,17 +830,15 @@ function ProductBOQSelector({
                     return (
                       <div
                         key={product.id}
-                        className={
-                          "p-3 cursor-pointer border-b border-gray-100 last:border-b-0 " +
-                          (isAlreadySelected ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100")
-                        }
-                        onClick={() => !isAlreadySelected && handleProductSelect(product)}
+                        className="p-3 cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-gray-100"
+                        onClick={() => handleProductSelect(product)}
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="font-medium text-gray-900">
-                              {product.productName || "Unnamed Product"}
-                              {isAlreadySelected && <span className="ml-2 text-xs">(Already selected)</span>}
+                            {product.productName || "Unnamed Product"}
+                            {isAlreadySelected && <span className="ml-2 text-xs text-blue-500">(Already selected)</span>}
+                              
                             </div>
                             <div className="text-xs text-blue-600 mt-1">{categoryInfo.fullPath}</div>
                             <div className="text-xs text-gray-500 mt-1">
@@ -854,7 +849,7 @@ function ProductBOQSelector({
                               <div className="text-xs text-gray-400 mt-1 truncate">{product.productDescription}</div>
                             )}
                           </div>
-                          {!isAlreadySelected && (
+                          { (
                             <button
                               type="button"
                               className="text-blue-600 hover:bg-blue-50 p-1 rounded-full ml-2 flex-shrink-0"
@@ -1074,6 +1069,7 @@ function ProductBOQSelector({
                                       remarks={product.pmApprovalRemarks}
                                       approvalDate={product.pmApprovalDate}
                                       onUpdate={() => {}}
+                                      readOnly={true}
                                     />
                                   </td>
                                   <td className="px-3 py-2">
@@ -1084,6 +1080,7 @@ function ProductBOQSelector({
                                       remarks={product.salestlApprovalRemarks}
                                       approvalDate={product.salestlApprovalDate}
                                       onUpdate={() => {}}
+                                      readOnly={currentUserId !== projectSalesTlId}
                                     />
                                     {isEditMode && currentUserId === projectSalesTlId && (
                                       <button

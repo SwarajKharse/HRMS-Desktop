@@ -251,10 +251,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
     if (!activeProductSearch) return
     // Check if product is already selected in this category
     const categoryProducts = selectedProductsByCategory[activeProductSearch] || []
-    if (categoryProducts.some((p) => p.productId === product.id)) {
-      // Check against the actual product ID
-      return
-    }
+    
     const { supplyAmount, installationAmount, total } = calculateAmounts(1, 0, 0) // Default values (camelCase)
     const updatedProduct = {
       id: Date.now(), // Temporary unique ID for this new BOQ item entry in frontend state
@@ -530,17 +527,14 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                     return (
                       <div
                         key={product.id}
-                        className={
-                          "p-3 cursor-pointer border-b border-gray-100 last:border-b-0 " +
-                          (isAlreadySelected ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100")
-                        }
-                        onClick={() => !isAlreadySelected && handleProductSelect(product)}
+                        className="p-3 cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-gray-100"
+                        onClick={() => handleProductSelect(product)}
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="font-medium text-gray-900">
                               {product.productName || "Unnamed Product"}
-                              {isAlreadySelected && <span className="ml-2 text-xs">(Already selected)</span>}
+                              
                             </div>
                             <div className="text-xs text-blue-600 mt-1">{categoryInfo.fullPath}</div>
                             <div className="text-xs text-gray-500 mt-1">
@@ -551,7 +545,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                               <div className="text-xs text-gray-400 mt-1 truncate">{product.productDescription}</div>
                             )}
                           </div>
-                          {!isAlreadySelected && (
+                          {(
                             <button className="text-blue-600 hover:bg-blue-50 p-1 rounded-full ml-2 flex-shrink-0">
                               <FiPlus />
                             </button>
@@ -647,6 +641,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
                                   <td className="px-3 py-2">
                                     <div className="text-sm font-medium">
                                       {product.productName || "Unnamed Product"}
+                                      {isAlreadySelected && <span className="ml-2 text-xs text-blue-500">(Already selected)</span>}
                                     </div>
                                     <div className="text-xs text-gray-500">HSN: {product.hsnCode || "N/A"}</div>
                                     <div className="text-xs text-gray-400">Available: {product.productQty || "0"}</div>
