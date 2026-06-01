@@ -207,6 +207,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
               totalQty: item.totalQty || item.qty,
               make: item.make,
               uom: item.uom,
+              remarks: item.remarks || "",
               supplyRate: item.supplyRate,
               installationRate: item.installationRate,
               supplyAmount: item.supplyAmount,
@@ -440,6 +441,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
                 qty: Number.parseFloat(item.qty) || 0,
                 make: item.make || "",
                 uom: item.uom || "",
+                remarks: item.remarks || "",
                 leadProductTypeId: Number.parseInt(item.leadProductTypeId),
                 supplyRate: Number.parseFloat(item.supplyRate) || 0,
                 installationRate: Number.parseFloat(item.installationRate) || 0,
@@ -853,7 +855,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
                   existingBOQ={existingBOQData}
                   isEditMode={existingProject && existingProject.hasExistingBOQ}
                   currentUserId={userId}
-                  projectSalesTlId={lead.employee_assigned_to_sales_tl?.id}
+                  projectSalesTlId={lead.assigned_sse?.id === userId ? null : userId}
                   onBOQItemStatusUpdateSuccess={checkExistingProject}
                   onProductCountChange={handleProductCountChange}
                   gstType={gstType}

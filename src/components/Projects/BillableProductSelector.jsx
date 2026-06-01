@@ -277,10 +277,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
   const handleProductSelect = (product) => {
     if (!activeProductSearch) return
     const categoryProducts = selectedProductsByCategory[activeProductSearch] || []
-    // Check if product (by its actual product master ID) is already selected in this category
-    if (categoryProducts.some((p) => p.productId === product.id)) {
-      return
-    }
+    
 
     const tempBoqItemId = `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     const selectedLeadProductType = leadProductTypes.find((t) => t.id === activeProductSearch)
@@ -556,17 +553,14 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                     return (
                       <div
                         key={product.id} // Key by ProductsMaster.id for the search results list
-                        className={
-                          "p-3 cursor-pointer border-b border-gray-100 last:border-b-0 " +
-                          (isAlreadySelected ? "bg-blue-50 text-blue-700" : "hover:bg-gray-100")
-                        }
-                        onClick={() => !isAlreadySelected && handleProductSelect(product)}
+                        className="p-3 cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-gray-100"
+                        onClick={() => handleProductSelect(product)}
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
                             <div className="font-medium text-gray-900">
                               {product.product_name || "Unnamed Product"}
-                              {isAlreadySelected && <span className="ml-2 text-xs">(Already selected)</span>}
+                              {isAlreadySelected && <span className="ml-2 text-xs text-blue-500">(Already selected)</span>}
                             </div>
                             <div className="text-xs text-blue-600 mt-1">{categoryInfo.fullPath}</div>
                             <div className="text-xs text-gray-500 mt-1">
@@ -577,7 +571,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                               <div className="text-xs text-gray-400 mt-1 truncate">{product.product_description}</div>
                             )}
                           </div>
-                          {!isAlreadySelected && (
+                          {(
                             <button className="text-blue-600 hover:bg-blue-50 p-1 rounded-full ml-2 flex-shrink-0">
                               <FiPlus />
                             </button>
