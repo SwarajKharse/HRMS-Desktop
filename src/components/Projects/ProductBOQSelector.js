@@ -55,6 +55,8 @@ function ProductBOQSelector({
   const dropdownRef = useRef(null)
   const searchInputRef = useRef(null)
   const [showApprovalModal, setShowApprovalModal] = useState(null) // State for approval modal
+  const [approvalSelectionMode, setApprovalSelectionMode] = useState({})
+  const [selectedForApproval, setSelectedForApproval] = useState({})
 
   const calculateAmounts = (qty, supplyRate, installationRate) => {
     const parsedQty = Number.parseFloat(qty) || 0
@@ -299,6 +301,7 @@ function ProductBOQSelector({
           uom: item.uom || item.product.uom || "",
           qty: initialQty,
           make: item.make || "",
+          remarks: item.remarks || "",
           supplyRate: initialSupplyRate,
           installationRate: initialInstallationRate,
           supplyAmount: supplyAmount,
@@ -403,6 +406,7 @@ function ProductBOQSelector({
         const categoryInfo = extractCategoryInfo(product)
         return (
           (product.productName || "").toLowerCase().includes(lowercasedSearch) ||
+          (product.itemCode || "").toLowerCase().includes(lowercasedSearch) ||
           categoryInfo.topCategory.toLowerCase().includes(lowercasedSearch) ||
           categoryInfo.mainCategory.toLowerCase().includes(lowercasedSearch) ||
           categoryInfo.subCategory.toLowerCase().includes(lowercasedSearch) ||
@@ -439,6 +443,7 @@ function ProductBOQSelector({
       const mappedProducts = productsData.map((product) => ({
         ...product,
         productName: product.product_name,
+        itemCode: product.item_code,
         hsnCode: product.hsn_code,
         productDescription: product.product_description,
         productQty: product.product_qty,
@@ -513,6 +518,8 @@ function ProductBOQSelector({
       uom: product.uom || "",
       qty: 1,
       make: "",
+      uom: product.uom || "",
+      remarks: "",
       supplyRate: product.supplyRate || 0,
       installationRate: product.installationRate || 0,
       supplyAmount: supplyAmount,
@@ -577,6 +584,38 @@ function ProductBOQSelector({
     })
   }
 
+  const approveAllInCategory = (categoryId) => {
+  const categoryProducts = selectedProductsByCategory[categoryId] || []
+  const allSelected = {}
+    categoryProducts.forEach(product => {
+      if (product.salestlApprovalStatus !== "APPROVED") {
+        allSelected[product.id] = true
+      }
+    })
+    setApprovalSelectionMode(prev => ({ ...prev, [categoryId]: true }))
+    setSelectedForApproval(prev => ({ ...prev, [categoryId]: allSelected }))
+  }
+
+  const cancelApprovalSelection = (categoryId) => {
+    setApprovalSelectionMode(prev => ({ ...prev, [categoryId]: false }))
+    setSelectedForApproval(prev => ({ ...prev, [categoryId]: {} }))
+  }
+
+  const confirmApproveSelected = async (categoryId) => {
+    const selected = selectedForApproval[categoryId] || {}
+    for (const productId of Object.keys(selected)) {
+      if (selected[productId]) {
+        await projectService.updateBOQItemApprovalStatus(Number(productId), {
+          approvalType: "SALESTL",
+          statusValue: "APPROVED",
+          remarks: "",
+        })
+        handleLocalBOQItemUpdate(Number(productId), "SALESTL", "APPROVED", "", new Date().toISOString())
+      }
+    }
+    cancelApprovalSelection(categoryId)
+  }
+
   const toggleCategoryExpansion = (categoryId) => {
     setExpandedCategories((prev) => ({
       ...prev,
@@ -603,16 +642,10 @@ function ProductBOQSelector({
       return
     }
     const invalidProducts = allProducts.filter(
-      (p) =>
-        !p.qty ||
-        Number.parseFloat(p.qty) <= 0 ||
-        !p.supplyRate ||
-        Number.parseFloat(p.supplyRate) < 0 ||
-        !p.installationRate ||
-        Number.parseFloat(p.installationRate) < 0,
+      (p) => !p.qty || Number.parseFloat(p.qty) <= 0
     )
     if (invalidProducts.length > 0) {
-      setError("Please enter valid quantities and non-negative rates for all products")
+      setError("Please enter valid quantities for all products")
       return
     }
     setSaving(true)
@@ -626,6 +659,7 @@ function ProductBOQSelector({
           qty: Number.parseFloat(p.qty),
           make: p.make || "",
           uom: p.uom || "",
+          remarks: p.remarks || "",
           leadProductTypeId: Number.parseInt(p.leadProductTypeId),
           supplyRate: Number.parseFloat(p.supplyRate),
           installationRate: Number.parseFloat(p.installationRate),
@@ -660,6 +694,7 @@ function ProductBOQSelector({
             : (totalSupplyAmount + totalInstallationAmount) * (igstPercent / 100)),
       }
       console.log("Saving BOQ data (payload to backend):", boqData)
+      
       onSave(boqData, true)
     } catch (err) {
       console.error("Error saving BOQ:", err)
@@ -796,7 +831,7 @@ function ProductBOQSelector({
               </div>
               <input
                 type="text"
-                placeholder="Search products by name, category, subcategory, HSN code..."
+                placeholder="Search products by name, Item code ,category, subcategory, HSN code..."
                 value={searchTerm}
                 onChange={handleSearchChange}
                 ref={searchInputRef}
@@ -842,7 +877,7 @@ function ProductBOQSelector({
                             </div>
                             <div className="text-xs text-blue-600 mt-1">{categoryInfo.fullPath}</div>
                             <div className="text-xs text-gray-500 mt-1">
-                              HSN: {product.hsnCode || "N/A"} | UOM: {product.uom || "N/A"} | Qty Available:{" "}
+                              Code: {product.itemCode || "N/A"} | HSN: {product.hsnCode || "N/A"} | UOM: {product.uom || "N/A"} | Qty Available:{" "}
                               {product.productQty || "0"}
                             </div>
                             {product.productDescription && (
@@ -892,6 +927,34 @@ function ProductBOQSelector({
                       <h5 className="font-medium text-gray-900">{category.name}</h5>
                       <span className="ml-2 text-sm text-gray-500">({categoryProducts.length} items)</span>
                     </div>
+                    {currentUserId === projectSalesTlId && (
+                      approvalSelectionMode[category.id] ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => confirmApproveSelected(category.id)}
+                            className="ml-2 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                          >
+                            ✓ Confirm Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => cancelApprovalSelection(category.id)}
+                            className="ml-2 px-3 py-1 bg-gray-400 text-white text-sm rounded hover:bg-gray-500 transition-colors"
+                          >
+                            ✗ Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => approveAllInCategory(category.id)}
+                          className="ml-2 px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                        >
+                          ✓ Approve All
+                        </button>
+                      )
+                    )}
                     <button
                       type="button" // Added type="button"
                       onClick={() => openProductSearch(category.id)}
@@ -909,6 +972,11 @@ function ProductBOQSelector({
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead>
                             <tr>
+                              {approvalSelectionMode[category.id] && (
+                                <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase">
+                                  Select
+                                </th>
+                              )}
                               <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Product
                               </th>
@@ -949,6 +1017,24 @@ function ProductBOQSelector({
                               const categoryInfo = product.categoryInfo || extractCategoryInfo(product)
                               return (
                                 <tr key={product.id} className={index % 2 === 0 ? "bg-gray-50" : ""}>
+                                  {approvalSelectionMode[category.id] && (
+                                    <td className="px-3 py-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={selectedForApproval[category.id]?.[product.id] || false}
+                                        onChange={(e) => {
+                                          setSelectedForApproval(prev => ({
+                                            ...prev,
+                                            [category.id]: {
+                                              ...prev[category.id],
+                                              [product.id]: e.target.checked
+                                            }
+                                          }))
+                                        }}
+                                        className="w-4 h-4"
+                                      />
+                                    </td>
+                                  )}
                                   <td className="px-3 py-2">
                                     <div
                                       className="text-sm font-medium truncate max-w-xs"
@@ -959,6 +1045,15 @@ function ProductBOQSelector({
                                     <div className="text-xs text-gray-500">HSN: {product.hsnCode || "N/A"}</div>
                                     <div className="text-xs text-gray-400">Available: {product.productQty || "0"}</div>
                                     <div className="text-xs text-gray-400">UOM: {product.uom || "N/A"}</div>
+                                    <input
+                                      type="text"
+                                      value={product.remarks || ""}
+                                      onChange={(e) =>
+                                        handleProductFieldChange(category.id, product.id, "remarks", e.target.value)
+                                      }
+                                      placeholder="Add remark..."
+                                      className="mt-1 w-full p-1 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    />
                                   </td>
                                   <td className="px-3 py-2">
                                     <input
