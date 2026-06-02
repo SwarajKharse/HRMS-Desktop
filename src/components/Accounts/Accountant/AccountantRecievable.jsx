@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { FiAlertCircle, FiCheck, FiChevronRight, FiEye, FiFileText, FiSettings } from "react-icons/fi"
+import { FiAlertCircle, FiCheck, FiChevronRight, FiEye, FiFileText, FiSettings, FiDownload } from "react-icons/fi"
 import { receivableService } from "../../../services/receivableService"
 import { useAuth } from "../../../contexts/AuthContext"
 import ProjectManagementModal from "./ProjectManagementModal"
@@ -204,7 +204,7 @@ function AccountantRecievable() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  {["Project ID", "Project Name", "Lead Contact", "Created Date", "PO Copy", "BOQ", "Actions"].map(
+                  {["Project ID", "Project Name", "Lead Contact", "Created Date", "PO Copy", "BOQ", "Proposal Copy", "Actions"].map(
                     (header) => (
                       <th
                         key={header}
@@ -219,7 +219,7 @@ function AccountantRecievable() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {projects.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500 font-medium">
+                    <td colSpan="8" className="px-6 py-8 text-center text-gray-500 font-medium">
                       No projects found
                     </td>
                   </tr>
@@ -283,8 +283,59 @@ function AccountantRecievable() {
                           ) : (
                             <span className="text-xs text-gray-400">No BOQ</span>
                           )}
+                          {project.leadDocuments && project.leadDocuments.length > 0 && (
+                            <>
+                              {(() => {
+                                const latestBOQ = project.leadDocuments.find(
+                                  (doc) => doc.documentType === "boq_document",
+                                )
+                                return latestBOQ ? (
+                                  <a
+                                    href={latestBOQ.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-xs"
+                                    title={latestBOQ.fileName}
+                                  >
+                                    <FiDownload size={14} />
+                                    <span className="text-xs font-medium">PDF</span>
+                                  </a>
+                                ) : null
+                              })()}
+                            </>
+                          )}
                         </div>
                       </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1">
+                          {project.leadDocuments && project.leadDocuments.length > 0 ? (
+                            <>
+                              {(() => {
+                                const latestProposal = project.leadDocuments.find(
+                                  (doc) => doc.documentType === "proposal" && doc.status === "1",
+                                )
+                                return latestProposal ? (
+                                  <a
+                                    href={latestProposal.fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                    title={latestProposal.fileName}
+                                  >
+                                    <FiDownload size={14} />
+                                    <span className="text-xs font-medium">Proposal</span>
+                                  </a>
+                                ) : (
+                                  <span className="text-xs text-gray-400">No Proposal</span>
+                                )
+                              })()}
+                            </>
+                          ) : (
+                            <span className="text-xs text-gray-400">No Proposal</span>
+                          )}
+                        </div>
+                      </td>
+                      
                       <td className="px-6 py-4">
                         <button
                           className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium flex items-center gap-1"
@@ -352,6 +403,26 @@ function AccountantRecievable() {
                             </button>
                           ) : (
                             <span className="text-gray-400">No BOQ</span>
+                          )}
+                          {project.leadDocuments &&
+                            project.leadDocuments.length > 0 &&
+                            (() => {
+                              const latestBOQ = project.leadDocuments.find((doc) => doc.documentType === "boq_document")
+                              return latestBOQ ? (
+                                <a href={latestBOQ.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-2" onClick={(e) => e.stopPropagation()} title={latestBOQ.fileName}>
+                                  PDF
+                                </a>
+                              ) : null
+                            })()}
+                        </div>
+                        <div>
+                          <span className="font-medium">Proposal:</span>{" "}
+                          {project.proposalFileUrl ? (
+                            <a href={project.proposalFileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline" onClick={(e) => e.stopPropagation()}>
+                              View
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">No Proposal</span>
                           )}
                         </div>
                       </div>
