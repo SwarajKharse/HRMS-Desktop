@@ -11,8 +11,10 @@ import {
   FiUpload,
   FiSave,
   FiDownload,
+  FiSettings,
 } from "react-icons/fi"
 import { receivableService } from "../../services/receivableService"
+import ProjectManagementModal from "./Accountant/ProjectManagementModal"
 
 function BOQModal({ isOpen, onClose, projectId }) {
   const [boqData, setBOQData] = useState(null)
@@ -780,6 +782,9 @@ function Recievable() {
   const [selectedInvoiceProjectId, setSelectedInvoiceProjectId] = useState(null)
   const [selectedInvoiceProjectName, setSelectedInvoiceProjectName] = useState(null)
 
+  const [showManagementModal, setShowManagementModal] = useState(false)
+  const [selectedManagementProjectId, setSelectedManagementProjectId] = useState(null)
+
   const [expandedRows, setExpandedRows] = useState({})
 
   const fetchProjects = useCallback(async () => {
@@ -848,6 +853,18 @@ function Recievable() {
     setSelectedInvoiceProjectId(projectId)
     setSelectedInvoiceProjectName(projectName)
     setShowInvoiceModal(true)
+  }
+
+  const handleManageProject = (e, projectId) => {
+    e.stopPropagation()
+    setSelectedManagementProjectId(projectId)
+    setShowManagementModal(true)
+  }
+
+  const handleManagementSuccess = async () => {
+    setSuccessMessage("Project updated successfully!")
+    await fetchProjects()
+    setTimeout(() => setSuccessMessage(null), 3000)
   }
 
   const clearFilters = () => {
@@ -1120,6 +1137,15 @@ function Recievable() {
 
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
+                          <button
+                            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium flex items-center gap-1"
+                            onClick={(e) => handleManageProject(e, project.id)}
+                            title="Manage Project"
+                          >
+                            <FiSettings size={14} />
+                            Manage Project
+                          </button>
+
                           {project.assignedAssistant ? (
                             <div className="flex items-center gap-2">
                               <div className="text-sm">
@@ -1265,7 +1291,16 @@ function Recievable() {
                         Manage PI/TI
                       </button>
                     </div>
-
+                    <div className="flex justify-center mt-2">
+                      <button
+                        onClick={(e) => handleManageProject(e, project.id)}
+                        className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium flex items-center gap-1"
+                        title="Manage Project"
+                      >
+                        <FiSettings size={14} />
+                        Manage Project
+                      </button>
+                    </div>
                     <div className="mt-2 flex justify-center">
                       {project.assignedAssistant ? (
                         <div className="text-center">
@@ -1378,6 +1413,12 @@ function Recievable() {
         onSuccess={handleInvoiceManagementSuccess}
         projectId={selectedInvoiceProjectId}
         projectName={selectedInvoiceProjectName}
+      />
+      <ProjectManagementModal
+        isOpen={showManagementModal}
+        onClose={() => setShowManagementModal(false)}
+        projectId={selectedManagementProjectId}
+        onSuccess={handleManagementSuccess}
       />
     </div>
   )
