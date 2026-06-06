@@ -3,149 +3,134 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Payable from "../components/Accounts/Payable"
-//import PayablePI from "../components/Accounts/Accountant/PayablePI"
 import Recievable from "../components/Accounts/Recievable"
 import AccountantRecievable from "../components/Accounts/Accountant/AccountantRecievable"
 import PayablePIComponent from "../components/Accounts/Accountant/PayablePIComponent"
-import { GiReceiveMoney, GiPayMoney } from "react-icons/gi"
-import { RiMoneyRupeeCircleLine } from "react-icons/ri";
-import { FcMoneyTransfer } from "react-icons/fc";
+import { RiMoneyRupeeCircleLine } from "react-icons/ri"
+import { FcMoneyTransfer } from "react-icons/fc"
 import { useAuth } from "../contexts/AuthContext"
-
-
 
 function Accounts() {
   const { employee } = useAuth()
   const tabsContainerRef = useRef(null)
   const activeTabRef = useRef(null)
 
-  // Define available tabs based on employee designation
+  const [activeMainTab, setActiveMainTab] = useState("AccountsManager")
+
+  const allTabs = [
+    { id: "payable", label: "Payables", icon: FcMoneyTransfer, component: Payable },
+    { id: "recievable", label: "Recievables", icon: RiMoneyRupeeCircleLine, component: Recievable },
+    { id: "payable-pi-accountant", label: "My Payables", icon: FcMoneyTransfer, component: PayablePIComponent },
+    { id: "recievable-pi-accountant", label: "My Recievables", icon: RiMoneyRupeeCircleLine, component: AccountantRecievable },
+  ]
+
+  const designation = employee?.designation?.name?.replace(/\s+/g, "-").toLowerCase() || ""
+
+  const isManagement = () => designation.includes("director") || designation.includes("vice-president")
+  const isManager = () => designation.includes("accounts-manager")
+  const isSubordinate = () => designation.includes("accountant")
+
+  const shouldShowMainTabs = () => isManagement() || isManager()
+
+  const getAvailableMainTabs = () => {
+    if (isManagement() || isManager()) return ["AccountsManager", "Accountant"]
+    return []
+  }
+
   const getAvailableTabs = () => {
-    const allTabs = [
-      {
-        id: "payable",
-        label: "Payables",
-        icon: FcMoneyTransfer,
-        component: Payable,
-      },
-      {
-        id: "recievable",
-        label: "Recievables",
-        icon: RiMoneyRupeeCircleLine,
-        component: Recievable,
-      },
-      {
-        id: "payable-pi-accountant",
-        label: "My Payables",
-        icon: FcMoneyTransfer,
-        component: PayablePIComponent,
-      },
-      {
-        id: "recievable-pi-accountant",
-        label: "My Recievables",
-        icon: RiMoneyRupeeCircleLine,
-        component: AccountantRecievable,
-      }
-    ]
-
-    if (!employee) return [allTabs[0]] // Default to unassigned leads if no employee
-    const designation = employee.designation.name.replace(/\s+/g, "-").toLowerCase() || ""
-
-    // Filter tabs based on designation
-    /*  if (designation.includes("director")) {
-       return allTabs // Admin/Manager can see all tabs
-     } else if (designation.includes("sales-team-leader") || designation.includes("leader")) {
-       return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]] // BDM can see unassigned and BDM assigne
-     } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
-       return [allTabs[3], allTabs[4], allTabs[5]] // SSE can see unassigned and SSE assigned
-     } else if (designation.includes("bdm") || designation.includes("business") || designation.includes("development")) {
-       return [allTabs[6]] // BDM can see unassigned and BDM assigned
-     } else {
-       return [allTabs[0]] // Default to just unassigned leads
-     } */
-
-
-    console.log("Designation ----  "+designation)
-
-    if (designation.includes("account-officer")) {
-      return [allTabs[0],allTabs[1]] // BDM can see unassigned and BDM assigne
-    } else if (designation.includes("accountant-assistant")) {
-      return [allTabs[2],allTabs[3]]
-    } else {
-      return []
+    if (!employee) return []
+    if (shouldShowMainTabs()) {
+      if (activeMainTab === "AccountsManager") return [allTabs[0], allTabs[1]]
+      if (activeMainTab === "Accountant") return [allTabs[2], allTabs[3]]
     }
-
+    if (isSubordinate()) return [allTabs[2], allTabs[3]]
+    return []
   }
 
   const availableTabs = getAvailableTabs()
   const validTabIds = availableTabs.map((tab) => tab.id)
+  const availableMainTabs = getAvailableMainTabs()
 
-  // Initialize activeTab from sessionStorage with validation against available tabs
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
-      const savedTab = sessionStorage.getItem("reportsActiveTab")
+      const savedTab = sessionStorage.getItem("accountsActiveTab")
       return validTabIds.includes(savedTab) ? savedTab : validTabIds[0]
     }
     return validTabIds[0]
   })
 
-  // Update sessionStorage when activeTab changes
   useEffect(() => {
-    sessionStorage.setItem("reportsActiveTab", activeTab)
+    sessionStorage.setItem("accountsActiveTab", activeTab)
   }, [activeTab])
 
-  // If active tab is not in available tabs (e.g. after role change), reset to first available
   useEffect(() => {
-    if (!validTabIds.includes(activeTab)) {
-      setActiveTab(validTabIds[0])
-    }
+    if (!validTabIds.includes(activeTab)) setActiveTab(validTabIds[0])
   }, [validTabIds, activeTab])
 
-  // Scroll active tab into view when it changes
+  useEffect(() => {
+    if (shouldShowMainTabs()) setActiveTab(validTabIds[0])
+  }, [activeMainTab])
+
+  useEffect(() => {
+    if (shouldShowMainTabs() && !availableMainTabs.includes(activeMainTab)) {
+      setActiveMainTab(availableMainTabs[0])
+    }
+  }, [availableMainTabs, activeMainTab])
+
   useEffect(() => {
     if (activeTabRef.current && tabsContainerRef.current) {
       const container = tabsContainerRef.current
       const activeElement = activeTabRef.current
-
-      // Calculate position to scroll to
       const scrollLeft = activeElement.offsetLeft - container.offsetWidth / 2 + activeElement.offsetWidth / 2
-
-      // Smooth scroll to the active tab
-      container.scrollTo({
-        left: scrollLeft,
-        behavior: "smooth",
-      })
+      container.scrollTo({ left: scrollLeft, behavior: "smooth" })
     }
   }, [activeTab])
 
-  const handleTabClick = (tabId) => {
-    setActiveTab(tabId)
+  const handleTabClick = (tabId) => setActiveTab(tabId)
+  const handleMainTabClick = (tabName) => setActiveMainTab(tabName)
+
+  const mainTabLabels = {
+    AccountsManager: "Accounts Manager",
+    Accountant: "Accountant",
   }
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Navigation Tabs - Now with horizontal scrolling */}
+      {shouldShowMainTabs() && (
+        <div className="border-b border-gray-200 w-full bg-gray-50">
+          <div className="overflow-x-auto scrollbar-hide">
+            <nav className="flex min-w-max">
+              {availableMainTabs.map((mt) => (
+                <button
+                  key={mt}
+                  onClick={() => handleMainTabClick(mt)}
+                  className={`py-3 sm:py-4 px-4 sm:px-8 border-b-2 font-medium text-sm sm:text-base flex items-center transition-colors duration-200 whitespace-nowrap
+                    ${activeMainTab === mt
+                      ? "border-red-600 text-red-700 bg-red-50"
+                      : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                    }`}
+                >
+                  <span className="font-semibold">{mainTabLabels[mt]}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
+
       <div className="border-b border-gray-200 w-full">
-        <div
-          ref={tabsContainerRef}
-          className="overflow-x-auto scrollbar-hide pb-1"
-          style={{ WebkitOverflowScrolling: "touch" }}
-        >
+        <div ref={tabsContainerRef} className="overflow-x-auto scrollbar-hide pb-1" style={{ WebkitOverflowScrolling: "touch" }}>
           <nav className="flex min-w-max">
             {availableTabs.map((tab) => {
               const Icon = tab.icon
               const isActive = activeTab === tab.id
-
               return (
                 <button
                   key={tab.id}
                   ref={isActive ? activeTabRef : null}
                   onClick={() => handleTabClick(tab.id)}
                   className={`py-3 px-3 sm:px-4 border-b-2 font-medium text-sm flex items-center transition-colors duration-200
-                    ${isActive
-                      ? "border-blue-500 text-blue-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    }`}
+                    ${isActive ? "border-blue-500 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"}`}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
                   <span className="ml-2 whitespace-nowrap">{tab.label}</span>
@@ -156,16 +141,8 @@ function Accounts() {
         </div>
       </div>
 
-      {/* Content Area */}
       <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.2 }}
-          className="w-full"
-        >
+        <motion.div key={activeTab} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.2 }} className="w-full">
           {availableTabs.map((tab) => activeTab === tab.id && <tab.component key={tab.id} />)}
         </motion.div>
       </AnimatePresence>

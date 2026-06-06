@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Fragment } from "react"
 import {
   FiAlertCircle,
   FiCheck,
@@ -15,11 +15,13 @@ import {
 } from "react-icons/fi"
 import { receivableService } from "../../services/receivableService"
 import ProjectManagementModal from "./Accountant/ProjectManagementModal"
+import { employeeService } from "../../services/employeeService"
 
 function BOQModal({ isOpen, onClose, projectId }) {
   const [boqData, setBOQData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [collapsedCategories, setCollapsedCategories] = useState({})
 
   useEffect(() => {
     if (isOpen && projectId) {
@@ -96,62 +98,63 @@ function BOQModal({ isOpen, onClose, projectId }) {
                   <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Product
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Category
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Make
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Qty
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Supply Rate
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Installation Rate
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Supply Amount
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Installation Amount
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Total
-                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Make</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supply Rate</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Installation Rate</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supply Amount</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Installation Amount</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {boqData.items.map((item, index) => (
-                        <tr key={item.id || index} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
-                          <td className="px-4 py-3">
-                            <div className="text-sm font-medium text-gray-900">
-                              {item.productName || "Unknown Product"}
-                            </div>
-                            <div className="text-xs text-gray-500">HSN: {item.hsnCode || "N/A"}</div>
-                            <div className="text-xs text-gray-400">UOM: {item.uom || "N/A"}</div>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">{item.categoryName || "N/A"}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">{item.make || "-"}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">{item.qty || 0}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">₹{item.supplyRate?.toFixed(2) || "0.00"}</td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            ₹{item.installationRate?.toFixed(2) || "0.00"}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            ₹{item.supplyAmount?.toFixed(2) || "0.00"}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-900">
-                            ₹{item.installationAmount?.toFixed(2) || "0.00"}
-                          </td>
-                          <td className="px-4 py-3 text-sm font-semibold text-gray-900">
-                            ₹{item.total?.toFixed(2) || "0.00"}
-                          </td>
-                        </tr>
+                      {Object.entries(
+                        boqData.items.reduce((groups, item) => {
+                          const cat = item.categoryName || "Uncategorized"
+                          if (!groups[cat]) groups[cat] = []
+                          groups[cat].push(item)
+                          return groups
+                        }, {}),
+                      ).map(([categoryName, categoryItems]) => (
+                        <Fragment key={categoryName}>
+                          <tr
+                            className="bg-gray-100 cursor-pointer hover:bg-gray-200 transition-colors"
+                            onClick={() =>
+                              setCollapsedCategories((prev) => ({
+                                ...prev,
+                                [categoryName]: !prev[categoryName],
+                              }))
+                            }
+                          >
+                            <td colSpan="8" className="px-4 py-2 text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                              <div className="flex items-center gap-2">
+                                <FiChevronRight
+                                  size={16}
+                                  className={`transition-transform ${collapsedCategories[categoryName] ? "" : "rotate-90"}`}
+                                />
+                                {categoryName} ({categoryItems.length} {categoryItems.length === 1 ? "item" : "items"})
+                              </div>
+                            </td>
+                          </tr>
+                          {!collapsedCategories[categoryName] &&
+                            categoryItems.map((item, index) => (
+                              <tr key={item.id || index}>
+                                <td className="px-4 py-3">
+                                  <div className="text-sm font-medium text-gray-900">{item.productName || "Unknown Product"}</div>
+                                  <div className="text-xs text-gray-500">HSN: {item.hsnCode || "N/A"}</div>
+                                  <div className="text-xs text-gray-400">UOM: {item.uom || "N/A"}</div>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-900">{item.make || "-"}</td>
+                                <td className="px-4 py-3 text-sm text-gray-900">{item.qty || 0}</td>
+                                <td className="px-4 py-3 text-sm text-gray-900">₹{item.supplyRate?.toFixed(2) || "0.00"}</td>
+                                <td className="px-4 py-3 text-sm text-gray-900">₹{item.installationRate?.toFixed(2) || "0.00"}</td>
+                                <td className="px-4 py-3 text-sm text-gray-900">₹{item.supplyAmount?.toFixed(2) || "0.00"}</td>
+                                <td className="px-4 py-3 text-sm text-gray-900">₹{item.installationAmount?.toFixed(2) || "0.00"}</td>
+                                <td className="px-4 py-3 text-sm font-semibold text-gray-900">₹{item.total?.toFixed(2) || "0.00"}</td>
+                              </tr>
+                            ))}
+                        </Fragment>
                       ))}
                     </tbody>
                   </table>
@@ -184,7 +187,7 @@ function AssignAssistantModal({ isOpen, onClose, projectId, onAssign }) {
   const fetchAssistants = async () => {
     try {
       setLoading(true)
-      const data = await receivableService.getAssistants()
+      const data = await employeeService.getAssignableList("Accountant")
       setAssistants(data)
     } catch (err) {
       setError("Failed to fetch assistants")

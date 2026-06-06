@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { comparisonSheetService } from "../../services/comparisonSheetService"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { useAuth } from "../../contexts/AuthContext"
+import { employeeService } from "../../services/employeeService" //added by Atharva
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -45,7 +46,8 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
   useEffect(() => {
     const loadPurchasers = async () => {
       try {
-        const purchaserList = await comparisonSheetService.getPurchasers()
+        const purchaserList = await employeeService.getAssignableList("Purchaser")
+        console.log("PURCHASER LIST:", purchaserList)   // <-- add this line
         setPurchasers(purchaserList)
       } catch (error) {
         console.error("Error fetching purchasers:", error)

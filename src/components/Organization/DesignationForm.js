@@ -3,23 +3,32 @@ import { motion } from "framer-motion";
 import { FiX, FiAlertCircle } from "react-icons/fi";
 import { authService } from "../../services/authService";
 import { designationService } from "../../services/designationService";
+import { departmentService } from "../../services/departmentService";
 
 function DesignationForm({ designation, designations, orgId, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
     name: "",
-    parentDesignation: null,
+    department: null,
     org: {
       id: authService.getUser().orgId,
     },
   })
+  const [departments, setDepartments] = useState([])
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    departmentService
+      .getDepartmentsByOrgId(authService.getUser().orgId)
+      .then((data) => setDepartments(data))
+      .catch(() => setDepartments([]))
+  }, [])
 
   useEffect(() => {
     if (designation) {
       setFormData({
         ...designation,
-        parentDesignation: designation.parentDesignation?.id || null,
+        department: designation.department?.id ? { id: designation.department.id } : null,
       })
     }
   }, [designation])
@@ -28,7 +37,7 @@ function DesignationForm({ designation, designations, orgId, onClose, onSubmit }
     const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "parentDesignation" ? (value ? { id: value } : null) : value,
+      [name]: name === "department" ? (value ? { id: value } : null) : value,
     }))
     if (error) setError("")
   }
@@ -39,7 +48,7 @@ function DesignationForm({ designation, designations, orgId, onClose, onSubmit }
     setError("")
 
     try {
-      const res = designationService[designation ? "updateDesignation" : "createDesignation"](formData);
+      await designationService[designation ? "updateDesignation" : "createDesignation"](formData);
       await onSubmit()
       onClose()
     } catch (err) {
@@ -96,21 +105,22 @@ function DesignationForm({ designation, designations, orgId, onClose, onSubmit }
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Parent Designation</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Department <span className="text-red-500">*</span>
+            </label>
             <select
-              name="parentDesignation"
-              value={formData.parentDesignation?.id || ""}
+              name="department"
+              required
+              value={formData.department?.id || ""}
               onChange={handleChange}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
             >
-              <option value="">None</option>
-              {designations
-                .filter((desig) => desig.id !== designation?.id)
-                .map((desig) => (
-                  <option key={desig.id} value={desig.id}>
-                    {desig.name}
-                  </option>
-                ))}
+              <option value="">Select Department</option>
+              {departments.map((dept) => (
+                <option key={dept.id} value={dept.id}>
+                  {dept.name}
+                </option>
+              ))}
             </select>
           </div>
 
