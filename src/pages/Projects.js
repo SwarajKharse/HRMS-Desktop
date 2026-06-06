@@ -6,7 +6,7 @@ import NewProjects from "../components/Projects/NewProjects"
 import ProjectMaterialRequisition from "../components/Projects/ProjectMaterialRequisition"
 import SiteEngineerProjects from "../components/Projects/SiteEngineerProjects"
 import { GrWorkshop } from "react-icons/gr"
-import { SiMaterialformkdocs } from "react-icons/si";
+import { SiMaterialformkdocs } from "react-icons/si"
 import { useAuth } from "../contexts/AuthContext"
 
 function Projects() {
@@ -14,107 +14,110 @@ function Projects() {
   const tabsContainerRef = useRef(null)
   const activeTabRef = useRef(null)
 
-  // Define available tabs based on employee designation
+  const [activeMainTab, setActiveMainTab] = useState("ProjectManager")
+
+  const allTabs = [
+    { id: "new-projects", label: "New Projects", icon: GrWorkshop, component: NewProjects },
+    { id: "projects-mtrs", label: "Projects Material Requisitions", icon: SiMaterialformkdocs, component: ProjectMaterialRequisition },
+    { id: "site-engineer-projects", label: "My Projects", icon: GrWorkshop, component: SiteEngineerProjects },
+  ]
+
+  const designation = employee?.designation?.name?.replace(/\s+/g, "-").toLowerCase() || ""
+
+  const isManagement = () => designation.includes("director") || designation.includes("vice-president")
+  const isManager = () => designation.includes("project-manager")
+  const isSubordinate = () => designation.includes("site-engineer")
+
+  const shouldShowMainTabs = () => isManagement() || isManager()
+
+  const getAvailableMainTabs = () => {
+    if (isManagement() || isManager()) return ["ProjectManager", "SiteEngineer"]
+    return []
+  }
+
   const getAvailableTabs = () => {
-    const allTabs = [
-      {
-        id: "new-projects",
-        label: "New Projects",
-        icon: GrWorkshop,
-        component: NewProjects,
-      },
-      {
-        id: "projects-mtrs",
-        label: "Projects Material Requisitions",
-        icon: SiMaterialformkdocs,
-        component: ProjectMaterialRequisition,
-      },
-      {
-        id: "site-engineer-projects",
-        label: "My Projects",
-        icon: GrWorkshop,
-        component: SiteEngineerProjects,
-      }
-    ]
-
-    if (!employee) return [allTabs[0]] // Default to unassigned leads if no employee
-    const designation = employee.designation.name.replace(/\s+/g, "-").toLowerCase() || ""
-
-
-    console.log(designation)
-
-    if (designation.includes("project-manager")) {
-      return [allTabs[0],allTabs[1]] // Admin/Manager can see all tabs
-    } else if (designation.includes("sr.-site-engineer")) {
-      return [allTabs[2]]
-    } else {
-      return []
+    if (!employee) return []
+    if (shouldShowMainTabs()) {
+      if (activeMainTab === "ProjectManager") return [allTabs[0], allTabs[1]]
+      if (activeMainTab === "SiteEngineer") return [allTabs[2]]
     }
-
-    // Filter tabs based on designation
-   /*  if (designation.includes("director")) {
-      return allTabs // Admin/Manager can see all tabs
-    } else if (designation.includes("sales-team-leader") || designation.includes("leader")) {
-      return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]] // BDM can see unassigned and BDM assigne
-    } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
-      return [allTabs[3], allTabs[4], allTabs[5]] // SSE can see unassigned and SSE assigned
-    } else if (designation.includes("bdm") || designation.includes("business") || designation.includes("development")) {
-      return [allTabs[6]] // BDM can see unassigned and BDM assigned
-    } else {
-      return [allTabs[0]] // Default to just unassigned leads
-    } */
-    
-    return allTabs
+    if (isSubordinate()) return [allTabs[2]]
+    return []
   }
 
   const availableTabs = getAvailableTabs()
   const validTabIds = availableTabs.map((tab) => tab.id)
+  const availableMainTabs = getAvailableMainTabs()
 
-  // Initialize activeTab from sessionStorage with validation against available tabs
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
-      const savedTab = sessionStorage.getItem("reportsActiveTab")
+      const savedTab = sessionStorage.getItem("projectsActiveTab")
       return validTabIds.includes(savedTab) ? savedTab : validTabIds[0]
     }
     return validTabIds[0]
   })
 
-  // Update sessionStorage when activeTab changes
   useEffect(() => {
-    sessionStorage.setItem("reportsActiveTab", activeTab)
+    sessionStorage.setItem("projectsActiveTab", activeTab)
   }, [activeTab])
 
-  // If active tab is not in available tabs (e.g. after role change), reset to first available
   useEffect(() => {
-    if (!validTabIds.includes(activeTab)) {
-      setActiveTab(validTabIds[0])
-    }
+    if (!validTabIds.includes(activeTab)) setActiveTab(validTabIds[0])
   }, [validTabIds, activeTab])
 
-  // Scroll active tab into view when it changes
+  useEffect(() => {
+    if (shouldShowMainTabs()) setActiveTab(validTabIds[0])
+  }, [activeMainTab])
+
+  useEffect(() => {
+    if (shouldShowMainTabs() && !availableMainTabs.includes(activeMainTab)) {
+      setActiveMainTab(availableMainTabs[0])
+    }
+  }, [availableMainTabs, activeMainTab])
+
   useEffect(() => {
     if (activeTabRef.current && tabsContainerRef.current) {
       const container = tabsContainerRef.current
       const activeElement = activeTabRef.current
-
-      // Calculate position to scroll to
       const scrollLeft = activeElement.offsetLeft - container.offsetWidth / 2 + activeElement.offsetWidth / 2
-
-      // Smooth scroll to the active tab
-      container.scrollTo({
-        left: scrollLeft,
-        behavior: "smooth",
-      })
+      container.scrollTo({ left: scrollLeft, behavior: "smooth" })
     }
   }, [activeTab])
 
-  const handleTabClick = (tabId) => {
-    setActiveTab(tabId)
+  const handleTabClick = (tabId) => setActiveTab(tabId)
+  const handleMainTabClick = (tabName) => setActiveMainTab(tabName)
+
+  const mainTabLabels = {
+    ProjectManager: "Project Manager",
+    SiteEngineer: "Site Engineer",
   }
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Navigation Tabs - Now with horizontal scrolling */}
+      {/* Main Tabs - only for manager / management */}
+      {shouldShowMainTabs() && (
+        <div className="border-b border-gray-200 w-full bg-gray-50">
+          <div className="overflow-x-auto scrollbar-hide">
+            <nav className="flex min-w-max">
+              {availableMainTabs.map((mt) => (
+                <button
+                  key={mt}
+                  onClick={() => handleMainTabClick(mt)}
+                  className={`py-3 sm:py-4 px-4 sm:px-8 border-b-2 font-medium text-sm sm:text-base flex items-center transition-colors duration-200 whitespace-nowrap
+                    ${activeMainTab === mt
+                      ? "border-red-600 text-red-700 bg-red-50"
+                      : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
+                    }`}
+                >
+                  <span className="font-semibold">{mainTabLabels[mt]}</span>
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+      )}
+
+      {/* Sub Tabs */}
       <div className="border-b border-gray-200 w-full">
         <div
           ref={tabsContainerRef}
@@ -125,17 +128,15 @@ function Projects() {
             {availableTabs.map((tab) => {
               const Icon = tab.icon
               const isActive = activeTab === tab.id
-
               return (
                 <button
                   key={tab.id}
                   ref={isActive ? activeTabRef : null}
                   onClick={() => handleTabClick(tab.id)}
                   className={`py-3 px-3 sm:px-4 border-b-2 font-medium text-sm flex items-center transition-colors duration-200
-                    ${
-                      isActive
-                        ? "border-blue-500 text-blue-600"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    ${isActive
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                     }`}
                 >
                   <Icon className="w-4 h-4 flex-shrink-0" />
@@ -147,7 +148,7 @@ function Projects() {
         </div>
       </div>
 
-      {/* Content Area */}
+      {/* Content */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab}

@@ -194,7 +194,7 @@ function OrganizationSettings() {
                   )}
                   {activeTab !== "roles" && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Parent {activeTab === "departments" ? "Department" : "Designation"}
+                      {activeTab === "departments" ? "Parent Department" : "Department"}
                     </th>
                   )}
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -246,7 +246,7 @@ function OrganizationSettings() {
                       <motion.tr key={desig.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{desig.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {desig.parentDesignation?.name || "-"}
+                          {desig.department?.name || "—"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button

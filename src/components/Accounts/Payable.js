@@ -5,6 +5,7 @@ import { financePayableService } from "../../services/financePayableService"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { useAuth } from "../../contexts/AuthContext"
 import PODetailsModal from "../Purchase/PurchaserComponents/PODetailsModal"
+import { employeeService } from "../../services/employeeService"
 
 const formatDate = (d) => {
   if (!d) return "N/A"
@@ -33,7 +34,7 @@ function AssignAccountantCell({ po, onAssigned }) {
   const [assigned, setAssigned] = useState(false)
 
   useEffect(() => {
-    purchaseInvoiceService.getAccountants()
+    employeeService.getAssignableList("Accountant")
       .then(setAccountants)
       .catch(() => setAccountants([]))
   }, [])

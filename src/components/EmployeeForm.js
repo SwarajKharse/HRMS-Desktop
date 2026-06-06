@@ -114,8 +114,16 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
   const handleChange = (e) => {
     const { name, value } = e.target
 
-    // Handle department and designation select changes
-    if (name === "department" || name === "designation" || name === "reportingManager") {
+   // Handle department and designation select changes
+    if (name === "department") {
+      // changing department clears designation — the old one may not
+      // belong to the newly selected department
+      setFormData((prev) => ({
+        ...prev,
+        department: { id: value || null },
+        designation: { id: null },
+      }))
+    } else if (name === "designation" || name === "reportingManager") {
       setFormData((prev) => ({
         ...prev,
         [name]: {
@@ -163,6 +171,14 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
       setLoading(false);
     }
   };
+   
+   // Show only designations belonging to the selected department.
+    const selectedDeptId = formData.department.id;
+    const filteredDesignations = selectedDeptId
+      ? designations.filter(
+          (desig) => String(desig.department?.id) === String(selectedDeptId)
+        )
+      : [];
 
   return (
     <motion.div
@@ -437,10 +453,13 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   name="designation"
                   value={formData.designation.id || ""}
                   onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                  disabled={!formData.department.id}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-100"
                 >
-                  <option value="">Select Designation</option>
-                  {designations.map((desig) => (
+                  <option value="">
+                    {formData.department.id ? "Select Designation" : "Select a department first"}
+                  </option>
+                  {filteredDesignations.map((desig) => (
                     <option key={desig.id} value={desig.id}>
                       {desig.name}
                     </option>

@@ -5,6 +5,7 @@ import { FiX } from "react-icons/fi"
 import { leadService } from "../../services/leadService"
 import { projectService } from "../../services/projectService"
 import { useAuth } from "../../contexts/AuthContext"
+import { employeeService } from "../../services/employeeService"
 
 const ExpandableSection = ({ title, isExpanded, onToggle, children, bgColor, borderColor, headerTextColor }) => (
   <div className={`rounded-lg border-2 ${borderColor} overflow-hidden shadow-sm`}>
@@ -92,7 +93,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
             leadService.getLeadTypeList(),
             leadService.getLeadProductTypeList(),
             projectService.getProjectManagerList(),
-            projectService.getSiteEngineerList(),
+            employeeService.getAssignableList("Site Engineer"),
           ])
 
         setLead(leadDetails)

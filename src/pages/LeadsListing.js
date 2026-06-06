@@ -202,7 +202,7 @@ function LeadsListing() {
                         : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300"
                     }`}
                 >
-                  <span className="font-semibold">Sales Team Leader</span>
+                  <span className="font-semibold">Sales Team Lead</span>
                 </button>
               )}
               {availableMainTabs.includes("SSE") && (

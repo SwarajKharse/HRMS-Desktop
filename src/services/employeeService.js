@@ -56,11 +56,40 @@ export const employeeService = {
   getManagerList : async (designation) => {
     try {
       const user = authService.getUser();
-      const response = await axios.get(`${BASE_URL}/manager/${user.orgId}/${designation}`, getAuthHeaders());
+      const response = await axios.get(`${BASE_URL}/manager/${user.orgId}/${encodeURIComponent(designation)}`, getAuthHeaders());
       return response.data;
     } catch (error) {
       throw error.response?.data || error.message;
     }
+  },
+
+  // Everyone who can be ASSIGNED to a role: the role itself plus the higher
+  // roles allowed to act as it. Built on getManagerList, so no backend change.
+  getAssignableList: async (role) => {
+    const ASSIGNABLE = {
+      "Sales Support Engineer": ["Sales Support Engineer", "Sales Team Lead"],
+      "Business Development Manager": [
+        "Business Development Manager", "Sales Team Lead", "Techno Commercial Head",
+        "Site Engineer", "Project Manager", "Managing Director", "Vice President",
+      ],
+      "Purchaser": ["Purchaser", "Purchase Manager"],
+      "Site Engineer": ["Site Engineer", "Project Manager"],
+      "Accountant": ["Accountant", "Accounts Manager"],
+      "Store Incharge": ["Store Incharge", "Store Manager"],
+    };
+    const designations = ASSIGNABLE[role] || [role];
+    const lists = await Promise.all(
+      designations.map((d) => employeeService.getManagerList(d).catch(() => []))
+    );
+    const seen = new Set();
+    const merged = [];
+    lists.flat().forEach((emp) => {
+      if (emp && !seen.has(emp.id)) {
+        seen.add(emp.id);
+        merged.push(emp);
+      }
+    });
+    return merged;
   },
 
   deleteEmployee: async (id) => {

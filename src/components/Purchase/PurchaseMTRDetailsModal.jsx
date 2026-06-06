@@ -5,7 +5,9 @@ import { motion, AnimatePresence } from "framer-motion"
 import { comparisonSheetService } from "../../services/comparisonSheetService"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { materialRequisitionService } from "../../services/materialRequisitionService"
+import { employeeService } from "../../services/employeeService"
 import { useAuth } from "../../contexts/AuthContext"
+
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -83,7 +85,8 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
   useEffect(() => {
     const loadPurchasers = async () => {
       try {
-        const purchaserList = await comparisonSheetService.getPurchasers()
+        const purchaserList = await employeeService.getAssignableList("Purchaser")
+        console.log("PURCHASER LIST:", purchaserList)
         setPurchasers(purchaserList)
       } catch (error) {
         console.error("Error fetching purchasers:", error)
