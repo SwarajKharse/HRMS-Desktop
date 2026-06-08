@@ -199,7 +199,7 @@ function Navbar({userData}) {
     >
       {isMobile && (
         <div className="relative min-h-[52px] border-gray-700 flex items-center justify-center mr-2">
-          {userData.org.logoUrl ? (
+          {userData?.org?.logoUrl ? (
             <img src={userData?.org?.logoUrl} alt="logo" className="h-16" />
           ) : (
             <div className="flex items-center justify-center rounded-full bg-gray-300 text-gray-800 h-14 w-14">
@@ -237,7 +237,7 @@ function Navbar({userData}) {
           >
             <NotificationsPanel setActiveDropdown={setActiveDropdown} />
           </Dropdown> */}
-          <NotificationBell userId={userData.id} />
+          <NotificationBell userId={userData?.id} />
         </div>
 
         {permissions?.webSettings && (
