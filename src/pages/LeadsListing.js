@@ -69,9 +69,9 @@ function LeadsListing() {
 
     const designation = employee.designation.name.replace(/\s+/g, "-").toLowerCase()
     return (
-      designation.includes("sales-team-leader") ||
-      designation.includes("sales-manager") ||
-      designation.includes("leader")
+      designation.includes("sales-team-lead") ||
+      designation.includes("techno-commercial-head") ||
+      designation.includes("sales-manager")
     )
   }
 
