@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import NewProjects from "../components/Purchase/NewProjects"
 import MaterialRequisitionPurchase from "../components/Purchase/MaterialRequisitionPurchase"
 import ComparisionSheetPurchaser from "../components/Purchase/PurchaserComponents/ComparisionSheetPurchaser"
+import MyAssignedMaterialRequisitions from "../components/Purchase/PurchaserComponents/MyAssignedMaterialRequisitions"
 import POUploadPurchaser from "../components/Purchase/PurchaserComponents/POUploadPurchaser"
 import PIUploadPurchaser from "../components/Purchase/PurchaserComponents/PIUploadTab"
 import POManagementGrid from "../components/Purchase/POManagementGrid"
@@ -23,6 +24,7 @@ function Projects() {
     { id: "new-projects", label: "Projects", icon: GrWorkshop, component: NewProjects },
     { id: "material-requisition-purchase", label: "Material Requisitions", icon: GrWorkshop, component: MaterialRequisitionPurchase },
     { id: "po-details-purchasemanager", label: "PO List", icon: GiBuyCard, component: POManagementGrid },
+    { id: "my-material-requisitions-purchaser", label: "My Material Requisitions", icon: GrWorkshop, component: MyAssignedMaterialRequisitions },
     { id: "comparision-sheet-purchaser", label: "Comparision Sheet", icon: GrWorkshop, component: ComparisionSheetPurchaser },
     { id: "po-upload-purchaser", label: "PO Upload", icon: GrWorkshop, component: POUploadPurchaser },
     { id: "pi-upload-purchaser", label: "PI Upload", icon: GrWorkshop, component: PIUploadPurchaser },
@@ -45,9 +47,9 @@ function Projects() {
     if (!employee) return []
     if (shouldShowMainTabs()) {
       if (activeMainTab === "PurchaseManager") return [allTabs[0], allTabs[1], allTabs[2]]
-      if (activeMainTab === "Purchaser") return [allTabs[3], allTabs[4], allTabs[5]]
+      if (activeMainTab === "Purchaser") return [allTabs[3], allTabs[5]]
     }
-    if (isSubordinate()) return [allTabs[3], allTabs[4], allTabs[5]]
+    if (isSubordinate()) return [allTabs[3], allTabs[5]]
     return []
   }
 

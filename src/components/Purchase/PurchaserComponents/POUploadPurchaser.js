@@ -33,9 +33,8 @@ const StatusBadge = ({ status }) => {
 function PIUploadModal({ isOpen, onClose, po, onSuccess }) {
   const { user } = useAuth()
   const [piFile, setPIFile] = useState(null)
-  const [shareStatus, setShareStatus] = useState("")
   const [payableAmount, setPayableAmount] = useState("")
-  const [selectedProjectName, setSelectedProjectName] = useState("")
+  const [selectedProjectNames, setSelectedProjectNames] = useState([])
   const [expectedPaymentDate, setExpectedPaymentDate] = useState("")
   const [remarks, setRemarks] = useState("")
   const [projectNames, setProjectNames] = useState([])
@@ -60,16 +59,15 @@ function PIUploadModal({ isOpen, onClose, po, onSuccess }) {
 
   const resetForm = () => {
     setPIFile(null)
-    setShareStatus("")
     setPayableAmount("")
-    setSelectedProjectName("")
+    setSelectedProjectNames([])
     setExpectedPaymentDate("")
     setRemarks("")
     setError(null)
   }
 
   const handleSubmit = async () => {
-    if (!piFile || !shareStatus || !payableAmount || !selectedProjectName || !expectedPaymentDate) {
+    if (!piFile || selectedProjectNames.length === 0 || !payableAmount || !expectedPaymentDate) {
       setError("Please fill in all required fields")
       return
     }
@@ -78,9 +76,8 @@ function PIUploadModal({ isOpen, onClose, po, onSuccess }) {
       setError(null)
       const formData = new FormData()
       formData.append("file", piFile)
-      formData.append("shareStatus", shareStatus)
       formData.append("payableAmount", payableAmount)
-      formData.append("projectName", selectedProjectName)
+      formData.append("projectName", selectedProjectNames.join(", "))
       formData.append("expectedPaymentDate", expectedPaymentDate)
       formData.append("remarks", remarks)
       formData.append("poId", po.id)
@@ -131,26 +128,23 @@ function PIUploadModal({ isOpen, onClose, po, onSuccess }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Share Status <span className="text-red-500">*</span></label>
-            <select value={shareStatus} onChange={(e) => setShareStatus(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={uploading}>
-              <option value="">Select Status</option>
-              <option value="SHARED">Shared</option>
-              <option value="NOT_SHARED">Not Shared</option>
-            </select>
-          </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Payable Amount <span className="text-red-500">*</span></label>
+              <input type="number" step="0.01" value={payableAmount} onChange={(e) => setPayableAmount(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" placeholder="0.00" disabled={uploading} />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Payable Amount <span className="text-red-500">*</span></label>
-            <input type="number" step="0.01" value={payableAmount} onChange={(e) => setPayableAmount(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" placeholder="0.00" disabled={uploading} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project Name <span className="text-red-500">*</span></label>
-            <select value={selectedProjectName} onChange={(e) => setSelectedProjectName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={uploading}>
-              <option value="">Select Project</option>
-              {projectNames.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Project Name(s) <span className="text-red-500">*</span></label>
+              <select
+                multiple
+                value={selectedProjectNames}
+                onChange={(e) => setSelectedProjectNames(Array.from(e.target.selectedOptions, (opt) => opt.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-32"
+                disabled={uploading}
+              >
+                {projectNames.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</p>
+            </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Expected Payment Date <span className="text-red-500">*</span></label>
@@ -374,7 +368,12 @@ function UploadPOModal({ isOpen, onClose, onSuccess, user }) {
       setUploading(true)
       const formData = new FormData()
       formData.append("file", poFile)
-      selectedMTRs.forEach((id) => formData.append("mtrIds", id))
+      selectedMTRs.forEach((id) => {
+        formData.append("mtrIds", id)
+        const matched = mtrs.find((m) => m.id === id)
+        const itemKind = matched && (matched.type || "").toUpperCase() === "BILLABLE" ? "BILLABLE" : "CATEGORY"
+        formData.append("itemKinds", itemKind)
+      })
       formData.append("vendorName", selectedVendor)
       formData.append("uploadedBy", user?.userId || 1)
       formData.append("poNumber", poNumber.trim())
@@ -566,45 +565,39 @@ const POUploadPurchaser = () => {
       const poMap = new Map()
 
       rawList.forEach((po) => {
-        const key = po.poNumber
+          const key = po.poNumber
 
-        // Extract project name from mtrCode: "MTR-testclientfor1501testflow-1" → clean up
-        // The boqMtr doesn't have projectName directly, so we derive it from mtrCode
-        // mtrCode format: MTR-{projectidentifier}-{number}
-        const mtrCode = po.boqMtr?.mtrCode || ""
-        // Try to get a readable project name from mtrCode by removing "MTR-" prefix and trailing "-N"
-        const derivedProject = mtrCode
-          ? mtrCode.replace(/^MTR-/, "").replace(/-\d+$/, "").replace(/-/g, " ").trim()
-          : null
+          const mtrCode = po.boqMtr?.mtrCode || ""
+          const actualProject = po.projectName || po.boqMtr?.projectName || null
 
-        if (!poMap.has(key)) {
-          poMap.set(key, {
-            ...po,
-            // Use the highest id entry as the "latest" PO for this poNumber
-            projectNames: derivedProject ? [derivedProject] : [],
-            mtrCodes: mtrCode ? [mtrCode] : [],
-            allMTRIds: [po.id],
-            allMTRData: [po],
-          })
-        } else {
-          const existing = poMap.get(key)
-          // Keep the entry with the highest id (latest)
-          const latest = po.id > existing.id ? po : existing
-          // Merge project names — avoid duplicates
-          const mergedProjects = [...new Set([
-            ...existing.projectNames,
-            ...(derivedProject ? [derivedProject] : []),
-          ])]
-          const mergedMTRCodes = [...new Set([...existing.mtrCodes, ...(mtrCode ? [mtrCode] : [])])]
-          poMap.set(key, {
-            ...latest,
-            projectNames: mergedProjects,
-            mtrCodes: mergedMTRCodes,
-            allMTRIds: [...existing.allMTRIds, po.id],
-            allMTRData: [...existing.allMTRData, po],
-          })
-        }
-      })
+          if (!poMap.has(key)) {
+            poMap.set(key, {
+              ...po,
+              // Use the highest id entry as the "latest" PO for this poNumber
+              projectNames: actualProject ? [actualProject] : [],
+              mtrCodes: mtrCode ? [mtrCode] : [],
+              allMTRIds: [po.id],
+              allMTRData: [po],
+            })
+          } else {
+            const existing = poMap.get(key)
+            // Keep the entry with the highest id (latest)
+            const latest = po.id > existing.id ? po : existing
+            // Merge project names — avoid duplicates
+            const mergedProjects = [...new Set([
+              ...existing.projectNames,
+              ...(actualProject ? [actualProject] : []),
+            ])]
+            const mergedMTRCodes = [...new Set([...existing.mtrCodes, ...(mtrCode ? [mtrCode] : [])])]
+            poMap.set(key, {
+              ...latest,
+              projectNames: mergedProjects,
+              mtrCodes: mergedMTRCodes,
+              allMTRIds: [...existing.allMTRIds, po.id],
+              allMTRData: [...existing.allMTRData, po],
+            })
+          }
+        })
 
       const grouped = Array.from(poMap.values())
       // Sort by latest createdAt descending

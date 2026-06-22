@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import NewProjects from "../components/StoreManagement/NewProjects"
-import MaterialRequisitions from "../components/StoreManagement/MaterialRequisitions"
-import StoreInchargeMaterialRequisition from "../components/StoreManagement/StoreIncharge/StoreInchargeMaterialRequisition"
-import DCQtyList from "../components/StoreManagement/DCQtyList"
+import StoreMaterialRequisitions from "../components/StoreManagement/StoreMaterialRequisitions"
+import StoreInchargeMaterialRequisitionNew from "../components/StoreManagement/StoreIncharge/StoreInchargeMaterialRequisitionNew"
+import DeliveryChallan from "../components/StoreManagement/DeliveryChallan"
 import { GrWorkshop } from "react-icons/gr"
 import { useAuth } from "../contexts/AuthContext"
 import { TbTruckDelivery } from "react-icons/tb"
@@ -19,9 +19,9 @@ function Projects() {
 
   const allTabs = [
     { id: "new-projects", label: "New Projects", icon: GrWorkshop, component: NewProjects },
-    { id: "mtr", label: "MaterialRequisitions", icon: GrWorkshop, component: MaterialRequisitions },
-    { id: "dc-qty-list-store-manager", label: "DC Quantities", icon: TbTruckDelivery, component: DCQtyList },
-    { id: "store-incharge-mtr", label: "My MaterialRequisitions", icon: GrWorkshop, component: StoreInchargeMaterialRequisition },
+    { id: "mtr", label: "Material Requisitions", icon: GrWorkshop, component: StoreMaterialRequisitions },
+    { id: "dc-qty-list-store-manager", label: "DC Quantities", icon: TbTruckDelivery, component: DeliveryChallan },
+    { id: "store-incharge-mtr", label: "My Material Requisitions", icon: GrWorkshop, component: StoreInchargeMaterialRequisitionNew },
   ]
 
   const designation = employee?.designation?.name?.replace(/\s+/g, "-").toLowerCase() || ""

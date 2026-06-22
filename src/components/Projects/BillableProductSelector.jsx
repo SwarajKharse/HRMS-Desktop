@@ -142,8 +142,9 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
           leadProductTypeId: categoryId, // This is the leadProductType ID
           leadProductTypeLabel: categoryName, // Ensure this is set for existing items
           categoryInfo: item.categoryInfo, // Use the categoryInfo directly from the item
-          isExisting: true, // Flag to mark as an existing item
-          isNewBoqItem: false, // Explicitly false for existing items
+          salestlApprovalStatus: item.salestlApprovalStatus || "PENDING",
+          isExisting: true,
+          isNewBoqItem: false,
         }
         console.log("BPS: Final product_name for existing item:", product.product_name)
         console.log("BPS: Final categoryInfo for existing item:", product.categoryInfo)
@@ -353,6 +354,11 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
   }
 
   const handleRemoveProduct = (categoryId, productId) => {
+    const product = (selectedProductsByCategory[categoryId] || []).find((p) => p.id === productId)
+    if (product && (product.salestlApprovalStatus || "").toUpperCase() === "APPROVED") {
+      alert("Cannot delete — this item is approved by Sales TL.")
+      return
+    }
     setSelectedProductsByCategory((prev) => {
       const updatedCategory = prev[categoryId].filter((product) => product.id !== productId)
       if (updatedCategory.length === 0) {

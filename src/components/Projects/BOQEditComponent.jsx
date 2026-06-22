@@ -18,6 +18,7 @@ import {
 import { AiOutlineArrowDown, AiOutlineArrowUp } from "react-icons/ai"
 import { motion, AnimatePresence } from "framer-motion"
 import BillableProductSelector from "./BillableProductSelector"
+import CreateRequisition from "./CreateRequisition"
 import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
 import { leadService } from "../../services/leadService"
@@ -31,8 +32,10 @@ function BOQEditComponent({
   currentUserId,
   project,
   onBOQUpdate,
+  readOnly = false,
 }) {
   const [showAddProductModal, setShowAddProductModal] = useState(false)
+  const [showRequisitionModal, setShowRequisitionModal] = useState(false)
   const [boqProducts, setBOQProducts] = useState([])
   const [availableSkillsets, setAvailableSkillsets] = useState([])
   const [availableTools, setAvailableTools] = useState([])
@@ -41,6 +44,7 @@ function BOQEditComponent({
   const [expandedProducts, setExpandedProducts] = useState({})
   const [expandedProductTypes, setExpandedProductTypes] = useState({})
   const [selectedProductTab, setSelectedProductTab] = useState({})
+  const [openCat, setOpenCat] = useState({})
   const [expandedMTRForms, setExpandedMTRForms] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -59,6 +63,15 @@ function BOQEditComponent({
   // const [toolsSearchTerm, setToolsSearchTerm] = useState("")
   // const [selectedSkillSets, setSelectedSkillSets] = useState([])
   // const [selectedTools, setSelectedTools] = useState([])
+
+  const currentUserData = (() => {
+    try { return JSON.parse(localStorage.getItem("userData")) } catch { return null }
+  })()
+  const userDesignation = (currentUserData?.designation?.name || "").toLowerCase()
+  const canApprove =
+    userDesignation.includes("project manager") ||
+    userDesignation.includes("director") ||
+    userDesignation.includes("vice president")
 
   const refetchBOQData = async () => {
     try {
@@ -236,7 +249,7 @@ function BOQEditComponent({
         setLeadProductTypes(productTypesData)
 
         // Fetch Skillsets
-        const skillsetsResponse = await storeService.getSkillSets() // FIX: Changed getSkillsets to getSkillSets
+        const skillsetsResponse = await storeService.getSkillSets(0, 1000) // FIX: Changed getSkillsets to getSkillSets
         console.log("[v0] Skillsets response:", skillsetsResponse)
         let skillsetsData = []
         if (skillsetsResponse && Array.isArray(skillsetsResponse.content)) {
@@ -259,7 +272,7 @@ function BOQEditComponent({
         setAvailableSkillsets(skillsetsData)
 
         // Fetch Tools
-        const toolsResponse = await storeService.getTools()
+        const toolsResponse = await storeService.getTools(0, 1000)
         console.log("[v0] Tools response:", toolsResponse)
         let toolsData = []
         if (toolsResponse && Array.isArray(toolsResponse.content)) {
@@ -282,7 +295,7 @@ function BOQEditComponent({
         setAvailableTools(toolsData)
 
         // Fetch All Products for Non-Billable
-        const allProductsResponse = await storeService.getProducts()
+        const allProductsResponse = await storeService.getProductsList()
         console.log("[v0] All products response:", allProductsResponse)
         let allProductsData = []
         if (allProductsResponse && Array.isArray(allProductsResponse.content)) {
@@ -551,6 +564,7 @@ function BOQEditComponent({
               qty: item.totalQty || 0,
               make: item.make || "",
               uom: item.uom || "",
+              remarks: item.remarks || "",
               leadProductTypeId: boqItemLeadProductTypeId, // Use the ID from the BOQ item's product.categoryId
               pmApprovalStatus: item.pmApprovalStatus || "PENDING",
               salestlApprovalStatus: item.salestlApprovalStatus || "PENDING",
@@ -1130,27 +1144,22 @@ function BOQEditComponent({
       }
     })
 
-    const debouncedSyncRef = useRef(null)
-
-    const syncToMainState = (field, value) => {
-      if (debouncedSyncRef.current) {
-        clearTimeout(debouncedSyncRef.current)
-      }
-      debouncedSyncRef.current = setTimeout(() => {
-        updateCategoryProduct(productId, category, productIndex, field, value)
-      }, 300)
-    }
-
     const handleQtyChange = (value) => {
       setLocalData((prev) => ({ ...prev, qty: value }))
-      syncToMainState("qty", value)
     }
 
     const handleMakeChange = (value) => {
       if (category !== "skillSet") {
         setLocalData((prev) => ({ ...prev, make: value }))
-        syncToMainState("make", value)
       }
+    }
+
+    const handleSave = () => {
+      updateCategoryProduct(productId, category, productIndex, "qty", localData.qty)
+      if (category !== "skillSet") {
+        updateCategoryProduct(productId, category, productIndex, "make", localData.make)
+      }
+      onClose()
     }
 
     const currentMTRCount = (getCurrentProduct()?.materialRequisitions || []).length + 1
@@ -1202,75 +1211,16 @@ function BOQEditComponent({
                 )}
               </div>
 
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h5 className="font-medium">Material Requisitions</h5>
-                  <button
-                    onClick={() => {
-                      toggleMTRForm(`${productId}-${category}-${productIndex}`)
-                      setEditingCategoryMTR(null) // Ensure this is null when adding new
-                    }}
-                    className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                  >
-                    <FiPlus size={14} />
-                    Add Material Requisition
-                  </button>
-                </div>
-
-                <MTRList
-                  materialRequisitions={getCurrentProduct()?.materialRequisitions || []}
-                  onRemove={(mtrId) => {
-                    removeMTRFromProduct(productId, category, productIndex, mtrId)
-                  }}
-                  onEdit={(mtrToEdit) => {
-                    setEditingCategoryMTR(mtrToEdit) // Set the MTR to be edited
-                    setExpandedMTRForms((prev) => ({
-                      ...prev,
-                      [`${productId}-${category}-${productIndex}`]: true,
-                    }))
-                  }}
-                />
-
-                <AnimatePresence>
-                  {expandedMTRForms[`${productId}-${category}-${productIndex}`] && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <MTRForm
-                        projectCode={projectCode}
-                        currentMTRCount={currentMTRCount}
-                        initialMTRData={editingCategoryMTR} // Pass the editing state
-                        onSubmit={(mtrData) => {
-                          updateCategoryProduct(productId, category, productIndex, "qty", localData.qty)
-                          if (category !== "skillSet") {
-                            updateCategoryProduct(productId, category, productIndex, "make", localData.make)
-                          }
-                          handleMTRSubmit(productId, category, productIndex, mtrData)
-                          toggleMTRForm(`${productId}-${category}-${productIndex}`)
-                          setEditingCategoryMTR(null) // Clear after submit
-                        }}
-                        onCancel={() => {
-                          toggleMTRForm(`${productId}-${category}-${productIndex}`)
-                          setEditingCategoryMTR(null) // Clear if cancelled
-                        }}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+              
             </div>
           </div>
           <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
             <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md">
-              Close
+              Cancel
             </button>
-            <div className="text-sm text-green-600 flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              Auto-saving changes
-            </div>
+            <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+              Save
+            </button>
           </div>
         </div>
       </div>
@@ -1412,134 +1362,94 @@ function BOQEditComponent({
   }
 
   const addProductToCategory = (mainProductId, category, product) => {
+    const mainProduct = boqProducts.find((p) => p.id === mainProductId)
+    const newIndex = (mainProduct?.nonBillable || []).length
+    const newItem = {
+      id: null,
+      referenceId: product.id,
+      product_name: product.product_name || product.productName || product.name,
+      productName: product.product_name || product.productName || product.name,
+      hsn_code: product.hsn_code || product.hsnCode,
+      item_code: product.item_code,
+      qty: "",
+      make: "",
+      materialRequisitions: [],
+      sequenceNumber: Date.now(),
+      pmApprovalStatus: canApprove ? "APPROVED" : "PENDING",
+      pmApprovalRemarks: "",
+      pmApprovalDate: canApprove ? new Date().toISOString() : null,
+      salestlApprovalStatus: "PENDING",
+      salestlApprovalRemarks: "",
+      salestlApprovalDate: null,
+    }
     setBOQProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === mainProductId) {
-          const newItem = {
-            id: null, // CRITICAL: Ensure BOQCategoryItem's own ID is null for new items
-            referenceId: product.id, // NEW: Pass the master data ID as referenceId
-            product_name: product.product_name || product.productName || product.name,
-            productName: product.product_name || product.productName || product.name,
-            hsn_code: product.hsn_code || product.hsnCode,
-            qty: "",
-            make: "",
-            materialRequisitions: [],
-            sequenceNumber: Date.now(), // Add sequence number for ordering
-            pmApprovalStatus: currentUserId && project?.project_manager?.id === currentUserId ? "APPROVED" : "PENDING", // Auto-approve if project manager
-            pmApprovalRemarks: "",
-            pmApprovalDate:
-              currentUserId && project?.project_manager?.id === currentUserId ? new Date().toISOString() : null,
-            salestlApprovalStatus: "PENDING", // Default Salestl approval status
-            salestlApprovalRemarks: "",
-            salestlApprovalDate: null,
-          }
-
-          if (category === "nonBillable") {
-            return {
-              ...p,
-              nonBillable: [...(p.nonBillable || []), newItem],
-            }
-          }
-          return p
-        }
-        return p
-      }),
+      prev.map((p) => (p.id === mainProductId ? { ...p, nonBillable: [...(p.nonBillable || []), newItem] } : p)),
     )
-    setShowProductSearch((prev) => ({
-      ...prev,
-      [`${mainProductId}-${category}`]: false,
-    }))
-    setSearchTerms((prev) => ({
-      ...prev,
-      [`${mainProductId}-${category}`]: "",
-    }))
+    setShowProductSearch((prev) => ({ ...prev, [`${mainProductId}-nonBillable`]: false }))
+    setSearchTerms((prev) => ({ ...prev, [`${mainProductId}-nonBillable`]: "" }))
+    setEditingProductModal({ product: newItem, productId: mainProductId, category: "nonBillable", productIndex: newIndex, projectCode })
   }
 
   const addSkillsetToProduct = (mainProductId, skillset) => {
-    console.log("[v0] Adding skillset:", skillset) // Debug logging
+    const mainProduct = boqProducts.find((p) => p.id === mainProductId)
+    const newIndex = (mainProduct?.skillSet || []).length
+    const newItem = {
+      id: null,
+      referenceId: skillset.id,
+      name: skillset.skillset_name,
+      qty: "",
+      make: null,
+      materialRequisitions: [],
+      sequenceNumber: Date.now(),
+      pmApprovalStatus: canApprove ? "APPROVED" : "PENDING",
+      pmApprovalRemarks: "",
+      pmApprovalDate: canApprove ? new Date().toISOString() : null,
+      salestlApprovalStatus: "PENDING",
+      salestlApprovalRemarks: "",
+      salestlApprovalDate: null,
+    }
     setBOQProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === mainProductId) {
-          return {
-            ...p,
-            skillSet: [
-              ...(p.skillSet || []),
-              {
-                id: null,
-                referenceId: skillset.id,
-                name: skillset.skillset_name, // Use skillset_name consistently
-                qty: "",
-                make: null,
-                materialRequisitions: [],
-                sequenceNumber: Date.now(), // Add sequence number for ordering
-                pmApprovalStatus:
-                  currentUserId && project?.project_manager?.id === currentUserId ? "APPROVED" : "PENDING", // Auto-approve if project manager
-                pmApprovalRemarks: "",
-                pmApprovalDate:
-                  currentUserId && project?.project_manager?.id === currentUserId ? new Date().toISOString() : null,
-                salestlApprovalStatus: "PENDING", // Default Salestl approval status
-                salestlApprovalRemarks: "",
-                salestlApprovalDate: null,
-              },
-            ],
-          }
-        }
-        return p
-      }),
+      prev.map((p) => (p.id === mainProductId ? { ...p, skillSet: [...(p.skillSet || []), newItem] } : p)),
     )
-    setShowProductSearch((prev) => ({
-      ...prev,
-      [`${mainProductId}-skillSet`]: false,
-    }))
-    setSearchTerms((prev) => ({
-      ...prev,
-      [`${mainProductId}-skillSet`]: "",
-    }))
+    setShowProductSearch((prev) => ({ ...prev, [`${mainProductId}-skillSet`]: false }))
+    setSearchTerms((prev) => ({ ...prev, [`${mainProductId}-skillSet`]: "" }))
+    setEditingProductModal({ product: newItem, productId: mainProductId, category: "skillSet", productIndex: newIndex, projectCode })
   }
 
   const addToolToProduct = (mainProductId, tool) => {
-    console.log("[v0] Adding tool:", tool) // Debug logging
+    const mainProduct = boqProducts.find((p) => p.id === mainProductId)
+    const newIndex = (mainProduct?.tools || []).length
+    const newItem = {
+      id: null,
+      referenceId: tool.id,
+      name: tool.tool_name,
+      qty: "",
+      make: null,
+      materialRequisitions: [],
+      sequenceNumber: Date.now(),
+      pmApprovalStatus: canApprove ? "APPROVED" : "PENDING",
+      pmApprovalRemarks: "",
+      pmApprovalDate: canApprove ? new Date().toISOString() : null,
+      salestlApprovalStatus: "PENDING",
+      salestlApprovalRemarks: "",
+      salestlApprovalDate: null,
+    }
     setBOQProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === mainProductId) {
-          return {
-            ...p,
-            tools: [
-              ...(p.tools || []),
-              {
-                id: null,
-                referenceId: tool.id,
-                name: tool.tool_name, // Use tool_name consistently
-                qty: "",
-                make: null,
-                materialRequisitions: [],
-                sequenceNumber: Date.now(), // Add sequence number for ordering
-                pmApprovalStatus:
-                  currentUserId && project?.project_manager?.id === currentUserId ? "APPROVED" : "PENDING", // Auto-approve if project manager
-                pmApprovalRemarks: "",
-                pmApprovalDate:
-                  currentUserId && project?.project_manager?.id === currentUserId ? new Date().toISOString() : null,
-                salestlApprovalStatus: "PENDING", // Default Salestl approval status
-                salestlApprovalRemarks: "",
-                salestlApprovalDate: null,
-              },
-            ],
-          }
-        }
-        return p
-      }),
+      prev.map((p) => (p.id === mainProductId ? { ...p, tools: [...(p.tools || []), newItem] } : p)),
     )
-    setShowProductSearch((prev) => ({
-      ...prev,
-      [`${mainProductId}-tools`]: false,
-    }))
-    setSearchTerms((prev) => ({
-      ...prev,
-      [`${mainProductId}-tools`]: "",
-    }))
+    setShowProductSearch((prev) => ({ ...prev, [`${mainProductId}-tools`]: false }))
+    setSearchTerms((prev) => ({ ...prev, [`${mainProductId}-tools`]: "" }))
+    setEditingProductModal({ product: newItem, productId: mainProductId, category: "tools", productIndex: newIndex, projectCode })
   }
+    
 
   const removeProductFromCategory = (mainProductId, category, productIndex) => {
+    const mainProduct = boqProducts.find((p) => p.id === mainProductId)
+    const item = (mainProduct?.[category] || [])[productIndex]
+    if (item && (item.salestlApprovalStatus || "").toUpperCase() === "APPROVED") {
+      alert("Cannot delete — this item is approved by Sales TL.")
+      return
+    }
     setBOQProducts((prev) =>
       prev.map((p) => {
         if (p.id === mainProductId) {
@@ -1731,6 +1641,7 @@ function BOQEditComponent({
       if (!product) return false
       return (
         (product.product_name || product.productName || "").toLowerCase().includes(lowercasedSearch) ||
+        (product.item_code || "").toLowerCase().includes(lowercasedSearch) ||
         (product.hsn_code || product.hsnCode || "").toLowerCase().includes(lowercasedSearch) ||
         (product.product_description || product.productDescription || "").toLowerCase().includes(lowercasedSearch)
       )
@@ -1781,6 +1692,21 @@ function BOQEditComponent({
 
       if (matchedIncomingItem) {
         console.log("[v0] Matched existing item:", existingBOQItem.id)
+        const requisitionedQty = (existingBOQItem.materialRequisitions || [])
+          .reduce((sum, mtr) => sum + (Number(mtr.mtrQty) || 0), 0)
+        const incomingQty = Number(matchedIncomingItem.qty) || 0
+        const existingQty = Number(existingBOQItem.qty) || 0
+
+        let finalQty = incomingQty
+
+        if ((existingBOQItem.salestlApprovalStatus || "").toUpperCase() === "APPROVED" && incomingQty < existingQty) {
+          alert(`Cannot decrease qty for "${existingBOQItem.product_name}" — it is approved by Sales TL. Keeping previous value (${existingQty}).`)
+          finalQty = existingQty
+        } else if (incomingQty < requisitionedQty) {
+          alert(`Cannot decrease qty for "${existingBOQItem.product_name}" below ${requisitionedQty} (already requisitioned). Keeping previous value (${existingQty}).`)
+          finalQty = existingQty
+        }
+
         updatedBOQProducts.push({
           ...existingBOQItem,
           originalOrder: originalIndex,
@@ -1789,7 +1715,7 @@ function BOQEditComponent({
           product_name: matchedIncomingItem.productName,
           hsn_code: matchedIncomingItem.hsnCode,
           product_description: matchedIncomingItem.productDescription,
-          qty: matchedIncomingItem.qty,
+          qty: finalQty,
           make: matchedIncomingItem.make,
           uom: matchedIncomingItem.uom,
           leadProductTypeId: matchedIncomingItem.leadProductTypeId,
@@ -1824,7 +1750,7 @@ function BOQEditComponent({
 
         if (!existsInUpdated) {
           console.log("[v0] Adding new item:", incomingItem.productName)
-          const isProjectManager = currentUserId && project?.project_manager?.id === currentUserId
+          const isProjectManager = canApprove
 
           updatedBOQProducts.push({
             id: incomingItem.id,
@@ -1930,14 +1856,25 @@ function BOQEditComponent({
           </div>
         )}
         <div className="flex-1 overflow-auto p-6">
-          <div className="mb-6 flex justify-end">
-            <button
-              onClick={() => setShowAddProductModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <FiPlus size={16} />
-              Edit Billable Products
-            </button>
+          <div className="mb-6 flex justify-end gap-3">
+            {!readOnly && (
+              <button
+                onClick={() => setShowRequisitionModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <FiPlus size={16} />
+                Requisitions
+              </button>
+            )}
+            {!readOnly && canApprove && (
+              <button
+                onClick={() => setShowAddProductModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <FiPlus size={16} />
+                Edit Billable Products
+              </button>
+            )}
           </div>
           <div className="space-y-6">
             {boqProducts.length > 0 ? (
@@ -1973,667 +1910,275 @@ function BOQEditComponent({
                           className="overflow-hidden"
                         >
                           <div className="p-4 space-y-4">
-                            {productTypeGroup.products.map((product) => (
-                              <div key={product.id} className="border rounded-lg bg-gray-50">
-                                <div className="p-4 bg-white border-b rounded-t-lg">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                      <h4 className="font-semibold text-lg">{product.product_name}</h4>
-                                      <div className="text-sm text-gray-500 mt-1">
-                                        HSN: {product.hsn_code} | UOM: {product.uom} | Qty: {product.qty} | Make:{" "}
-                                        {product.make || "N/A"}
-                                      </div>
-                                      <div className="text-sm text-blue-600 mt-1">
-                                        Remaining Qty: {calculateRemainingQty(product)}
-                                      </div>
-                                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg">
-                                        <ApprovalStatusBadge
-                                          status={product.pmApprovalStatus || "PENDING"}
-                                          type="PM"
-                                          productId={product.id}
-                                          remarks={product.pmApprovalRemarks}
-                                          approvalDate={product.pmApprovalDate}
-                                        />
-                                        <ApprovalStatusBadge
-                                          status={product.salestlApprovalStatus || "PENDING"}
-                                          type="SALESTL"
-                                          productId={product.id}
-                                          remarks={product.salestlApprovalRemarks}
-                                          approvalDate={product.salestlApprovalDate}
-                                          readOnly={true}
-                                        />
+                           {productTypeGroup.products.map((product) => {
+                              const isOpen = !!expandedProducts[product.id]
+                              const cat = openCat[product.id]
+                              return (
+                                <div key={product.id} className="border rounded-lg bg-white">
+                                  <div
+                                    onClick={() => toggleProductExpansion(product.id)}
+                                    className="flex items-start justify-between gap-3 p-3 cursor-pointer hover:bg-gray-50 rounded-lg"
+                                  >
+                                    <div className="flex items-start gap-2 min-w-0">
+                                      {isOpen ? (
+                                        <AiOutlineArrowUp size={16} className="mt-1 text-gray-400 flex-shrink-0" />
+                                      ) : (
+                                        <AiOutlineArrowDown size={16} className="mt-1 text-gray-400 flex-shrink-0" />
+                                      )}
+                                      <div className="min-w-0">
+                                        <div className="font-semibold text-base">{product.product_name}</div>
+                                        <div className="text-sm text-gray-500 mt-0.5">
+                                          · UOM: {product.uom}  · Make: {product.make || "N/A"} . HSN: {product.hsn_code}
+                                         
+                                        </div>
                                       </div>
                                     </div>
-                                    <button
-                                      onClick={() => toggleProductExpansion(product.id)}
-                                      className="px-3 py-1 text-sm bg-zinc-100 text-zinc-800 rounded hover:bg-zinc-200 transition-colors"
-                                      aria-expanded={!!expandedProducts[product.id]}
-                                      aria-label={
-                                        expandedProducts[product.id] ? "Hide product details" : "View product details"
-                                      }
-                                    >
-                                      {expandedProducts[product.id] ? (
-                                        <>
-                                          <AiOutlineArrowUp size={14} />
-                                          <span>Hide Details</span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <AiOutlineArrowDown size={14} />
-                                          <span>View Details</span>
-                                        </>
-                                      )}
-                                    </button>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                                        BOQ Qty. <span className="font-medium text-gray-800">{product.qty} </span>
+                                          ||  <span className="font-medium text-gray-800"></span>
+                                        Remaining <span className="font-medium text-gray-800">{calculateRemainingQty(product)}</span>
+                                      </span>
+                                      <ApprovalPill label="PM" status={product.pmApprovalStatus} />
+                                      <ApprovalPill label="Sales TL" status={product.salestlApprovalStatus} />
+                                    </div>
                                   </div>
-                                </div>
-                                <AnimatePresence>
-                                  {expandedProducts[product.id] && (
-                                    <motion.div
-                                      initial={{ height: 0, opacity: 0 }}
-                                      animate={{ height: "auto", opacity: 1 }}
-                                      exit={{ height: 0, opacity: 0 }}
-                                      className="overflow-hidden"
-                                    >
-                                      <div className="p-4">
-                                        <div className="flex border-b mb-4">
-                                          <button
-                                            onClick={() => selectProductTab(product.id, "billable")}
-                                            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                                              selectedProductTab[product.id] === "billable"
-                                                ? "border-blue-500 text-blue-600"
-                                                : "border-transparent text-gray-500 hover:text-gray-700"
-                                            }`}
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <FiPackage size={16} />
-                                              Billable Product ({(product.materialRequisitions || []).length} MTRs)
+
+                                  <AnimatePresence>
+                                    {isOpen && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="overflow-hidden"
+                                      >
+                                        <div className="px-3 pb-3 pt-1 space-y-3">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg">
+                                            <ApprovalStatusBadge
+                                              status={product.pmApprovalStatus || "PENDING"}
+                                              type="PM"
+                                              productId={product.id}
+                                              remarks={product.pmApprovalRemarks}
+                                              approvalDate={product.pmApprovalDate}
+                                              readOnly={!canApprove}
+                                            />
+                                            <ApprovalStatusBadge
+                                              status={product.salestlApprovalStatus || "PENDING"}
+                                              type="SALESTL"
+                                              productId={product.id}
+                                              remarks={product.salestlApprovalRemarks}
+                                              approvalDate={product.salestlApprovalDate}
+                                              readOnly={true}
+                                            />
+                                          </div>
+
+                                          <div>
+                                            <label className="block text-xs font-medium text-gray-600 mb-1">Remark (from Sales)</label>
+                                            <div className="w-full p-2 text-sm border rounded bg-gray-50 text-gray-700 whitespace-pre-wrap min-h-[2.5rem]">
+                                              {product.remarks ? product.remarks : <span className="text-gray-400">No remark added by Sales</span>}
                                             </div>
-                                          </button>
-                                          <button
-                                            onClick={() => selectProductTab(product.id, "nonBillable")}
-                                            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                                              selectedProductTab[product.id] === "nonBillable"
-                                                ? "border-amber-500 text-amber-600"
-                                                : "border-transparent text-gray-500 hover:text-gray-700"
-                                            }`}
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <FiPackage size={16} />
-                                              Non Billable ({(product.nonBillable || []).length})
-                                            </div>
-                                          </button>
-                                          <button
-                                            onClick={() => selectProductTab(product.id, "skillSet")}
-                                            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                                              selectedProductTab[product.id] === "skillSet"
-                                                ? "border-red-500 text-red-600"
-                                                : "border-transparent text-gray-500 hover:text-gray-700"
-                                            }`}
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <FiUsers size={16} />
-                                              Skill Set ({(product.skillSet || []).length})
-                                            </div>
-                                          </button>
-                                          <button
-                                            onClick={() => selectProductTab(product.id, "tools")}
-                                            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                                              selectedProductTab[product.id] === "tools"
-                                                ? "border-purple-500 text-purple-600"
-                                                : "border-transparent text-gray-500 hover:text-gray-700"
-                                            }`}
-                                          >
-                                            <div className="flex items-center gap-2">
-                                              <FiTool size={16} />
-                                              Tools ({(product.tools || []).length})
-                                            </div>
-                                          </button>
-                                        </div>
-                                        <div className="min-h-[300px]">
-                                          {selectedProductTab[product.id] === "billable" && (
-                                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                                              <div className="flex items-center justify-between mb-3">
-                                                <h5 className="font-medium text-blue-800">
-                                                  Billable Product Material Requisitions
-                                                </h5>
-                                                <button
-                                                  onClick={() => {
-                                                    toggleMTRForm(`${product.id}-billable`)
-                                                    setEditingBillableMTR(null)
-                                                  }}
-                                                  className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                                                >
-                                                  <FiPlus size={14} />
-                                                  Add Material Requisition
-                                                </button>
-                                              </div>
-                                              <MTRList
-                                                materialRequisitions={product.materialRequisitions || []}
-                                                onRemove={(mtrId) =>
-                                                  removeMTRFromProduct(product.id, "billable", null, mtrId)
-                                                }
-                                                onEdit={(mtrToEdit) => {
-                                                  setEditingBillableMTR(mtrToEdit)
-                                                  setExpandedMTRForms((prev) => ({
-                                                    ...prev,
-                                                    [`${product.id}-billable`]: true,
-                                                  }))
-                                                }}
-                                                productId={product.id}
-                                                categoryType="billable"
-                                                itemIndex={null}
-                                              />
-                                              <AnimatePresence>
-                                                {expandedMTRForms[`${product.id}-billable`] && (
-                                                  <motion.div
-                                                    initial={{ height: 0, opacity: 0 }}
-                                                    animate={{ height: "auto", opacity: 1 }}
-                                                    exit={{ height: 0, opacity: 0 }}
-                                                    className="overflow-hidden"
+                                          </div>
+
+                                          <div className="border rounded-lg overflow-hidden">
+                                            <button
+                                              onClick={() => setOpenCat((p) => ({ ...p, [product.id]: p[product.id] === "nonBillable" ? null : "nonBillable" }))}
+                                              className="w-full flex items-center justify-between px-3 py-2 bg-amber-50 text-amber-800 text-sm font-medium hover:bg-amber-100 transition-colors"
+                                            >
+                                              <span className="flex items-center gap-2"><FiPackage size={15} /> Non-billable ({(product.nonBillable || []).length})</span>
+                                              {cat === "nonBillable" ? <AiOutlineArrowUp size={14} /> : <AiOutlineArrowDown size={14} />}
+                                            </button>
+                                            {cat === "nonBillable" && (
+                                              <div className="p-3 space-y-2">
+                                                <div className="flex justify-end">
+                                                  <button
+                                                    onClick={() => setShowProductSearch((prev) => ({ ...prev, [`${product.id}-nonBillable`]: !prev[`${product.id}-nonBillable`] }))}
+                                                    className="flex items-center gap-1 px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors text-sm"
                                                   >
-                                                    <MTRForm
-                                                      projectCode={projectCode}
-                                                      currentMTRCount={(product.materialRequisitions || []).length + 1}
-                                                      initialMTRData={editingBillableMTR}
-                                                      onSubmit={(mtrData) => {
-                                                        handleMTRSubmit(product.id, "billable", null, mtrData)
-                                                        toggleMTRForm(`${product.id}-billable`)
-                                                      }}
-                                                      onCancel={() => toggleMTRForm(`${product.id}-billable`)}
-                                                    />
-                                                  </motion.div>
-                                                )}
-                                              </AnimatePresence>
-                                            </div>
-                                          )}
-                                          {selectedProductTab[product.id] === "nonBillable" && (
-                                            <div className="bg-amber-50 p-4 rounded-lg border border-amber-200">
-                                              <div className="flex items-center justify-between mb-3">
-                                                <h5 className="font-medium text-amber-800">Non-Billable Products</h5>
-                                                <button
-                                                  onClick={() =>
-                                                    setShowProductSearch((prev) => ({
-                                                      ...prev,
-                                                      [`${product.id}-nonBillable`]: !prev[`${product.id}-nonBillable`],
-                                                    }))
-                                                  }
-                                                  className="flex items-center gap-1 px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
-                                                >
-                                                  <FiPlus size={14} />
-                                                  Add Non-Billable Product
-                                                </button>
-                                              </div>
-                                              {showProductSearch[`${product.id}-nonBillable`] && (
-                                                <div className="mb-4 p-3 bg-white rounded border">
-                                                  <div className="flex items-center gap-2 mb-2">
-                                                    <FiSearch size={16} className="text-gray-400" />
-                                                    <input
-                                                      type="text"
-                                                      placeholder="Search products..."
-                                                      value={searchTerms[`${product.id}-nonBillable`] || ""}
-                                                      onChange={(e) =>
-                                                        setSearchTerms((prev) => ({
-                                                          ...prev,
-                                                          [`${product.id}-nonBillable`]: e.target.value,
-                                                        }))
-                                                      }
-                                                      className="flex-1 p-2 border rounded focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                                    />
-                                                  </div>
-                                                  <div className="max-h-40 overflow-y-auto">
-                                                    {getFilteredNonBillableProducts(`${product.id}-nonBillable`).map(
-                                                      (availableProduct) => (
+                                                    <FiPlus size={14} /> Add Non-Billable Product
+                                                  </button>
+                                                </div>
+                                                {showProductSearch[`${product.id}-nonBillable`] && (
+                                                  <div className="p-3 bg-white rounded border">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                      <FiSearch size={16} className="text-gray-400" />
+                                                      <input
+                                                        type="text"
+                                                        placeholder="Search products..."
+                                                        value={searchTerms[`${product.id}-nonBillable`] || ""}
+                                                        onChange={(e) => setSearchTerms((prev) => ({ ...prev, [`${product.id}-nonBillable`]: e.target.value }))}
+                                                        className="flex-1 p-2 border rounded focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                                      />
+                                                    </div>
+                                                    <div className="max-h-40 overflow-y-auto">
+                                                      {getFilteredNonBillableProducts(`${product.id}-nonBillable`).map((availableProduct) => (
                                                         <button
                                                           key={availableProduct.id}
-                                                          onClick={() =>
-                                                            addProductToCategory(
-                                                              product.id,
-                                                              "nonBillable",
-                                                              availableProduct,
-                                                            )
-                                                          }
+                                                          onClick={() => addProductToCategory(product.id, "nonBillable", availableProduct)}
                                                           className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm"
                                                         >
                                                           <div className="font-medium">
-                                                            {availableProduct.product_name ||
-                                                              availableProduct.productName}
+                                                            {availableProduct.product_name || availableProduct.productName}
+                                                            {availableProduct.item_code ? ` (${availableProduct.item_code})` : ""}
                                                           </div>
-                                                          <div className="text-gray-500 text-xs">
-                                                            HSN: {availableProduct.hsn_code || availableProduct.hsnCode}
-                                                          </div>
+                                                          <div className="text-gray-500 text-xs">Code: {availableProduct.item_code || "—"} | HSN: {availableProduct.hsn_code || availableProduct.hsnCode}</div>
                                                         </button>
-                                                      ),
-                                                    )}
+                                                      ))}
+                                                    </div>
                                                   </div>
-                                                </div>
-                                              )}
-                                              <div className="space-y-2">
+                                                )}
                                                 {(product.nonBillable || []).map((item, index) => (
-                                                  <div
-                                                    key={item.id || `nb-${index}`}
-                                                    className="bg-white p-3 rounded border"
-                                                  >
-                                                    <div className="flex items-center justify-between mb-2">
-                                                      <div className="flex-1">
-                                                        <div className="font-medium">
-                                                          {getProductNameByReferenceId(item, "nonBillable")}
-                                                        </div>
-                                                        <div className="text-sm text-gray-500">
-                                                          Qty: {item.qty || 0} | Make: {item.make || "N/A"} | MTRs:{" "}
-                                                          {(item.materialRequisitions || []).length}
-                                                        </div>
+                                                  <div key={item.id || `nb-${index}`} className="bg-white p-3 rounded border">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                      <div className="min-w-0">
+                                                        <div className="font-medium">{getProductNameByReferenceId(item, "nonBillable")}{item.item_code ? ` (${item.item_code})` : ""}</div>
+                                                        <div className="text-sm text-gray-500">Qty: {item.qty || 0} | Make: {item.make || "N/A"}</div>
                                                       </div>
-                                                      <div className="flex items-center gap-2">
-                                                        <button
-                                                          onClick={() =>
-                                                            setEditingProductModal({
-                                                              product: item,
-                                                              productId: product.id,
-                                                              category: "nonBillable",
-                                                              productIndex: index,
-                                                              projectCode: projectCode,
-                                                            })
-                                                          }
-                                                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                                        >
-                                                          <FiEdit3 size={14} />
-                                                        </button>
-                                                        <button
-                                                          onClick={() =>
-                                                            removeProductFromCategory(product.id, "nonBillable", index)
-                                                          }
-                                                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                                        >
-                                                          <FiTrash2 size={14} />
-                                                        </button>
+                                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <button onClick={() => setEditingProductModal({ product: item, productId: product.id, category: "nonBillable", productIndex: index, projectCode: projectCode })} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><FiEdit3 size={14} /></button>
+                                                        <button onClick={() => removeProductFromCategory(product.id, "nonBillable", index)} className="p-1 text-red-600 hover:bg-red-50 rounded"><FiTrash2 size={14} /></button>
                                                       </div>
                                                     </div>
-
-                                                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                                                      <ApprovalStatusBadge
-                                                        status={item.pmApprovalStatus || "PENDING"}
-                                                        type="PM"
-                                                        productId={product.id}
-                                                        categoryType="nonBillable"
-                                                        itemIndex={index}
-                                                        remarks={item.pmApprovalRemarks}
-                                                        approvalDate={item.pmApprovalDate}
-                                                        onUpdate={updateCategoryItemApprovalStatus}
-                                                      />
+                                                    <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+                                                      <ApprovalStatusBadge status={item.pmApprovalStatus || "PENDING"} type="PM" productId={product.id} categoryType="nonBillable" itemIndex={index} remarks={item.pmApprovalRemarks} approvalDate={item.pmApprovalDate} readOnly={!canApprove} onUpdate={updateCategoryItemApprovalStatus} />
                                                     </div>
-
-                                                    {(item.materialRequisitions || []).length > 0 && (
-                                                      <div className="mt-3">
-                                                        <h6 className="text-sm font-medium text-gray-700 mb-2">
-                                                          Material Requisitions
-                                                        </h6>
-                                                        {(item.materialRequisitions || []).map((mtr, mtrIndex) => (
-                                                          <div
-                                                            key={mtr.id || `mtr-${mtrIndex}`}
-                                                            className="bg-blue-50 p-3 rounded border mb-2"
-                                                          >
-                                                            <div className="flex items-center justify-between mb-2">
-                                                              <div className="flex-1">
-                                                                <div className="font-medium text-sm">
-                                                                  {mtr.mtrCode || `MTR #${mtrIndex + 1}`}
-                                                                </div>
-                                                                <div className="text-xs text-gray-500">
-                                                                  MTR Qty: {mtr.mtrQty || 0} | Stock:{" "}
-                                                                  {mtr.stockAlloted || 0} | Purchase:{" "}
-                                                                  {mtr.purchaseMTR || 0}
-                                                                </div>
-                                                              </div>
-                                                            </div>
-
-                                                            <div className="p-2 bg-gray-50 rounded-lg">
-                                                              <ApprovalStatusBadge
-                                                                status={mtr.pmApprovalStatus || "PENDING"}
-                                                                type="PM"
-                                                                productId={product.id}
-                                                                categoryType="nonBillable"
-                                                                itemIndex={index}
-                                                                mtrIndex={mtrIndex}
-                                                                remarks={mtr.pmApprovalRemarks}
-                                                                approvalDate={mtr.pmApprovalDate}
-                                                                onUpdate={updateMTRApprovalStatus}
-                                                                isMTR={true}
-                                                              />
-                                                            </div>
-                                                          </div>
-                                                        ))}
-                                                      </div>
-                                                    )}
                                                   </div>
                                                 ))}
                                               </div>
-                                            </div>
-                                          )}
+                                            )}
+                                          </div>
 
-                                          {selectedProductTab[product.id] === "skillSet" && (
-                                            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-                                              <div className="flex items-center justify-between mb-3">
-                                                <h5 className="font-medium text-green-800">Skill Set</h5>
-                                                <button
-                                                  onClick={() =>
-                                                    setShowProductSearch((prev) => ({
-                                                      ...prev,
-                                                      [`${product.id}-skillSet`]: !prev[`${product.id}-skillSet`],
-                                                    }))
-                                                  }
-                                                  className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                                                >
-                                                  <FiPlus size={14} />
-                                                  Add Skill Set
-                                                </button>
-                                              </div>
-                                              {showProductSearch[`${product.id}-skillSet`] && (
-                                                <div className="mb-4 p-3 bg-white rounded border">
-                                                  <div className="flex items-center gap-2 mb-2">
-                                                    <FiSearch size={16} className="text-gray-400" />
-                                                    <input
-                                                      type="text"
-                                                      placeholder="Search skillsets..."
-                                                      value={searchTerms[`${product.id}-skillSet`] || ""}
-                                                      onChange={(e) =>
-                                                        setSearchTerms((prev) => ({
-                                                          ...prev,
-                                                          [`${product.id}-skillSet`]: e.target.value,
-                                                        }))
-                                                      }
-                                                      className="flex-1 p-2 border rounded focus:outline-none focus:ring-1 focus:ring-green-500"
-                                                    />
-                                                  </div>
-                                                  <div className="max-h-40 overflow-y-auto">
-                                                    {availableSkillsets
-                                                      .filter((skillset) =>
-                                                        skillset.skillset_name
-                                                          ?.toLowerCase()
-                                                          .includes(
-                                                            (searchTerms[`${product.id}-skillSet`] || "").toLowerCase(),
-                                                          ),
-                                                      )
-                                                      .map((skillset) => (
-                                                        <button
-                                                          key={skillset.id}
-                                                          onClick={() => addSkillsetToProduct(product.id, skillset)}
-                                                          className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm"
-                                                        >
-                                                          <div className="font-medium">{skillset.skillset_name}</div>
-                                                          <div className="text-gray-500 text-xs">
-                                                            Category: {skillset.category}
-                                                          </div>
-                                                        </button>
-                                                      ))}
-                                                  </div>
+                                          <div className="border rounded-lg overflow-hidden">
+                                            <button
+                                              onClick={() => setOpenCat((p) => ({ ...p, [product.id]: p[product.id] === "skillSet" ? null : "skillSet" }))}
+                                              className="w-full flex items-center justify-between px-3 py-2 bg-green-50 text-green-800 text-sm font-medium hover:bg-green-100 transition-colors"
+                                            >
+                                              <span className="flex items-center gap-2"><FiUsers size={15} /> Skill set ({(product.skillSet || []).length})</span>
+                                              {cat === "skillSet" ? <AiOutlineArrowUp size={14} /> : <AiOutlineArrowDown size={14} />}
+                                            </button>
+                                            {cat === "skillSet" && (
+                                              <div className="p-3 space-y-2">
+                                                <div className="flex justify-end">
+                                                  <button
+                                                    onClick={() => setShowProductSearch((prev) => ({ ...prev, [`${product.id}-skillSet`]: !prev[`${product.id}-skillSet`] }))}
+                                                    className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                                                  >
+                                                    <FiPlus size={14} /> Add Skill Set
+                                                  </button>
                                                 </div>
-                                              )}
-                                              <div className="space-y-2">
+                                                {showProductSearch[`${product.id}-skillSet`] && (
+                                                  <div className="p-3 bg-white rounded border">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                      <FiSearch size={16} className="text-gray-400" />
+                                                      <input
+                                                        type="text"
+                                                        placeholder="Search skillsets..."
+                                                        value={searchTerms[`${product.id}-skillSet`] || ""}
+                                                        onChange={(e) => setSearchTerms((prev) => ({ ...prev, [`${product.id}-skillSet`]: e.target.value }))}
+                                                        className="flex-1 p-2 border rounded focus:outline-none focus:ring-1 focus:ring-green-500"
+                                                      />
+                                                    </div>
+                                                    <div className="max-h-40 overflow-y-auto">
+                                                      {availableSkillsets
+                                                        .filter((skillset) => skillset.skillset_name?.toLowerCase().includes((searchTerms[`${product.id}-skillSet`] || "").toLowerCase()))
+                                                        .map((skillset) => (
+                                                          <button key={skillset.id} onClick={() => addSkillsetToProduct(product.id, skillset)} className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm">
+                                                            <div className="font-medium">{skillset.skillset_name}</div>
+                                                            <div className="text-gray-500 text-xs">Category: {skillset.category}</div>
+                                                          </button>
+                                                        ))}
+                                                    </div>
+                                                  </div>
+                                                )}
                                                 {(product.skillSet || []).map((item, index) => (
-                                                  <div
-                                                    key={item.id || `skill-${index}`}
-                                                    className="bg-white p-3 rounded border"
-                                                  >
-                                                    <div className="flex items-center justify-between mb-2">
-                                                      <div className="flex-1">
-                                                        <div className="font-medium">
-                                                          {getProductNameByReferenceId(item, "skillSet")}
-                                                        </div>{" "}
-                                                        <div className="text-sm text-gray-500">
-                                                          Qty: {item.qty || 0} | MTRs:{" "}
-                                                          {(item.materialRequisitions || []).length}
-                                                        </div>
+                                                  <div key={item.id || `skill-${index}`} className="bg-white p-3 rounded border">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                      <div className="min-w-0">
+                                                        <div className="font-medium">{getProductNameByReferenceId(item, "skillSet")}</div>
+                                                        <div className="text-sm text-gray-500">Qty: {item.qty || 0}</div>
                                                       </div>
-                                                      <div className="flex items-center gap-2">
-                                                        <button
-                                                          onClick={() =>
-                                                            setEditingProductModal({
-                                                              product: item,
-                                                              productId: product.id,
-                                                              category: "skillSet",
-                                                              productIndex: index,
-                                                              projectCode: projectCode,
-                                                            })
-                                                          }
-                                                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                                        >
-                                                          <FiEdit3 size={14} />
-                                                        </button>
-                                                        <button
-                                                          onClick={() =>
-                                                            removeProductFromCategory(product.id, "skillSet", index)
-                                                          }
-                                                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                                        >
-                                                          <FiTrash2 size={14} />
-                                                        </button>
+                                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <button onClick={() => setEditingProductModal({ product: item, productId: product.id, category: "skillSet", productIndex: index, projectCode: projectCode })} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><FiEdit3 size={14} /></button>
+                                                        <button onClick={() => removeProductFromCategory(product.id, "skillSet", index)} className="p-1 text-red-600 hover:bg-red-50 rounded"><FiTrash2 size={14} /></button>
                                                       </div>
                                                     </div>
-
-                                                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                                                      <ApprovalStatusBadge
-                                                        status={item.pmApprovalStatus || "PENDING"}
-                                                        type="PM"
-                                                        productId={product.id}
-                                                        categoryType="skillSet"
-                                                        itemIndex={index}
-                                                        remarks={item.pmApprovalRemarks}
-                                                        approvalDate={item.pmApprovalDate}
-                                                        onUpdate={updateCategoryItemApprovalStatus}
-                                                      />
+                                                    <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+                                                      <ApprovalStatusBadge status={item.pmApprovalStatus || "PENDING"} type="PM" productId={product.id} categoryType="skillSet" itemIndex={index} remarks={item.pmApprovalRemarks} approvalDate={item.pmApprovalDate} readOnly={!canApprove} onUpdate={updateCategoryItemApprovalStatus} />
                                                     </div>
-
-                                                    {(item.materialRequisitions || []).length > 0 && (
-                                                      <div className="mt-3">
-                                                        <h6 className="text-sm font-medium text-gray-700 mb-2">
-                                                          Material Requisitions
-                                                        </h6>
-                                                        {(item.materialRequisitions || []).map((mtr, mtrIndex) => (
-                                                          <div
-                                                            key={mtr.id || `mtr-${mtrIndex}`}
-                                                            className="bg-blue-50 p-3 rounded border mb-2"
-                                                          >
-                                                            <div className="flex items-center justify-between mb-2">
-                                                              <div className="flex-1">
-                                                                <div className="font-medium text-sm">
-                                                                  {mtr.mtrCode || `MTR #${mtrIndex + 1}`}
-                                                                </div>
-                                                                <div className="text-xs text-gray-500">
-                                                                  MTR Qty: {mtr.mtrQty || 0} | Stock:{" "}
-                                                                  {mtr.stockAlloted || 0} | Purchase:{" "}
-                                                                  {mtr.purchaseMTR || 0}
-                                                                </div>
-                                                              </div>
-                                                            </div>
-
-                                                            <div className="p-2 bg-gray-50 rounded-lg">
-                                                              <ApprovalStatusBadge
-                                                                status={mtr.pmApprovalStatus || "PENDING"}
-                                                                type="PM"
-                                                                productId={product.id}
-                                                                categoryType="skillSet"
-                                                                itemIndex={index}
-                                                                mtrIndex={mtrIndex}
-                                                                remarks={mtr.pmApprovalRemarks}
-                                                                approvalDate={mtr.pmApprovalDate}
-                                                                onUpdate={updateMTRApprovalStatus}
-                                                                isMTR={true}
-                                                              />
-                                                            </div>
-                                                          </div>
-                                                        ))}
-                                                      </div>
-                                                    )}
                                                   </div>
                                                 ))}
                                               </div>
-                                            </div>
-                                          )}
+                                            )}
+                                          </div>
 
-                                          {selectedProductTab[product.id] === "tools" && (
-                                            <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-                                              <div className="flex items-center justify-between mb-3">
-                                                <h5 className="font-medium text-purple-800">Tools</h5>
-                                                <button
-                                                  onClick={() =>
-                                                    setShowProductSearch((prev) => ({
-                                                      ...prev,
-                                                      [`${product.id}-tools`]: !prev[`${product.id}-tools`],
-                                                    }))
-                                                  }
-                                                  className="flex items-center gap-1 px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
-                                                >
-                                                  <FiPlus size={14} />
-                                                  Add Tool
-                                                </button>
-                                              </div>
-                                              {showProductSearch[`${product.id}-tools`] && (
-                                                <div className="mb-4 p-3 bg-white rounded border">
-                                                  <div className="flex items-center gap-2 mb-2">
-                                                    <FiSearch size={16} className="text-gray-400" />
-                                                    <input
-                                                      type="text"
-                                                      placeholder="Search tools..."
-                                                      value={searchTerms[`${product.id}-tools`] || ""}
-                                                      onChange={(e) =>
-                                                        setSearchTerms((prev) => ({
-                                                          ...prev,
-                                                          [`${product.id}-tools`]: e.target.value,
-                                                        }))
-                                                      }
-                                                      className="flex-1 p-2 border rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                                                    />
-                                                  </div>
-                                                  <div className="max-h-40 overflow-y-auto">
-                                                    {availableTools
-                                                      .filter((tool) =>
-                                                        tool.tool_name
-                                                          ?.toLowerCase()
-                                                          .includes(
-                                                            (searchTerms[`${product.id}-tools`] || "").toLowerCase(),
-                                                          ),
-                                                      )
-                                                      .map((tool) => (
-                                                        <button
-                                                          key={tool.id}
-                                                          onClick={() => addToolToProduct(product.id, tool)}
-                                                          className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm"
-                                                        >
-                                                          <div className="font-medium">{tool.tool_name}</div>
-                                                          <div className="text-gray-500 text-xs">
-                                                            Category: {tool.category}
-                                                          </div>
-                                                        </button>
-                                                      ))}
-                                                  </div>
+                                          <div className="border rounded-lg overflow-hidden">
+                                            <button
+                                              onClick={() => setOpenCat((p) => ({ ...p, [product.id]: p[product.id] === "tools" ? null : "tools" }))}
+                                              className="w-full flex items-center justify-between px-3 py-2 bg-purple-50 text-purple-800 text-sm font-medium hover:bg-purple-100 transition-colors"
+                                            >
+                                              <span className="flex items-center gap-2"><FiTool size={15} /> Tools ({(product.tools || []).length})</span>
+                                              {cat === "tools" ? <AiOutlineArrowUp size={14} /> : <AiOutlineArrowDown size={14} />}
+                                            </button>
+                                            {cat === "tools" && (
+                                              <div className="p-3 space-y-2">
+                                                <div className="flex justify-end">
+                                                  <button
+                                                    onClick={() => setShowProductSearch((prev) => ({ ...prev, [`${product.id}-tools`]: !prev[`${product.id}-tools`] }))}
+                                                    className="flex items-center gap-1 px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors text-sm"
+                                                  >
+                                                    <FiPlus size={14} /> Add Tool
+                                                  </button>
                                                 </div>
-                                              )}
-                                              <div className="space-y-2">
-                                                {(product.tools || []).map((item, index) => (
-                                                  <div
-                                                    key={item.id || `tool-${index}`}
-                                                    className="bg-white p-3 rounded border"
-                                                  >
-                                                    <div className="flex items-center justify-between mb-2">
-                                                      <div className="flex-1">
-                                                        <div className="font-medium">
-                                                          {getProductNameByReferenceId(item, "tools")}
-                                                        </div>
-                                                        <div className="text-sm text-gray-500">
-                                                          Qty: {item.qty || 0} | Make: {item.make || "N/A"} | MTRs:{" "}
-                                                          {(item.materialRequisitions || []).length}
-                                                        </div>
-                                                      </div>
-                                                      <div className="flex items-center gap-2">
-                                                        <button
-                                                          onClick={() =>
-                                                            setEditingProductModal({
-                                                              product: item,
-                                                              productId: product.id,
-                                                              category: "tools",
-                                                              productIndex: index,
-                                                              projectCode: projectCode,
-                                                            })
-                                                          }
-                                                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                                        >
-                                                          <FiEdit3 size={14} />
-                                                        </button>
-                                                        <button
-                                                          onClick={() =>
-                                                            removeProductFromCategory(product.id, "tools", index)
-                                                          }
-                                                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                                        >
-                                                          <FiTrash2 size={14} />
-                                                        </button>
-                                                      </div>
-                                                    </div>
-
-                                                    <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                                                      <ApprovalStatusBadge
-                                                        status={item.pmApprovalStatus || "PENDING"}
-                                                        type="PM"
-                                                        productId={product.id}
-                                                        categoryType="tools"
-                                                        itemIndex={index}
-                                                        remarks={item.pmApprovalRemarks}
-                                                        approvalDate={item.pmApprovalDate}
-                                                        onUpdate={updateCategoryItemApprovalStatus}
+                                                {showProductSearch[`${product.id}-tools`] && (
+                                                  <div className="p-3 bg-white rounded border">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                      <FiSearch size={16} className="text-gray-400" />
+                                                      <input
+                                                        type="text"
+                                                        placeholder="Search tools..."
+                                                        value={searchTerms[`${product.id}-tools`] || ""}
+                                                        onChange={(e) => setSearchTerms((prev) => ({ ...prev, [`${product.id}-tools`]: e.target.value }))}
+                                                        className="flex-1 p-2 border rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
                                                       />
                                                     </div>
-                                                    {(item.materialRequisitions || []).length > 0 && (
-                                                      <div className="mt-3">
-                                                        <h6 className="text-sm font-medium text-gray-700 mb-2">
-                                                          Material Requisitions
-                                                        </h6>
-                                                        {(item.materialRequisitions || []).map((mtr, mtrIndex) => (
-                                                          <div
-                                                            key={mtr.id || `mtr-${mtrIndex}`}
-                                                            className="bg-blue-50 p-3 rounded border mb-2"
-                                                          >
-                                                            <div className="flex items-center justify-between mb-2">
-                                                              <div className="flex-1">
-                                                                <div className="font-medium text-sm">
-                                                                  {mtr.mtrCode || `MTR #${mtrIndex + 1}`}
-                                                                </div>
-                                                                <div className="text-xs text-gray-500">
-                                                                  MTR Qty: {mtr.mtrQty || 0} | Stock:{" "}
-                                                                  {mtr.stockAlloted || 0} | Purchase:{" "}
-                                                                  {mtr.purchaseMTR || 0}
-                                                                </div>
-                                                              </div>
-                                                            </div>
-
-                                                            <div className="p-2 bg-gray-50 rounded-lg">
-                                                              <ApprovalStatusBadge
-                                                                status={mtr.pmApprovalStatus || "PENDING"}
-                                                                type="PM"
-                                                                productId={product.id}
-                                                                categoryType="tools"
-                                                                itemIndex={index}
-                                                                mtrIndex={mtrIndex}
-                                                                remarks={mtr.pmApprovalRemarks}
-                                                                approvalDate={mtr.pmApprovalDate}
-                                                                onUpdate={updateMTRApprovalStatus}
-                                                                isMTR={true}
-                                                              />
-                                                            </div>
-                                                          </div>
+                                                    <div className="max-h-40 overflow-y-auto">
+                                                      {availableTools
+                                                        .filter((tool) => tool.tool_name?.toLowerCase().includes((searchTerms[`${product.id}-tools`] || "").toLowerCase()))
+                                                        .map((tool) => (
+                                                          <button key={tool.id} onClick={() => addToolToProduct(product.id, tool)} className="w-full text-left p-2 hover:bg-gray-100 rounded text-sm">
+                                                            <div className="font-medium">{tool.tool_name}</div>
+                                                            <div className="text-gray-500 text-xs">Category: {tool.category}</div>
+                                                          </button>
                                                         ))}
+                                                    </div>
+                                                  </div>
+                                                )}
+                                                {(product.tools || []).map((item, index) => (
+                                                  <div key={item.id || `tool-${index}`} className="bg-white p-3 rounded border">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                      <div className="min-w-0">
+                                                        <div className="font-medium">{getProductNameByReferenceId(item, "tools")}</div>
+                                                        <div className="text-sm text-gray-500">Qty: {item.qty || 0} | Make: {item.make || "N/A"}</div>
                                                       </div>
-                                                    )}
+                                                      <div className="flex items-center gap-2 flex-shrink-0">
+                                                        <button onClick={() => setEditingProductModal({ product: item, productId: product.id, category: "tools", productIndex: index, projectCode: projectCode })} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><FiEdit3 size={14} /></button>
+                                                        <button onClick={() => removeProductFromCategory(product.id, "tools", index)} className="p-1 text-red-600 hover:bg-red-50 rounded"><FiTrash2 size={14} /></button>
+                                                      </div>
+                                                    </div>
+                                                    <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+                                                     <ApprovalStatusBadge status={item.pmApprovalStatus || "PENDING"} type="PM" productId={product.id} categoryType="tools" itemIndex={index} remarks={item.pmApprovalRemarks} approvalDate={item.pmApprovalDate} readOnly={!canApprove} onUpdate={updateCategoryItemApprovalStatus} />
+                                                    </div>
                                                   </div>
                                                 ))}
                                               </div>
-                                            </div>
-                                          )}
+                                            )}
+                                          </div>
                                         </div>
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            ))}
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+                              )
+                            })} 
                           </div>
                         </motion.div>
                       )}
@@ -2644,12 +2189,14 @@ function BOQEditComponent({
             ) : (
               <div className="text-center text-gray-500 py-8">
                 <p className="mb-4">No BOQ products found</p>
-                <button
-                  onClick={() => setShowAddProductModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                >
-                  Add First Billable Product
-                </button>
+                {canApprove && (
+                  <button
+                    onClick={() => setShowAddProductModal(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  >
+                    Add First Billable Product
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -2659,7 +2206,8 @@ function BOQEditComponent({
             Cancel
           </button>
           <button
-            onClick={handleSaveChanges}
+            onClick={() => { if (window.confirm("Save BOQ?")) saveChanges() }}
+            style={{ display: readOnly ? "none" : undefined }}
             disabled={loading}
             className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
           >
@@ -2671,11 +2219,19 @@ function BOQEditComponent({
             ) : (
               <>
                 <FiSave className="mr-2" />
-                Save BOQ with Material Requisitions
+                Save BOQ
               </>
             )}
           </button>
         </div>
+        {showRequisitionModal && (
+          <CreateRequisition
+            projectId={projectId}
+            createdBy={currentUserId}
+            isOpen={true}
+            onClose={() => setShowRequisitionModal(false)}
+          />
+        )}
         {showAddProductModal && (
           <div
             className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"
@@ -2819,5 +2375,19 @@ function BOQEditComponent({
       </motion.div>
     </motion.div>
   )
+  function ApprovalPill({ label, status }) {
+    const u = (status || "PENDING").toUpperCase()
+    const cls =
+      u === "APPROVED" ? "bg-green-100 text-green-700"
+      : u === "REJECTED" ? "bg-red-100 text-red-700"
+      : "bg-amber-100 text-amber-700"
+    const mark = u === "APPROVED" ? "✓" : u === "REJECTED" ? "✕" : "•"
+    return (
+      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded ${cls}`} title={`${label} approval: ${u}`}>
+        <span className="font-semibold">{mark}</span>
+        {label}
+      </span>
+    )
+  }
 }
 export default BOQEditComponent

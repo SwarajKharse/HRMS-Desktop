@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import NewProjects from "../components/Projects/NewProjects"
 import ProjectMaterialRequisition from "../components/Projects/ProjectMaterialRequisition"
 import SiteEngineerProjects from "../components/Projects/SiteEngineerProjects"
+import SiteEngineerMaterialRequisition from "../components/Projects/SiteEngineerMaterialRequisition"
 import { GrWorkshop } from "react-icons/gr"
 import { SiMaterialformkdocs } from "react-icons/si"
 import { useAuth } from "../contexts/AuthContext"
@@ -20,6 +21,7 @@ function Projects() {
     { id: "new-projects", label: "New Projects", icon: GrWorkshop, component: NewProjects },
     { id: "projects-mtrs", label: "Projects Material Requisitions", icon: SiMaterialformkdocs, component: ProjectMaterialRequisition },
     { id: "site-engineer-projects", label: "My Projects", icon: GrWorkshop, component: SiteEngineerProjects },
+    { id: "site-engineer-mtrs", label: "Material Requisitions", icon: SiMaterialformkdocs, component: SiteEngineerMaterialRequisition },
   ]
 
   const designation = employee?.designation?.name?.replace(/\s+/g, "-").toLowerCase() || ""
@@ -39,9 +41,9 @@ function Projects() {
     if (!employee) return []
     if (shouldShowMainTabs()) {
       if (activeMainTab === "ProjectManager") return [allTabs[0], allTabs[1]]
-      if (activeMainTab === "SiteEngineer") return [allTabs[2]]
+      if (activeMainTab === "SiteEngineer") return [allTabs[2], allTabs[3]]
     }
-    if (isSubordinate()) return [allTabs[2]]
+    if (isSubordinate()) return [allTabs[2], allTabs[3]]
     return []
   }
 
