@@ -8,7 +8,7 @@ import { useAuth } from "../../contexts/AuthContext"
 import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./ProjectLeadDetails"
-import BOQEditComponent from "./BOQMTREditStore"
+import BOQEditComponent from "../Projects/BOQEditComponent"
 import ProjectDispatch from "./ProjectDispatch" // Ensure this import is correct
 
 function NewProjects() {
@@ -569,6 +569,7 @@ function NewProjects() {
               setShowBOQEdit(false)
               setSelectedProject(null)
             }}
+            readOnly={true}
           />
         )}
         {showProjectDispatch && selectedProjectForDispatch && (

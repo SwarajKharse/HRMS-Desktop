@@ -13,9 +13,11 @@ export const comparisonSheetService = {
     }
   },
 
-  getMaterialRequisitionById: async (mtrId) => {
+  getMaterialRequisitionById: async (mtrId, itemKind = "BILLABLE") => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/material-requisitions/${mtrId}/with-comparison-sheet`)
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/${mtrId}/with-comparison-sheet`, {
+        params: { itemKind },
+      })
       return response.data
     } catch (error) {
       console.error("Error fetching material requisition with comparison sheet:", error)
@@ -63,12 +65,13 @@ export const comparisonSheetService = {
     }
   },
 
-  updatePurchaseManagerApprovalStatus: async (mtrId, status, remarks = "") => {
+  updatePurchaseManagerApprovalStatus: async (mtrId, status, remarks = "", itemKind = "BILLABLE") => {
     try {
       const response = await axios.put(`${API_BASE_URL}/material-requisitions/${mtrId}/pm-approval`, null, {
         params: {
           status: status,
           remarks: remarks,
+          itemKind: itemKind,
           currentUserId: 1,
         },
       })
@@ -223,9 +226,11 @@ export const comparisonSheetService = {
     }
   },
 
-  getMTRWithComparisonSheet: async (mtrId) => {
+  getMTRWithComparisonSheet: async (mtrId, itemKind = "BILLABLE") => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/material-requisitions/${mtrId}/with-comparison-sheet`)
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/${mtrId}/with-comparison-sheet`, {
+        params: { itemKind },
+      })
       return response.data
     } catch (error) {
       console.error("Error fetching MTR with comparison sheet:", error)

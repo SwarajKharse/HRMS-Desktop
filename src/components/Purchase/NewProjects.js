@@ -8,9 +8,10 @@ import { useAuth } from "../../contexts/AuthContext"
 import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService" // Adjusted path
 import ProjectLeadDetails from "./ProjectLeadDetails"
-import BOQMTREditPurchase from "./BOQMTREditPurchase"
+import BOQEditComponent from "../Projects/BOQEditComponent"
 import ProjectProcurement from "./ProjectProcurement" // Changed from ProjectInitiationIntegration
 import ProjectSummary from "./ProjectSummary"
+import AssignPurchaserModal from "./AssignPurchaserModal"
 
 function NewProjects() {
   const navigate = useNavigate()
@@ -69,6 +70,10 @@ function NewProjects() {
   // New state for Project Summary modal
   const [showSummary, setShowSummary] = useState(false)
   const [summaryProjectId, setSummaryProjectId] = useState(null)
+
+  // New state for Assign Purchaser modal
+  const [showAssignPurchaser, setShowAssignPurchaser] = useState(false)
+  const [selectedProjectForPurchaser, setSelectedProjectForPurchaser] = useState(null)
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -282,10 +287,18 @@ function NewProjects() {
   }
 
   // Handler for opening Project Summary modal
+  // Handler for opening Project Summary modal
   const handleSummary = (e, project) => {
     e.stopPropagation()
     setSummaryProjectId(project.id)
     setShowSummary(true)
+  }
+
+  // Handler for opening Assign Purchaser modal
+  const handleAssignPurchaserClick = (e, project) => {
+    e.stopPropagation()
+    setSelectedProjectForPurchaser(project)
+    setShowAssignPurchaser(true)
   }
 
   if (loading && unassignedleads.length === 0) {
@@ -350,7 +363,7 @@ function NewProjects() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Project ID", "Project Name", "Project Initiation", "Scope of Work", "Summary"]
+                    {["Project ID", "Project Name", "Project Initiation", "Scope of Work", "Summary", "Assign Purchaser"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -413,14 +426,39 @@ function NewProjects() {
                         </td>
 
                         <td className="px-6 py-4">
-                          <button
-                            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium"
-                            onClick={(e) => handleSummary(e, project)}
-                            title="View Summary"
-                          >
-                            Summary
-                          </button>
-                        </td>
+                            <button
+                              className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium"
+                              onClick={(e) => handleSummary(e, project)}
+                              title="View Summary"
+                            >
+                              Summary
+                            </button>
+                          </td>
+
+                          <td className="px-6 py-4">
+                            {project.purchaser ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-gray-700">
+                                  {project.purchaser.firstName} {project.purchaser.lastName}
+                                </span>
+                                <button
+                                  className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                  onClick={(e) => handleAssignPurchaserClick(e, project)}
+                                  title="Edit Assigned Purchaser"
+                                >
+                                  <FiEdit2 size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"
+                                onClick={(e) => handleAssignPurchaserClick(e, project)}
+                                title="Assign Purchaser"
+                              >
+                                Assign Purchaser
+                              </button>
+                            )}
+                          </td>
 
                         {/* <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
@@ -583,7 +621,7 @@ function NewProjects() {
           />
         )}
         {showBOQEdit && selectedProject && (
-          <BOQMTREditPurchase
+          <BOQEditComponent
             projectId={selectedProject.id}
             projectName={selectedProject.project_name}
             existingBOQ={selectedProject.boq}
@@ -592,6 +630,7 @@ function NewProjects() {
               setShowBOQEdit(false)
               setSelectedProject(null)
             }}
+            readOnly={true}
           />
         )}
         {showProjectProcurement && selectedProjectForProcurement && (
@@ -603,15 +642,27 @@ function NewProjects() {
         )}
 
         {showSummary && summaryProjectId && (
-          <ProjectSummary
-            projectId={summaryProjectId}
-            onClose={() => {
-              setShowSummary(false)
-              setSummaryProjectId(null)
-            }}
-          />
-        )}
-      </AnimatePresence>
+            <ProjectSummary
+              projectId={summaryProjectId}
+              onClose={() => {
+                setShowSummary(false)
+                setSummaryProjectId(null)
+              }}
+            />
+          )}
+          {showAssignPurchaser && selectedProjectForPurchaser && (
+            <AssignPurchaserModal
+              projectId={selectedProjectForPurchaser.id}
+              projectName={selectedProjectForPurchaser.project_name}
+              currentPurchaser={selectedProjectForPurchaser.purchaser}
+              onClose={() => {
+                setShowAssignPurchaser(false)
+                setSelectedProjectForPurchaser(null)
+              }}
+              onSave={fetchLeads}
+            />
+          )}
+        </AnimatePresence>
     </div>
   )
 }

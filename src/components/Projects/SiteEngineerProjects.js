@@ -7,7 +7,9 @@ import { useAuth } from "../../contexts/AuthContext"
 import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./SiteEngineerProjectLeadDetails"
-import BOQEditComponent from "./SiteEngineerBOQEditComponent"
+import BOQEditComponent from "./BOQEditComponent"
+import DCHistoryModal from "./DCHistoryModal"
+import ProjectSummary from "./ProjectSummary"
 import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
 
 function SiteEngineerProjects() {
@@ -22,6 +24,10 @@ function SiteEngineerProjects() {
   const [showForm, setShowForm] = useState(false)
   const [showBOQEdit, setShowBOQEdit] = useState(false)
   const [selectedProject, setSelectedProject] = useState(null)
+  const [showDCHistory, setShowDCHistory] = useState(false)
+  const [dcHistoryProject, setDcHistoryProject] = useState(null)
+  const [showSummary, setShowSummary] = useState(false)
+  const [summaryProjectId, setSummaryProjectId] = useState(null)
   const [showWarningForm, setShowWarningForm] = useState(false)
   const [showTerminationForm, setShowTerminationForm] = useState(false)
   const { user } = useAuth()
@@ -167,27 +173,11 @@ function SiteEngineerProjects() {
     }
   }
 
-  const handleBOQSave = async (boqData) => {
-    try {
-      setLoading(true)
-      console.log("Saving BOQ data:", boqData)
-      // Save the BOQ data
-      await projectService.saveBOQWithMaterialRequisition(selectedProject.id, boqData)
-      setSuccessMessage("BOQ saved successfully!")
-      // Close the BOQ edit modal
-      setShowBOQEdit(false)
-      // Clear the selected project
-      setSelectedProject(null)
-      // Refresh the projects list to get updated data
-      await fetchLeads()
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(null), 3000)
-    } catch (error) {
-      console.error("Error saving BOQ:", error)
-      setError("Failed to save BOQ: " + (error.message || error))
-    } finally {
-      setLoading(false)
-    }
+  const handleBOQSave = async () => {
+    // BOQEditComponent already persists the BOQ; just refresh the list.
+    setSuccessMessage("BOQ saved successfully!")
+    await fetchLeads()
+    setTimeout(() => setSuccessMessage(null), 3000)
   }
 
   const handleFilterChange = (type, value) => {
@@ -359,8 +349,23 @@ function SiteEngineerProjects() {
                             >
                               BOQ
                             </button>
+                            <button
+                              className="px-3 py-1 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors text-sm font-medium"
+                              onClick={() => { setDcHistoryProject(project); setShowDCHistory(true) }}
+                              title="DC History"
+                            >
+                              DC History
+                            </button>
+                            <button
+                              className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium"
+                              onClick={() => { setSummaryProjectId(project.id); setShowSummary(true) }}
+                              title="View Summary"
+                            >
+                              Summary
+                            </button>
                           </div>
                         </td>
+                        
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <button
@@ -390,37 +395,45 @@ function SiteEngineerProjects() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => handleRowClick(project)}
+                      className="p-4"
                     >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="text-sm font-semibold text-gray-900">{project.lead.lead_code}</div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
-                            onClick={(e) => handleBOQEdit(e, project)}
-                            title="Edit BOQ"
-                          >
-                            BOQ
-                          </button>
-                          <button
-                            className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                            onClick={(e) => handleEdit(e, project.lead.id)}
-                            title="Edit"
-                          >
-                            <FiEdit2 size={16} />
-                          </button>
-                        </div>
+                      {/* Title */}
+                      <div className="mb-3">
+                        <div className="text-base font-semibold text-gray-900">{project.lead.lead_code}</div>
+                        <div className="text-sm text-gray-600 mt-0.5">{project.project_name}</div>
                       </div>
-                      <div className="grid grid-cols-1 gap-y-2 text-xs">
-                        <div className="font-medium text-gray-900">{project.project_name}</div>
+
+                      {/* Project Initiation – renders its own control */}
+                      <div className="mb-3">
+                        <ProjectInitiationIntegration project={project} />
                       </div>
-                      {/* Expand/collapse indicator */}
-                      <div className="flex justify-center mt-2">
-                        <FiChevronRight
-                          className={`text-gray-400 transition-transform ${expandedRows[project.id] ? "rotate-90" : ""}`}
-                          size={16}
-                        />
+
+                      {/* Actions – full-width, finger-sized */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          className="px-3 py-3 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium active:bg-blue-100"
+                          onClick={(e) => handleBOQEdit(e, project)}
+                        >
+                          BOQ
+                        </button>
+                        <button
+                          className="px-3 py-3 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium active:bg-purple-100"
+                          onClick={(e) => { e.stopPropagation(); setDcHistoryProject(project); setShowDCHistory(true) }}
+                        >
+                          DC History
+                        </button>
+                        <button
+                          className="px-3 py-3 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium active:bg-indigo-100"
+                          onClick={(e) => { e.stopPropagation(); setSummaryProjectId(project.id); setShowSummary(true) }}
+                        >
+                          Summary
+                        </button>
+                        <button
+                          className="flex items-center justify-center gap-2 px-3 py-3 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium active:bg-gray-100"
+                          onClick={(e) => handleEdit(e, project.lead.id)}
+                        >
+                          <FiEdit2 size={16} /> Edit
+                        </button>
                       </div>
                     </motion.div>
                   ))}
@@ -517,11 +530,27 @@ function SiteEngineerProjects() {
             projectId={selectedProject.id}
             projectName={selectedProject.project_name}
             existingBOQ={selectedProject.boq}
+            currentUserId={userId}
+            project={selectedProject}
             onSave={handleBOQSave}
             onClose={() => {
               setShowBOQEdit(false)
               setSelectedProject(null)
             }}
+          />
+        )}
+        {showDCHistory && dcHistoryProject && (
+          <DCHistoryModal
+            projectId={dcHistoryProject.id}
+            projectName={dcHistoryProject.project_name}
+            isOpen={true}
+            onClose={() => { setShowDCHistory(false); setDcHistoryProject(null) }}
+          />
+        )}
+        {showSummary && summaryProjectId && (
+          <ProjectSummary
+            projectId={summaryProjectId}
+            onClose={() => { setShowSummary(false); setSummaryProjectId(null) }}
           />
         )}
       </AnimatePresence>

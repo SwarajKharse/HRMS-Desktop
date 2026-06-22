@@ -9,6 +9,7 @@ import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./ProjectLeadDetails"
 import BOQEditComponent from "./BOQEditComponent"
+import DCHistoryModal from "./DCHistoryModal"
 import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
 import ProjectSummary from "./ProjectSummary"
 
@@ -23,6 +24,8 @@ function NewProjects() {
   const [selectedLead, setSelectedLead] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [showBOQEdit, setShowBOQEdit] = useState(false)
+  const [showDCHistory, setShowDCHistory] = useState(false)
+  const [dcHistoryProject, setDcHistoryProject] = useState(null)
   const [selectedProject, setSelectedProject] = useState(null)
   const [showWarningForm, setShowWarningForm] = useState(false)
   const [showTerminationForm, setShowTerminationForm] = useState(false)
@@ -404,9 +407,15 @@ function NewProjects() {
                             >
                               BOQ
                             </button>
+                            <button
+                              className="px-3 py-1 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors text-sm font-medium"
+                              onClick={() => { setDcHistoryProject(project); setShowDCHistory(true) }}
+                              title="DC History"
+                            >
+                              DC History
+                            </button>
                           </div>
                         </td>
-
                         <td className="px-6 py-4">
                           <button
                             className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium"
@@ -596,6 +605,14 @@ function NewProjects() {
               setShowBOQEdit(false)
               setSelectedProject(null)
             }}
+          />
+        )}
+        {showDCHistory && dcHistoryProject && (
+          <DCHistoryModal
+            projectId={dcHistoryProject.id}
+            projectName={dcHistoryProject.project_name}
+            isOpen={true}
+            onClose={() => { setShowDCHistory(false); setDcHistoryProject(null) }}
           />
         )}
 

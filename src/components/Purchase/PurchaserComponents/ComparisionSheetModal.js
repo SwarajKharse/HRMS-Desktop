@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { FiX, FiChevronDown, FiChevronUp, FiPlus, FiTrash2, FiCheck, FiXCircle } from "react-icons/fi"
+import { FiX, FiChevronDown, FiChevronUp, FiPlus, FiTrash2, FiCheck, FiXCircle, FiClock } from "react-icons/fi"
 import { motion, AnimatePresence } from "framer-motion"
 import VendorDropdown from "./VendorDropdown"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
@@ -13,7 +13,8 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
 }
 
-export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
+export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "purchaser" }) {
+  const isManagerMode = mode === "manager"
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false)
   const [isComparisonExpanded, setIsComparisonExpanded] = useState(true)
   const [comparisons, setComparisons] = useState([
@@ -26,6 +27,11 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
   const [isLoadingData, setIsLoadingData] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [comparisonSheetCreated, setComparisonSheetCreated] = useState(false)
+
+  const [pmApprovalStatus, setPmApprovalStatus] = useState(mtr?.boqMtr?.purchaseManagerApprovalStatus || "PENDING")
+  const [pmApprovalRemarks, setPmApprovalRemarks] = useState(mtr?.boqMtr?.purchaseManagerApprovalRemarks || "")
+  const [pmApprovalLoading, setPmApprovalLoading] = useState(false)
 
   useEffect(() => {
     const loadComparisonSheetData = async () => {
@@ -39,11 +45,12 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
         console.log("[v0] Fetching MTR with comparison sheet data for ID:", mtr.id)
 
         // Fetch the complete MTR data with comparison sheet information
-        const mtrWithComparisonData = await comparisonSheetService.getMTRWithComparisonSheet(mtr.id)
+        const mtrWithComparisonData = await comparisonSheetService.getMTRWithComparisonSheet(mtr.id, mtr.itemKind || "BILLABLE")
         console.log("[v0] MTR with comparison sheet data:", mtrWithComparisonData)
 
         // Check if comparison sheet exists and load the data
         if (mtrWithComparisonData.comparisonSheetId && mtrWithComparisonData.comparisonSheetCreated) {
+          setComparisonSheetCreated(true)
           console.log("[v0] Loading comparison sheet data for ID:", mtrWithComparisonData.comparisonSheetId)
           const comparisonSheetData = await comparisonSheetService.getComparisonSheetById(
             mtrWithComparisonData.comparisonSheetId,
@@ -98,6 +105,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
           }
         } else {
           console.log("[v0] No comparison sheet data found for this MTR")
+          setComparisonSheetCreated(false)
         }
       } catch (error) {
         console.error("[v0] Error loading comparison sheet data:", error)
@@ -188,6 +196,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
       }
 
       setSuccess("Comparison sheet saved successfully!")
+      setComparisonSheetCreated(true)
       setTimeout(() => {
         onClose()
       }, 1500)
@@ -196,6 +205,28 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
       setError("Error saving comparison sheet. Please try again.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleSavePMApproval = async () => {
+    if (!pmApprovalStatus || pmApprovalStatus === "PENDING") {
+      setError("Please select an approval status")
+      return
+    }
+    setPmApprovalLoading(true)
+    setError("")
+    setSuccess("")
+    try {
+      await comparisonSheetService.updatePurchaseManagerApprovalStatus(mtr.id, pmApprovalStatus, pmApprovalRemarks, mtr.itemKind || "BILLABLE")
+      setSuccess("Vendor approval status updated successfully!")
+      setTimeout(() => {
+        if (onSave) onSave()
+        onClose()
+      }, 1200)
+    } catch (error) {
+      setError("Failed to update approval status. Please try again.")
+    } finally {
+      setPmApprovalLoading(false)
     }
   }
 
@@ -270,8 +301,8 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
                       <div className="p-4 pt-0 border-l-4 border-blue-400">
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                           <div>
-                            <p className="font-medium text-blue-600">MTR Code:</p>
-                            <p className="font-semibold">{mtr.mtrCode || "N/A"}</p>
+                            <p className="font-medium text-blue-600">Requisition No:</p>
+                            <p className="font-semibold">{mtr.requisitionNo ? `Requisition ${mtr.requisitionNo}` : "N/A"}</p>
                           </div>
                           <div>
                             <p className="font-medium text-blue-600">Product Name:</p>
@@ -376,144 +407,194 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="p-6 border-l-4 border-amber-400">
-                        <div className="flex items-center justify-between mb-4">
-                          <h5 className="text-lg font-semibold text-amber-700">Vendor Comparisons</h5>
-                          <button
-                            onClick={addComparison}
-                            className="flex items-center gap-2 px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
-                          >
-                            <FiPlus className="w-4 h-4" />
-                            Add More
-                          </button>
-                        </div>
-
-                        {/* Comparison Table */}
-                        <div className="overflow-x-auto">
-                          <table className="w-full border border-gray-200 rounded-lg">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
-                                  Vendor Name
-                                </th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Qty</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Rate</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
-                                  Value
-                                </th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
-                                  Lead Time
-                                </th>
-                                <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 border-b">
-                                  Action
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {comparisons.map((comparison, index) => (
-                                <tr key={comparison.id} className="border-b hover:bg-gray-50">
-                                  <td className="px-4 py-3 relative">
-                                    <VendorDropdown
-                                      value={comparison.vendorName}
-                                      onChange={(vendorName) =>
-                                        updateComparison(comparison.id, "vendorName", vendorName)
-                                      }
-                                      placeholder="Select or add vendor"
-                                    />
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <input
-                                      type="number"
-                                      value={comparison.qty}
-                                      onChange={(e) => updateComparison(comparison.id, "qty", e.target.value)}
-                                      step="0.01"
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <input
-                                      type="number"
-                                      value={comparison.rate}
-                                      onChange={(e) => updateComparison(comparison.id, "rate", e.target.value)}
-                                      step="0.01"
-                                      placeholder="0.00"
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <input
-                                      type="number"
-                                      value={comparison.value.toFixed(2)}
-                                      readOnly
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
-                                    />
-                                  </td>
-                                  <td className="px-4 py-3">
-                                    <input
-                                      type="text"
-                                      value={comparison.leadTime}
-                                      onChange={(e) => updateComparison(comparison.id, "leadTime", e.target.value)}
-                                      placeholder="e.g., 7 days"
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                  </td>
-                                  <td className="px-4 py-3 text-center">
-                                    {comparisons.length > 3 && (
-                                      <button
-                                        onClick={() => removeComparison(comparison.id)}
-                                        className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                      >
-                                        <FiTrash2 className="w-4 h-4" />
-                                      </button>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-
-                        {/* Vendor Selection */}
-                        <div className="mt-6">
-                          <label className="block text-sm font-medium text-amber-700 mb-2">
-                            Select Vendor for MTR:
-                            </label>
-                            
-                          {mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED" && (
-                            <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-md">
-                              <p className="text-sm text-green-700 font-medium">
-                                ✓ Vendor selection is locked - PM has approved the selected vendor
-                              </p>
-                            </div>
-                          )}
-                          <div className="w-full max-w-md relative">
-                            {console.log("[v0] Vendor options for final dropdown:", vendorOptions)}
-                            <select
-                              value={selectedVendor}
-                              onChange={(e) => setSelectedVendor(e.target.value)}
-                              disabled={mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                            >
-                              <option value="">-- Select Vendor --</option>
-                              {vendorOptions.length > 0 ? (
-                                vendorOptions.map((vendor, index) => (
-                                  <option key={index} value={vendor}>
-                                    {vendor}
-                                  </option>
-                                ))
-                              ) : (
-                                <option value="" disabled>
-                                  No vendors selected in comparison items above
-                                </option>
-                              )}
-                            </select>
+                      {isManagerMode && !comparisonSheetCreated ? (
+                        <div className="p-6 border-l-4 border-gray-300">
+                          <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <FiClock className="w-5 h-5 text-gray-500" />
+                            <p className="text-sm text-gray-600">
+                              Pending from Purchaser — vendor comparison has not been filled in yet.
+                            </p>
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="p-6 border-l-4 border-amber-400">
+                          <div className="flex items-center justify-between mb-4">
+                            <h5 className="text-lg font-semibold text-amber-700">Vendor Comparisons</h5>
+                            {!isManagerMode && (
+                              <button
+                                onClick={addComparison}
+                                className="flex items-center gap-2 px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+                              >
+                                <FiPlus className="w-4 h-4" />
+                                Add More
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Comparison Table */}
+                          <div className="overflow-x-auto">
+                            <table className="w-full border border-gray-200 rounded-lg">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
+                                    Vendor Name
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Qty</th>
+                                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Rate</th>
+                                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
+                                    Value
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
+                                    Lead Time
+                                  </th>
+                                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 border-b">
+                                    Action
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {comparisons.map((comparison, index) => (
+                                  <tr key={comparison.id} className="border-b hover:bg-gray-50">
+                                    <td className="px-4 py-3 relative">
+                                      {isManagerMode ? (
+                                        <span className="text-sm text-gray-700">{comparison.vendorName || "—"}</span>
+                                      ) : (
+                                        <VendorDropdown
+                                          value={comparison.vendorName}
+                                          onChange={(vendorName) =>
+                                            updateComparison(comparison.id, "vendorName", vendorName)
+                                          }
+                                          placeholder="Select or add vendor"
+                                        />
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="number"
+                                        value={comparison.qty}
+                                        onChange={(e) => updateComparison(comparison.id, "qty", e.target.value)}
+                                        step="0.01"
+                                        readOnly={isManagerMode}
+                                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isManagerMode ? "bg-gray-100 text-gray-600" : ""}`}
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="number"
+                                        value={comparison.rate}
+                                        onChange={(e) => updateComparison(comparison.id, "rate", e.target.value)}
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        readOnly={isManagerMode}
+                                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isManagerMode ? "bg-gray-100 text-gray-600" : ""}`}
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="number"
+                                        value={comparison.value.toFixed(2)}
+                                        readOnly
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      <input
+                                        type="text"
+                                        value={comparison.leadTime}
+                                        onChange={(e) => updateComparison(comparison.id, "leadTime", e.target.value)}
+                                        placeholder="e.g., 7 days"
+                                        readOnly={isManagerMode}
+                                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isManagerMode ? "bg-gray-100 text-gray-600" : ""}`}
+                                      />
+                                    </td>
+                                    <td className="px-4 py-3 text-center">
+                                      {!isManagerMode && comparisons.length > 3 && (
+                                        <button
+                                          onClick={() => removeComparison(comparison.id)}
+                                          className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                        >
+                                          <FiTrash2 className="w-4 h-4" />
+                                        </button>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {/* Vendor Selection */}
+                          <div className="mt-6">
+                            <label className="block text-sm font-medium text-amber-700 mb-2">
+                              Select Vendor for MTR:
+                              </label>
+
+                            {mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED" && (
+                              <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                                <p className="text-sm text-green-700 font-medium">
+                                  ✓ Vendor selection is locked - PM has approved the selected vendor
+                                </p>
+                              </div>
+                            )}
+                            <div className="w-full max-w-md relative">
+                              <select
+                                value={selectedVendor}
+                                onChange={(e) => setSelectedVendor(e.target.value)}
+                                disabled={isManagerMode || mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                              >
+                                <option value="">-- Select Vendor --</option>
+                                {vendorOptions.length > 0 ? (
+                                  vendorOptions.map((vendor, index) => (
+                                    <option key={index} value={vendor}>
+                                      {vendor}
+                                    </option>
+                                  ))
+                                ) : (
+                                  <option value="" disabled>
+                                    No vendors selected in comparison items above
+                                  </option>
+                                )}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
+
+              {/* Approval Section (Manager mode only, and only once filled) */}
+              {isManagerMode && comparisonSheetCreated && (
+                <div className="p-4 border-t border-amber-200 bg-amber-50 space-y-3">
+                  <h5 className="text-md font-semibold text-amber-700">Vendor Approval</h5>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Update Approval Status:</label>
+                    <select
+                      value={pmApprovalStatus}
+                      onChange={(e) => setPmApprovalStatus(e.target.value)}
+                      disabled={pmApprovalLoading}
+                      className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="APPROVED">Approved</option>
+                      <option value="REJECTED">Rejected</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Remarks:</label>
+                    <textarea
+                      value={pmApprovalRemarks}
+                      onChange={(e) => setPmApprovalRemarks(e.target.value)}
+                      placeholder="Enter approval remarks for selected vendor..."
+                      rows={3}
+                      disabled={pmApprovalLoading}
+                      className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -523,17 +604,29 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave }) {
           <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
             Cancel
           </button>
-          <button
-            onClick={handleSave}
-            disabled={loading || mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"
-              ? "Vendor Approved - Cannot Modify"
-              : loading
-                ? "Saving..."
-                : "Save Comparison Sheet"}
-          </button>
+          {isManagerMode ? (
+            comparisonSheetCreated && (
+              <button
+                onClick={handleSavePMApproval}
+                disabled={pmApprovalLoading || pmApprovalStatus === "PENDING"}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {pmApprovalLoading ? "Saving..." : "Update Vendor Approval"}
+              </button>
+            )
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={loading || mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"}
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"
+                ? "Vendor Approved - Cannot Modify"
+                : loading
+                  ? "Saving..."
+                  : "Save Comparison Sheet"}
+            </button>
+          )}
         </div>
       </motion.div>
     </motion.div>

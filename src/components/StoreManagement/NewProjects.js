@@ -8,7 +8,8 @@ import { useAuth } from "../../contexts/AuthContext"
 import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./ProjectLeadDetails"
-import BOQEditComponent from "./BOQMTREditStore"
+import BOQEditComponent from "../Projects/BOQEditComponent"
+import ProjectSummary from "../Projects/ProjectSummary"
 import ProjectDispatch from "./ProjectDispatch"
 
 function NewProjects() {
@@ -23,6 +24,8 @@ function NewProjects() {
   const [showForm, setShowForm] = useState(false)
   const [showBOQEdit, setShowBOQEdit] = useState(false)
   const [selectedProject, setSelectedProject] = useState(null)
+  const [showSummary, setShowSummary] = useState(false)
+  const [summaryProjectId, setSummaryProjectId] = useState(null)
   const [showWarningForm, setShowWarningForm] = useState(false)
   const [showTerminationForm, setShowTerminationForm] = useState(false)
   const { user } = useAuth()
@@ -376,6 +379,13 @@ function NewProjects() {
                             >
                               BOQ
                             </button>
+                            <button
+                              className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium"
+                              onClick={(e) => { e.stopPropagation(); setSummaryProjectId(project.id); setShowSummary(true) }}
+                              title="View Summary"
+                            >
+                              Summary
+                            </button>
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -425,6 +435,13 @@ function NewProjects() {
                             title="Edit BOQ"
                           >
                             BOQ
+                          </button>
+                          <button
+                            className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-medium"
+                            onClick={(e) => { e.stopPropagation(); setSummaryProjectId(project.id); setShowSummary(true) }}
+                            title="View Summary"
+                          >
+                            Summary
                           </button>
                           <button
                             className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
@@ -537,13 +554,13 @@ function NewProjects() {
               setShowBOQEdit(false)
               setSelectedProject(null)
             }}
+            readOnly={true}
           />
         )}
-        {showProjectDispatch && selectedProjectForDispatch && (
-          <ProjectDispatch
-            project={selectedProjectForDispatch}
-            onClose={handleDispatchClose}
-            onSave={handleDispatchSave}
+        {showSummary && summaryProjectId && (
+          <ProjectSummary
+            projectId={summaryProjectId}
+            onClose={() => { setShowSummary(false); setSummaryProjectId(null) }}
           />
         )}
       </AnimatePresence>

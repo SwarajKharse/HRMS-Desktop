@@ -59,6 +59,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
   const [producttypelist, setProductTypelist] = useState([])
 
   const [projectId, setProjectId] = useState(null)
+  const [selectedSEs, setSelectedSEs] = useState([])
   const [handoverFileUploading, setHandoverFileUploading] = useState(false)
   const [nocFileUploading, setNocFileUploading] = useState(false)
 
@@ -115,6 +116,10 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
         const initialSiteEngineer = projectdetailsResponse?.siteEngineer?.id
           ? Number.parseInt(projectdetailsResponse.siteEngineer.id, 10)
           : ""
+        const initialSiteEngineers = Array.isArray(projectdetailsResponse?.siteEngineers)
+          ? projectdetailsResponse.siteEngineers.map((se) => ({ id: se.id, name: `${se.firstName} ${se.lastName}` }))
+          : []
+        setSelectedSEs(initialSiteEngineers)
         const initialProjectName = projectdetailsResponse.projectName || ""
         const initialProjectStatus = projectdetailsResponse.projectStatus || "planning"
         const initialHandoverFileStatus = projectdetailsResponse.handover_file_status || ""
@@ -336,20 +341,15 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
       payload.project_manager = null
     }
 
-    if (projectData.siteEngineer) {
-      const siteEngineerId = Number.parseInt(projectData.siteEngineer, 10)
-      console.log("[v0] Site Engineer Value:", projectData.siteEngineer)
-      console.log("[v0] Site Engineer ID (parsed):", siteEngineerId)
-      payload.site_engineer = { id: siteEngineerId }
-    } else {
-      console.log("[v0] Site Engineer is empty:", projectData.siteEngineer)
-      payload.site_engineer = null
-    }
+    payload.site_engineer = null
 
     console.log("[v0] Final Payload:", JSON.stringify(payload, null, 2))
 
     try {
       await projectService.createOrUpdateProject(payload, "project", leadId)
+      if (projectId && selectedSEs.length > 0) {
+        await projectService.updateSiteEngineers(projectId, selectedSEs.map((se) => se.id))
+      }
       onClose()
     } catch (err) {
       console.log(err)
@@ -549,27 +549,40 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="siteEngineer" className="block text-sm font-medium text-gray-700">
-                    Site Engineer
-                  </label>
-                  <select
-                    id="siteEngineer"
-                    value={projectData.siteEngineer}
-                    onChange={(e) =>
-                      setProjectData((prev) => ({
-                        ...prev,
-                        siteEngineer: e.target.value ? Number.parseInt(e.target.value, 10) : "",
-                      }))
-                    }
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select a Site Engineer</option>
-                    {seData.map((se) => (
-                      <option key={se.id} value={se.id}>
-                        {se.firstName} {se.lastName}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Site Engineers</label>
+                  <div className="flex gap-2 mb-2">
+                    <select
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      onChange={(e) => {
+                        const id = Number.parseInt(e.target.value, 10)
+                        if (!id) return
+                        const se = seData.find((s) => s.id === id)
+                        if (!se) return
+                        if (selectedSEs.find((s) => s.id === id)) return
+                        setSelectedSEs((prev) => [...prev, { id: se.id, name: `${se.firstName} ${se.lastName}` }])
+                        e.target.value = ""
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="">Add Site Engineer...</option>
+                      {seData.filter((se) => !selectedSEs.find((s) => s.id === se.id)).map((se) => (
+                        <option key={se.id} value={se.id}>{se.firstName} {se.lastName}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {selectedSEs.length === 0 ? (
+                    <p className="text-xs text-gray-400">No site engineers assigned yet.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedSEs.map((se) => (
+                        <span key={se.id} className="flex items-center gap-1 bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">
+                          {se.name}
+                          <button type="button" onClick={() => setSelectedSEs((prev) => prev.filter((s) => s.id !== se.id))}
+                            className="text-blue-500 hover:text-blue-800 ml-1 font-bold">×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label htmlFor="projectName" className="block text-sm font-medium text-gray-700">

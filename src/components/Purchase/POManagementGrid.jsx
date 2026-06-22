@@ -495,16 +495,13 @@ const POManagementGrid = () => {
       rawList.forEach((po) => {
         const key = po.poNumber
         const mtrCode = po.boqMtr?.mtrCode || ""
-        const derivedProject = mtrCode
-          ? mtrCode.replace(/^MTR-/, "").replace(/-\d+$/, "").replace(/-/g, " ").trim()
-          : null
-
+        const actualProject = po.projectName || po.boqMtr?.projectName || null
         if (!poMap.has(key)) {
-          poMap.set(key, { ...po, projectNames: derivedProject ? [derivedProject] : [], mtrCodes: mtrCode ? [mtrCode] : [], allMTRIds: [po.id], allMTRData: [po] })
+          poMap.set(key, { ...po, projectNames: actualProject ? [actualProject] : [], mtrCodes: mtrCode ? [mtrCode] : [], allMTRIds: [po.id], allMTRData: [po] })
         } else {
           const existing = poMap.get(key)
           const latest = po.id > existing.id ? po : existing
-          const mergedProjects = [...new Set([...existing.projectNames, ...(derivedProject ? [derivedProject] : [])])]
+          const mergedProjects = [...new Set([...existing.projectNames, ...(actualProject ? [actualProject] : [])])]
           const mergedMTRCodes = [...new Set([...existing.mtrCodes, ...(mtrCode ? [mtrCode] : [])])]
           poMap.set(key, { ...latest, projectNames: mergedProjects, mtrCodes: mergedMTRCodes, allMTRIds: [...existing.allMTRIds, po.id], allMTRData: [...existing.allMTRData, po] })
         }

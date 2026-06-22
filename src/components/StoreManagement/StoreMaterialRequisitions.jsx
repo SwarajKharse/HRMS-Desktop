@@ -1,16 +1,11 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
 import { projectService } from "../../services/projectService"
-import { comparisonSheetService } from "../../services/comparisonSheetService"
-import { useAuth } from "../../contexts/AuthContext"
-import ComparisionSheetModal from "./PurchaserComponents/ComparisionSheetModal"
 
 const formatDate = (dateString) => {
   if (!dateString) return ""
   return new Date(dateString).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
 }
-
-const dateOnly = (dateString) => (dateString ? new Date(dateString).toISOString().slice(0, 10) : null)
 
 const typeMeta = (type) => {
   switch ((type || "").toUpperCase()) {
@@ -24,22 +19,20 @@ const typeMeta = (type) => {
 
 const numOrDash = (v) => (v === null || v === undefined || v === "" ? "—" : v)
 
-export default function MaterialRequisitionPurchase({ assignedProjectIds = null, mode = "manager" }) {
-  const { user } = useAuth()
+export default function StoreMaterialRequisitions({ mode = "manager", assignedProjectIds = null }) {
   const [requisitions, setRequisitions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [projectQuery, setProjectQuery] = useState("")
   const [productQuery, setProductQuery] = useState("")
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
   const [priorityFilter, setPriorityFilter] = useState("All")
   const [requiredOnDate, setRequiredOnDate] = useState("")
   const [remarkQuery, setRemarkQuery] = useState("")
-  const [fromDate, setFromDate] = useState("")
-  const [toDate, setToDate] = useState("")
   const [expanded, setExpanded] = useState({})
-  const [showComparisonModal, setShowComparisonModal] = useState(false)
-  const [selectedMtrForComparison, setSelectedMtrForComparison] = useState(null)
-  const [loadingComparison, setLoadingComparison] = useState(false)
+  const [editingStock, setEditingStock] = useState({})
+  const [savingStock, setSavingStock] = useState({})
 
   const fetchRequisitions = useCallback(async () => {
     setLoading(true)
@@ -49,7 +42,7 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
       let approved = (Array.isArray(data) ? data : []).filter(
         (r) => (r.status || "").toUpperCase() === "APPROVED"
       )
-      if (Array.isArray(assignedProjectIds)) {
+      if (mode === "incharge" && Array.isArray(assignedProjectIds)) {
         approved = approved.filter((r) => assignedProjectIds.includes(r.projectId))
       }
       setRequisitions(approved)
@@ -58,49 +51,23 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
     } finally {
       setLoading(false)
     }
-  }, [assignedProjectIds])
+  }, [])
 
   useEffect(() => { fetchRequisitions() }, [fetchRequisitions])
 
   const toggle = (id) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
 
-  const handleOpenComparison = async (l, req) => {
-    setLoadingComparison(true)
-    try {
-      const itemKind = (l.type || "").toUpperCase() === "BILLABLE" ? "BILLABLE" : "CATEGORY"
-      const detail = await comparisonSheetService.getMaterialRequisitionById(l.id, itemKind)
-      setSelectedMtrForComparison({
-        ...l,
-        ...detail,
-        itemKind,
-        requisitionNo: req?.requisitionNo,
-        boqMtr: {
-          purchaseManagerApprovalStatus: detail.purchaseManagerApprovalStatus,
-          purchaseManagerApprovalRemarks: detail.purchaseManagerApprovalRemarks,
-          purchaseManagerApprovalDate: detail.purchaseManagerApprovalDate,
-        },
-      })
-      setShowComparisonModal(true)
-    } catch (e) {
-      alert("Failed to load comparison data: " + (e?.response?.data?.message || e.message))
-    } finally {
-      setLoadingComparison(false)
-    }
-  }
-
-  const handleSaveComparison = async (comparisonData) => {
-    await comparisonSheetService.saveComparisonSheet(
-      { ...comparisonData, itemKind: selectedMtrForComparison?.itemKind || "BILLABLE" },
-      user?.userId || 1,
-    )
-  }
-
-  const hasLineFilter = !!(productQuery || (priorityFilter && priorityFilter !== "All") || requiredOnDate || remarkQuery)
+  const hasLineFilter = !!productQuery || priorityFilter !== "All" || !!requiredOnDate || !!remarkQuery
 
   const lineMatches = (l) => {
     if (productQuery && !(l.productName || "").toLowerCase().includes(productQuery.toLowerCase())) return false
-    if (priorityFilter && priorityFilter !== "All" && (l.priority || "MEDIUM").toUpperCase() !== priorityFilter.toUpperCase()) return false
-    if (requiredOnDate && dateOnly(l.expectedDeliveryDate) !== requiredOnDate) return false
+    if (priorityFilter !== "All" && (l.priority || "MEDIUM").toUpperCase() !== priorityFilter) return false
+    if (requiredOnDate) {
+      if (!l.expectedDeliveryDate) return false
+      const a = new Date(l.expectedDeliveryDate).toDateString()
+      const b = new Date(requiredOnDate).toDateString()
+      if (a !== b) return false
+    }
     if (remarkQuery && !(l.remarks || "").toLowerCase().includes(remarkQuery.toLowerCase())) return false
     return true
   }
@@ -117,15 +84,43 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
       return true
     })
     .map((r) => {
-      const lines = r.lines || []
-      const visibleLines = hasLineFilter ? lines.filter(lineMatches) : lines
+      const visibleLines = hasLineFilter ? (r.lines || []).filter(lineMatches) : (r.lines || [])
       return { ...r, visibleLines }
     })
     .filter((r) => !hasLineFilter || r.visibleLines.length > 0)
+  
 
-  const clearFilters = () => {
-    setProjectQuery(""); setProductQuery(""); setPriorityFilter("All")
-    setRequiredOnDate(""); setRemarkQuery(""); setFromDate(""); setToDate("")
+  const handleStockChange = (lineId, value) => {
+    setEditingStock((prev) => ({ ...prev, [lineId]: value }))
+  }
+
+  const handleStockSave = async (req, line) => {
+    const value = editingStock[line.id]
+    if (value === undefined || value === "") return
+    const stock = parseFloat(value)
+    if (isNaN(stock) || stock < 0) { alert("Invalid stock quantity."); return }
+    if (stock > line.mtrQty) { alert(`Stock cannot exceed MTR Qty (${line.mtrQty}).`); return }
+
+    setSavingStock((prev) => ({ ...prev, [line.id]: true }))
+    try {
+      await projectService.updateStockAlloted(req.projectId, req.id, line.id, line.itemKind, stock)
+      setRequisitions((prev) => prev.map((r) => {
+        if (r.id !== req.id) return r
+        return {
+          ...r,
+          lines: (r.lines || []).map((l) => {
+            if (l.id !== line.id) return l
+            const purchaseMTR = Math.max(0, (l.mtrQty || 0) - stock)
+            return { ...l, stockAlloted: stock, purchaseMTR }
+          })
+        }
+      }))
+      setEditingStock((prev) => { const n = { ...prev }; delete n[line.id]; return n })
+    } catch (e) {
+      alert("Failed to save stock: " + (e?.response?.data?.message || e.message))
+    } finally {
+      setSavingStock((prev) => ({ ...prev, [line.id]: false }))
+    }
   }
 
   return (
@@ -133,10 +128,10 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
       <div className="rounded-xl border border-gray-200 bg-white text-gray-900 shadow-lg">
         <div className="flex flex-col space-y-1.5 p-6 border-b border-gray-200">
           <h2 className="text-2xl font-semibold leading-none tracking-tight text-blue-700">Material Requisitions</h2>
-          <p className="text-sm text-gray-500">Showing approved requisitions ready for purchase</p>
+          <p className="text-sm text-gray-500">Showing approved requisitions — update stock allotted per line</p>
         </div>
         <div className="p-6 pt-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-3 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-blue-800">Project name</label>
               <input type="text" value={projectQuery} onChange={(e) => setProjectQuery(e.target.value)} placeholder="Search project..."
@@ -145,6 +140,16 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-blue-800">Product name</label>
               <input type="text" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Search item..."
+                className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-blue-800">From date</label>
+              <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
+                className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-medium text-blue-800">To date</label>
+              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
                 className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="flex flex-col gap-1">
@@ -158,7 +163,7 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
               </select>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-blue-800">Required on date</label>
+              <label className="text-xs font-medium text-blue-800">Required On Date</label>
               <input type="date" value={requiredOnDate} onChange={(e) => setRequiredOnDate(e.target.value)}
                 className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
@@ -167,18 +172,9 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
               <input type="text" value={remarkQuery} onChange={(e) => setRemarkQuery(e.target.value)} placeholder="Search remark..."
                 className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-blue-800">From date</label>
-              <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
-                className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-blue-800">To date</label>
-              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
-                className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div className="flex items-end justify-end">
-              <button onClick={clearFilters} className="text-sm text-blue-700 hover:text-blue-900 underline">Clear filters</button>
+            <div className="md:col-span-7 flex justify-end">
+              <button onClick={() => { setProjectQuery(""); setProductQuery(""); setFromDate(""); setToDate(""); setPriorityFilter("All"); setRequiredOnDate(""); setRemarkQuery("") }}
+                className="text-sm text-blue-700 hover:text-blue-900 underline">Clear filters</button>
             </div>
           </div>
 
@@ -187,26 +183,26 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
           ) : error ? (
             <div className="text-center py-8 text-red-600">{error}</div>
           ) : filtered.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No matching requisitions found.</div>
+            <div className="text-center py-8 text-gray-500">No approved requisitions found.</div>
           ) : (
             <div className="space-y-3">
               {filtered.map((req) => {
                 const open = hasLineFilter ? true : !!expanded[req.id]
-                const lines = req.visibleLines
+                const lines = req.visibleLines || req.lines || []
                 return (
                   <div key={req.id} className="border border-gray-200 rounded-lg shadow-sm">
                     <div className="flex items-center justify-between px-4 py-3">
-                      <button
-                        onClick={() => !hasLineFilter && toggle(req.id)}
-                        className="flex items-center gap-2 text-left flex-1 min-w-0"
-                      >
+                      <button onClick={() => toggle(req.id)} className="flex items-center gap-2 text-left flex-1 min-w-0">
                         <span className="text-gray-500 w-4">{open ? "▾" : "▸"}</span>
                         <span className="font-semibold text-gray-800">
                           {req.projectName || "Project"} — Requisition {req.requisitionNo}
                         </span>
                         <span className="text-xs text-gray-400">({lines.length} item{lines.length !== 1 ? "s" : ""})</span>
                       </button>
-                      <span className="text-xs text-gray-400 shrink-0">{formatDate(req.createdAt)}</span>
+                      <span className="text-xs text-gray-400 shrink-0 flex flex-col items-end gap-0.5">
+                        <span>Created: {formatDate(req.createdAt)}</span>
+                        {req.pmApprovalDate && <span className="text-green-600">Approved: {formatDate(req.pmApprovalDate)}</span>}
+                      </span>
                     </div>
                     {open && (
                       <div className="border-t border-gray-200 overflow-x-auto">
@@ -217,13 +213,17 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
                               <th className="text-right px-3 py-2 font-semibold">MTR Qty</th>
                               <th className="text-right px-3 py-2 font-semibold">Stock Allotted</th>
                               <th className="text-right px-3 py-2 font-semibold">Purchase Qty</th>
-                              <th className="text-right px-3 py-2 font-semibold">DC Qty</th>
-                              <th className="text-center px-3 py-2 pr-4 font-semibold">Action</th>
+                              <th className="text-right px-3 py-2 pr-4 font-semibold">DC Qty</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y">
                             {lines.map((l, i) => {
                               const meta = typeMeta(l.type)
+                              const isEditing = editingStock[l.id] !== undefined
+                              const stockVal = isEditing ? editingStock[l.id] : (l.stockAlloted ?? "")
+                              const purchaseVal = isEditing
+                                ? Math.max(0, (l.mtrQty || 0) - parseFloat(editingStock[l.id] || 0))
+                                : (l.purchaseMTR ?? "")
                               return (
                                 <tr key={l.id ?? i} className="hover:bg-gray-50">
                                   <td className="px-4 py-2 pl-10">
@@ -240,9 +240,25 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
                                     </div>
                                   </td>
                                   <td className="px-3 py-2 text-right font-medium text-gray-800">{numOrDash(l.mtrQty)}</td>
-                                  <td className="px-3 py-2 text-right text-gray-700">{numOrDash(l.stockAlloted)}</td>
-                                  <td className="px-3 py-2 text-right text-gray-600">{numOrDash(l.purchaseMTR)}</td>
-                                  <td className="px-3 py-2 text-right text-gray-600">
+                                  <td className="px-3 py-2 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <input
+                                        type="number" min="0" max={l.mtrQty}
+                                        value={stockVal}
+                                        onChange={(e) => handleStockChange(l.id, e.target.value)}
+                                        className="w-20 h-8 rounded border border-blue-300 px-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                      />
+                                      {isEditing && (
+                                        <button onClick={() => handleStockSave(req, l)}
+                                          disabled={savingStock[l.id]}
+                                          className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
+                                          {savingStock[l.id] ? "..." : "Save"}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2 text-right text-gray-600">{numOrDash(purchaseVal)}</td>
+                                  <td className="px-3 py-2 text-right text-gray-600 pr-4">
                                     <span className={(l.mtrQty || 0) - (l.dcQty || 0) > 0 ? "text-red-600 font-semibold" : ""}>
                                       {numOrDash(l.dcQty)}
                                     </span>
@@ -261,15 +277,6 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
                                       </div>
                                     )}
                                   </td>
-                                  <td className="px-3 py-2 text-center pr-4">
-                                    <button
-                                      onClick={() => handleOpenComparison(l, req)}
-                                      disabled={loadingComparison}
-                                      className="px-2 py-1 text-xs rounded bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50"
-                                    >
-                                      Comparison
-                                    </button>
-                                  </td>
                                 </tr>
                               )
                             })}
@@ -284,18 +291,6 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
           )}
         </div>
       </div>
-      {showComparisonModal && selectedMtrForComparison && (
-        <ComparisionSheetModal
-          mtr={selectedMtrForComparison}
-          mode={mode === "purchaser" ? "purchaser" : "manager"}
-          onClose={() => {
-            setShowComparisonModal(false)
-            setSelectedMtrForComparison(null)
-            fetchRequisitions()
-          }}
-          onSave={mode === "purchaser" ? handleSaveComparison : undefined}
-        />
-      )}
     </div>
   )
 }

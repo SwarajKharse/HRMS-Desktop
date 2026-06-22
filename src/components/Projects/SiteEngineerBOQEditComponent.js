@@ -18,6 +18,7 @@ import {
 import { AiOutlineArrowDown, AiOutlineArrowUp } from "react-icons/ai"
 import { motion, AnimatePresence } from "framer-motion"
 import BillableProductSelector from "./BillableProductSelector"
+import CreateRequisition from "./CreateRequisition"
 import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
 import { leadService } from "../../services/leadService"
@@ -43,6 +44,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
   const [showApprovalModal, setShowApprovalModal] = useState(null)
   const [isBOQInitializedFromProps, setIsBOQInitializedFromProps] = useState(false)
   const [editingBillableMTR, setEditingBillableMTR] = useState(null)
+  const [showRequisitionModal, setShowRequisitionModal] = useState(false)
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -1453,9 +1455,18 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
       >
         <div className="flex items-center justify-between p-6 border-b">
           <h3 className="text-xl font-bold text-blue-600">Edit BOQ - {projectName}</h3>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
-            <FiX className="w-6 h-6 text-gray-500" />
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowRequisitionModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              <FiPlus size={16} />
+              Requisitions
+            </button>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+              <FiX className="w-6 h-6 text-gray-500" />
+            </button>
+          </div>
         </div>
         {error && (
           <div className="mx-6 mt-4 bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 border border-red-100">
@@ -2180,6 +2191,14 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
               </div>
             </div>
           </div>
+        )}
+        {showRequisitionModal && (
+          <CreateRequisition
+            projectId={projectId}
+            createdBy={currentUserId}
+            isOpen={true}
+            onClose={() => setShowRequisitionModal(false)}
+          />
         )}
       </motion.div>
     </motion.div>

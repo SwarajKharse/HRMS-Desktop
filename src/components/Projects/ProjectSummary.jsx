@@ -8,6 +8,8 @@ function ProjectSummary({ projectId, onClose }) {
   const [summaryData, setSummaryData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [expandedCategory, setExpandedCategory] = useState({})
+  const [expanded, setExpanded] = useState({})
 
   useEffect(() => {
     fetchProjectSummary()
@@ -78,15 +80,29 @@ function ProjectSummary({ projectId, onClose }) {
               <h3 className="text-sm text-gray-600 font-semibold">Project: {summaryData.projectName || 'N/A'}</h3>
             </div>
             
-            {!summaryData.productSummary || !Array.isArray(summaryData.productSummary) || summaryData.productSummary.length === 0 ? (
+            {!summaryData.categorySummary || !Array.isArray(summaryData.categorySummary) || summaryData.categorySummary.length === 0 ? (
               <div className="text-center text-gray-500 py-6">
                 No products found for this project
               </div>
             ) : (
+              <div className="space-y-4">
+                {summaryData.categorySummary.map((category, catIdx) => {
+                  const catOpen = !!expandedCategory[catIdx]
+                  return (
+                    <div key={catIdx} className="border rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => setExpandedCategory((p) => ({ ...p, [catIdx]: !p[catIdx] }))}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-indigo-50 text-indigo-800 font-semibold text-sm hover:bg-indigo-100 transition-colors"
+                      >
+                        <span>{category.categoryLabel}</span>
+                        <span>{catOpen ? "▾" : "▸"}</span>
+                      </button>
+                      {catOpen && (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-gray-100 border-b border-gray-300">
+                      <th className="px-3 py-3 text-left font-semibold text-gray-700 min-w-48"></th>
                       <th className="px-3 py-3 text-left font-semibold text-gray-700 min-w-48">Product Name</th>
                       <th className="px-3 py-3 text-center font-semibold text-gray-700">BOQ Qty</th>
                       <th className="px-3 py-3 text-center font-semibold text-gray-700">Remaining Qty</th>
@@ -94,26 +110,66 @@ function ProjectSummary({ projectId, onClose }) {
                       <th className="px-3 py-3 text-center font-semibold text-gray-700">Total Stock Qty</th>
                       <th className="px-3 py-3 text-center font-semibold text-gray-700">Total Purchase Qty</th>
                       <th className="px-3 py-3 text-center font-semibold text-gray-700">Total DC Qty</th>
+                      <th className="px-3 py-3 text-center font-semibold text-gray-700">Pending</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {summaryData.productSummary.map((product, idx) => (
-                      <tr key={idx} className={`border-b border-gray-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-indigo-50 transition-colors`}>
-                        <td className="px-3 py-3 text-gray-900 font-medium text-left">
-                          <div className="truncate max-w-xs" title={product.productName}>
-                            {product.productName}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 text-center text-blue-600 font-semibold">{product.boqQty || 0}</td>
-                        <td className="px-3 py-3 text-center text-orange-600 font-semibold">{product.remainingQty || 0}</td>
-                        <td className="px-3 py-3 text-center text-purple-600 font-semibold">{product.totalMTRQty || 0}</td>
-                        <td className="px-3 py-3 text-center text-green-600 font-semibold">{product.totalStockQty || 0}</td>
-                        <td className="px-3 py-3 text-center text-red-600 font-semibold">{product.totalPurchaseQty || 0}</td>
-                        <td className="px-3 py-3 text-center text-indigo-600 font-semibold">{product.totalDCQty || 0}</td>
-                      </tr>
-                    ))}
+                    {category.products.map((product, idx) => {
+                      const hasSubItems = Array.isArray(product.categoryItems) && product.categoryItems.length > 0
+                      const isOpen = !!expanded[`${catIdx}-${idx}`]
+                      const pending = Math.max(0, (product.totalMTRQty || 0) - (product.totalDCQty || 0))
+                      return (
+                        <>
+                          <tr key={idx} className={`border-b border-gray-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-indigo-50 transition-colors`}>
+                            <td className="px-3 py-3 text-center">
+                              {hasSubItems && (
+                                <button onClick={() => setExpanded((p) => ({ ...p, [`${catIdx}-${idx}`]: !p[`${catIdx}-${idx}`] }))} className="text-gray-500">
+                                  {isOpen ? "▾" : "▸"}
+                                </button>
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-gray-900 font-medium text-left">
+                              <div className="truncate max-w-xs" title={product.productName}>
+                                {product.productName}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-center text-blue-600 font-semibold">{product.boqQty || 0}</td>
+                            <td className="px-3 py-3 text-center text-orange-600 font-semibold">{product.remainingQty || 0}</td>
+                            <td className="px-3 py-3 text-center text-purple-600 font-semibold">{product.totalMTRQty || 0}</td>
+                            <td className="px-3 py-3 text-center text-green-600 font-semibold">{product.totalStockQty || 0}</td>
+                            <td className="px-3 py-3 text-center text-red-600 font-semibold">{product.totalPurchaseQty || 0}</td>
+                            <td className="px-3 py-3 text-center text-indigo-600 font-semibold">{product.totalDCQty || 0}</td>
+                            <td className={`px-3 py-3 text-center font-semibold ${pending > 0 ? "text-red-600" : "text-gray-400"}`}>{pending}</td>
+                          </tr>
+                          {isOpen && hasSubItems && product.categoryItems.map((ci, ciIdx) => {
+                            const ciPending = Math.max(0, (ci.totalMTRQty || 0) - (ci.totalDCQty || 0))
+                            return (
+                              <tr key={`${idx}-${ciIdx}`} className="border-b border-gray-100 bg-gray-50/50">
+                                <td className="px-3 py-2"></td>
+                                <td className="px-3 py-2 text-gray-600 text-left pl-6">
+                                  <span className="text-[10px] uppercase tracking-wide text-gray-400 mr-2">{ci.categoryType}</span>
+                                  {ci.itemName}
+                                </td>
+                                <td className="px-3 py-2 text-center text-blue-500">{ci.qty || 0}</td>
+                                <td className="px-3 py-2 text-center text-gray-400">—</td>
+                                <td className="px-3 py-2 text-center text-purple-500">{ci.totalMTRQty || 0}</td>
+                                <td className="px-3 py-2 text-center text-green-500">{ci.totalStockQty || 0}</td>
+                                <td className="px-3 py-2 text-center text-red-500">{ci.totalPurchaseQty || 0}</td>
+                                <td className="px-3 py-2 text-center text-indigo-500">{ci.totalDCQty || 0}</td>
+                                <td className={`px-3 py-2 text-center ${ciPending > 0 ? "text-red-500" : "text-gray-400"}`}>{ciPending}</td>
+                              </tr>
+                            )
+                          })}
+                        </>
+                      )
+                    })}
                   </tbody>
                 </table>
+              </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -122,5 +178,4 @@ function ProjectSummary({ projectId, onClose }) {
     </div>
   )
 }
-
 export default ProjectSummary

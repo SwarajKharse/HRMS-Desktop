@@ -79,12 +79,165 @@ export const projectService = {
       throw error
     }
   },
+  getRequisitionableItems: async (projectId, excludeReqId = null) => {
+    try {
+      const config = { ...getAuthHeaders() }
+      if (excludeReqId != null) config.params = { excludeReqId }
+      const response = await axios.get(`${API_URL}/projects/${projectId}/requisitionable-items`, config)
+      return response.data
+    } catch (error) {
+      console.error("Error fetching requisitionable items:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  createRequisition: async (projectId, requisitionData) => {
+    try {
+      const response = await axios.post(`${API_URL}/projects/${projectId}/requisitions`, requisitionData, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error creating requisition:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  getRequisitions: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/requisitions`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error fetching requisitions:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  getSiteEngineerAssignedProjects: async (siteEngineerId, page = 0, size = 100) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/siteengineerprojects`, {
+        params: { page, size, assignedSE: siteEngineerId },
+        ...getAuthHeaders(),
+      })
+      return response.data?.results || []
+    } catch (error) {
+      console.error("Error fetching SE assigned projects:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  getStoreInchargeAssignedProjects: async (storeInchargeId, page = 0, size = 100) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/storeinchargeprojects`, {
+        params: { page, size, assignedStoreIncharge: storeInchargeId },
+        ...getAuthHeaders(),
+      })
+      return response.data?.results || []
+    } catch (error) {
+      console.error("Error fetching Store Incharge assigned projects:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  getPurchaserAssignedProjects: async (purchaserId, page = 0, size = 100) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/purchaserprojects`, {
+        params: { page, size, assignedPurchaser: purchaserId },
+        ...getAuthHeaders(),
+      })
+      return response.data?.results || []
+    } catch (error) {
+      console.error("Error fetching Purchaser assigned projects:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  getDCableLines: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/dc-able-lines`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error fetching DC-able lines:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+  createDeliveryChallan: async (projectId, dcNumber, createdBy, lines, file) => {
+    try {
+      const formData = new FormData()
+      formData.append("dcNumber", dcNumber)
+      formData.append("createdBy", createdBy)
+      formData.append("linesJson", JSON.stringify(lines))
+      if (file) formData.append("file", file)
+      const response = await axios.post(`${API_URL}/projects/${projectId}/delivery-challans`, formData, {
+        headers: {
+          ...getAuthHeaders().headers,
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error creating delivery challan:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+  getDeliveryChallans: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/delivery-challans`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error fetching delivery challans:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  updateStockAlloted: async (projectId, requisitionId, lineId, itemKind, stockAlloted) => {
+    try {
+      const response = await axios.put(
+        `${API_URL}/projects/${projectId}/requisitions/${requisitionId}/lines/${lineId}/stock`,
+        { itemKind, stockAlloted },
+        getAuthHeaders()
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error updating stock alloted:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  updateSiteEngineers: async (projectId, engineerIds) => {
+    try {
+      const response = await axios.put(`${API_URL}/projects/${projectId}/site-engineers`, engineerIds, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error updating site engineers:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  getAllRequisitions: async () => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/all-requisitions`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error fetching all requisitions:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  updateRequisition: async (projectId, requisitionId, requisitionData) => {
+    try {
+      const response = await axios.put(`${API_URL}/projects/${projectId}/requisitions/${requisitionId}`, requisitionData, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error updating requisition:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
   updateProjectTitle: async (projectId, newTitle) => {
     try {
       const response = await axios.put(`${API_URL}/projects/${projectId}/title`, { title: newTitle }, getAuthHeaders())
       return response.data
     } catch (error) {
       console.error("Error updating project title:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  setRequisitionApproval: async (projectId, requisitionId, status, remarks = "") => {
+    try {
+      const response = await axios.put(`${API_URL}/projects/${projectId}/requisitions/${requisitionId}/approval`, { status, remarks }, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error setting requisition approval:", error.response ? error.response.data : error.message)
       throw error
     }
   },
