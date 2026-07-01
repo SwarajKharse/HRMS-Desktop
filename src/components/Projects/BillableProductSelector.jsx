@@ -632,82 +632,39 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                       {categoryProducts.length === 0 ? (
                         <div className="p-4 text-center text-gray-500">No products added to this category yet.</div>
                       ) : (
-                        <table className="min-w-full divide-y divide-gray-200">
+                       <>
+                          {/* Desktop table (unchanged) */}
+                          <table className="min-w-full divide-y divide-gray-200 hidden md:table">
                           <thead>
                             <tr>
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Product
-                              </th>
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Make
-                              </th>
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Quantity
-                              </th>
-                              {/* Removed Rate, Amount, and Total headers */}
-                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
-                              </th>
+                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Make</th>
+                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                              <th className="px-3 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                           </thead>
                           <tbody className="bg-white divide-y divide-gray-200">
                             {categoryProducts.map((product, index) => {
-                              const categoryInfo =
-                                product.categoryInfo || extractCategoryInfo(product, leadProductTypes)
+                              const categoryInfo = product.categoryInfo || extractCategoryInfo(product, leadProductTypes)
                               return (
                                 <tr key={product.id} className={index % 2 === 0 ? "bg-gray-50" : ""}>
                                   <td className="px-3 py-2">
-                                    <div className="text-sm font-medium">
-                                      {product.product_name || "Unnamed Product"}
-                                    </div>
+                                    <div className="text-sm font-medium">{product.product_name || "Unnamed Product"}</div>
                                     <div className="text-xs text-gray-500">HSN: {product.hsn_code || "N/A"}</div>
                                     <div className="text-xs text-gray-400">Available: {product.product_qty || "0"}</div>
                                     <div className="text-xs text-gray-400">UOM: {product.uom || "N/A"}</div>
                                   </td>
                                   <td className="px-3 py-2">
-                                    <input
-                                      type="text"
-                                      value={product.make || ""}
-                                      onChange={(e) =>
-                                        handleProductFieldChange(category.id, product.id, "make", e.target.value)
-                                      }
-                                      placeholder="Enter make"
-                                      className="w-20 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    />
+                                    <input type="text" value={product.make || ""} onChange={(e) => handleProductFieldChange(category.id, product.id, "make", e.target.value)} placeholder="Enter make" className="w-20 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
                                   </td>
                                   <td className="px-3 py-2">
-                                    <input
-                                      type="text"
-                                      inputMode="numeric"
-                                      pattern="[0-9]*\.?[0-9]*"
-                                      value={product.qty}
-                                      onChange={(e) => {
-                                        const value = e.target.value
-                                        if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                                          handleProductFieldChange(category.id, product.id, "qty", value)
-                                        }
-                                      }}
-                                      onBlur={(e) => {
-                                        if (e.target.value === "") {
-                                          handleProductFieldChange(category.id, product.id, "qty", "1")
-                                        }
-                                      }}
-                                      placeholder="Qty"
-                                      className={`w-16 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
-                                      //product.isExisting ? "bg-gray-100 text-gray-700 cursor-not-allowed" : ""
-                                        product.isExisting ? "" : ""
-                                        
-                                      }`}
-                                      // readOnly={product.isExisting} // Make qty read-only for existing items
-                                    />
+                                    <input type="text" inputMode="numeric" pattern="[0-9]*\.?[0-9]*" value={product.qty}
+                                      onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) { handleProductFieldChange(category.id, product.id, "qty", value) } }}
+                                      onBlur={(e) => { if (e.target.value === "") { handleProductFieldChange(category.id, product.id, "qty", "1") } }}
+                                      placeholder="Qty" className="w-16 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
                                   </td>
-                                  {/* Removed Rate, Amount, and Total cells */}
                                   <td className="px-3 py-2">
-                                    <button
-                                      onClick={() => handleRemoveProduct(category.id, product.id)}
-                                      className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors"
-                                      title="Remove product"
-                                    >
+                                    <button onClick={() => handleRemoveProduct(category.id, product.id)} className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors" title="Remove product">
                                       <FiTrash2 />
                                     </button>
                                   </td>
@@ -715,7 +672,38 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                               )
                             })}
                           </tbody>
-                        </table>
+                          </table>
+
+                          {/* Mobile cards */}
+                          <div className="md:hidden space-y-3">
+                            {categoryProducts.map((product) => (
+                              <div key={product.id} className="border border-gray-200 rounded-lg p-3">
+                                <div className="flex items-start justify-between gap-2 mb-2">
+                                  <div className="min-w-0">
+                                    <div className="text-sm font-medium break-words">{product.product_name || "Unnamed Product"}</div>
+                                    <div className="text-xs text-gray-400 mt-0.5">HSN: {product.hsn_code || "N/A"} · Avail: {product.product_qty || "0"} · UOM: {product.uom || "N/A"}</div>
+                                  </div>
+                                  <button onClick={() => handleRemoveProduct(category.id, product.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded shrink-0" title="Remove product">
+                                    <FiTrash2 />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <label className="flex flex-col gap-1">
+                                    <span className="text-xs font-medium text-gray-600">Make</span>
+                                    <input type="text" value={product.make || ""} onChange={(e) => handleProductFieldChange(category.id, product.id, "make", e.target.value)} placeholder="Enter make" className="h-10 px-2 text-base border rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                  </label>
+                                  <label className="flex flex-col gap-1">
+                                    <span className="text-xs font-medium text-gray-600">Quantity</span>
+                                    <input type="text" inputMode="numeric" pattern="[0-9]*\.?[0-9]*" value={product.qty}
+                                      onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) { handleProductFieldChange(category.id, product.id, "qty", value) } }}
+                                      onBlur={(e) => { if (e.target.value === "") { handleProductFieldChange(category.id, product.id, "qty", "1") } }}
+                                      placeholder="Qty" className="h-10 px-2 text-base border rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                                  </label>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </> 
                       )}
                     </div>
                   )}

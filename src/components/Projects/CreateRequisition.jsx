@@ -160,15 +160,15 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
   const subItemRow = (it) => {
     const added = addedKeys.has(lineKey(it))
     return (
-      <div key={lineKey(it)} className="flex items-center justify-between px-3 py-2 text-sm">
-        <span className="flex items-center gap-2">
-          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGE[it.type] || "bg-gray-100 text-gray-700"}`}>{typeLabel(it.type)}</span>
-          <span>{it.name}</span>
+      <div key={lineKey(it)} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+        <span className="flex items-center gap-2 min-w-0">
+          <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${TYPE_BADGE[it.type] || "bg-gray-100 text-gray-700"}`}>{typeLabel(it.type)}</span>
+          <span className="break-words min-w-0">{it.name}</span>
         </span>
-        <span className="flex items-center gap-3">
-          <span className="text-gray-500 text-xs">{it.pending > 0 ? `${it.pending} pending` : "none left"}</span>
+        <span className="flex items-center gap-2 shrink-0">
+          <span className="text-gray-500 text-xs whitespace-nowrap">{it.pending > 0 ? `${it.pending} pending` : "none left"}</span>
           <button onClick={() => addLine(it)} disabled={it.pending <= 0 || added}
-            className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">{added ? "Added" : "Add"}</button>
+            className="px-3 py-2 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed shrink-0">{added ? "Added" : "Add"}</button>
         </span>
       </div>
     )
@@ -354,17 +354,17 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
                         const billAdded = billable && addedKeys.has(lineKey(billable))
                         return (
                           <div key={g.key}>
-                            <div className="flex items-center justify-between px-3 py-2 bg-gray-50">
-                              <button onClick={() => toggle(g.key)} className="flex items-center gap-2 text-left text-sm font-medium text-gray-800">
-                                {subs.length > 0 ? <span className="w-4 text-gray-500">{open ? "▾" : "▸"}</span> : <span className="w-4" />}
-                                <span>{g.title}</span>
-                                {subs.length > 0 && <span className="text-xs text-gray-400">({subs.length} sub-item{subs.length > 1 ? "s" : ""})</span>}
+                            <div className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50">
+                              <button onClick={() => toggle(g.key)} className="flex items-center gap-2 text-left text-sm font-medium text-gray-800 min-w-0">
+                                {subs.length > 0 ? <span className="w-4 text-gray-500 shrink-0">{open ? "▾" : "▸"}</span> : <span className="w-4 shrink-0" />}
+                                <span className="break-words min-w-0">{g.title}</span>
+                                {subs.length > 0 && <span className="text-xs text-gray-400 shrink-0">({subs.length} sub-item{subs.length > 1 ? "s" : ""})</span>}
                               </button>
                               {billable && (
-                                <span className="flex items-center gap-3">
-                                  <span className="text-gray-500 text-xs">{billable.pending > 0 ? `${billable.pending} pending` : "none left"}</span>
+                                <span className="flex items-center gap-2 shrink-0">
+                                  <span className="text-gray-500 text-xs whitespace-nowrap">{billable.pending > 0 ? `${billable.pending} pending` : "none left"}</span>
                                   <button onClick={() => addLine(billable)} disabled={billable.pending <= 0 || billAdded}
-                                    className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">{billAdded ? "Added" : "Add"}</button>
+                                    className="px-3 py-2 text-xs rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed">{billAdded ? "Added" : "Add"}</button>
                                 </span>
                               )}
                             </div>

@@ -1856,22 +1856,22 @@ function BOQEditComponent({
           </div>
         )}
         <div className="flex-1 overflow-auto p-6">
-          <div className="mb-6 flex justify-end gap-3">
+          <div className="mb-3 md:mb-6 flex justify-end gap-2">
             {!readOnly && (
               <button
                 onClick={() => setShowRequisitionModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
-                <FiPlus size={16} />
+                <FiPlus size={14} />
                 Requisitions
               </button>
             )}
             {!readOnly && canApprove && (
               <button
                 onClick={() => setShowAddProductModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
-                <FiPlus size={16} />
+                <FiPlus size={14} />
                 Edit Billable Products
               </button>
             )}
@@ -1917,7 +1917,7 @@ function BOQEditComponent({
                                 <div key={product.id} className="border rounded-lg bg-white">
                                   <div
                                     onClick={() => toggleProductExpansion(product.id)}
-                                    className="flex items-start justify-between gap-3 p-3 cursor-pointer hover:bg-gray-50 rounded-lg"
+                                    className="flex flex-col md:flex-row md:items-start md:justify-between gap-2 md:gap-3 p-3 cursor-pointer hover:bg-gray-50 rounded-lg"
                                   >
                                     <div className="flex items-start gap-2 min-w-0">
                                       {isOpen ? (
@@ -1926,17 +1926,18 @@ function BOQEditComponent({
                                         <AiOutlineArrowDown size={16} className="mt-1 text-gray-400 flex-shrink-0" />
                                       )}
                                       <div className="min-w-0">
-                                        <div className="font-semibold text-base">{product.product_name}</div>
-                                        <div className="text-sm text-gray-500 mt-0.5">
-                                          · UOM: {product.uom}  · Make: {product.make || "N/A"} . HSN: {product.hsn_code}
-                                         
-                                        </div>
+                                        <div className="font-semibold text-base break-words">{product.product_name}</div>
+                                        {isOpen && (
+                                          <div className="text-sm text-gray-500 mt-0.5">
+                                            · UOM: {product.uom}  · Make: {product.make || "N/A"} . HSN: {product.hsn_code}
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                    <div className="flex items-center flex-wrap gap-2 pl-6 md:pl-0 md:flex-shrink-0">
                                       <span className="text-xs text-gray-500 whitespace-nowrap">
-                                        BOQ Qty. <span className="font-medium text-gray-800">{product.qty} </span>
-                                          ||  <span className="font-medium text-gray-800"></span>
+                                        BOQ Qty. <span className="font-medium text-gray-800">{product.qty}</span>
+                                        {"  ||  "}
                                         Remaining <span className="font-medium text-gray-800">{calculateRemainingQty(product)}</span>
                                       </span>
                                       <ApprovalPill label="PM" status={product.pmApprovalStatus} />
