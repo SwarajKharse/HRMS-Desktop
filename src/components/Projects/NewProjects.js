@@ -73,6 +73,7 @@ function NewProjects() {
 
   // State for expanded rows on mobile
   const [expandedRows, setExpandedRows] = useState({})
+  const [search, setSearch] = useState("")
 
   const fetchLeads = useCallback(async () => {
     try {
@@ -81,7 +82,7 @@ function NewProjects() {
 
       const page = currentPage - 1
 
-      const projectData = await projectService.getNewProjects(page, leadsPerPage)
+      const projectData = await projectService.getNewProjects(page, leadsPerPage, search)
 
       setLeads(projectData.content || [])
       setTotalPages(projectData.totalPages || 1)
@@ -93,7 +94,7 @@ function NewProjects() {
       setError("Failed to fetch projects")
       setLoading(false)
     }
-  }, [currentPage, leadsPerPage, user?.orgId, userId])
+  }, [currentPage, leadsPerPage, user?.orgId, userId, search])
 
   useEffect(() => {
     fetchLeads()
@@ -105,7 +106,7 @@ function NewProjects() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery])
+    }, [searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery, search])
 
   const fetchSourceTypeData = async () => {
     try {
@@ -323,6 +324,15 @@ function NewProjects() {
         <div className="md:hidden flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-gray-800">New Projects</h2>
         </div>
+        <div className="mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by project code or name..."
+            className="w-full h-11 rounded-lg border border-gray-300 px-3 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+        </div>
 
         {loading && (
           <div className="flex justify-center my-4">
@@ -445,63 +455,57 @@ function NewProjects() {
             </div>
 
             {/* Mobile Card View */}
-            <div className="md:hidden">
-              {unassignedleads.length === 0 ? (
-                <div className="p-4 text-center text-gray-500 font-medium">No projects found</div>
-              ) : (
-                <div className="divide-y divide-gray-200">
-                  {unassignedleads.map((project) => (
-                    <motion.div
-                      key={project.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => handleRowClick(project)}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="text-sm font-semibold text-gray-900">{project.lead.lead_code}</div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs font-medium"
-                            onClick={(e) => handleSummary(e, project)}
-                            title="View Summary"
-                          >
-                            Summary
-                          </button>
-                          <button
-                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium"
-                            onClick={(e) => handleBOQEdit(e, project)}
-                            title="Edit BOQ"
-                          >
-                            BOQ
-                          </button>
-                          <button
-                            className="text-gray-400 hover:text-indigo-600 transition-colors p-1"
-                            onClick={(e) => handleEdit(e, project.lead.id)}
-                            title="Edit"
-                          >
-                            <FiEdit2 size={16} />
-                          </button>
+              <div className="md:hidden">
+                {unassignedleads.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500 font-medium">No projects found</div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
+                    {unassignedleads.map((project) => (
+                      <motion.div
+                        key={project.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="p-4"
+                      >
+                        {/* Title */}
+                        <div className="mb-3">
+                          <div className="text-base font-semibold text-gray-900">{project.lead?.lead_code || "N/A"}</div>
+                          <div className="text-sm text-gray-600 mt-0.5">{project.project_name}</div>
                         </div>
-                      </div>
 
-                      <div className="grid grid-cols-1 gap-y-2 text-xs">
-                        <div className="font-medium text-gray-900">{project.project_name}</div>
-                      </div>
-
-                      {/* Expand/collapse indicator */}
-                      <div className="flex justify-center mt-2">
-                        <FiChevronRight
-                          className={`text-gray-400 transition-transform ${expandedRows[project.id] ? "rotate-90" : ""}`}
-                          size={16}
-                        />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </div>
+                        {/* Actions – full-width, finger-sized */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              className="px-3 py-3 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium active:bg-blue-100"
+                              onClick={(e) => handleBOQEdit(e, project)}
+                            >
+                              BOQ
+                            </button>
+                            <button
+                              className="px-3 py-3 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium active:bg-purple-100"
+                              onClick={(e) => { e.stopPropagation(); setDcHistoryProject(project); setShowDCHistory(true) }}
+                            >
+                              DC History
+                            </button>
+                            <button
+                              className="px-3 py-3 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium active:bg-indigo-100"
+                              onClick={(e) => { e.stopPropagation(); setSummaryProjectId(project.id); setShowSummary(true) }}
+                            >
+                              Summary
+                            </button>
+                            <button
+                              className="flex items-center justify-center gap-2 px-3 py-3 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium active:bg-gray-100"
+                              onClick={(e) => handleEdit(e, project)}
+                            >
+                              <FiEdit2 size={16} /> Edit
+                            </button>
+                          </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </div>
           </motion.div>
         </AnimatePresence>
 
