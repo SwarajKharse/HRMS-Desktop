@@ -9,6 +9,8 @@ import MyAssignedMaterialRequisitions from "../components/Purchase/PurchaserComp
 import POUploadPurchaser from "../components/Purchase/PurchaserComponents/POUploadPurchaser"
 import PIUploadPurchaser from "../components/Purchase/PurchaserComponents/PIUploadTab"
 import POManagementGrid from "../components/Purchase/POManagementGrid"
+import VendorList from "../components/Store/VendorList"
+import { MdStorefront } from "react-icons/md"
 import { GrWorkshop } from "react-icons/gr"
 import { useAuth } from "../contexts/AuthContext"
 import { GiBuyCard } from "react-icons/gi"
@@ -28,6 +30,7 @@ function Projects() {
     { id: "comparision-sheet-purchaser", label: "Comparision Sheet", icon: GrWorkshop, component: ComparisionSheetPurchaser },
     { id: "po-upload-purchaser", label: "PO Upload", icon: GrWorkshop, component: POUploadPurchaser },
     { id: "pi-upload-purchaser", label: "PI Upload", icon: GrWorkshop, component: PIUploadPurchaser },
+    { id: "vendor-management", label: "Vendor Management", icon: MdStorefront, component: VendorList },
   ]
 
   const designation = employee?.designation?.name?.replace(/\s+/g, "-").toLowerCase() || ""
@@ -46,10 +49,10 @@ function Projects() {
   const getAvailableTabs = () => {
     if (!employee) return []
     if (shouldShowMainTabs()) {
-      if (activeMainTab === "PurchaseManager") return [allTabs[0], allTabs[1], allTabs[2]]
-      if (activeMainTab === "Purchaser") return [allTabs[3], allTabs[5]]
+      if (activeMainTab === "PurchaseManager") return [allTabs[0], allTabs[1], allTabs[2], allTabs[7]]
+      if (activeMainTab === "Purchaser") return [allTabs[3], allTabs[5], allTabs[7]]
     }
-    if (isSubordinate()) return [allTabs[3], allTabs[5]]
+    if (isSubordinate()) return [allTabs[3], allTabs[5], allTabs[7]]
     return []
   }
 
