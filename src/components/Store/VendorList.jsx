@@ -1,9 +1,17 @@
 "use client"
 import { useState, useEffect } from "react"
-import { FiSearch, FiX, FiPlus, FiEdit2 } from "react-icons/fi"
+import { FiSearch, FiX, FiPlus, FiEdit2, FiAlertCircle, FiTrash2, FiRotateCcw } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
 import AddVendor from "./AddVendor"
 import EditVendor from "./EditVendor"
+
+const VENDOR_TYPE_LABELS = {
+  MATERIAL: "Material",
+  LABOUR: "Labour",
+  MATERIAL_LABOUR: "Material + Labour",
+}
+
+const getPrimaryContact = (vendor) => (vendor.contacts || []).find((c) => c.isPrimary) || null
 
 const VendorList = () => {
   const [vendors, setVendors] = useState([])
@@ -12,7 +20,7 @@ const VendorList = () => {
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
   const [totalItems, setTotalItems] = useState(0)
-  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [itemsPerPage] = useState(10)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [selectedVendor, setSelectedVendor] = useState(null)
   const [showEditForm, setShowEditForm] = useState(false)
@@ -20,13 +28,11 @@ const VendorList = () => {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("ALL")
 
-  // Fetch vendors with filters and pagination
   const fetchVendors = async (page = 0, size = 10, search = "", status = "ALL") => {
     try {
       setLoading(true)
       setError(null)
       const statusParam = status === "ALL" ? null : status
-      console.log("[v0] fetchVendors called with status:", status, "statusParam:", statusParam)
       const response = await storeService.getVendors(page, size, search, statusParam)
       if (response && response.data) {
         setVendors(response.data.content || [])
@@ -36,20 +42,18 @@ const VendorList = () => {
       } else {
         setError("Invalid response format from server")
       }
-    } catch (error) {
-      console.error("Error fetching vendors:", error)
-      setError("Failed to fetch vendors: " + (error.message || "Unknown error"))
+    } catch (err) {
+      console.error("Error fetching vendors:", err)
+      setError("Failed to fetch vendors: " + (err.message || "Unknown error"))
     } finally {
       setLoading(false)
     }
   }
 
-  // Initial data load
   useEffect(() => {
     fetchVendors(currentPage, itemsPerPage, searchQuery, statusFilter)
   }, [])
 
-  // Handle search with debounce
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchVendors(0, itemsPerPage, searchQuery, statusFilter)
@@ -57,31 +61,26 @@ const VendorList = () => {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  // Handle status filter change
   const handleStatusChange = (status) => {
     setStatusFilter(status)
     fetchVendors(0, itemsPerPage, searchQuery, status)
   }
 
-  // Handle page change
   const handlePageChange = (pageNumber) => {
     fetchVendors(pageNumber, itemsPerPage, searchQuery, statusFilter)
   }
 
-  // Reset all filters
   const resetFilters = () => {
     setSearchQuery("")
     setStatusFilter("ALL")
     fetchVendors(0, itemsPerPage, "", "ALL")
   }
 
-  // Handle edit vendor
   const handleEditVendor = (vendor) => {
     setSelectedVendor(vendor)
     setShowEditForm(true)
   }
 
-  // Handle add vendor success
   const handleAddVendorSuccess = () => {
     fetchVendors(currentPage, itemsPerPage, searchQuery, statusFilter)
     setShowAddDialog(false)
@@ -89,7 +88,6 @@ const VendorList = () => {
     setTimeout(() => setSuccessMessage(null), 3000)
   }
 
-  // Handle edit vendor success
   const handleEditSuccess = () => {
     fetchVendors(currentPage, itemsPerPage, searchQuery, statusFilter)
     setShowEditForm(false)
@@ -98,9 +96,56 @@ const VendorList = () => {
     setTimeout(() => setSuccessMessage(null), 3000)
   }
 
+  // Soft-delete: flips status only. The update endpoint validates the full
+  // vendor shape on every save (GST/contacts/type, per VendorService's
+  // business rules), so we rebuild that shape from the row we already have
+  // rather than sending a bare status field.
+  const buildFullPayload = (vendor, statusOverride) => ({
+    vendorName: vendor.vendorName,
+    gstStatus: vendor.gstStatus,
+    gstNumber: vendor.gstStatus === "REGISTERED" ? vendor.gstNumber : null,
+    panNumber: vendor.panNumber,
+    msmeStatus: vendor.msmeStatus,
+    address: vendor.address,
+    vendorType: vendor.vendorType,
+    productMainGroupIds: (vendor.productMainGroups || []).map((g) => g.id),
+    bankAccountHolderName: vendor.bankAccountHolderName,
+    bankAccountNumber: vendor.bankAccountNumber,
+    bankIfscCode: vendor.bankIfscCode,
+    upiId: vendor.upiId,
+    status: statusOverride,
+    contacts: (vendor.contacts || []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      mobileNumber: c.mobileNumber,
+      email: c.email,
+      designation: c.designation,
+      isPrimary: c.isPrimary,
+    })),
+  })
+
+  const handleToggleStatus = async (vendor) => {
+    const goingInactive = vendor.status === "ACTIVE"
+    const confirmMsg = goingInactive
+      ? `Deactivate "${vendor.vendorName}"? It will be hidden from vendor selection (comparison sheets, PO creation) but existing records referencing it are unaffected. This can be reversed.`
+      : `Reactivate "${vendor.vendorName}"? It will become selectable again.`
+    if (!window.confirm(confirmMsg)) return
+
+    try {
+      const payload = buildFullPayload(vendor, goingInactive ? "INACTIVE" : "ACTIVE")
+      await storeService.updateVendor(vendor.id, payload)
+      fetchVendors(currentPage, itemsPerPage, searchQuery, statusFilter)
+      setSuccessMessage(goingInactive ? "Vendor deactivated." : "Vendor reactivated.")
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err) {
+      console.error("Error toggling vendor status:", err)
+      const msg = err.response?.data || err.message || "Failed to update vendor status."
+      setError(typeof msg === "string" ? msg : "Failed to update vendor status.")
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6">
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white rounded-xl p-4 md:p-6 shadow-sm">
         <h1 className="text-xl md:text-2xl font-bold text-gray-800">Vendor Management</h1>
         <button
@@ -112,7 +157,6 @@ const VendorList = () => {
         </button>
       </div>
 
-      {/* Success Message */}
       {successMessage && (
         <div className="bg-green-50 text-green-600 p-4 rounded-lg flex items-center gap-3 border border-green-100">
           <span className="font-medium">{successMessage}</span>
@@ -122,7 +166,6 @@ const VendorList = () => {
         </div>
       )}
 
-      {/* Error Message */}
       {error && (
         <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-center gap-3 border border-red-100">
           <span className="font-medium">{error}</span>
@@ -134,7 +177,6 @@ const VendorList = () => {
 
       <div className="bg-white rounded-xl shadow-sm p-4">
         <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-end">
-          {/* Status Filter */}
           <div className="flex-shrink-0 md:w-48">
             <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
             <select
@@ -148,7 +190,6 @@ const VendorList = () => {
             </select>
           </div>
 
-          {/* Search Bar */}
           <div className="flex-1 min-w-0">
             <label className="block text-sm font-medium text-gray-700 mb-2 md:opacity-0 md:h-0">Search</label>
             <div className="relative">
@@ -157,7 +198,7 @@ const VendorList = () => {
               </div>
               <input
                 type="text"
-                placeholder="Search vendors by name, email, or phone..."
+                placeholder="Search by vendor name, GST number, contact name, email, or phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
@@ -165,7 +206,6 @@ const VendorList = () => {
             </div>
           </div>
 
-          {/* Reset Button */}
           <button
             onClick={resetFilters}
             className="px-4 py-2.5 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-medium rounded-lg border border-blue-200 transition-colors flex-shrink-0"
@@ -175,7 +215,6 @@ const VendorList = () => {
         </div>
       </div>
 
-      {/* Vendors Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {loading && vendors.length === 0 ? (
           <div className="flex justify-center items-center p-8">
@@ -188,67 +227,91 @@ const VendorList = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Vendor Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact Person
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Phone
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vendor Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GST No.</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Primary Contact</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Profile</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {vendors.map((vendor) => (
-                  <tr key={vendor.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{vendor.vendorName}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">{vendor.contactPerson || "-"}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">{vendor.email || "-"}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600">{vendor.phone || "-"}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          vendor.status === "ACTIVE" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {vendor.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        onClick={() => handleEditVendor(vendor)}
-                        className="text-blue-600 hover:text-blue-900 transition-colors"
-                        title="Edit"
-                      >
-                        <FiEdit2 size={20} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {vendors.map((vendor) => {
+                  const primary = getPrimaryContact(vendor)
+                  return (
+                    <tr key={vendor.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">{vendor.vendorName}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600">
+                          {VENDOR_TYPE_LABELS[vendor.vendorType] || vendor.vendorType || "-"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600">
+                          {vendor.gstStatus === "REGISTERED" ? vendor.gstNumber : "Unregistered"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600">{primary?.name || "-"}</div>
+                        <div className="text-xs text-gray-400">{primary?.email || ""}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-600">{primary?.mobileNumber || "-"}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {vendor.profileComplete ? (
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Complete
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                            <FiAlertCircle size={12} /> Incomplete
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            vendor.status === "ACTIVE" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {vendor.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleEditVendor(vendor)}
+                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                            title="Edit"
+                          >
+                            <FiEdit2 size={20} />
+                          </button>
+                          <button
+                            onClick={() => handleToggleStatus(vendor)}
+                            className={
+                              vendor.status === "ACTIVE"
+                                ? "text-red-500 hover:text-red-700 transition-colors"
+                                : "text-green-600 hover:text-green-800 transition-colors"
+                            }
+                            title={vendor.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+                          >
+                            {vendor.status === "ACTIVE" ? <FiTrash2 size={18} /> : <FiRotateCcw size={18} />}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="px-4 py-3 flex flex-col sm:flex-row justify-between items-center border-t border-gray-200 bg-gray-50">
             <div className="text-sm text-gray-700 mb-2 sm:mb-0">
@@ -300,16 +363,12 @@ const VendorList = () => {
                 }
                 if (startPage > 0) {
                   pageNumbers.unshift(
-                    <span key="start-ellipsis" className="px-1 text-gray-500">
-                      ...
-                    </span>,
+                    <span key="start-ellipsis" className="px-1 text-gray-500">...</span>,
                   )
                 }
                 if (endPage < totalPages - 1) {
                   pageNumbers.push(
-                    <span key="end-ellipsis" className="px-1 text-gray-500">
-                      ...
-                    </span>,
+                    <span key="end-ellipsis" className="px-1 text-gray-500">...</span>,
                   )
                 }
                 return pageNumbers
@@ -333,7 +392,6 @@ const VendorList = () => {
         )}
       </div>
 
-      {/* Add Vendor Dialog */}
       {showAddDialog && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4"
@@ -343,7 +401,6 @@ const VendorList = () => {
         </div>
       )}
 
-      {/* Edit Vendor Dialog */}
       {showEditForm && selectedVendor && (
         <EditVendor vendor={selectedVendor} onClose={() => setShowEditForm(false)} onSubmit={handleEditSuccess} />
       )}
