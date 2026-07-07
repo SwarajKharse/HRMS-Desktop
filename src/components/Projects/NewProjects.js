@@ -5,13 +5,14 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
-import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight } from "react-icons/fi"
+import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight, FiFileText, FiTruck, FiTrendingUp, FiBarChart2 } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import ProjectLeadDetails from "./ProjectLeadDetails"
 import BOQEditComponent from "./BOQEditComponent"
 import DCHistoryModal from "./DCHistoryModal"
 import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
 import ProjectSummary from "./ProjectSummary"
+import ProjectProgressModal from "./ProjectProgressModal"
 
 function NewProjects() {
   const navigate = useNavigate()
@@ -26,7 +27,10 @@ function NewProjects() {
   const [showBOQEdit, setShowBOQEdit] = useState(false)
   const [showDCHistory, setShowDCHistory] = useState(false)
   const [dcHistoryProject, setDcHistoryProject] = useState(null)
+  const [showProgress, setShowProgress] = useState(false)
+  const [progressProject, setProgressProject] = useState(null)
   const [selectedProject, setSelectedProject] = useState(null)
+  const [progressMap, setProgressMap] = useState({})
   const [showWarningForm, setShowWarningForm] = useState(false)
   const [showTerminationForm, setShowTerminationForm] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
@@ -103,6 +107,16 @@ function NewProjects() {
     }
   }, [fetchLeads, sourcelist.length])
 
+  useEffect(() => {
+    projectService.getAllProjectsProgressSummary()
+      .then((data) => {
+        const map = {}
+        data.forEach((d) => { map[d.projectId] = d.overallProgressPercent })
+        setProgressMap(map)
+      })
+      .catch((err) => console.error("Failed to load progress summary:", err))
+  }, [])
+
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
@@ -122,6 +136,11 @@ function NewProjects() {
       setError("Error while fetching data")
       console.error(err)
     }
+  }
+
+  const getProgressRowStyle = (projectId) => {
+    const pct = progressMap[projectId] || 0
+    return { background: `linear-gradient(to right, #86efac ${pct}%, #ffffff ${pct}%)` }
   }
 
   const handlePageChange = (pageNumber) => {
@@ -380,7 +399,8 @@ function NewProjects() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="hover:bg-gray-50 cursor-pointer transition-colors group"
+                        style={getProgressRowStyle(project.id)}
+                        className="cursor-pointer transition-colors group"
                         onClick={() => handleRowClick(project)}
                       >
                         <td className="px-6 py-4">
@@ -411,28 +431,35 @@ function NewProjects() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <button
-                              className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
+                              className="flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
                               onClick={(e) => handleBOQEdit(e, project)}
                               title="Edit BOQ"
                             >
-                              BOQ
+                              <FiFileText size={14} /> BOQ
                             </button>
                             <button
-                              className="px-3 py-1 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors text-sm font-medium"
+                              className="flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors text-sm font-medium"
                               onClick={() => { setDcHistoryProject(project); setShowDCHistory(true) }}
                               title="DC History"
                             >
-                              DC History
+                              <FiTruck size={14} /> DC History
+                            </button>
+                            <button
+                              className="flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"
+                              onClick={() => { setProgressProject(project); setShowProgress(true) }}
+                              title="Project Progress"
+                            >
+                              <FiTrendingUp size={14} /> Progress: {Math.round(progressMap[project.id] || 0)}%
                             </button>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <button
-                            className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium"
+                            className="flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium"
                             onClick={(e) => handleSummary(e, project)}
                             title="View Summary"
                           >
-                            Summary
+                            <FiBarChart2 size={14} /> Summary
                           </button>
                         </td>
 
@@ -466,39 +493,56 @@ function NewProjects() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="p-4"
+                        style={getProgressRowStyle(project.id)}
+                        className="p-4 relative"
                       >
+                        {/* Edit - standalone pen icon, top-right corner */}
+                        <button
+                          className="absolute top-3 right-3 text-gray-400 active:text-indigo-600"
+                          onClick={(e) => handleEdit(e, project.lead.id)}
+                          title="Edit"
+                        >
+                          <FiEdit2 size={18} />
+                        </button>
+
                         {/* Title */}
-                        <div className="mb-3">
+                        <div className="mb-3 pr-8">
                           <div className="text-base font-semibold text-gray-900">{project.lead?.lead_code || "N/A"}</div>
                           <div className="text-sm text-gray-600 mt-0.5">{project.project_name}</div>
                         </div>
 
                         {/* Actions – full-width, finger-sized */}
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-5 gap-1">
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <ProjectInitiationIntegration project={project} compact />
+                            </div>
                             <button
-                              className="px-3 py-3 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium active:bg-blue-100"
+                              className="flex flex-col items-center justify-center gap-0.5 py-2 bg-blue-50 text-blue-700 rounded-lg active:bg-blue-100"
                               onClick={(e) => handleBOQEdit(e, project)}
                             >
-                              BOQ
+                              <FiFileText size={16} />
+                              <span className="text-[10px] font-medium">BOQ</span>
                             </button>
                             <button
-                              className="px-3 py-3 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium active:bg-purple-100"
+                              className="flex flex-col items-center justify-center gap-0.5 py-2 bg-purple-50 text-purple-700 rounded-lg active:bg-purple-100"
                               onClick={(e) => { e.stopPropagation(); setDcHistoryProject(project); setShowDCHistory(true) }}
                             >
-                              DC History
+                              <FiTruck size={16} />
+                              <span className="text-[10px] font-medium">DC</span>
                             </button>
                             <button
-                              className="px-3 py-3 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium active:bg-indigo-100"
+                              className="flex flex-col items-center justify-center gap-0.5 py-2 bg-green-50 text-green-700 rounded-lg active:bg-green-100"
+                              onClick={(e) => { e.stopPropagation(); setProgressProject(project); setShowProgress(true) }}
+                            >
+                              <FiTrendingUp size={16} />
+                              <span className="text-[10px] font-medium">Progress</span>
+                            </button>
+                            <button
+                              className="flex flex-col items-center justify-center gap-0.5 py-2 bg-indigo-50 text-indigo-700 rounded-lg active:bg-indigo-100"
                               onClick={(e) => { e.stopPropagation(); setSummaryProjectId(project.id); setShowSummary(true) }}
                             >
-                              Summary
-                            </button>
-                            <button
-                              className="flex items-center justify-center gap-2 px-3 py-3 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium active:bg-gray-100"
-                              onClick={(e) => handleEdit(e, project)}
-                            >
-                              <FiEdit2 size={16} /> Edit
+                              <FiBarChart2 size={16} />
+                              <span className="text-[10px] font-medium">Summary</span>
                             </button>
                           </div>
                       </motion.div>
@@ -619,7 +663,14 @@ function NewProjects() {
             onClose={() => { setShowDCHistory(false); setDcHistoryProject(null) }}
           />
         )}
-
+        {showProgress && progressProject && (
+          <ProjectProgressModal
+            projectId={progressProject.id}
+            projectName={progressProject.project_name}
+            isOpen={showProgress}
+            onClose={() => setShowProgress(false)}
+          />
+        )}
         {showSummary && summaryProjectId && (
           <ProjectSummary
             projectId={summaryProjectId}

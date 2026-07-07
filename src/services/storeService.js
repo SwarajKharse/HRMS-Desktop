@@ -400,6 +400,23 @@ export const storeService = {
       throw error.response?.data || error.message
     }
   },
+  getInstallationSteps: async (productId) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/products/${productId}/steps`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  saveInstallationSteps: async (productId, steps) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/products/${productId}/steps`, steps, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
 
 
   /************** Vendor Management  **********************/
