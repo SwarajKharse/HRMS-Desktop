@@ -4,7 +4,7 @@ import { useState } from "react"
 import ProjectInitiation from "./ProjectInitiation"
 import ProjectInitiationButton from "./ProjectInitiationButton"
 
-function ProjectInitiationIntegration({ project }) {
+function ProjectInitiationIntegration({ project, compact }) {
   const [showInitiationModal, setShowInitiationModal] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
 
@@ -29,7 +29,7 @@ function ProjectInitiationIntegration({ project }) {
 
   return (
     <>
-      <ProjectInitiationButton project={project} onClick={handleOpenInitiationModal} />
+      <ProjectInitiationButton project={project} onClick={handleOpenInitiationModal} compact={compact} />
 
       {showInitiationModal && (
         <ProjectInitiation project={project} onClose={handleCloseInitiationModal} onSave={handleSaveInitiationPlan} />

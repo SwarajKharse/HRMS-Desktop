@@ -612,13 +612,58 @@ uploadNocFile: async (projectId, file) => {
   }, */
 
 
-   getProjectSummary: async (projectId) => {
+  getProjectSummary: async (projectId) => {
     try {
       const response = await axios.get(`${API_URL}/projects/${projectId}/summary`)
       return response.data
     } catch (error) {
       console.error("Error fetching project summary:", error)
       throw error
+    }
+  },
+
+  getProjectProgress: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/progress`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  saveProjectProgress: async (projectId, payload) => {
+    try {
+      const response = await axios.post(`${API_URL}/projects/${projectId}/progress`, payload, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  getAllProjectsProgressSummary: async () => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/progress-summary`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  editProjectProgressEntry: async (projectId, logId, payload) => {
+    try {
+      const response = await axios.put(`${API_URL}/projects/${projectId}/progress/${logId}`, payload, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  deleteProjectProgressEntry: async (projectId, logId) => {
+    try {
+      const response = await axios.delete(`${API_URL}/projects/${projectId}/progress/${logId}`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
     }
   },
 }

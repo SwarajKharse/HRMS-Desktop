@@ -27,6 +27,74 @@ function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
     subcategoryId: product?.subCategoryId?.toString() || "", // Fix: use subCategoryId from product
   })
 
+  const [steps, setSteps] = useState([])
+  const [stepsLoading, setStepsLoading] = useState(false)
+  const [stepsSaving, setStepsSaving] = useState(false)
+  const [stepsError, setStepsError] = useState(null)
+  const [stepsSuccess, setStepsSuccess] = useState(null)
+
+  const totalPercentage = steps.reduce((sum, s) => sum + (Number(s.percentage) || 0), 0)
+
+  useEffect(() => {
+    if (!product?.id) return
+    setStepsLoading(true)
+    storeService.getInstallationSteps(product.id)
+      .then((data) => {
+        setSteps(Array.isArray(data) ? data.map((s) => ({ stepName: s.stepName, percentage: s.percentage })) : [])
+      })
+      .catch((err) => setStepsError(typeof err === "string" ? err : err?.error || "Failed to load process steps"))
+      .finally(() => setStepsLoading(false))
+  }, [product?.id])
+
+  const handleAddStep = () => {
+    const remaining = Math.max(0, Math.round((100 - totalPercentage) * 100) / 100)
+    setSteps([...steps, { stepName: "", percentage: remaining }])
+  }
+
+  const handleStepNameChange = (index, value) => {
+    const updated = [...steps]
+    updated[index].stepName = value
+    setSteps(updated)
+  }
+
+  const handleStepPercentageChange = (index, value) => {
+    const updated = [...steps]
+    updated[index].percentage = value
+    setSteps(updated)
+  }
+
+  const handleRemoveStep = (index) => {
+    setSteps(steps.filter((_, i) => i !== index))
+  }
+
+  const handleSaveSteps = async () => {
+    setStepsError(null)
+    setStepsSuccess(null)
+    if (Math.abs(totalPercentage - 100) > 0.01) {
+      setStepsError(`Total must equal 100%. Current total: ${totalPercentage}%`)
+      return
+    }
+    if (steps.some((s) => !s.stepName.trim())) {
+      setStepsError("All process names are required")
+      return
+    }
+    try {
+      setStepsSaving(true)
+      const payload = steps.map((s, i) => ({
+        stepNumber: i + 1,
+        stepName: s.stepName,
+        percentage: Number(s.percentage),
+      }))
+      await storeService.saveInstallationSteps(product.id, payload)
+      setStepsSuccess("Process steps saved successfully!")
+      setTimeout(() => setStepsSuccess(null), 2000)
+    } catch (err) {
+      setStepsError(typeof err === "string" ? err : err?.error || "Failed to save process steps")
+    } finally {
+      setStepsSaving(false)
+    }
+  }
+
   // Dropdown data
   const [mainGroups, setMainGroups] = useState([])
   const [categories, setCategories] = useState([])
@@ -637,6 +705,82 @@ function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Installation Process Steps */}
+          <div className="border-t pt-6 mt-6">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Installation Process Steps</h3>
+
+            {stepsError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-3 py-2 mb-3">
+                {stepsError}
+              </div>
+            )}
+            {stepsSuccess && (
+              <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded px-3 py-2 mb-3">
+                {stepsSuccess}
+              </div>
+            )}
+
+            {stepsLoading ? (
+              <div className="text-sm text-gray-500">Loading process steps...</div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {steps.map((step, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 w-6">{index + 1}.</span>
+                      <input
+                        type="text"
+                        placeholder="Process name"
+                        value={step.stepName}
+                        onChange={(e) => handleStepNameChange(index, e.target.value)}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                      />
+                      <input
+                        type="number"
+                        value={step.percentage}
+                        onChange={(e) => handleStepPercentageChange(index, e.target.value)}
+                        className="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        min="0"
+                        max="100"
+                      />
+                      <span className="text-sm text-gray-500">%</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStep(index)}
+                        className="text-red-500 hover:text-red-700 text-sm px-2"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-between mt-3">
+                  <span className={`text-sm font-medium ${Math.abs(totalPercentage - 100) < 0.01 ? "text-green-600" : "text-orange-600"}`}>
+                    Total: {totalPercentage}%
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddStep}
+                    disabled={totalPercentage >= 100}
+                    className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-md text-sm font-medium hover:bg-blue-200 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    + Add Process
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveSteps}
+                  disabled={stepsSaving || steps.length === 0}
+                  className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {stepsSaving ? "Saving..." : "Save Process Steps"}
+                </button>
+              </>
+            )}
           </div>
 
           {/* Form Actions */}
