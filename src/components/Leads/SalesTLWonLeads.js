@@ -41,6 +41,8 @@ function SalesTLWonLeads() {
     priority: "",
     leadType: "",
     leadSource: "",
+    poStatus: "",
+    statusFilter: "",
   })
 
   // Applied filters state (what's actually sent to backend)
@@ -53,6 +55,8 @@ function SalesTLWonLeads() {
     priority: "",
     leadType: "",
     leadSource: "",
+    poStatus: "",
+    statusFilter: "",
   })
 
   // Export and UI states
@@ -76,44 +80,6 @@ function SalesTLWonLeads() {
 
       const page = currentPage - 1
 
-      // Build query parameters properly
-      const queryParams = new URLSearchParams()
-
-      // Only add non-empty parameters
-      if (appliedFilters.leadCode && appliedFilters.leadCode.trim() !== "") {
-        queryParams.append("leadCode", appliedFilters.leadCode.trim())
-      }
-
-      if (appliedFilters.fromDate && appliedFilters.fromDate.trim() !== "") {
-        queryParams.append("fromDate", appliedFilters.fromDate.trim())
-      }
-
-      if (appliedFilters.toDate && appliedFilters.toDate.trim() !== "") {
-        queryParams.append("toDate", appliedFilters.toDate.trim())
-      }
-
-      if (appliedFilters.assignedSse && appliedFilters.assignedSse.trim() !== "") {
-        queryParams.append("assignedSse", appliedFilters.assignedSse.trim())
-      }
-
-      if (appliedFilters.assignedBdm && appliedFilters.assignedBdm.trim() !== "") {
-        queryParams.append("assignedBdm", appliedFilters.assignedBdm.trim())
-      }
-
-      if (appliedFilters.priority && appliedFilters.priority.trim() !== "") {
-        queryParams.append("priority", appliedFilters.priority.trim())
-      }
-
-      if (appliedFilters.leadType && appliedFilters.leadType.trim() !== "") {
-        queryParams.append("leadType", appliedFilters.leadType.trim())
-      }
-
-      if (appliedFilters.leadSource && appliedFilters.leadSource.trim() !== "") {
-        queryParams.append("leadSource", appliedFilters.leadSource.trim())
-      }
-
-      console.log("Query parameters:", queryParams.toString())
-
       console.log("[v0] Fetching leads - page:", page, "leadsPerPage:", leadsPerPage)
 
       const data = await leadService.getSalesTlWonLeads(
@@ -127,23 +93,18 @@ function SalesTLWonLeads() {
         appliedFilters.priority || "",
         appliedFilters.leadType || "",
         appliedFilters.leadSource || "",
+        appliedFilters.poStatus || "",
+        appliedFilters.statusFilter || "",
       )
 
       console.log("[v0] API Response received:", data)
-      console.log("[v0] Results array:", data.results)
-      console.log("[v0] Results length:", data.results?.length)
-      console.log("[v0] First lead sample:", data.results?.[0])
-      console.log("[v0] First lead uploaded documents:", data.results?.[0]?.lead_uploaded_documents)
 
       setLeads(data.results || [])
       setTotalPages(data.totalPages || 1)
       setTotalResults(data.totalResults || 0)
       setLoading(false)
-
-      console.log("[v0] State updated - loading set to false, leads count:", data.results?.length || 0)
     } catch (error) {
       console.error("[v0] Error fetching leads:", error)
-      console.error("[v0] Error details:", error.message, error.stack)
       setError("Failed to fetch leads")
       setLoading(false)
     }
@@ -203,21 +164,8 @@ function SalesTLWonLeads() {
   }
 
   const applyFilters = () => {
-    console.log("Applying filters:", filters)
     setAppliedFilters({ ...filters })
     setShowMobileFilters(false)
-
-    // Debug log to verify filter values
-    console.log("Applied filters:", {
-      leadCode: filters.leadCode || "",
-      fromDate: filters.fromDate || "",
-      toDate: filters.toDate || "",
-      assignedSse: filters.assignedSse || "",
-      assignedBdm: filters.assignedBdm || "",
-      priority: filters.priority || "",
-      leadType: filters.leadType || "",
-      leadSource: filters.leadSource || "",
-    })
   }
 
   const clearFilters = () => {
@@ -230,6 +178,8 @@ function SalesTLWonLeads() {
       priority: "",
       leadType: "",
       leadSource: "",
+      poStatus: "",
+      statusFilter: "",
     }
     setFilters(emptyFilters)
     setAppliedFilters(emptyFilters)
@@ -365,29 +315,34 @@ function SalesTLWonLeads() {
     }
   }
 
-  const getPOStatus = (lead) => {
-    console.log("[v0] Getting PO status for lead:", lead.id, lead.lead_code)
-    console.log("[v0] Lead documents:", lead.leadDocuments)
+  const isJunkValue = (value) => {
+    if (!value) return true
+    const cleaned = value.trim().toLowerCase()
+    return cleaned === "" || cleaned === "na" || cleaned === "n/a" || cleaned === "-" || cleaned === "--"
+  }
 
+  const getDisplayClientName = (lead) => {
+    if (!isJunkValue(lead.client_name)) {
+      return lead.client_name
+    }
+    if (!isJunkValue(lead.middle_man_client_name)) {
+      return lead.middle_man_client_name
+    }
+    return ""
+  }
+
+  const getPOStatus = (lead) => {
     const uploadedDocuments =
       lead.leadDocuments || lead.lead_uploaded_documents || lead.uploadedDocuments || lead.documents || []
 
-    console.log("[v0] Uploaded documents found:", uploadedDocuments.length)
-    console.log("[v0] All documents:", uploadedDocuments)
-
     const poDocuments = uploadedDocuments.filter((doc) => doc.document_type === "po_document")
-
-    console.log("[v0] PO documents found:", poDocuments.length)
 
     // Sort by uploadedAt in descending order (latest first) and get the first one
     const latestPoDocument =
       poDocuments.length > 0 ? poDocuments.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0] : null
 
-    console.log("[v0] Latest PO document:", latestPoDocument)
-
     // If no PO document found
     if (!latestPoDocument || !latestPoDocument.status) {
-      console.log("[v0] No PO document or status found")
       return {
         label: "No PO",
         className: "bg-gray-50 text-gray-600 ring-1 ring-gray-300/20",
@@ -397,7 +352,6 @@ function SalesTLWonLeads() {
 
     // Get the status from the latest PO document
     const poStatus = latestPoDocument.status
-    console.log("[v0] Latest PO Status:", poStatus)
 
     if (poStatus === "Revision from Sales") {
       return {
@@ -428,10 +382,8 @@ function SalesTLWonLeads() {
 
   const checkHandOverButton = (lead) => {
     if (lead.leadStatus === "won") {
-      //setShowHandoverButton(true)
       return true
     } else {
-      //setShowHandoverButton(false)
       return false
     }
   }
@@ -446,6 +398,16 @@ function SalesTLWonLeads() {
       return {
         label: "Lost",
         className: "bg-red-50 text-red-700 ring-1 ring-red-600/20",
+      }
+    } else if (lead.lead_status === "handovered") {
+      return {
+        label: "Handovered",
+        className: "bg-blue-50 text-blue-700 ring-1 ring-blue-600/20",
+      }
+    } else if (lead.lead_status === "project_initiated") {
+      return {
+        label: "Project Initiated",
+        className: "bg-purple-50 text-purple-700 ring-1 ring-purple-600/20",
       }
     } else {
       return {
@@ -574,140 +536,174 @@ function SalesTLWonLeads() {
         </div>
 
         {/* Mobile Filters */}
-        {showMobileFilters && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="md:hidden mb-4 flex flex-col gap-3 pb-3 border-b border-gray-200"
-          >
-            <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
-              <input
-                type="text"
-                value={filters.leadCode}
-                onChange={(e) => handleFilterChange("leadCode", e.target.value)}
-                placeholder="Search by lead code..."
-                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-              />
-            </div>
+        <AnimatePresence>
+          {showMobileFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden mb-4 overflow-hidden"
+            >
+              <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+                  <input
+                    type="text"
+                    value={filters.leadCode}
+                    onChange={(e) => handleFilterChange("leadCode", e.target.value)}
+                    placeholder="Search by lead code, client, middleman, architect, MEP, or PMC..."
+                    className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  />
+                </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-medium text-gray-700 mb-1 block">From Date</label>
-                <input
-                  type="date"
-                  value={filters.fromDate}
-                  onChange={(e) => handleFilterChange("fromDate", e.target.value)}
-                  className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 mb-1 block">From Date</label>
+                    <input
+                      type="date"
+                      value={filters.fromDate}
+                      onChange={(e) => handleFilterChange("fromDate", e.target.value)}
+                      className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 mb-1 block">To Date</label>
+                    <input
+                      type="date"
+                      value={filters.toDate}
+                      onChange={(e) => handleFilterChange("toDate", e.target.value)}
+                      className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 mb-1 block">Assigned SSE</label>
+                  <select
+                    value={filters.assignedSse}
+                    onChange={(e) => handleFilterChange("assignedSse", e.target.value)}
+                    className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  >
+                    <option value="">All SSEs</option>
+                    {sseList.map((sse) => (
+                      <option key={sse.id} value={sse.id}>
+                        {sse.firstName} {sse.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 mb-1 block">Assigned BDM</label>
+                  <select
+                    value={filters.assignedBdm}
+                    onChange={(e) => handleFilterChange("assignedBdm", e.target.value)}
+                    className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  >
+                    <option value="">All BDMs</option>
+                    {bdmList.map((bdm) => (
+                      <option key={bdm.id} value={bdm.id}>
+                        {bdm.firstName} {bdm.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 mb-1 block">Priority</label>
+                  <select
+                    value={filters.priority}
+                    onChange={(e) => handleFilterChange("priority", e.target.value)}
+                    className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  >
+                    <option value="">All Priorities</option>
+                    <option value="cold">Cold</option>
+                    <option value="hot">Hot</option>
+                    <option value="warm">Warm</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Type</label>
+                  <select
+                    value={filters.leadType}
+                    onChange={(e) => handleFilterChange("leadType", e.target.value)}
+                    className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  >
+                    <option value="">All Types</option>
+                    {typelist.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-700 mb-1 block">Source</label>
+                  <select
+                    value={filters.leadSource}
+                    onChange={(e) => handleFilterChange("leadSource", e.target.value)}
+                    className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  >
+                    <option value="">All Sources</option>
+                    {sourcelist.map((source) => (
+                      <option key={source.id} value={source.id}>
+                        {source.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-700 mb-1 block">PO Status</label>
+                  <select
+                    value={filters.poStatus}
+                    onChange={(e) => handleFilterChange("poStatus", e.target.value)}
+                    className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  >
+                    <option value="">All PO Status</option>
+                    <option value="No PO">No PO</option>
+                    <option value="In progress">In Progress</option>
+                    <option value="Revision from Sales">Revision from Sales</option>
+                    <option value="Approve">Approved</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs text-gray-700 mb-1 block">Status</label>
+                  <select
+                    value={filters.statusFilter}
+                    onChange={(e) => handleFilterChange("statusFilter", e.target.value)}
+                    className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  >
+                    <option value="">All Status</option>
+                    <option value="won">Won</option>
+                    <option value="lost">Lost</option>
+                    <option value="handovered">Handovered</option>
+                    <option value="project_initiated">Project Initiated</option>
+                  </select>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={applyFilters}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                  >
+                    <FiSearch className="w-4 h-4" />
+                    Apply Filters
+                  </button>
+                  <button
+                    onClick={clearFilters}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-700 mb-1 block">To Date</label>
-                <input
-                  type="date"
-                  value={filters.toDate}
-                  onChange={(e) => handleFilterChange("toDate", e.target.value)}
-                  className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Assigned SSE</label>
-              <select
-                value={filters.assignedSse}
-                onChange={(e) => handleFilterChange("assignedSse", e.target.value)}
-                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-              >
-                <option value="">All SSEs</option>
-                {sseList.map((sse) => (
-                  <option key={sse.id} value={sse.id}>
-                    {sse.firstName} {sse.lastName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Assigned BDM</label>
-              <select
-                value={filters.assignedBdm}
-                onChange={(e) => handleFilterChange("assignedBdm", e.target.value)}
-                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-              >
-                <option value="">All BDMs</option>
-                {bdmList.map((bdm) => (
-                  <option key={bdm.id} value={bdm.id}>
-                    {bdm.firstName} {bdm.lastName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Priority</label>
-              <select
-                value={filters.priority}
-                onChange={(e) => handleFilterChange("priority", e.target.value)}
-                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-              >
-                <option value="">All Priorities</option>
-                <option value="cold">Cold</option>
-                <option value="hot">Hot</option>
-                <option value="warm">Warm</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Type</label>
-              <select
-                value={filters.leadType}
-                onChange={(e) => handleFilterChange("leadType", e.target.value)}
-                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-              >
-                <option value="">All Types</option>
-                {typelist.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-700 mb-1 block">Source</label>
-              <select
-                value={filters.leadSource}
-                onChange={(e) => handleFilterChange("leadSource", e.target.value)}
-                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-              >
-                <option value="">All Sources</option>
-                {sourcelist.map((source) => (
-                  <option key={source.id} value={source.id}>
-                    {source.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={applyFilters}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
-              >
-                <FiSearch className="w-4 h-4" />
-                Apply Filters
-              </button>
-              <button
-                onClick={clearFilters}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
-              >
-                Clear
-              </button>
-            </div>
-          </motion.div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Desktop Filters */}
         <div className="hidden md:block mb-6">
@@ -718,7 +714,7 @@ function SalesTLWonLeads() {
                 type="text"
                 value={filters.leadCode}
                 onChange={(e) => handleFilterChange("leadCode", e.target.value)}
-                placeholder="Search by lead code..."
+                placeholder="Search by lead code, client, middleman, architect, MEP, or PMC..."
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               />
             </div>
@@ -820,8 +816,37 @@ function SalesTLWonLeads() {
                 ))}
               </select>
             </div>
-          </div>
 
+            <div>
+              <label className="text-xs text-gray-700 mb-1 block">PO Status</label>
+              <select
+                value={filters.poStatus}
+                onChange={(e) => handleFilterChange("poStatus", e.target.value)}
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All PO Status</option>
+                <option value="No PO">No PO</option>
+                <option value="In progress">In Progress</option>
+                <option value="Revision from Sales">Revision from Sales</option>
+                <option value="Approve">Approved</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-700 mb-1 block">Status</label>
+              <select
+                value={filters.statusFilter}
+                onChange={(e) => handleFilterChange("statusFilter", e.target.value)}
+                className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              >
+                <option value="">All Status</option>
+                <option value="won">Won</option>
+                <option value="lost">Lost</option>
+                <option value="handovered">Handovered</option>
+                <option value="project_initiated">Project Initiated</option>
+              </select>
+            </div>
+          </div>
           <div className="flex gap-3">
             <button
               onClick={applyFilters}
@@ -864,11 +889,10 @@ function SalesTLWonLeads() {
                     {[
                       "Lead ID",
                       "Lead Priority",
-                      "Middle Man Client Name",
-                      "Product Type",
+                      "Client Name",
                       "Asssigned SSE",
                       "Assigned BDM",
-                      "PO Status", // Added PO Status column header
+                      "PO Status",
                       "Status",
                       "Action",
                     ]
@@ -895,7 +919,7 @@ function SalesTLWonLeads() {
                       const bdmStatus = getBDMStatus(lead)
                       const leadStatus = getLeadStatus(lead)
                       const sseStatus = getSSEStatus(lead)
-                      const poStatus = getPOStatus(lead) // Get PO status
+                      const poStatus = getPOStatus(lead)
 
                       return (
                         <motion.tr
@@ -930,15 +954,7 @@ function SalesTLWonLeads() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-xs font-medium text-gray-900">
-                              {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
-                            </div>
-                          </td>
-                          {/* <td className="px-6 py-4">
-                            <div className="text-xs font-medium text-gray-900">{getLeadType(lead.lead_type)}</div>
-                          </td> */}
-                          <td className="px-6 py-4">
-                            <div className="text-xs font-medium text-gray-900">
-                              {getProductTypes(lead.lead_product_type)}
+                              {getDisplayClientName(lead)}
                             </div>
                           </td>
 
@@ -1003,7 +1019,7 @@ function SalesTLWonLeads() {
                                 <FiEdit2 size={18} />
                               </button>
 
-                              {lead.lead_status === "won" ? (
+                              {lead.lead_status === "won" || lead.lead_status === "handovered" || lead.lead_status === "project_initiated" ? (
                                 <button
                                   className="text-gray-400 hover:text-indigo-600 transition-colors"
                                   onClick={(e) => handleHandOverEdit(e, lead.id)}
@@ -1032,7 +1048,7 @@ function SalesTLWonLeads() {
                     const bdmStatus = getBDMStatus(lead)
                     const leadStatus = getLeadStatus(lead)
                     const sseStatus = getSSEStatus(lead)
-                    const poStatus = getPOStatus(lead) // Get PO status for mobile view
+                    const poStatus = getPOStatus(lead)
 
                     return (
                       <motion.div
@@ -1072,7 +1088,7 @@ function SalesTLWonLeads() {
 
                           <div className="text-gray-500">Client:</div>
                           <div className="font-medium">
-                            {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                            {getDisplayClientName(lead)}
                           </div>
 
                           <div className="text-gray-500">PO Status:</div>

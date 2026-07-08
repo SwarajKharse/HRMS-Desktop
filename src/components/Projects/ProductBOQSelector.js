@@ -694,9 +694,13 @@ function ProductBOQSelector({
             : (totalSupplyAmount + totalInstallationAmount) * (igstPercent / 100)),
       }
       console.log("Saving BOQ data (payload to backend):", boqData)
-      
-      onSave(boqData, true)
-    } catch (err) {
+      if (isEditMode && projectId) {
+        await projectService.createOrUpdateBOQ(projectId, boqData)
+        onSave(boqData, true)
+      } else {
+        onSave(boqData, false)
+      }
+      } catch (err) {
       console.error("Error saving BOQ:", err)
       setError(`Failed to save BOQ: ${err.message || err}`)
     } finally {
