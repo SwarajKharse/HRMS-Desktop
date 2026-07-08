@@ -1977,7 +1977,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                   )}
                 </div>
               ) : null}
-              {lead.lead_status === "won" ? (
+              {lead.lead_status === "won" || lead.lead_status === "handovered" || lead.lead_status === "project_initiated" ? (
                 <div className="space-y-4 rounded-lg bg-white border p-4">
                   <h3 className="font-semibold text-lg border-b pb-2">PO Management</h3>
 
@@ -2055,7 +2055,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
           ) : null}
           {/* END Upload PO, or update Rejection Reason */}
 
-          {lead.lead_status === "won" ? (
+          {lead.lead_status === "won" || lead.lead_status === "handovered" || lead.lead_status === "project_initiated" ? (
             <div className="space-y-4 rounded-lg bg-white border p-4">
               <h3 className="font-semibold text-lg border-b pb-2">BOQ Management</h3>
 

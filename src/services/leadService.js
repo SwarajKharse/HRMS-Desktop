@@ -787,55 +787,55 @@ export const leadService = {
     leadPriority = "",
     leadType = "",
     leadSource = "",
+    poStatus = "",
+    statusFilter = "",
   ) => {
     try {
       const queryParams = {
         page,
         size,
       }
-
       // Format the query string according to what the backend expects
       let queryString = ""
-
       if (leadCode && leadCode.trim() !== "") {
         queryString += `leadCode=${encodeURIComponent(leadCode.trim())}`
       }
-
       if (fromDate && fromDate.trim() !== "") {
         if (queryString) queryString += "&"
         queryString += `fromDate=${encodeURIComponent(fromDate.trim())}`
       }
-
       if (toDate && toDate.trim() !== "") {
         if (queryString) queryString += "&"
         queryString += `toDate=${encodeURIComponent(toDate.trim())}`
       }
-
       if (assignedSse && assignedSse.trim() !== "") {
         if (queryString) queryString += "&"
         queryString += `assignedSse=${encodeURIComponent(assignedSse.trim())}`
       }
-
       if (assignedBdm && assignedBdm.trim() !== "") {
         if (queryString) queryString += "&"
         queryString += `assignedBdm=${encodeURIComponent(assignedBdm.trim())}`
       }
-
       if (leadPriority && leadPriority.trim() !== "") {
         if (queryString) queryString += "&"
         queryString += `priority=${encodeURIComponent(leadPriority.trim())}`
       }
-
       if (leadType && leadType.trim() !== "") {
         if (queryString) queryString += "&"
         queryString += `leadType=${encodeURIComponent(leadType.trim())}`
       }
-
       if (leadSource && leadSource.trim() !== "") {
         if (queryString) queryString += "&"
         queryString += `leadSource=${encodeURIComponent(leadSource.trim())}`
       }
-
+      if (poStatus && poStatus.trim() !== "") {
+        if (queryString) queryString += "&"
+        queryString += `poStatus=${encodeURIComponent(poStatus.trim())}`
+      }
+      if (statusFilter && statusFilter.trim() !== "") {
+        if (queryString) queryString += "&"
+        queryString += `statusFilter=${encodeURIComponent(statusFilter.trim())}`
+      }
       if (queryString) {
         queryParams.query = queryString
       }
@@ -968,6 +968,18 @@ export const leadService = {
   updateLead: async (id, leadData, flag) => {
     try {
       const response = await axios.put(`${BASE_URL}/updatelead/${id}/${flag}`, leadData, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+  updateLeadStatus: async (id, leadStatus) => {
+    try {
+      const response = await axios.put(
+        `${BASE_URL}/updateleadstatus/${id}`,
+        { lead_status: leadStatus },
+        getAuthHeaders(),
+      )
       return response.data
     } catch (error) {
       throw error.response?.data || error.message

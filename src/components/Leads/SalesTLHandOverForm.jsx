@@ -306,6 +306,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
           })
 
           const transformedItem = {
+            id: p.id || undefined,   // preserve existing item's DB id if present
             productId: Number.parseInt(p.productId),
             product: p.product || {
               id: p.productId,
@@ -437,6 +438,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
             projectId: projectResponse.projectId,
             items: boqData.items.map((item) => {
               const validatedItem = {
+                id: item.id || undefined,   // preserve existing item's DB id if present
                 productId: Number.parseInt(item.productId),
                 qty: Number.parseFloat(item.qty) || 0,
                 make: item.make || "",
@@ -469,6 +471,13 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
         setSuccessMessage("AMC handover successful")
       } else {
         setSuccessMessage("Lead handover successful")
+      }
+
+      try {
+        await leadService.updateLeadStatus(lead.id, "handovered")
+      } catch (statusError) {
+        console.error("Failed to update lead status to handovered:", statusError)
+        // Non-fatal: project/BOQ already saved successfully, so we don't block the user here
       }
 
       setTimeout(() => setSuccessMessage(null), 3000)

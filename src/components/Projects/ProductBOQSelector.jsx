@@ -341,6 +341,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
   }
 
   const handleSaveBOQ = async () => {
+    console.log("[DEBUG] handleSaveBOQ triggered", new Date().toISOString())
     const allProducts = Object.entries(selectedProductsByCategory).flatMap(
       ([categoryId, products]) =>
         products.map((product) => ({ ...product, leadProductTypeId: Number.parseInt(categoryId) })), // Map to leadProductTypeId (camelCase)

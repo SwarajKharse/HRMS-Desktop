@@ -45,9 +45,13 @@ export const projectService = {
       throw error
     }
   },
-  createOrUpdateBOQ: async (projectId, boqRequest) => {
+  createOrUpdateBOQ: async (projectId, boqRequest, skipDeletion = false) => {
     try {
-      const response = await axios.post(`${API_URL}/projects/${projectId}/boq`, boqRequest, getAuthHeaders())
+      const response = await axios.post(
+        `${API_URL}/projects/${projectId}/boq?skipDeletion=${skipDeletion}`,
+        boqRequest,
+        getAuthHeaders(),
+      )
       return response.data
     } catch (error) {
       console.error("Error creating or updating BOQ:", error.response ? error.response.data : error.message)
