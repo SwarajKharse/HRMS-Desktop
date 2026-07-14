@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
-import { FiEdit2, FiAlertCircle, FiCheck, FiDownload, FiChevronRight, FiFilter, FiSearch } from "react-icons/fi"
+import { FiEdit2, FiAlertCircle, FiCheck, FiDownload, FiChevronRight, FiFilter, FiSearch, FiX } from "react-icons/fi"
 
 function SSEAssignedLeads() {
   const navigate = useNavigate()
@@ -168,6 +168,36 @@ function SSEAssignedLeads() {
     const lead = unassignedleads.find((emp) => emp.id === id)
     setSelectedLead(lead)
     setShowForm(true)
+  }
+
+  const [editingSSELeadId, setEditingSSELeadId] = useState(null)
+  const [savingSSELeadId, setSavingSSELeadId] = useState(null)
+
+  const handleStartEditSSE = (e, leadId) => {
+    e.stopPropagation()
+    setEditingSSELeadId(leadId)
+  }
+
+  const handleCancelEditSSE = (e) => {
+    e.stopPropagation()
+    setEditingSSELeadId(null)
+  }
+
+  const handleReassignSSE = async (e, leadId, newSseId) => {
+    e.stopPropagation()
+    if (!newSseId) return
+    setSavingSSELeadId(leadId)
+    try {
+      await leadService.reassignSSE(leadId, newSseId, user?.userId)
+      await fetchLeads()
+      setSuccessMessage("SSE reassigned successfully")
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err) {
+      setError(err.message || "Failed to reassign SSE")
+    } finally {
+      setSavingSSELeadId(null)
+      setEditingSSELeadId(null)
+    }
   }
 
   const handleFilterChange = (filterName, value) => {
@@ -765,8 +795,46 @@ function SSEAssignedLeads() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-xs font-medium text-gray-900">
-                            {lead.assigned_sse?.firstName} {lead.assigned_sse?.lastName}
+                          <div className="text-xs font-medium text-gray-900 flex items-center gap-2">
+                            {editingSSELeadId === lead.id ? (
+                              <>
+                                <select
+                                  autoFocus
+                                  defaultValue={lead.assigned_sse?.id || ""}
+                                  disabled={savingSSELeadId === lead.id}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => handleReassignSSE(e, lead.id, e.target.value)}
+                                  className="rounded-md border border-gray-300 px-2 py-1 text-xs"
+                                >
+                                  <option value="">Select SSE</option>
+                                  {sseList.map((sse) => (
+                                    <option key={sse.id} value={sse.id}>
+                                      {sse.firstName} {sse.lastName}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  onClick={handleCancelEditSSE}
+                                  className="text-gray-400 hover:text-gray-600"
+                                  title="Cancel"
+                                >
+                                  <FiX size={14} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <span>
+                                  {lead.assigned_sse?.firstName} {lead.assigned_sse?.lastName}
+                                </span>
+                                <button
+                                  onClick={(e) => handleStartEditSSE(e, lead.id)}
+                                  className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                  title="Edit Assigned SSE"
+                                >
+                                  <FiEdit2 size={12} />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -862,8 +930,42 @@ function SSEAssignedLeads() {
                         </div>
 
                         <div className="text-gray-500">SSE:</div>
-                        <div>
-                          {lead.assigned_sse?.firstName} {lead.assigned_sse?.lastName}
+                        <div className="flex items-center gap-2">
+                          {editingSSELeadId === lead.id ? (
+                            <>
+                              <select
+                                autoFocus
+                                defaultValue={lead.assigned_sse?.id || ""}
+                                disabled={savingSSELeadId === lead.id}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => handleReassignSSE(e, lead.id, e.target.value)}
+                                className="rounded-md border border-gray-300 px-2 py-1 text-xs"
+                              >
+                                <option value="">Select SSE</option>
+                                {sseList.map((sse) => (
+                                  <option key={sse.id} value={sse.id}>
+                                    {sse.firstName} {sse.lastName}
+                                  </option>
+                                ))}
+                              </select>
+                              <button onClick={handleCancelEditSSE} className="text-gray-400 hover:text-gray-600" title="Cancel">
+                                <FiX size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <span>
+                                {lead.assigned_sse?.firstName} {lead.assigned_sse?.lastName}
+                              </span>
+                              <button
+                                onClick={(e) => handleStartEditSSE(e, lead.id)}
+                                className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                title="Edit Assigned SSE"
+                              >
+                                <FiEdit2 size={12} />
+                              </button>
+                            </>
+                          )}
                         </div>
 
                         <div className="text-gray-500">BDM:</div>

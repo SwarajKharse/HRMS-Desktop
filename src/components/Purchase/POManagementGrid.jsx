@@ -633,7 +633,17 @@ const POManagementGrid = () => {
                         <div className="space-y-1">
                           {po.projectNames?.length > 0 ? (
                             po.projectNames.map((name, i) => (
-                              <div key={i} className="truncate text-xs bg-gray-100 px-2 py-0.5 rounded" title={name}>{name}</div>
+                              <div
+                                key={i}
+                                className={`truncate text-xs px-2 py-0.5 rounded ${
+                                  name === "Project removed by finance"
+                                    ? "bg-red-50 text-red-600 font-medium"
+                                    : "bg-gray-100"
+                                }`}
+                                title={name}
+                              >
+                                {name}
+                              </div>
                             ))
                           ) : (
                             <span className="text-gray-400 text-xs">N/A</span>

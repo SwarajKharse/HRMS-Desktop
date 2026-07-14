@@ -18,6 +18,22 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
     userId = user.userId
   }
 
+  const currentUserData = (() => {
+    try {
+      return JSON.parse(localStorage.getItem("userData"))
+    } catch {
+      return null
+    }
+  })()
+  const userDesignation = (currentUserData?.designation?.name || "").toLowerCase()
+  // Matches the "Sales TL" access level from the page-access sheet (see PermissionsContext.js
+  // ACCESS map): Sales Team Lead + Techno Commercial Head + Management can all act as Sales TL here.
+  const isSalesTLRole =
+    userDesignation.includes("sales team lead") ||
+    userDesignation.includes("techno commercial head") ||
+    userDesignation.includes("managing director") ||
+    userDesignation.includes("vice president")
+
   const allIds = lead.lead_proposal_type !== null ? lead.lead_proposal_type.map((item) => item.id) : []
 
   const [formData, setFormData] = useState({
@@ -100,7 +116,14 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
   }
 
   const fetchUploadedPOs = async () => {
-    // Placeholder for fetchUploadedPOs function
+    if (lead && lead.id) {
+      try {
+        const response = await leadService.getLeadDocuments(lead.id, "po_document")
+        setPoUploadedDocuments(response || [])
+      } catch (error) {
+        console.error("Error fetching PO documents:", error)
+      }
+    }
   }
 
   useEffect(() => {
@@ -272,15 +295,29 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
     }
   }
 
-  const handleBOQSave = (boqDataFromSelector, wasSavedToBackend = false) => {
+  const handleBOQSave = async (boqDataFromSelector, wasSavedToBackend = false) => {
     console.log("[v0] handleBOQSave - BOQ data received:", boqDataFromSelector)
     setBOQData(boqDataFromSelector)
     setShowBOQSelector(false)
+
     if (wasSavedToBackend) {
+      // ProductBOQSelector already persisted this directly (edit-mode save).
       setSuccessMessage("BOQ saved successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
-      // Removed checkExistingProject() call to prevent overwriting with database values
-      // The boqData state already has the correct values from the selector
+      return
+    }
+
+    // First-time save: no project exists yet, so ProductBOQSelector couldn't persist
+    // directly. Create/update the project and BOQ now instead of waiting for HandOver.
+    try {
+      await persistProjectAndBOQ(boqDataFromSelector)
+      await checkExistingProject()
+      setSuccessMessage("BOQ saved successfully")
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch (err) {
+      console.error("Error saving BOQ:", err)
+      setError(err.message || "Failed to save BOQ")
+      window.scrollTo(0, 0)
     }
   }
 
@@ -364,109 +401,145 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
     }
   }
 
+  // Creates/updates the Project record and (for project-type handovers) the BOQ.
+  // Used both by the in-selector "Save/Update BOQ" button (any role) and by the
+  // Sales-TL-only "HandOver" submit below.
+  const persistProjectAndBOQ = async (boqItemsData) => {
+    const finalProjectName =
+      existingProject?.projectName ||
+      (project.project_name === "other" ? project.custom_project_name : project.project_name)
+
+    if (formData.amc_or_project === "project") {
+      if (!finalProjectName || finalProjectName.trim() === "") {
+        throw new Error("Please select or enter a project name")
+      }
+      if (!boqItemsData || !boqItemsData.items || boqItemsData.items.length === 0) {
+        throw new Error("Please create a BOQ with at least one item for the project")
+      }
+    }
+
+    const payloadForBackend = {
+      ...(existingProject
+        ? {
+            id: existingProject.projectId,
+            project_name: existingProject.projectName,
+            project_status: existingProject.projectStatus,
+            handover_from_sales: existingProject.handoverFromSales,
+            date_of_handover_from_sales: existingProject.dateOfHandoverFromSales,
+            date_of_into_call_by_se: existingProject.dateOfIntoCallBySe,
+            date_of_kick_of_meeting: existingProject.dateOfKickOfMeeting,
+            project_initiation_meet_date: existingProject.projectInitiationMeetDate,
+            projectInitiationDate: existingProject.projectInitiationDate,
+            numberOfWeeks: existingProject.numberOfWeeks,
+            execution_team: existingProject.executionTeam,
+            handover_file_status: existingProject.handover_file_status,
+            form_a_noc_status: existingProject.form_a_noc_status,
+            approval_from_fm: existingProject.approval_from_fm,
+            payment_approval_date_by_fm: existingProject.payment_approval_date_by_fm,
+            project_completion_eta: existingProject.project_completion_eta,
+            project_completion_date: existingProject.project_completion_date,
+            approval_from_pm: existingProject.approvalFromPm,
+            sales_tl: existingProject.salesTl ? { id: existingProject.salesTl.id } : null,
+            project_manager: existingProject.projectManager ? { id: existingProject.projectManager.id } : null,
+            site_engineer: existingProject.siteEngineer ? { id: existingProject.siteEngineer.id } : null,
+          }
+        : {}),
+
+      amc_or_project: formData.amc_or_project,
+      project_name: finalProjectName,
+      employee_updatedby: {
+        id: userId,
+      },
+      ...(formData.amc_or_project === "project" && {
+        gstType: gstType,
+        cgstPercent: gstType === "CGST_SGST" ? cgstPercent : null,
+        sgstPercent: gstType === "CGST_SGST" ? sgstPercent : null,
+        igstPercent: gstType === "IGST" ? igstPercent : null,
+        gstAmount: gstAmount,
+        totalAmountWithGst: postGstAmount,
+      }),
+    }
+
+    const projectResponse = await projectService.createOrUpdateProject(
+      payloadForBackend,
+      formData.amc_or_project,
+      lead.id,
+    )
+
+    if (formData.amc_or_project === "project" && boqItemsData && projectResponse && projectResponse.projectId) {
+      const validatedBOQData = {
+        projectId: projectResponse.projectId,
+        items: boqItemsData.items.map((item) => ({
+          id: item.id || undefined, // preserve existing item's DB id if present
+          productId: Number.parseInt(item.productId),
+          qty: Number.parseFloat(item.qty) || 0,
+          make: item.make || "",
+          uom: item.uom || "",
+          remarks: item.remarks || "",
+          leadProductTypeId: Number.parseInt(item.leadProductTypeId),
+          supplyRate: Number.parseFloat(item.supplyRate) || 0,
+          installationRate: Number.parseFloat(item.installationRate) || 0,
+          supplyAmount: Number.parseFloat(item.supplyAmount) || 0,
+          installationAmount: Number.parseFloat(item.installationAmount) || 0,
+          total: Number.parseFloat(item.total) || 0,
+          pmApprovalStatus: item.pmApprovalStatus,
+          salestlApprovalStatus: item.salestlApprovalStatus,
+        })),
+      }
+      await projectService.createOrUpdateBOQ(projectResponse.projectId, validatedBOQData)
+    }
+
+    return projectResponse
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError("")
 
-    const finalProjectName =
-      existingProject?.projectName ||
-      (project.project_name === "other" ? project.custom_project_name : project.project_name)
-
     try {
+      if (!isSalesTLRole) {
+        throw new Error("Only the Sales TL can complete handover")
+      }
+
+      if (poUploadedDocuments.length === 0) {
+        throw new Error("Please upload the PO document before handover")
+      }
+
+      let boqItemsForHandover = boqData
+
       if (formData.amc_or_project === "project") {
-        if (!finalProjectName || finalProjectName.trim() === "") {
-          throw new Error("Please select or enter a project name")
-        }
         if (!boqData || !boqData.items || boqData.items.length === 0) {
-          throw new Error("Please create a BOQ with at least one item for the project")
+          throw new Error("Please save a BOQ with at least one item before handover")
+        }
+        const unapprovedItems = boqData.items.filter(
+          (item) => (item.salestlApprovalStatus || "PENDING").toUpperCase() !== "APPROVED",
+        )
+        if (unapprovedItems.length > 0) {
+          const names = unapprovedItems
+            .slice(0, 5)
+            .map((item) => item.productName || item.product_name || `Item #${item.id}`)
+            .join(", ")
+          const extra = unapprovedItems.length > 5 ? ` and ${unapprovedItems.length - 5} more` : ""
+          throw new Error(`Please approve all BOQ items before handover. Pending: ${names}${extra}`)
+        }
+
+        // All items are Sales-TL-approved at this point (checked above) — completing
+        // handover auto-approves them on the PM side too. Items added later remain PENDING.
+        boqItemsForHandover = {
+          ...boqData,
+          items: boqData.items.map((item) => ({
+            ...item,
+            pmApprovalStatus: "APPROVED",
+            salestlApprovalStatus: "APPROVED",
+          })),
         }
       }
 
-      const payloadForBackend = {
-        ...(existingProject
-          ? {
-              id: existingProject.projectId,
-              project_name: existingProject.projectName,
-              project_status: existingProject.projectStatus,
-              handover_from_sales: existingProject.handoverFromSales,
-              date_of_handover_from_sales: existingProject.dateOfHandoverFromSales,
-              date_of_into_call_by_se: existingProject.dateOfIntoCallBySe,
-              date_of_kick_of_meeting: existingProject.dateOfKickOfMeeting,
-              project_initiation_meet_date: existingProject.projectInitiationMeetDate,
-              projectInitiationDate: existingProject.projectInitiationDate,
-              numberOfWeeks: existingProject.numberOfWeeks,
-              execution_team: existingProject.executionTeam,
-              handover_file_status: existingProject.handover_file_status,
-              form_a_noc_status: existingProject.form_a_noc_status,
-              approval_from_fm: existingProject.approval_from_fm,
-              payment_approval_date_by_fm: existingProject.payment_approval_date_by_fm,
-              project_completion_eta: existingProject.project_completion_eta,
-              project_completion_date: existingProject.project_completion_date,
-              approval_from_pm: existingProject.approvalFromPm,
-              sales_tl: existingProject.salesTl ? { id: existingProject.salesTl.id } : null,
-              project_manager: existingProject.projectManager ? { id: existingProject.projectManager.id } : null,
-              site_engineer: existingProject.siteEngineer ? { id: existingProject.siteEngineer.id } : null,
-            }
-          : {}),
+      await persistProjectAndBOQ(boqItemsForHandover)
 
-        amc_or_project: formData.amc_or_project,
-        project_name: finalProjectName,
-        employee_updatedby: {
-          id: userId,
-        },
-        ...(formData.amc_or_project === "project" && {
-          gstType: gstType,
-          cgstPercent: gstType === "CGST_SGST" ? cgstPercent : null,
-          sgstPercent: gstType === "CGST_SGST" ? sgstPercent : null,
-          igstPercent: gstType === "IGST" ? igstPercent : null,
-          gstAmount: gstAmount,
-          totalAmountWithGst: postGstAmount,
-        }),
-      }
-
-      const projectResponse = await projectService.createOrUpdateProject(
-        payloadForBackend,
-        formData.amc_or_project,
-        lead.id,
-      )
-
-      if (formData.amc_or_project === "project" && boqData && projectResponse && projectResponse.projectId) {
-        try {
-          // Final validation and parsing of BOQ data before sending to backend
-          const validatedBOQData = {
-            projectId: projectResponse.projectId,
-            items: boqData.items.map((item) => {
-              const validatedItem = {
-                id: item.id || undefined,   // preserve existing item's DB id if present
-                productId: Number.parseInt(item.productId),
-                qty: Number.parseFloat(item.qty) || 0,
-                make: item.make || "",
-                uom: item.uom || "",
-                remarks: item.remarks || "",
-                leadProductTypeId: Number.parseInt(item.leadProductTypeId),
-                supplyRate: Number.parseFloat(item.supplyRate) || 0,
-                installationRate: Number.parseFloat(item.installationRate) || 0,
-                supplyAmount: Number.parseFloat(item.supplyAmount) || 0,
-                installationAmount: Number.parseFloat(item.installationAmount) || 0,
-                total: Number.parseFloat(item.total) || 0,
-              }
-
-              console.log("[v0] Final validated BOQ item before sending to backend:", validatedItem)
-              return validatedItem
-            }),
-          }
-
-          console.log("[v0] Final validated BOQ data being sent to backend:", JSON.stringify(validatedBOQData, null, 2))
-
-          await projectService.createOrUpdateBOQ(projectResponse.projectId, validatedBOQData)
-          setSuccessMessage("Project and BOQ saved successfully")
-        } catch (boqError) {
-          console.error("BOQ creation failed:", boqError)
-          setError("Project saved successfully, but BOQ creation failed: " + (boqError.message || boqError))
-          setLoading(false)
-          return
-        }
+      if (formData.amc_or_project === "project") {
+        setSuccessMessage("Project and BOQ saved successfully")
       } else if (formData.amc_or_project === "amc") {
         setSuccessMessage("AMC handover successful")
       } else {
@@ -864,7 +937,8 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
                   existingBOQ={existingBOQData}
                   isEditMode={existingProject && existingProject.hasExistingBOQ}
                   currentUserId={userId}
-                  projectSalesTlId={lead.assigned_sse?.id === userId ? null : userId}
+                  projectSalesTlId={existingProject?.salesTl?.id ?? userId}
+                  isSalesTLRole={isSalesTLRole}
                   onBOQItemStatusUpdateSuccess={checkExistingProject}
                   onProductCountChange={handleProductCountChange}
                   gstType={gstType}
@@ -912,20 +986,22 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-              disabled={loading}
-            >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Saving...
-                </div>
-              ) : (
-                "HandOver"
-              )}
-            </button>
+            {isSalesTLRole && (
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Saving...
+                  </div>
+                ) : (
+                  "HandOver"
+                )}
+              </button>
+            )}
           </div>
         </form>
       </motion.div>
