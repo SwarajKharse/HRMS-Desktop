@@ -26,6 +26,7 @@ function ProductBOQSelector({
   isEditMode = false,
   currentUserId,
   projectSalesTlId,
+  isSalesTLRole = false,
   onBOQItemStatusUpdateSuccess, // New prop
   onProductCountChange, // New prop to notify parent of product count changes
   gstType,
@@ -931,7 +932,7 @@ function ProductBOQSelector({
                       <h5 className="font-medium text-gray-900">{category.name}</h5>
                       <span className="ml-2 text-sm text-gray-500">({categoryProducts.length} items)</span>
                     </div>
-                    {currentUserId === projectSalesTlId && (
+                    {isEditMode && isSalesTLRole && (
                       approvalSelectionMode[category.id] ? (
                         <>
                           <button
@@ -1179,9 +1180,9 @@ function ProductBOQSelector({
                                       remarks={product.salestlApprovalRemarks}
                                       approvalDate={product.salestlApprovalDate}
                                       onUpdate={() => {}}
-                                      readOnly={currentUserId !== projectSalesTlId}
+                                      readOnly={!isEditMode || !isSalesTLRole}
                                     />
-                                    {isEditMode && currentUserId === projectSalesTlId && (
+                                    {isEditMode && isSalesTLRole && (
                                       <button
                                         type="button" // Added type="button"
                                         onClick={() =>

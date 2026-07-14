@@ -83,6 +83,27 @@ function BOQEditComponent({
     }
   }
 
+  const approveAllPmInGroup = async (productTypeGroup) => {
+    const pendingProducts = (productTypeGroup.products || []).filter(
+      (p) => (p.pmApprovalStatus || "PENDING").toUpperCase() !== "APPROVED",
+    )
+    if (pendingProducts.length === 0) return
+    try {
+      setError("")
+      for (const product of pendingProducts) {
+        await projectService.updateBOQItemApprovalStatus(product.id, {
+          approvalType: "PM",
+          statusValue: "APPROVED",
+          remarks: "",
+        })
+      }
+      await refetchBOQData()
+    } catch (error) {
+      console.error("Error approving all PM items in group:", error)
+      setError("Failed to approve all items: " + error.message)
+    }
+  }
+
   const updateCategoryItemApprovalStatus = async (productId, categoryType, itemIndex, approvalData) => {
     try {
       const { type, status, remarks } = approvalData
@@ -1889,6 +1910,17 @@ function BOQEditComponent({
                             {productTypeGroup.products.length} product{productTypeGroup.products.length > 1 ? "s" : ""}
                           </div>
                         </div>
+                        {!readOnly && canApprove &&
+                          productTypeGroup.products.some(
+                            (p) => (p.pmApprovalStatus || "PENDING").toUpperCase() !== "APPROVED",
+                          ) && (
+                            <button
+                              onClick={() => approveAllPmInGroup(productTypeGroup)}
+                              className="mr-2 px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                            >
+                              ✓ PM Approve All
+                            </button>
+                          )}
                         <button
                           onClick={() => toggleProductTypeExpansion(productTypeGroup.id)}
                           className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"

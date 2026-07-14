@@ -560,7 +560,13 @@ function PODetailsModal({
                     {(po.allMTRData || [po]).map((entry, idx) => (
                       <tr key={idx} className="hover:bg-gray-50">
                         <td className="px-3 py-2 text-xs font-medium text-gray-700">{entry.mtrCode || entry.boqMtr?.mtrCode || "N/A"}</td>
-                        <td className="px-3 py-2 text-xs text-gray-600">{entry.projectName || "N/A"}</td>
+                        <td className="px-3 py-2 text-xs text-gray-600">
+                          {entry.projectName === "Project removed by finance" ? (
+                            <span className="text-red-600 font-medium">{entry.projectName}</span>
+                          ) : (
+                            entry.projectName || "N/A"
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-xs text-gray-600">{entry.productName || "N/A"}</td>
                         <td className="px-3 py-2 text-xs text-gray-600 font-medium">{entry.boqMtr?.purchaseMTR || "N/A"}</td>
                       </tr>

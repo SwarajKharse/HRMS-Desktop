@@ -489,7 +489,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
   const showUploadProposal = () => {
     let flag = 0
     const returnV = false
-    if (activeTab === "sse-inprogress-leads") {
+    if (activeTab === "sse-inprogress-leads" || activeTab === "assigned-leads") {
       uploadedDocuments.map((doc, index) => (doc.status === "0" ? (flag = flag + 1) : 0))
       if (uploadedDocuments.length - 1 === flag) {
         return false
@@ -1743,22 +1743,21 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                           </div>
                         </div>
                       )}
-                      {/* Approve Proposal commented the validation for recent changes - Sales TL - proposal approval always open   */}
-                      {/*  {showProposalApproval() && ( */}
-                      <div className="flex items-center gap-2 mt-4">
-                        <label className="text-sm font-medium text-gray-700">Approve Proposal:</label>
-                        <select
-                          name="salestl_approval_status"
-                          value={formData.salestl_approval_status !== null ? formData.salestl_approval_status : ""}
-                          className="mt-1 rounded-md border border-gray-300 px-3 py-2"
-                          onChange={(e) => handleProposalApproval(e)}
-                        >
-                          <option value={null}>Please select</option>
-                          <option value="1">Yes</option>
-                          <option value="0">No</option>
-                        </select>
-                      </div>
-                      {/* )} */}
+                      {showProposalApproval() && (
+                        <div className="flex items-center gap-2 mt-4">
+                          <label className="text-sm font-medium text-gray-700">Approve Proposal:</label>
+                          <select
+                            name="salestl_approval_status"
+                            value={formData.salestl_approval_status !== null ? formData.salestl_approval_status : ""}
+                            className="mt-1 rounded-md border border-gray-300 px-3 py-2"
+                            onChange={(e) => handleProposalApproval(e)}
+                          >
+                            <option value={null}>Please select</option>
+                            <option value="1">Yes</option>
+                            <option value="0">No</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
                   )}
                   {activeTab === "sse-inprogress-leads" && (
@@ -1778,42 +1777,21 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     </div>
                   )}
                   {/* Approve Proposal End */}
-                  {/* Shared Status */}
-                  {activeTab === "salestl-won-leads" ? (
-                    <>
-                      {lead.salestl_approval_status == "1" ? (
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm font-medium text-gray-700">
-                            Shared Status:
-                            {formData.salestl_shared_status === "1"
-                              ? "Yes"
-                              : formData.salestl_shared_status === "0"
-                                ? "No"
-                                : "N/A"}
-                          </label>
-                        </div>
-                      ) : null}
-                    </>
-                  ) : null}
-                  {activeTab !== "salestl-won-leads" ? (
-                    <>
-                      {lead.salestl_approval_status == "1" ? (
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm font-medium text-gray-700">Shared Status:</label>
-                          <select
-                            name="salestl_shared_status"
-                            //value={formData.need_of_field_visit || ""}
-                            value={formData.salestl_shared_status !== null ? formData.salestl_shared_status : ""}
-                            className="mt-1 rounded-md border border-gray-300 px-3 py-2"
-                            onChange={(e) => handleSharedStatus(e)}
-                          >
-                            <option value={null}>Please select</option>
-                            <option value="1">Yes</option>
-                            <option value="0">No</option>
-                          </select>
-                        </div>
-                      ) : null}
-                    </>
+                  {/* Shared Status - editable for both Sales TL and SSE */}
+                  {lead.salestl_approval_status == "1" ? (
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700">Shared Status:</label>
+                      <select
+                        name="salestl_shared_status"
+                        value={formData.salestl_shared_status !== null ? formData.salestl_shared_status : ""}
+                        className="mt-1 rounded-md border border-gray-300 px-3 py-2"
+                        onChange={(e) => handleSharedStatus(e)}
+                      >
+                        <option value={null}>Please select</option>
+                        <option value="1">Yes</option>
+                        <option value="0">No</option>
+                      </select>
+                    </div>
                   ) : null}
                   {/* Shared Status End */}
                   {activeTab !== "salestl-won-leads" ? (
@@ -1911,45 +1889,26 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     </>
                   ) : null}
 
-                  {/* Lead Status */}
-                  {activeTab === "salestl-won-leads" ? (
-                    <>
-                      {lead.salestl_approval_status == "1" ? (
-                        <div className="space-y-4 rounded-lg bg-white border p-4">
-                          <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
-                          <div className="flex items-center gap-2">
-                            <label className="text-sm font-medium text-gray-700">
-                              Lead Status:{Capitalize(formData.lead_status)}
-                            </label>
-                          </div>
-                        </div>
-                      ) : null}
-                    </>
+                  {/* Lead Status (Won/Lost) - editable for both Sales TL and SSE */}
+                  {lead.salestl_shared_status === "1" ? (
+                    <div className="space-y-4 rounded-lg bg-white border p-4">
+                      <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-700">Lead Status:</label>
+                        <select
+                          name="lead_status"
+                          value={formData.lead_status !== null ? formData.lead_status : ""}
+                          className="mt-1 rounded-md border border-gray-300 px-3 py-2"
+                          onChange={(e) => handleLeadStatus(e)}
+                        >
+                          <option value={null}>Please select</option>
+                          <option value="won">Won</option>
+                          <option value="lost">Lost</option>
+                        </select>
+                      </div>
+                    </div>
                   ) : null}
-                  {activeTab !== "salestl-won-leads" ? (
-                    <>
-                      {lead.salestl_shared_status === "1" ? (
-                        <div className="space-y-4 rounded-lg bg-white border p-4">
-                          <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
-                          <div className="flex items-center gap-2">
-                            <label className="text-sm font-medium text-gray-700">Lead Status:</label>
-                            <select
-                              name="lead_status"
-                              //value={formData.need_of_field_visit || ""}
-                              value={formData.lead_status !== null ? formData.lead_status : ""}
-                              className="mt-1 rounded-md border border-gray-300 px-3 py-2"
-                              onChange={(e) => handleLeadStatus(e)}
-                            >
-                              <option value={null}>Please select</option>
-                              <option value="won">Won</option>
-                              <option value="lost">Lost</option>
-                            </select>
-                          </div>
-                        </div>
-                      ) : null}
-                      {/* Lead Status End */}
-                    </>
-                  ) : null}
+                  {/* Lead Status End */}
                 </div>
               ) : null}
             </>

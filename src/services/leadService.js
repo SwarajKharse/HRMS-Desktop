@@ -985,6 +985,18 @@ export const leadService = {
       throw error.response?.data || error.message
     }
   },
+  reassignSSE: async (id, sseId, updatedByEmployeeId) => {
+    try {
+      const response = await axios.put(
+        `${BASE_URL}/reassign-sse/${id}`,
+        { sseId, updatedByEmployeeId },
+        getAuthHeaders(),
+      )
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
 
   updateBDMFieldVisit: async (id, formData) => {
     try {

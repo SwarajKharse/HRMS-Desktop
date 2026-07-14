@@ -77,6 +77,22 @@ function LeadSSEEditFormInProgress({ lead, activeTab, onClose, onSubmit }) {
     })
   }
 
+  const handleSharedStatus = (e) => {
+    var newValue = e.target.value
+    setLeadData({
+      ...leadData,
+      salestl_shared_status: newValue,
+    })
+  }
+
+  const handleLeadStatus = (e) => {
+    var newValue = e.target.value
+    setLeadData({
+      ...leadData,
+      lead_status: newValue,
+    })
+  }
+
   const [checkInPreview, setCheckInPreview] = useState(lead.check_in_selfie_url || "")
   const [checkOutPreview, setCheckOutPreview] = useState(lead.check_out_selfie_url || "")
   const [feedbackFormName, setFeedbackFormName] = useState(lead.client_feedback_form_name || "")
@@ -1416,6 +1432,43 @@ function LeadSSEEditFormInProgress({ lead, activeTab, onClose, onSubmit }) {
                   </select>
                 </div>
               )}
+
+              {/* Shared Status */}
+              {lead.salestl_approval_status == "1" ? (
+                <div className="flex items-center gap-2 mt-4">
+                  <label className="text-sm font-medium text-gray-700">Shared Status:</label>
+                  <select
+                    name="salestl_shared_status"
+                    value={leadData.salestl_shared_status !== null ? leadData.salestl_shared_status : ""}
+                    className="mt-1 rounded-md border border-gray-300 px-3 py-2"
+                    onChange={(e) => handleSharedStatus(e)}
+                  >
+                    <option value={null}>Please select</option>
+                    <option value="1">Yes</option>
+                    <option value="0">No</option>
+                  </select>
+                </div>
+              ) : null}
+
+              {/* Lead Status (Won/Lost) */}
+              {lead.salestl_shared_status === "1" ? (
+                <div className="space-y-4 rounded-lg bg-white border p-4 mt-4">
+                  <h3 className="font-semibold text-lg border-b pb-2">Lead Status</h3>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">Lead Status:</label>
+                    <select
+                      name="lead_status"
+                      value={leadData.lead_status !== null ? leadData.lead_status : ""}
+                      className="mt-1 rounded-md border border-gray-300 px-3 py-2"
+                      onChange={(e) => handleLeadStatus(e)}
+                    >
+                      <option value={null}>Please select</option>
+                      <option value="won">Won</option>
+                      <option value="lost">Lost</option>
+                    </select>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
 
