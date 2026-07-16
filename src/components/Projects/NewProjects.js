@@ -660,6 +660,7 @@ function NewProjects() {
             projectId={dcHistoryProject.id}
             projectName={dcHistoryProject.project_name}
             isOpen={true}
+            currentUserId={userId}
             onClose={() => { setShowDCHistory(false); setDcHistoryProject(null) }}
           />
         )}

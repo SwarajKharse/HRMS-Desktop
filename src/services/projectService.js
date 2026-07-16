@@ -187,6 +187,41 @@ export const projectService = {
       throw error
     }
   },
+
+  uploadDeliveryChallanCopy: async (dcId, file) => {
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const response = await axios.post(`${API_URL}/projects/delivery-challans/${dcId}/dc-copy`, formData, {
+        headers: {
+          ...getAuthHeaders().headers,
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error uploading delivery challan copy:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+
+  uploadSignedDeliveryChallan: async (dcId, file, uploadedBy) => {
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("uploadedBy", uploadedBy)
+      const response = await axios.post(`${API_URL}/projects/delivery-challans/${dcId}/signed-copy`, formData, {
+        headers: {
+          ...getAuthHeaders().headers,
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error uploading signed delivery challan:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
   updateStockAlloted: async (projectId, requisitionId, lineId, itemKind, stockAlloted) => {
     try {
       const response = await axios.put(

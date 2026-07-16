@@ -178,25 +178,19 @@ function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }
     <div className="pt-2 border-t border-blue-100 space-y-3">
       <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Accountant Section</p>
 
-      {/* Read-only for non-accountant */}
+      {/* Read-only for non-accountant — compact, info-dense form */}
       {!canEdit ? (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <InfoCell label="Status">{item.status}</InfoCell>
-            <InfoCell label="Payment Cycle">{item.paymentCycle}</InfoCell>
-            <InfoCell label="Expected Payment Date">{formatDate(item.expectedPaymentDate)}</InfoCell>
-            <InfoCell label="Payable Amount">₹{item.payableAmount || "0"}</InfoCell>
-          </div>
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
-            <InfoCell label="AM Approval"><StatusBadge status={item.accountManagerApprovalStatus} /></InfoCell>
-            <InfoCell label="Payment Status"><StatusBadge status={item.paymentStatus} /></InfoCell>
-            <InfoCell label="AM Remark">{item.accountManagerApprovalRemarks}</InfoCell>
-            <InfoCell label="Payment Date">{formatDate(item.paymentDoneDate)}</InfoCell>
-          </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+          <span><span className="text-gray-500">Status:</span> <span className="font-medium text-gray-800">{item.status || "N/A"}</span></span>
+          <span><span className="text-gray-500">Cycle:</span> <span className="font-medium text-gray-800">{item.paymentCycle || "N/A"}</span></span>
+          <span><span className="text-gray-500">Expected:</span> <span className="font-medium text-gray-800">{formatDate(item.expectedPaymentDate)}</span></span>
+          <span><span className="text-gray-500">Amount:</span> <span className="font-medium text-gray-800">₹{item.payableAmount || "0"}</span></span>
+          <span className="flex items-center gap-1"><span className="text-gray-500">AM:</span> <StatusBadge status={item.accountManagerApprovalStatus} /></span>
+          {item.accountManagerApprovalRemarks && <span className="text-gray-500 italic">"{item.accountManagerApprovalRemarks}"</span>}
+          <span className="flex items-center gap-1"><span className="text-gray-500">Payment:</span> <StatusBadge status={item.paymentStatus} /></span>
+          {item.paymentDoneDate && <span><span className="text-gray-500">Paid on:</span> <span className="font-medium text-gray-800">{formatDate(item.paymentDoneDate)}</span></span>}
           {item.paymentReceiptUrl && (
-            <div>
-              <a href={item.paymentReceiptUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs underline">View Payment Receipt</a>
-            </div>
+            <a href={item.paymentReceiptUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">Payment Receipt</a>
           )}
         </div>
       ) : (
@@ -406,6 +400,15 @@ function PODetailsModal({
   const [grnList, setGrnList] = useState([])
   const [loading, setLoading] = useState(false)
 
+  // Section-level and per-item collapse state — everything starts collapsed
+  // except the PO number/link, which is always visible.
+  const [expandedSection, setExpandedSection] = useState({ poInfo: false, mtr: false, pi: false, grn: false })
+  const [expandedPI, setExpandedPI] = useState({})
+  const [expandedGRN, setExpandedGRN] = useState({})
+  const toggleSection = (key) => setExpandedSection((p) => ({ ...p, [key]: !p[key] }))
+  const togglePI = (key) => setExpandedPI((p) => ({ ...p, [key]: !p[key] }))
+  const toggleGRN = (key) => setExpandedGRN((p) => ({ ...p, [key]: !p[key] }))
+
   // canEditAccountant = accountant OR AM
   const canEditAccountant = isAccountant || isAM
 
@@ -521,59 +524,68 @@ function PODetailsModal({
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 p-6 space-y-6">
+        <div className="overflow-y-auto flex-1 p-6 space-y-4">
 
-          {/* PO Info */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-gray-800 mb-3">Purchase Order Information</h4>
-            <div className="grid grid-cols-2 gap-4">
-              <InfoCell label="PO Number">{po.poNumber}</InfoCell>
-              <InfoCell label="Created By">{po.uploadedByName}</InfoCell>
-              <InfoCell label="Created Date">{formatDate(po.createdAt)}</InfoCell>
-              <InfoCell label="Vendor">{po.vendorName}</InfoCell>
-              <InfoCell label="PO Status"><StatusBadge status={po.poStatus} /></InfoCell>
-              <InfoCell label="Material Status"><StatusBadge status={po.materialStatus} /></InfoCell>
-              <BadgeCell label="PM Approval" status={po.approvalStatus} />
-              <BadgeCell label="FM Approval" status={po.financeManagerApprovalStatus} />
-            </div>
-            {po.fileUrl && (
-              <div className="mt-3">
-                <a href={po.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs underline">View PO Document</a>
+          {/* PO Info — collapsed shows only PO number + link */}
+          <div className="bg-gray-50 p-3 rounded-lg">
+            <button onClick={() => toggleSection("poInfo")} className="w-full flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2 font-semibold text-gray-800">
+                <span className="text-gray-500 text-sm">{expandedSection.poInfo ? "▾" : "▸"}</span>
+                PO Number: <span className="text-blue-700">{po.poNumber}</span>
+              </span>
+              {po.fileUrl && (
+                <a href={po.fileUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:text-blue-800 text-xs underline shrink-0">View PO Document</a>
+              )}
+            </button>
+            {expandedSection.poInfo && (
+              <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-gray-200">
+                <InfoCell label="Created By">{po.uploadedByName}</InfoCell>
+                <InfoCell label="Created Date">{formatDate(po.createdAt)}</InfoCell>
+                <InfoCell label="Vendor">{po.vendorName}</InfoCell>
+                <InfoCell label="PO Status"><StatusBadge status={po.poStatus} /></InfoCell>
+                <InfoCell label="Material Status"><StatusBadge status={po.materialStatus} /></InfoCell>
+                <BadgeCell label="PM Approval" status={po.approvalStatus} />
+                <BadgeCell label="FM Approval" status={po.financeManagerApprovalStatus} />
               </div>
             )}
           </div>
 
-          {/* MTR Details */}
+          {/* MTR Details — collapsed by default */}
           {po.allMTRIds && po.allMTRIds.length > 0 && (
             <div>
-              <h4 className="font-semibold text-gray-800 mb-3">MTR Details ({po.allMTRIds.length} items)</h4>
-              <div className="overflow-x-auto rounded-lg border border-gray-200">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      {["MTR Code", "Project", "Product", "Qty"].map((h) => (
-                        <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 bg-white">
-                    {(po.allMTRData || [po]).map((entry, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 text-xs font-medium text-gray-700">{entry.mtrCode || entry.boqMtr?.mtrCode || "N/A"}</td>
-                        <td className="px-3 py-2 text-xs text-gray-600">
-                          {entry.projectName === "Project removed by finance" ? (
-                            <span className="text-red-600 font-medium">{entry.projectName}</span>
-                          ) : (
-                            entry.projectName || "N/A"
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-gray-600">{entry.productName || "N/A"}</td>
-                        <td className="px-3 py-2 text-xs text-gray-600 font-medium">{entry.boqMtr?.purchaseMTR || "N/A"}</td>
+              <button onClick={() => toggleSection("mtr")} className="w-full flex items-center gap-2 py-1">
+                <span className="text-gray-500 text-sm">{expandedSection.mtr ? "▾" : "▸"}</span>
+                <span className="font-semibold text-gray-800">MTR Details ({po.allMTRIds.length} items)</span>
+              </button>
+              {expandedSection.mtr && (
+                <div className="overflow-x-auto rounded-lg border border-gray-200 mt-2">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        {["MTR Code", "Project", "Product", "Qty"].map((h) => (
+                          <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {(po.allMTRData || [po]).map((entry, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-xs font-medium text-gray-700">{entry.mtrCode || entry.boqMtr?.mtrCode || "N/A"}</td>
+                          <td className="px-3 py-2 text-xs text-gray-600">
+                            {entry.projectName === "Project removed by finance" ? (
+                              <span className="text-red-600 font-medium">{entry.projectName}</span>
+                            ) : (
+                              entry.projectName || "N/A"
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-600">{entry.productName || "N/A"}</td>
+                          <td className="px-3 py-2 text-xs text-gray-600 font-medium">{entry.boqMtr?.purchaseMTR || "N/A"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 
@@ -586,129 +598,171 @@ function PODetailsModal({
             </div>
           ) : (
             <>
-              {/* ── GRNs ─────────────────────────────────────────────── */}
+              {/* ── Vendors Proforma Invoice ───────────────────────────── */}
               <div>
-                <h4 className="font-semibold text-gray-800 mb-3">Goods Receipt Notes ({grnList.length})</h4>
-                {grnList.length === 0 ? (
-                  <p className="text-sm text-gray-500">No GRNs uploaded yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {grnList.map((grn, idx) => (
-                      <div key={grn.id || idx} className="border border-gray-200 rounded-lg p-4 space-y-3">
-                        {/* Row 1 */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <InfoCell label="GRN Number">{grn.grnNumber}</InfoCell>
-                          <InfoCell label="Payable Amount">₹{grn.payableAmount || "0"}</InfoCell>
-                        </div>
-                        {/* Row 2 */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <InfoCell label="Expected Date">{formatDate(grn.expectedPayableDate)}</InfoCell>
-                          <InfoCell label="Uploaded At">{formatDate(grn.createdAt)}</InfoCell>
-                        </div>
-                        {/* Row 3 — PM + FM */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <BadgeCell label="PM Approval" status={grn.purchaseManagerApprovalStatus}
-                            onClick={isPM ? () => handlePMApproveGRN(grn) : undefined} />
-                          <BadgeCell label="FM Approval" status={grn.purchaseOrder?.financeManagerApprovalStatus}
-                            onClick={isFM ? () => handleFMApproveGRN(grn) : undefined} />
-                        </div>
-                        {/* Row 4 — PM + FM remarks */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <InfoCell label="PM Remark">{grn.purchaseManagerApprovalRemarks}</InfoCell>
-                          <InfoCell label="FM Remark">{grn.purchaseOrder?.financeManagerApprovalRemarks}</InfoCell>
-                        </div>
-                        <div className={`${grn.purchaseOrder?.financeManagerApprovalStatus !== "APPROVED" ? "opacity-40 pointer-events-none" : ""}`}>
-                          {grn.purchaseOrder?.financeManagerApprovalStatus !== "APPROVED" && (
-                            <p className="text-xs text-yellow-600 font-medium mb-1">⚠ Locked until FM approves</p>
-                          )}
-                          <AccountantSection
-                            item={grn}
-                            itemType="GRN"
-                            currentUserId={currentUserId}
-                            canEdit={canEditAccountant}
-                            onRefresh={fetchDetails}
-                          />
-                          <AMApprovalSection
-                            item={grn}
-                            currentUserId={currentUserId}
-                            canApprove={isAM}
-                            onRefresh={fetchDetails}
-                            itemType="GRN"
-                          />
-                        </div>
-                        
-                        {grn.remarks && <p className="text-xs text-gray-400 italic">Remarks: {grn.remarks}</p>}
-                      </div>
-                    ))}
-                  </div>
+                <button onClick={() => toggleSection("pi")} className="w-full flex items-center gap-2 py-1">
+                  <span className="text-gray-500 text-sm">{expandedSection.pi ? "▾" : "▸"}</span>
+                  <span className="font-semibold text-gray-800">Vendors Proforma Invoice ({piList.length})</span>
+                </button>
+                {expandedSection.pi && (
+                  piList.length === 0 ? (
+                    <p className="text-sm text-gray-500 mt-2">No PIs uploaded yet</p>
+                  ) : (
+                    <div className="space-y-2 mt-2">
+                      {piList.map((pi, idx) => {
+                        const key = pi.id || idx
+                        const open = !!expandedPI[key]
+                        return (
+                          <div key={key} className="border border-gray-200 rounded-lg p-3">
+                            <button onClick={() => togglePI(key)} className="w-full flex items-center justify-between gap-2">
+                              <span className="flex items-center gap-2 text-sm min-w-0">
+                                <span className="text-gray-500 shrink-0">{open ? "▾" : "▸"}</span>
+                                {pi.fileUrl ? (
+                                  <a href={pi.fileUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:text-blue-800 underline font-medium truncate">{pi.piNumber || "N/A"}</a>
+                                ) : (
+                                  <span className="font-medium text-gray-900 truncate">{pi.piNumber || "N/A"}</span>
+                                )}
+                              </span>
+                              <span className="flex items-center gap-3 shrink-0">
+                                {pi.paymentReceiptUrl && (
+                                  <a href={pi.paymentReceiptUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-green-700 hover:text-green-900 text-xs underline">Payment Receipt</a>
+                                )}
+                                <StatusBadge status={pi.paymentStatus || "PENDING"} />
+                              </span>
+                            </button>
+                            {open && (
+                              <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                                {/* PI details — compact */}
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                                  <span><span className="text-gray-500">Payable:</span> <span className="font-medium text-gray-800">₹{pi.payableAmount || "0"}</span></span>
+                                  <span><span className="text-gray-500">Expected:</span> <span className="font-medium text-gray-800">{formatDate(pi.expectedPaymentDate)}</span></span>
+                                  <span><span className="text-gray-500">Uploaded:</span> <span className="font-medium text-gray-800">{formatDate(pi.createdAt)}</span></span>
+                                  {pi.poFileUrl && <a href={pi.poFileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">View PO Copy</a>}
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <BadgeCell label="PM Approval" status={pi.approvalStatus}
+                                    onClick={isPM ? () => handlePMApprovePI(pi) : undefined} />
+                                  <BadgeCell label="FM Approval" status={pi.financeManagerApproval}
+                                    onClick={isFM ? () => handleFMApprovePI(pi) : undefined} />
+                                </div>
+                                {(pi.approvalRemarks || pi.financeManagerApprovalRemarks) && (
+                                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                    {pi.approvalRemarks && <span>PM Remark: {pi.approvalRemarks}</span>}
+                                    {pi.financeManagerApprovalRemarks && <span>FM Remark: {pi.financeManagerApprovalRemarks}</span>}
+                                  </div>
+                                )}
+                                <div className={`${pi.financeManagerApproval !== "APPROVED" ? "opacity-40 pointer-events-none" : ""}`}>
+                                  {pi.financeManagerApproval !== "APPROVED" && (
+                                    <p className="text-xs text-yellow-600 font-medium mb-1">⚠ Locked until FM approves</p>
+                                  )}
+                                  <AccountantSection
+                                    item={pi}
+                                    itemType="PI"
+                                    currentUserId={currentUserId}
+                                    canEdit={canEditAccountant}
+                                    onRefresh={fetchDetails}
+                                  />
+                                  <AMApprovalSection
+                                    item={pi}
+                                    currentUserId={currentUserId}
+                                    canApprove={isAM}
+                                    onRefresh={fetchDetails}
+                                    itemType="PI"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )
                 )}
               </div>
 
-              {/* ── Purchase Invoices ─────────────────────────────────── */}
+              {/* ── GRN / Vendors Tax Invoice ──────────────────────────── */}
               <div>
-                <h4 className="font-semibold text-gray-800 mb-3">Purchase Invoices ({piList.length})</h4>
-                {piList.length === 0 ? (
-                  <p className="text-sm text-gray-500">No PIs uploaded yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {piList.map((pi, idx) => (
-                      <div key={pi.id || idx} className="border border-gray-200 rounded-lg p-4 space-y-3">
-                        {/* Row 1 */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs text-gray-500 mb-0.5">PI Number</p>
-                            {pi.fileUrl ? (
-                              <a href={pi.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline text-sm font-medium">{pi.piNumber || "N/A"}</a>
-                            ) : (
-                              <span className="text-sm font-medium text-gray-900">{pi.piNumber || "N/A"}</span>
+                <button onClick={() => toggleSection("grn")} className="w-full flex items-center gap-2 py-1">
+                  <span className="text-gray-500 text-sm">{expandedSection.grn ? "▾" : "▸"}</span>
+                  <span className="font-semibold text-gray-800">GRN/Vendors Tax Invoice ({grnList.length})</span>
+                </button>
+                {expandedSection.grn && (
+                  grnList.length === 0 ? (
+                    <p className="text-sm text-gray-500 mt-2">No GRNs uploaded yet</p>
+                  ) : (
+                    <div className="space-y-2 mt-2">
+                      {grnList.map((grn, idx) => {
+                        const key = grn.id || idx
+                        const open = !!expandedGRN[key]
+                        return (
+                          <div key={key} className="border border-gray-200 rounded-lg p-3">
+                            <button onClick={() => toggleGRN(key)} className="w-full flex items-center justify-between gap-2">
+                              <span className="flex items-center gap-2 text-sm min-w-0">
+                                <span className="text-gray-500 shrink-0">{open ? "▾" : "▸"}</span>
+                                {grn.grnCopyUrl ? (
+                                  <a href={grn.grnCopyUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-blue-600 hover:text-blue-800 underline font-medium truncate">{grn.grnNumber || "N/A"}</a>
+                                ) : (
+                                  <span className="font-medium text-gray-900 truncate">{grn.grnNumber || "N/A"}</span>
+                                )}
+                              </span>
+                              <span className="flex items-center gap-3 shrink-0">
+                                {grn.invoiceCopyUrl && (
+                                  <a href={grn.invoiceCopyUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-indigo-600 hover:text-indigo-800 text-xs underline">Tax Invoice</a>
+                                )}
+                                {grn.paymentReceiptUrl && (
+                                  <a href={grn.paymentReceiptUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-green-700 hover:text-green-900 text-xs underline">Payment Receipt</a>
+                                )}
+                                <StatusBadge status={grn.paymentStatus || "PENDING"} />
+                              </span>
+                            </button>
+                            {open && (
+                              <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
+                                {/* GRN details — compact */}
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                                  <span><span className="text-gray-500">Payable:</span> <span className="font-medium text-gray-800">₹{grn.payableAmount || "0"}</span></span>
+                                  <span><span className="text-gray-500">Expected:</span> <span className="font-medium text-gray-800">{formatDate(grn.expectedPayableDate)}</span></span>
+                                  <span><span className="text-gray-500">Uploaded:</span> <span className="font-medium text-gray-800">{formatDate(grn.createdAt)}</span></span>
+                                  {grn.testCertificateUrl && <a href={grn.testCertificateUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline">Test Certificate</a>}
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <BadgeCell label="PM Approval" status={grn.purchaseManagerApprovalStatus}
+                                    onClick={isPM ? () => handlePMApproveGRN(grn) : undefined} />
+                                  <BadgeCell label="FM Approval" status={grn.purchaseOrder?.financeManagerApprovalStatus}
+                                    onClick={isFM ? () => handleFMApproveGRN(grn) : undefined} />
+                                </div>
+                                {(grn.purchaseManagerApprovalRemarks || grn.purchaseOrder?.financeManagerApprovalRemarks) && (
+                                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                                    {grn.purchaseManagerApprovalRemarks && <span>PM Remark: {grn.purchaseManagerApprovalRemarks}</span>}
+                                    {grn.purchaseOrder?.financeManagerApprovalRemarks && <span>FM Remark: {grn.purchaseOrder.financeManagerApprovalRemarks}</span>}
+                                  </div>
+                                )}
+                                <div className={`${grn.purchaseOrder?.financeManagerApprovalStatus !== "APPROVED" ? "opacity-40 pointer-events-none" : ""}`}>
+                                  {grn.purchaseOrder?.financeManagerApprovalStatus !== "APPROVED" && (
+                                    <p className="text-xs text-yellow-600 font-medium mb-1">⚠ Locked until FM approves</p>
+                                  )}
+                                  <AccountantSection
+                                    item={grn}
+                                    itemType="GRN"
+                                    currentUserId={currentUserId}
+                                    canEdit={canEditAccountant}
+                                    onRefresh={fetchDetails}
+                                  />
+                                  <AMApprovalSection
+                                    item={grn}
+                                    currentUserId={currentUserId}
+                                    canApprove={isAM}
+                                    onRefresh={fetchDetails}
+                                    itemType="GRN"
+                                  />
+                                </div>
+                                {grn.remarks && <p className="text-xs text-gray-400 italic">Remarks: {grn.remarks}</p>}
+                              </div>
                             )}
                           </div>
-                          <InfoCell label="Payable Amount">₹{pi.payableAmount || "0"}</InfoCell>
-                        </div>
-                        {/* Row 2 */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <InfoCell label="Expected Date">{formatDate(pi.expectedPaymentDate)}</InfoCell>
-                          <InfoCell label="Uploaded At">{formatDate(pi.createdAt)}</InfoCell>
-                        </div>
-                        {/* Row 3 — PM + FM */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <BadgeCell label="PM Approval" status={pi.approvalStatus}
-                            onClick={isPM ? () => handlePMApprovePI(pi) : undefined} />
-                          <BadgeCell label="FM Approval" status={pi.financeManagerApproval}
-                            onClick={isFM ? () => handleFMApprovePI(pi) : undefined} />
-                        </div>
-                        {/* Row 4 — PM + FM remarks */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <InfoCell label="PM Remark">{pi.approvalRemarks}</InfoCell>
-                          <InfoCell label="FM Remark">{pi.financeManagerApprovalRemarks}</InfoCell>
-                        </div>
-                        {/* Documents */}
-                        <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-100">
-                          {pi.fileUrl && <a href={pi.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs underline">View PI Copy</a>}
-                          {pi.poFileUrl && <a href={pi.poFileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs underline">View PO Copy</a>}
-                        </div>
-                        <div className={`${pi.financeManagerApproval !== "APPROVED" ? "opacity-40 pointer-events-none" : ""}`}>
-                          {pi.financeManagerApproval !== "APPROVED" && (
-                            <p className="text-xs text-yellow-600 font-medium mb-1">⚠ Locked until FM approves</p>
-                          )}
-                          <AccountantSection
-                            item={pi}
-                            itemType="PI"
-                            currentUserId={currentUserId}
-                            canEdit={canEditAccountant}
-                            onRefresh={fetchDetails}
-                          />
-                          <AMApprovalSection
-                            item={pi}
-                            currentUserId={currentUserId}
-                            canApprove={isAM}
-                            onRefresh={fetchDetails}
-                            itemType="PI"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                        )
+                      })}
+                    </div>
+                  )
                 )}
               </div>
             </>

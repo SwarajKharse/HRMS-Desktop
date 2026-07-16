@@ -62,6 +62,7 @@ function SalesTLWonLeads() {
   // Export and UI states
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [showDesktopFilters, setShowDesktopFilters] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalResults, setTotalResults] = useState(0)
@@ -121,6 +122,14 @@ function SalesTLWonLeads() {
   useEffect(() => {
     setCurrentPage(1)
   }, [appliedFilters])
+
+  // Auto-apply the search box as the user types — no need to click Apply Filters for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAppliedFilters((prev) => (prev.leadCode === filters.leadCode ? prev : { ...prev, leadCode: filters.leadCode }))
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [filters.leadCode])
 
   const fetchSourceTypeData = async () => {
     try {
@@ -302,9 +311,9 @@ function SalesTLWonLeads() {
   }
 
   const getSSEStatus = (lead) => {
-    if (lead.assigned_bdm !== null) {
+    if (lead.assigned_sse !== null) {
       return {
-        label: `${lead.assigned_sse.firstName} ${lead.assigned_sse.lastName}`,
+        label: `${lead.assigned_sse?.firstName} ${lead.assigned_sse?.lastName}`,
         className: "",
       }
     } else {
@@ -503,35 +512,44 @@ function SalesTLWonLeads() {
         {/* Desktop Header */}
         <div className="hidden md:flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-800">Won/Lost Leads</h2>
-          <div className="relative">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowExportOptions(!showExportOptions)}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
-              disabled={isExporting}
+              onClick={() => setShowDesktopFilters(!showDesktopFilters)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
             >
-              <FiDownload className="w-4 h-4" />
-              {isExporting ? "Exporting..." : "Export"}
+              <FiFilter className="w-4 h-4" />
+              {showDesktopFilters ? "Hide Filters" : "Show Filters"}
             </button>
-            {showExportOptions && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                <div className="py-1">
-                  <button
-                    onClick={() => handleExport("csv")}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    disabled={isExporting}
-                  >
-                    Export as CSV
-                  </button>
-                  <button
-                    onClick={() => handleExport("excel")}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    disabled={isExporting}
-                  >
-                    Export as Excel
-                  </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowExportOptions(!showExportOptions)}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+                disabled={isExporting}
+              >
+                <FiDownload className="w-4 h-4" />
+                {isExporting ? "Exporting..." : "Export"}
+              </button>
+              {showExportOptions && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleExport("csv")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      disabled={isExporting}
+                    >
+                      Export as CSV
+                    </button>
+                    <button
+                      onClick={() => handleExport("excel")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      disabled={isExporting}
+                    >
+                      Export as Excel
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -546,7 +564,7 @@ function SalesTLWonLeads() {
             >
               <div className="bg-gray-50 rounded-lg p-3 space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+                  <label className="text-xs font-medium text-gray-700 mb-1 block">Search Lead</label>
                   <input
                     type="text"
                     value={filters.leadCode}
@@ -706,10 +724,11 @@ function SalesTLWonLeads() {
         </AnimatePresence>
 
         {/* Desktop Filters */}
+        {showDesktopFilters && (
         <div className="hidden md:block mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Search Lead</label>
               <input
                 type="text"
                 value={filters.leadCode}
@@ -863,6 +882,7 @@ function SalesTLWonLeads() {
             </button>
           </div>
         </div>
+        )}
 
         {loading && (
           <div className="flex justify-center my-4">

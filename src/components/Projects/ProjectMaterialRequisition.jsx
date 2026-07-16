@@ -204,6 +204,11 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
                       </button>
                       <span className="text-xs text-gray-400 shrink-0">{formatDate(req.createdAt)}</span>
                       <div className="flex items-center gap-2 ml-3 shrink-0">
+                        {(req.status || "").toUpperCase() === "REJECTED" && req.pmApprovalRemarks && (
+                          <span className="text-xs text-red-600 italic max-w-xs truncate" title={req.pmApprovalRemarks}>
+                            Rejected: "{req.pmApprovalRemarks}"
+                          </span>
+                        )}
                         {(req.status || "").toUpperCase() === "PENDING" && (
                           <>
                             {mode === "pm" && (

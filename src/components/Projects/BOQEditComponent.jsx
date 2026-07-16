@@ -1044,7 +1044,15 @@ function BOQEditComponent({
                       {mtr.priority}
                     </span>
                   )}
+                  {(mtr.status || "").toUpperCase() === "REJECTED" && (
+                    <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-medium">Rejected</span>
+                  )}
                 </div>
+                {(mtr.status || "").toUpperCase() === "REJECTED" && (mtr.pmApprovalRemarks || mtr.remarks) && (
+                  <div className="mt-1 text-xs text-red-600 italic">
+                    Rejected: "{mtr.pmApprovalRemarks || mtr.remarks}"
+                  </div>
+                )}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                   <div>
                     <span className="text-gray-600">Stock:</span>
@@ -1267,13 +1275,10 @@ function BOQEditComponent({
     return Object.values(grouped)
   }
 
-  const saveChanges = async () => {
-    try {
-      setLoading(true)
-      setError("")
-
-      const enhancedBOQData = {
-        items: boqProducts.map((product) => {
+  const buildEnhancedBOQData = (productsOverride) => {
+    const products = productsOverride || boqProducts
+    return {
+      items: products.map((product) => {
           return {
             id: typeof product.id === "number" ? product.id : null,
             productId: product.product_id?.toString() || "",
@@ -1334,7 +1339,15 @@ function BOQEditComponent({
             })),
           }
         }),
-      }
+    }
+  }
+
+  const saveChanges = async () => {
+    try {
+      setLoading(true)
+      setError("")
+
+      const enhancedBOQData = buildEnhancedBOQData()
       console.log("Saving BOQ with material requisitions:", enhancedBOQData)
       const response = await projectService.saveBOQWithMaterialRequisition(projectId, enhancedBOQData)
       console.log("BOQ saved successfully:", response)
@@ -1350,6 +1363,29 @@ function BOQEditComponent({
     } finally {
       setLoading(false)
       setShowChangesSummary(false)
+    }
+  }
+
+  // Persists the current BOQ state to the backend without closing the editor —
+  // used by the "Edit Billable Products" flow so its own Save button actually
+  // saves, instead of only staging changes into local state.
+  const persistBOQProducts = async (productsOverride) => {
+    try {
+      setLoading(true)
+      setError("")
+      const enhancedBOQData = buildEnhancedBOQData(productsOverride)
+      const response = await projectService.saveBOQWithMaterialRequisition(projectId, enhancedBOQData)
+      if (onSave) {
+        onSave(enhancedBOQData)
+      }
+      return response
+    } catch (err) {
+      console.error("Error saving billable BOQ items:", err)
+      setError(`Error saving BOQ: ${err.message || err}`)
+      alert(`Failed to save billable item changes: ${err.message || err}`)
+      throw err
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -1464,11 +1500,18 @@ function BOQEditComponent({
   }
     
 
+  const getCategoryItemRequisitionedQty = (item) =>
+    (item?.materialRequisitions || []).reduce((sum, mtr) => sum + (Number(mtr.mtrQty) || 0), 0)
+
   const removeProductFromCategory = (mainProductId, category, productIndex) => {
     const mainProduct = boqProducts.find((p) => p.id === mainProductId)
     const item = (mainProduct?.[category] || [])[productIndex]
     if (item && (item.salestlApprovalStatus || "").toUpperCase() === "APPROVED") {
       alert("Cannot delete — this item is approved by Sales TL.")
+      return
+    }
+    if (item && getCategoryItemRequisitionedQty(item) > 0) {
+      alert(`Cannot delete "${item.product_name || item.item_name || "this item"}" — it already has requisitions raised against it.`)
       return
     }
     setBOQProducts((prev) =>
@@ -1487,6 +1530,16 @@ function BOQEditComponent({
   }
 
   const updateCategoryProduct = (mainProductId, category, productIndex, field, value) => {
+    if (field === "qty") {
+      const mainProduct = boqProducts.find((p) => p.id === mainProductId)
+      const item = (mainProduct?.[category] || [])[productIndex]
+      const requisitionedQty = getCategoryItemRequisitionedQty(item)
+      const numericValue = Number.parseFloat(value)
+      if (value !== "" && !Number.isNaN(numericValue) && numericValue < requisitionedQty) {
+        alert(`Cannot decrease qty below ${requisitionedQty} — that quantity has already been requisitioned.`)
+        return
+      }
+    }
     setBOQProducts((prev) =>
       prev.map((p) => {
         if (p.id === mainProductId) {
@@ -1701,7 +1754,7 @@ function BOQEditComponent({
     }
   }
 
-  const handleBillableProductSave = (boqDataFromSelector) => {
+  const handleBillableProductSave = async (boqDataFromSelector) => {
     const incomingItems = boqDataFromSelector.items
     console.log("[v0] handleBillableProductSave called with:", incomingItems.length, "items")
 
@@ -1819,6 +1872,16 @@ function BOQEditComponent({
     console.log("[v0] Final updated products count:", updatedBOQProducts.length)
     setBOQProducts(updatedBOQProducts)
     setShowAddProductModal(false)
+
+    // Persist immediately — previously "Update BOQ" only staged changes into
+    // local state and the user had to separately click the outer Save button,
+    // which meant billable-item edits were silently lost if they didn't.
+    try {
+      await persistBOQProducts(updatedBOQProducts)
+      alert("Billable BOQ items saved successfully!")
+    } catch (err) {
+      // persistBOQProducts already surfaces the error via setError()/alert()
+    }
   }
 
   const getFilteredSkillSets = (searchKey) => {
@@ -2022,6 +2085,7 @@ function BOQEditComponent({
                                             </button>
                                             {cat === "nonBillable" && (
                                               <div className="p-3 space-y-2">
+                                                {!readOnly && (
                                                 <div className="flex justify-end">
                                                   <button
                                                     onClick={() => setShowProductSearch((prev) => ({ ...prev, [`${product.id}-nonBillable`]: !prev[`${product.id}-nonBillable`] }))}
@@ -2030,7 +2094,8 @@ function BOQEditComponent({
                                                     <FiPlus size={14} /> Add Non-Billable Product
                                                   </button>
                                                 </div>
-                                                {showProductSearch[`${product.id}-nonBillable`] && (
+                                                )}
+                                                {!readOnly && showProductSearch[`${product.id}-nonBillable`] && (
                                                   <div className="p-3 bg-white rounded border">
                                                     <div className="flex items-center gap-2 mb-2">
                                                       <FiSearch size={16} className="text-gray-400" />
@@ -2066,10 +2131,15 @@ function BOQEditComponent({
                                                         <div className="font-medium">{getProductNameByReferenceId(item, "nonBillable")}{item.item_code ? ` (${item.item_code})` : ""}</div>
                                                         <div className="text-sm text-gray-500">Qty: {item.qty || 0} | Make: {item.make || "N/A"}</div>
                                                       </div>
+                                                      {!readOnly && (
                                                       <div className="flex items-center gap-2 flex-shrink-0">
                                                         <button onClick={() => setEditingProductModal({ product: item, productId: product.id, category: "nonBillable", productIndex: index, projectCode: projectCode })} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><FiEdit3 size={14} /></button>
-                                                        <button onClick={() => removeProductFromCategory(product.id, "nonBillable", index)} className="p-1 text-red-600 hover:bg-red-50 rounded"><FiTrash2 size={14} /></button>
+                                                        <button onClick={() => removeProductFromCategory(product.id, "nonBillable", index)}
+                                                          disabled={getCategoryItemRequisitionedQty(item) > 0}
+                                                          title={getCategoryItemRequisitionedQty(item) > 0 ? "Already requisitioned — cannot be deleted" : "Remove"}
+                                                          className={`p-1 rounded ${getCategoryItemRequisitionedQty(item) > 0 ? "text-gray-300 cursor-not-allowed" : "text-red-600 hover:bg-red-50"}`}><FiTrash2 size={14} /></button>
                                                       </div>
+                                                      )}
                                                     </div>
                                                     <div className="mt-2 p-2 bg-gray-50 rounded-lg">
                                                       <ApprovalStatusBadge status={item.pmApprovalStatus || "PENDING"} type="PM" productId={product.id} categoryType="nonBillable" itemIndex={index} remarks={item.pmApprovalRemarks} approvalDate={item.pmApprovalDate} readOnly={!canApprove} onUpdate={updateCategoryItemApprovalStatus} />
@@ -2090,6 +2160,7 @@ function BOQEditComponent({
                                             </button>
                                             {cat === "skillSet" && (
                                               <div className="p-3 space-y-2">
+                                                {!readOnly && (
                                                 <div className="flex justify-end">
                                                   <button
                                                     onClick={() => setShowProductSearch((prev) => ({ ...prev, [`${product.id}-skillSet`]: !prev[`${product.id}-skillSet`] }))}
@@ -2098,7 +2169,8 @@ function BOQEditComponent({
                                                     <FiPlus size={14} /> Add Skill Set
                                                   </button>
                                                 </div>
-                                                {showProductSearch[`${product.id}-skillSet`] && (
+                                                )}
+                                                {!readOnly && showProductSearch[`${product.id}-skillSet`] && (
                                                   <div className="p-3 bg-white rounded border">
                                                     <div className="flex items-center gap-2 mb-2">
                                                       <FiSearch size={16} className="text-gray-400" />
@@ -2129,10 +2201,15 @@ function BOQEditComponent({
                                                         <div className="font-medium">{getProductNameByReferenceId(item, "skillSet")}</div>
                                                         <div className="text-sm text-gray-500">Qty: {item.qty || 0}</div>
                                                       </div>
+                                                      {!readOnly && (
                                                       <div className="flex items-center gap-2 flex-shrink-0">
                                                         <button onClick={() => setEditingProductModal({ product: item, productId: product.id, category: "skillSet", productIndex: index, projectCode: projectCode })} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><FiEdit3 size={14} /></button>
-                                                        <button onClick={() => removeProductFromCategory(product.id, "skillSet", index)} className="p-1 text-red-600 hover:bg-red-50 rounded"><FiTrash2 size={14} /></button>
+                                                        <button onClick={() => removeProductFromCategory(product.id, "skillSet", index)}
+                                                          disabled={getCategoryItemRequisitionedQty(item) > 0}
+                                                          title={getCategoryItemRequisitionedQty(item) > 0 ? "Already requisitioned — cannot be deleted" : "Remove"}
+                                                          className={`p-1 rounded ${getCategoryItemRequisitionedQty(item) > 0 ? "text-gray-300 cursor-not-allowed" : "text-red-600 hover:bg-red-50"}`}><FiTrash2 size={14} /></button>
                                                       </div>
+                                                      )}
                                                     </div>
                                                     <div className="mt-2 p-2 bg-gray-50 rounded-lg">
                                                       <ApprovalStatusBadge status={item.pmApprovalStatus || "PENDING"} type="PM" productId={product.id} categoryType="skillSet" itemIndex={index} remarks={item.pmApprovalRemarks} approvalDate={item.pmApprovalDate} readOnly={!canApprove} onUpdate={updateCategoryItemApprovalStatus} />
@@ -2153,6 +2230,7 @@ function BOQEditComponent({
                                             </button>
                                             {cat === "tools" && (
                                               <div className="p-3 space-y-2">
+                                                {!readOnly && (
                                                 <div className="flex justify-end">
                                                   <button
                                                     onClick={() => setShowProductSearch((prev) => ({ ...prev, [`${product.id}-tools`]: !prev[`${product.id}-tools`] }))}
@@ -2161,7 +2239,8 @@ function BOQEditComponent({
                                                     <FiPlus size={14} /> Add Tool
                                                   </button>
                                                 </div>
-                                                {showProductSearch[`${product.id}-tools`] && (
+                                                )}
+                                                {!readOnly && showProductSearch[`${product.id}-tools`] && (
                                                   <div className="p-3 bg-white rounded border">
                                                     <div className="flex items-center gap-2 mb-2">
                                                       <FiSearch size={16} className="text-gray-400" />
@@ -2192,10 +2271,15 @@ function BOQEditComponent({
                                                         <div className="font-medium">{getProductNameByReferenceId(item, "tools")}</div>
                                                         <div className="text-sm text-gray-500">Qty: {item.qty || 0} | Make: {item.make || "N/A"}</div>
                                                       </div>
+                                                      {!readOnly && (
                                                       <div className="flex items-center gap-2 flex-shrink-0">
                                                         <button onClick={() => setEditingProductModal({ product: item, productId: product.id, category: "tools", productIndex: index, projectCode: projectCode })} className="p-1 text-blue-600 hover:bg-blue-50 rounded"><FiEdit3 size={14} /></button>
-                                                        <button onClick={() => removeProductFromCategory(product.id, "tools", index)} className="p-1 text-red-600 hover:bg-red-50 rounded"><FiTrash2 size={14} /></button>
+                                                        <button onClick={() => removeProductFromCategory(product.id, "tools", index)}
+                                                          disabled={getCategoryItemRequisitionedQty(item) > 0}
+                                                          title={getCategoryItemRequisitionedQty(item) > 0 ? "Already requisitioned — cannot be deleted" : "Remove"}
+                                                          className={`p-1 rounded ${getCategoryItemRequisitionedQty(item) > 0 ? "text-gray-300 cursor-not-allowed" : "text-red-600 hover:bg-red-50"}`}><FiTrash2 size={14} /></button>
                                                       </div>
+                                                      )}
                                                     </div>
                                                     <div className="mt-2 p-2 bg-gray-50 rounded-lg">
                                                      <ApprovalStatusBadge status={item.pmApprovalStatus || "PENDING"} type="PM" productId={product.id} categoryType="tools" itemIndex={index} remarks={item.pmApprovalRemarks} approvalDate={item.pmApprovalDate} readOnly={!canApprove} onUpdate={updateCategoryItemApprovalStatus} />
