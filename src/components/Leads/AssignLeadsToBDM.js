@@ -53,6 +53,7 @@ function AssignLeadsToBDM() {
   // Export and UI states
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [showDesktopFilters, setShowDesktopFilters] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalResults, setTotalResults] = useState(0)
@@ -111,6 +112,14 @@ function AssignLeadsToBDM() {
   useEffect(() => {
     setCurrentPage(1)
   }, [appliedFilters])
+
+  // Auto-apply the search box as the user types — no need to click Apply Filters for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAppliedFilters((prev) => (prev.leadCode === filters.leadCode ? prev : { ...prev, leadCode: filters.leadCode }))
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [filters.leadCode])
 
   const fetchSourceTypeData = async () => {
     try {
@@ -238,6 +247,22 @@ function AssignLeadsToBDM() {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
+  const isJunkValue = (value) => {
+    if (!value) return true
+    const cleaned = value.trim().toLowerCase()
+    return cleaned === "" || cleaned === "na" || cleaned === "n/a" || cleaned === "-" || cleaned === "--"
+  }
+
+  const getDisplayClientName = (lead) => {
+    if (!isJunkValue(lead.client_name)) {
+      return lead.client_name
+    }
+    if (!isJunkValue(lead.middle_man_client_name)) {
+      return lead.middle_man_client_name
+    }
+    return ""
+  }
+
   const matchingLabels = (id, producttypelist) => {
     let newlabel = ""
     if (id !== null && id !== "") {
@@ -298,9 +323,9 @@ function AssignLeadsToBDM() {
   }
 
   const getSSEStatus = (lead) => {
-    if (lead.assigned_bdm !== null) {
+    if (lead.assigned_sse !== null) {
       return {
-        label: `${lead.assigned_sse.firstName} ${lead.assigned_sse.lastName}`,
+        label: `${lead.assigned_sse?.firstName} ${lead.assigned_sse?.lastName}`,
         className: "",
       }
     } else {
@@ -397,35 +422,44 @@ function AssignLeadsToBDM() {
         {/* Desktop Header */}
         <div className="hidden md:flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-800">Assign Leads To BDM</h2>
-          <div className="relative">
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowExportOptions(!showExportOptions)}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
-              disabled={isExporting}
+              onClick={() => setShowDesktopFilters(!showDesktopFilters)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
             >
-              <FiDownload className="w-4 h-4" />
-              {isExporting ? "Exporting..." : "Export"}
+              <FiFilter className="w-4 h-4" />
+              {showDesktopFilters ? "Hide Filters" : "Show Filters"}
             </button>
-            {showExportOptions && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
-                <div className="py-1">
-                  <button
-                    onClick={() => handleExport("csv")}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    disabled={isExporting}
-                  >
-                    Export as CSV
-                  </button>
-                  <button
-                    onClick={() => handleExport("excel")}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    disabled={isExporting}
-                  >
-                    Export as Excel
-                  </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowExportOptions(!showExportOptions)}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+                disabled={isExporting}
+              >
+                <FiDownload className="w-4 h-4" />
+                {isExporting ? "Exporting..." : "Export"}
+              </button>
+              {showExportOptions && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleExport("csv")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      disabled={isExporting}
+                    >
+                      Export as CSV
+                    </button>
+                    <button
+                      onClick={() => handleExport("excel")}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      disabled={isExporting}
+                    >
+                      Export as Excel
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -438,12 +472,12 @@ function AssignLeadsToBDM() {
             className="md:hidden mb-4 flex flex-col gap-3 pb-3 border-b border-gray-200"
           >
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Search Lead</label>
               <input
                 type="text"
                 value={filters.leadCode}
                 onChange={(e) => handleFilterChange("leadCode", e.target.value)}
-                placeholder="Search by lead code..."
+                placeholder="Search by lead code, client, middleman, architect, MEP, or PMC..."
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               />
             </div>
@@ -566,15 +600,16 @@ function AssignLeadsToBDM() {
         )}
 
         {/* Desktop Filters */}
+        {showDesktopFilters && (
         <div className="hidden md:block mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Search Lead</label>
               <input
                 type="text"
                 value={filters.leadCode}
                 onChange={(e) => handleFilterChange("leadCode", e.target.value)}
-                placeholder="Search by lead code..."
+                placeholder="Search by lead code, client, middleman, architect, MEP, or PMC..."
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
               />
             </div>
@@ -694,6 +729,7 @@ function AssignLeadsToBDM() {
             </button>
           </div>
         </div>
+        )}
 
         {loading && (
           <div className="flex justify-center my-4">
@@ -720,7 +756,7 @@ function AssignLeadsToBDM() {
                     {[
                       "Lead ID",
                       "Lead Priority",
-                      "Middle Man Client Name",
+                      "Client Name",
                       "Lead Type",
                       "Product Type",
                       "Assigned SSE",
@@ -785,7 +821,7 @@ function AssignLeadsToBDM() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-xs font-medium text-gray-900">
-                              {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                              {getDisplayClientName(lead)}
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -903,7 +939,7 @@ function AssignLeadsToBDM() {
 
                           <div className="text-gray-500">Client:</div>
                           <div className="font-medium">
-                            {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                            {getDisplayClientName(lead)}
                           </div>
 
                           <div className="text-gray-500">SSE:</div>

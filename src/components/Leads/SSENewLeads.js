@@ -55,6 +55,7 @@ function SSENewLeads() {
   const [exportFormat, setExportFormat] = useState("csv")
   const [showExportOptions, setShowExportOptions] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [showDesktopFilters, setShowDesktopFilters] = useState(false)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -125,6 +126,14 @@ function SSENewLeads() {
   useEffect(() => {
     setCurrentPage(1)
   }, [appliedFilters])
+
+  // Auto-apply the search box as the user types — no need to click Apply Filters for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAppliedFilters((prev) => (prev.leadCode === filters.leadCode ? prev : { ...prev, leadCode: filters.leadCode }))
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [filters.leadCode])
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber)
@@ -346,6 +355,13 @@ function SSENewLeads() {
         {/* Desktop Header */}
         <div className="hidden md:flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-800">New Leads</h2>
+          <button
+            onClick={() => setShowDesktopFilters(!showDesktopFilters)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
+          >
+            <FiFilter className="w-4 h-4" />
+            {showDesktopFilters ? "Hide Filters" : "Show Filters"}
+          </button>
           {/* <div className="relative">
             <button
               onClick={() => setShowExportOptions(!showExportOptions)}
@@ -387,14 +403,14 @@ function SSENewLeads() {
             className="md:hidden mb-4 flex flex-col gap-3 pb-3 border-b border-gray-200"
           >
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Search Lead</label>
               <div className="relative">
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   value={filters.leadCode}
                   onChange={(e) => handleFilterChange("leadCode", e.target.value)}
-                  placeholder="Search by lead code..."
+                  placeholder="Search by lead code, client, middleman, architect, MEP, or PMC..."
                   className="w-full text-xs pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
                 />
               </div>
@@ -501,17 +517,18 @@ function SSENewLeads() {
         )}
 
         {/* Desktop Filters */}
+        {showDesktopFilters && (
         <div className="hidden md:block mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Search Lead</label>
               <div className="relative">
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   value={filters.leadCode}
                   onChange={(e) => handleFilterChange("leadCode", e.target.value)}
-                  placeholder="Search by lead code..."
+                  placeholder="Search by lead code, client, middleman, architect, MEP, or PMC..."
                   className="w-full text-xs pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
                 />
               </div>
@@ -615,6 +632,7 @@ function SSENewLeads() {
             </button>
           </div>
         </div>
+        )}
 
         {loading && (
           <div className="flex justify-center my-4">

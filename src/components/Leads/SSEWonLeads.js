@@ -56,6 +56,7 @@ function SSEWonLeads() {
 
   // Mobile filter state
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [showDesktopFilters, setShowDesktopFilters] = useState(false)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -130,6 +131,14 @@ function SSEWonLeads() {
   useEffect(() => {
     setCurrentPage(1)
   }, [appliedFilters])
+
+  // Auto-apply the search box as the user types — no need to click Apply Filters for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAppliedFilters((prev) => (prev.leadCode === filters.leadCode ? prev : { ...prev, leadCode: filters.leadCode }))
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [filters.leadCode])
 
   const handlePageChange = (pageNumber) => {
     setCurrentPage(pageNumber)
@@ -223,6 +232,22 @@ function SSEWonLeads() {
     return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
+  const isJunkValue = (value) => {
+    if (!value) return true
+    const cleaned = value.trim().toLowerCase()
+    return cleaned === "" || cleaned === "na" || cleaned === "n/a" || cleaned === "-" || cleaned === "--"
+  }
+
+  const getDisplayClientName = (lead) => {
+    if (!isJunkValue(lead.client_name)) {
+      return lead.client_name
+    }
+    if (!isJunkValue(lead.middle_man_client_name)) {
+      return lead.middle_man_client_name
+    }
+    return ""
+  }
+
   const matchingLabels = (id, producttypelist) => {
     let newlabel = ""
     if (id !== null && id !== "") {
@@ -303,7 +328,7 @@ function SSEWonLeads() {
             <div className="relative">
               <input
                 type="search"
-                placeholder="Search Lead ID..."
+                placeholder="Search by lead code, client, middleman, architect, MEP, or PMC..."
                 value={filters.leadCode}
                 onChange={(e) => handleFilterChange("leadCode", e.target.value)}
                 className="text-sm pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
@@ -312,6 +337,13 @@ function SSEWonLeads() {
                 <FiSearch className="w-5 h-5 text-gray-400" />
               </div>
             </div>
+            <button
+              onClick={() => setShowDesktopFilters(!showDesktopFilters)}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
+            >
+              <FiFilter className="w-4 h-4" />
+              {showDesktopFilters ? "Hide Filters" : "Show Filters"}
+            </button>
             {/* <button
               onClick={() => setShowExportOptions(true)}
               className="flex items-center gap-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium transition-colors"
@@ -323,6 +355,7 @@ function SSEWonLeads() {
         </div>
 
         {/* Desktop Filters */}
+        {showDesktopFilters && (
         <div className="hidden md:flex mb-6 min-w-full flex-wrap items-center gap-4">
           <div>
             <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Received </label>
@@ -423,6 +456,7 @@ function SSEWonLeads() {
             </button>
           </div>
         </div>
+        )}
 
         {/* Mobile Filters */}
         {showMobileFilters && (
@@ -433,10 +467,10 @@ function SSEWonLeads() {
             className="md:hidden mb-4 flex flex-col gap-3 pb-3 border-b border-gray-200"
           >
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead ID</label>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Search Lead</label>
               <input
                 type="search"
-                placeholder="Search Lead ID..."
+                placeholder="Search by lead code, client, middleman, architect, MEP, or PMC..."
                 value={filters.leadCode}
                 onChange={(e) => handleFilterChange("leadCode", e.target.value)}
                 className="w-full text-xs pl-3 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
@@ -569,7 +603,7 @@ function SSEWonLeads() {
                     {[
                       "Lead ID",
                       "Lead Priority",
-                      "Middle Man Client Name",
+                      "Client Name",
                       "Lead Type",
                       "Product Type",
                       "Assigned BDM",
@@ -628,7 +662,7 @@ function SSEWonLeads() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-xs font-medium text-gray-900">
-                            {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                            {getDisplayClientName(lead)}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -743,7 +777,7 @@ function SSEWonLeads() {
 
                         <div className="text-gray-500">Client:</div>
                         <div className="font-medium">
-                          {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                          {getDisplayClientName(lead)}
                         </div>
 
                         <div className="text-gray-500">Type:</div>

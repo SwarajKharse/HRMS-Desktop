@@ -62,6 +62,7 @@ function SSEInprogressLeads() {
 
   // Mobile filter state
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  const [showDesktopFilters, setShowDesktopFilters] = useState(false)
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -134,6 +135,14 @@ function SSEInprogressLeads() {
   useEffect(() => {
     setCurrentPage(1)
   }, [appliedFilters])
+
+  // Auto-apply the search box as the user types — no need to click Apply Filters for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAppliedFilters((prev) => (prev.leadCode === filters.leadCode ? prev : { ...prev, leadCode: filters.leadCode }))
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [filters.leadCode])
 
   const handleRowClick = (lead) => {
     // Toggle expanded state for mobile view
@@ -229,6 +238,22 @@ function SSEInprogressLeads() {
   const Capitalize = (str) => {
     if (!str) return ""
     return str.charAt(0).toUpperCase() + str.slice(1)
+  }
+
+  const isJunkValue = (value) => {
+    if (!value) return true
+    const cleaned = value.trim().toLowerCase()
+    return cleaned === "" || cleaned === "na" || cleaned === "n/a" || cleaned === "-" || cleaned === "--"
+  }
+
+  const getDisplayClientName = (lead) => {
+    if (!isJunkValue(lead.client_name)) {
+      return lead.client_name
+    }
+    if (!isJunkValue(lead.middle_man_client_name)) {
+      return lead.middle_man_client_name
+    }
+    return ""
   }
 
   const matchingLabels = (id, producttypelist) => {
@@ -361,6 +386,13 @@ function SSEInprogressLeads() {
         {/* Desktop Header */}
         <div className="hidden md:flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold text-gray-800">In Progress Leads</h2>
+          <button
+            onClick={() => setShowDesktopFilters(!showDesktopFilters)}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
+          >
+            <FiFilter className="w-4 h-4" />
+            {showDesktopFilters ? "Hide Filters" : "Show Filters"}
+          </button>
           <div className="relative">
             {/* <button
               onClick={() => setShowExportOptions(!showExportOptions)}
@@ -402,14 +434,14 @@ function SSEInprogressLeads() {
             className="md:hidden mb-4 flex flex-col gap-3 pb-3 border-b border-gray-200"
           >
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Search Lead</label>
               <div className="relative">
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   value={filters.leadCode}
                   onChange={(e) => handleFilterChange("leadCode", e.target.value)}
-                  placeholder="Search by lead code..."
+                  placeholder="Search by lead code, client, middleman, architect, MEP, or PMC..."
                   className="w-full text-xs pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
                 />
               </div>
@@ -516,17 +548,18 @@ function SSEInprogressLeads() {
         )}
 
         {/* Desktop Filters */}
+        {showDesktopFilters && (
         <div className="hidden md:block mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
-              <label className="text-xs font-medium text-gray-700 mb-1 block">Lead Code</label>
+              <label className="text-xs font-medium text-gray-700 mb-1 block">Search Lead</label>
               <div className="relative">
                 <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   value={filters.leadCode}
                   onChange={(e) => handleFilterChange("leadCode", e.target.value)}
-                  placeholder="Search by lead code..."
+                  placeholder="Search by lead code, client, middleman, architect, MEP, or PMC..."
                   className="w-full text-xs pl-10 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
                 />
               </div>
@@ -630,6 +663,7 @@ function SSEInprogressLeads() {
             </button>
           </div>
         </div>
+        )}
 
         {loading && (
           <div className="flex justify-center my-4">
@@ -717,7 +751,7 @@ function SSEInprogressLeads() {
                           </td>
                           <td className="px-6 py-4">
                             <div className="text-xs font-medium text-gray-900">
-                              {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                              {getDisplayClientName(lead)}
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -804,7 +838,7 @@ function SSEInprogressLeads() {
 
                           <div className="text-gray-500">Client:</div>
                           <div className="font-medium">
-                            {lead.middle_man_client_name === "" ? lead.client_name : lead.middle_man_client_name}
+                            {getDisplayClientName(lead)}
                           </div>
 
                           <div className="text-gray-500">Status:</div>

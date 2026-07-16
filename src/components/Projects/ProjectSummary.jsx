@@ -117,7 +117,7 @@ function ProjectSummary({ projectId, onClose }) {
                     {category.products.map((product, idx) => {
                       const hasSubItems = Array.isArray(product.categoryItems) && product.categoryItems.length > 0
                       const isOpen = !!expanded[`${catIdx}-${idx}`]
-                      const pending = Math.max(0, (product.totalMTRQty || 0) - (product.totalDCQty || 0))
+                      const pending = product.totalPending ?? Math.max(0, (product.totalMTRQty || 0) - (product.totalDCQty || 0))
                       return (
                         <>
                           <tr key={idx} className={`border-b border-gray-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-indigo-50 transition-colors`}>
@@ -138,11 +138,22 @@ function ProjectSummary({ projectId, onClose }) {
                             <td className="px-3 py-3 text-center text-purple-600 font-semibold">{product.totalMTRQty || 0}</td>
                             <td className="px-3 py-3 text-center text-green-600 font-semibold">{product.totalStockQty || 0}</td>
                             <td className="px-3 py-3 text-center text-red-600 font-semibold">{product.totalPurchaseQty || 0}</td>
-                            <td className="px-3 py-3 text-center text-indigo-600 font-semibold">{product.totalDCQty || 0}</td>
+                            <td className="px-3 py-3 text-center text-indigo-600 font-semibold">
+                              {product.totalDCQty || 0}
+                              {Array.isArray(product.dcBreakdown) && product.dcBreakdown.length > 0 && (
+                                <div className="flex flex-col items-center gap-0.5 mt-1">
+                                  {product.dcBreakdown.map((dc, dIdx) => (
+                                    <span key={dIdx} className="text-[10px] font-normal text-gray-400">
+                                      {dc.dcNumber}: {dc.dcQty}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
                             <td className={`px-3 py-3 text-center font-semibold ${pending > 0 ? "text-red-600" : "text-gray-400"}`}>{pending}</td>
                           </tr>
                           {isOpen && hasSubItems && product.categoryItems.map((ci, ciIdx) => {
-                            const ciPending = Math.max(0, (ci.totalMTRQty || 0) - (ci.totalDCQty || 0))
+                            const ciPending = ci.totalPending ?? Math.max(0, (ci.totalMTRQty || 0) - (ci.totalDCQty || 0))
                             return (
                               <tr key={`${idx}-${ciIdx}`} className="border-b border-gray-100 bg-gray-50/50">
                                 <td className="px-3 py-2"></td>
@@ -151,11 +162,22 @@ function ProjectSummary({ projectId, onClose }) {
                                   {ci.itemName}
                                 </td>
                                 <td className="px-3 py-2 text-center text-blue-500">{ci.qty || 0}</td>
-                                <td className="px-3 py-2 text-center text-gray-400">—</td>
+                                <td className="px-3 py-2 text-center text-orange-500">{ci.remainingQty ?? "—"}</td>
                                 <td className="px-3 py-2 text-center text-purple-500">{ci.totalMTRQty || 0}</td>
                                 <td className="px-3 py-2 text-center text-green-500">{ci.totalStockQty || 0}</td>
                                 <td className="px-3 py-2 text-center text-red-500">{ci.totalPurchaseQty || 0}</td>
-                                <td className="px-3 py-2 text-center text-indigo-500">{ci.totalDCQty || 0}</td>
+                                <td className="px-3 py-2 text-center text-indigo-500">
+                                  {ci.totalDCQty || 0}
+                                  {Array.isArray(ci.dcBreakdown) && ci.dcBreakdown.length > 0 && (
+                                    <div className="flex flex-col items-center gap-0.5 mt-1">
+                                      {ci.dcBreakdown.map((dc, dIdx) => (
+                                        <span key={dIdx} className="text-[10px] font-normal text-gray-400">
+                                          {dc.dcNumber}: {dc.dcQty}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </td>
                                 <td className={`px-3 py-2 text-center ${ciPending > 0 ? "text-red-500" : "text-gray-400"}`}>{ciPending}</td>
                               </tr>
                             )

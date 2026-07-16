@@ -1,7 +1,11 @@
 "use client"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef, Fragment } from "react"
+import { FiUpload, FiEdit2, FiLoader, FiCheck } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import { useAuth } from "../../contexts/AuthContext"
+
+const ALLOWED_DC_FILE_TYPES = ["application/pdf", "image/jpeg", "image/jpg", "image/png"]
+const MAX_DC_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 const typeMeta = (type) => {
   switch ((type || "").toUpperCase()) {
@@ -30,6 +34,9 @@ export default function DeliveryChallan() {
   const [dcFile, setDcFile] = useState(null)
   const [saving, setSaving] = useState(false)
   const [expandedDC, setExpandedDC] = useState({})
+  const [uploadingDcId, setUploadingDcId] = useState(null)
+  const [savedDcId, setSavedDcId] = useState(null)
+  const dcCopyInputRefs = useRef({})
 
   useEffect(() => {
     projectService.getAllRequisitions().then((data) => {
@@ -119,6 +126,29 @@ export default function DeliveryChallan() {
       setError(e?.response?.data?.message || "Failed to create delivery challan.")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDcCopyFileSelect = async (dc, file) => {
+    if (!file) return
+    if (!ALLOWED_DC_FILE_TYPES.includes(file.type)) {
+      alert("Only PDF, JPG or PNG files are allowed.")
+      return
+    }
+    if (file.size > MAX_DC_FILE_SIZE) {
+      alert("File must be 5MB or smaller.")
+      return
+    }
+    setUploadingDcId(dc.id)
+    try {
+      await projectService.uploadDeliveryChallanCopy(dc.id, file)
+      await loadProjectData(selectedProjectId)
+      setSavedDcId(dc.id)
+      setTimeout(() => setSavedDcId((id) => (id === dc.id ? null : id)), 2000)
+    } catch (e) {
+      alert("Failed to upload DC copy: " + (e?.response?.data?.message || e.message))
+    } finally {
+      setUploadingDcId(null)
     }
   }
 
@@ -212,40 +242,107 @@ export default function DeliveryChallan() {
                       No delivery challans created yet for this project.
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      {pastDCs.map((dc) => {
-                        const open = !!expandedDC[dc.id]
-                        return (
-                          <div key={dc.id} className="border border-gray-200 rounded-md">
-                            <div className="flex items-center justify-between px-4 py-2">
-                              <button onClick={() => setExpandedDC((p) => ({ ...p, [dc.id]: !p[dc.id] }))}
-                                className="flex items-center gap-2 text-left flex-1 min-w-0">
-                                <span className="text-gray-500 w-4">{open ? "▾" : "▸"}</span>
-                                <span className="font-semibold text-gray-800">{dc.dcNumber}</span>
-                                <span className="text-xs text-gray-400">({(dc.lines || []).length} item{(dc.lines || []).length !== 1 ? "s" : ""})</span>
-                              </button>
-                              <span className="flex items-center gap-3 shrink-0">
-                                {dc.dcFilePath && (
-                                  <a href={dc.dcFilePath} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 underline">
-                                    {dc.dcFileName || "View file"}
-                                  </a>
+                    <div className="overflow-x-auto border border-gray-200 rounded-md">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 text-gray-700 text-xs">
+                          <tr>
+                            <th className="text-left px-4 py-2 font-semibold">DC No</th>
+                            <th className="text-left px-4 py-2 font-semibold">DC Copy</th>
+                            <th className="text-left px-4 py-2 font-semibold">Signed Back Copy</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {pastDCs.map((dc) => {
+                            const open = !!expandedDC[dc.id]
+                            return (
+                              <Fragment key={dc.id}>
+                                <tr className="align-top">
+                                  <td className="px-4 py-2 min-w-0">
+                                    <button onClick={() => setExpandedDC((p) => ({ ...p, [dc.id]: !p[dc.id] }))}
+                                      className="flex items-center gap-2 text-left">
+                                      <span className="text-gray-500 w-4 shrink-0">{open ? "▾" : "▸"}</span>
+                                      <span className="font-semibold text-gray-800 truncate">{dc.dcNumber}</span>
+                                      <span className="text-xs text-gray-400 shrink-0">({(dc.lines || []).length} item{(dc.lines || []).length !== 1 ? "s" : ""})</span>
+                                    </button>
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    <input
+                                      type="file"
+                                      accept=".pdf,.jpg,.jpeg,.png"
+                                      className="hidden"
+                                      ref={(el) => { dcCopyInputRefs.current[dc.id] = el }}
+                                      onChange={(e) => { handleDcCopyFileSelect(dc, e.target.files?.[0]); e.target.value = "" }}
+                                    />
+                                    {(() => {
+                                      const isUploading = uploadingDcId === dc.id
+                                      const justSaved = savedDcId === dc.id
+                                      return dc.dcFilePath ? (
+                                        <div className="flex items-start gap-1.5">
+                                          <div className="flex flex-col gap-0.5 min-w-0">
+                                            <a href={dc.dcFilePath} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 underline break-all">
+                                              {dc.dcFileName || "View file"}
+                                            </a>
+                                            <span className="text-[10px] text-gray-400">{fmtDateTime(dc.createdAt)}</span>
+                                          </div>
+                                          {isUploading ? (
+                                            <FiLoader size={12} className="text-gray-400 shrink-0 mt-0.5 animate-spin" />
+                                          ) : justSaved ? (
+                                            <FiCheck size={14} className="text-green-600 shrink-0 mt-0.5" title="Saved" />
+                                          ) : (
+                                            <button
+                                              onClick={() => dcCopyInputRefs.current[dc.id]?.click()}
+                                              className="text-gray-400 hover:text-blue-600 shrink-0"
+                                              title="Replace DC copy"
+                                            >
+                                              <FiEdit2 size={12} />
+                                            </button>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <button
+                                          onClick={() => dcCopyInputRefs.current[dc.id]?.click()}
+                                          disabled={isUploading}
+                                          className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline disabled:opacity-50"
+                                          title="Upload DC copy"
+                                        >
+                                          {isUploading ? <FiLoader size={12} className="animate-spin" /> : <FiUpload size={12} />}
+                                          {isUploading ? "Uploading..." : "Upload DC copy"}
+                                        </button>
+                                      )
+                                    })()}
+                                  </td>
+                                  <td className="px-4 py-2">
+                                    {dc.signedDcFilePath ? (
+                                      <div className="flex flex-col gap-0.5">
+                                        <a href={dc.signedDcFilePath} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 hover:text-green-900 underline break-all">
+                                          {dc.signedDcFileName || "Signed copy"}
+                                        </a>
+                                        <span className="text-[10px] text-gray-400">{fmtDateTime(dc.signedDcUploadedAt)}</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-gray-400">Not uploaded yet</span>
+                                    )}
+                                  </td>
+                                </tr>
+                                {open && (
+                                  <tr>
+                                    <td colSpan={3} className="border-t px-4 py-2 text-sm bg-gray-50/50">
+                                      <div className="space-y-1 pl-6">
+                                        {(dc.lines || []).map((l, i) => (
+                                          <div key={i} className="flex items-center justify-between text-gray-600">
+                                            <span>{l.productName} <span className="text-xs text-gray-400">(Req {l.requisitionNo})</span></span>
+                                            <span className="font-medium">{l.dcQty}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </td>
+                                  </tr>
                                 )}
-                                <span className="text-xs text-gray-400">{fmtDateTime(dc.createdAt)}</span>
-                              </span>
-                            </div>
-                            {open && (
-                              <div className="border-t px-4 py-2 text-sm space-y-1">
-                                {(dc.lines || []).map((l, i) => (
-                                  <div key={i} className="flex items-center justify-between text-gray-600">
-                                    <span>{l.productName} <span className="text-xs text-gray-400">(Req {l.requisitionNo})</span></span>
-                                    <span className="font-medium">{l.dcQty}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
+                              </Fragment>
+                            )
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>

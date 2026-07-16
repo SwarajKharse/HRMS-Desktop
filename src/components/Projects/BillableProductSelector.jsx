@@ -124,6 +124,9 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
           initialInstallationRate,
         )
 
+        const requisitionedQty = (item.materialRequisitions || [])
+          .reduce((sum, mtr) => sum + (Number(mtr.mtrQty) || 0), 0)
+
         const product = {
           id: boqItemId, // CRITICAL: Use BOQItem.id as the unique identifier for the selector's internal state
           productId: productMasterId, // Store ProductsMaster.id separately
@@ -145,6 +148,9 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
           salestlApprovalStatus: item.salestlApprovalStatus || "PENDING",
           isExisting: true,
           isNewBoqItem: false,
+          // Sum of all requisitioned qty (any status) already raised against this item —
+          // qty can never be edited below this, and the item can never be deleted.
+          requisitionedQty,
         }
         console.log("BPS: Final product_name for existing item:", product.product_name)
         console.log("BPS: Final categoryInfo for existing item:", product.categoryInfo)
@@ -330,6 +336,14 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
     setSelectedProductsByCategory((prev) => {
       const updatedCategoryProducts = prev[categoryId].map((product) => {
         if (product.id === productId) {
+          if (field === "qty") {
+            const requisitionedQty = product.requisitionedQty || 0
+            const numericValue = Number.parseFloat(value)
+            if (value !== "" && !Number.isNaN(numericValue) && numericValue < requisitionedQty) {
+              alert(`Cannot decrease qty for "${product.product_name}" below ${requisitionedQty} — that quantity has already been requisitioned.`)
+              return product
+            }
+          }
           const updatedProduct = { ...product, [field]: value }
           // Recalculate amounts only if qty changes, using existing (or 0) rates
           if (field === "qty") {
@@ -355,8 +369,8 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
 
   const handleRemoveProduct = (categoryId, productId) => {
     const product = (selectedProductsByCategory[categoryId] || []).find((p) => p.id === productId)
-    if (product && (product.salestlApprovalStatus || "").toUpperCase() === "APPROVED") {
-      alert("Cannot delete — this item is approved by Sales TL.")
+    if (product && product.isExisting) {
+      alert("This item already exists in the BOQ and cannot be deleted.")
       return
     }
     setSelectedProductsByCategory((prev) => {
@@ -659,12 +673,16 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                                   </td>
                                   <td className="px-3 py-2">
                                     <input type="text" inputMode="numeric" pattern="[0-9]*\.?[0-9]*" value={product.qty}
+                                      min={product.requisitionedQty || 0}
                                       onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) { handleProductFieldChange(category.id, product.id, "qty", value) } }}
                                       onBlur={(e) => { if (e.target.value === "") { handleProductFieldChange(category.id, product.id, "qty", "1") } }}
                                       placeholder="Qty" className="w-16 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
                                   </td>
                                   <td className="px-3 py-2">
-                                    <button onClick={() => handleRemoveProduct(category.id, product.id)} className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors" title="Remove product">
+                                    <button onClick={() => handleRemoveProduct(category.id, product.id)}
+                                      disabled={product.isExisting}
+                                      className={`p-1 rounded transition-colors ${product.isExisting ? "text-gray-300 cursor-not-allowed" : "text-red-500 hover:bg-red-50"}`}
+                                      title={product.isExisting ? "Existing BOQ items cannot be deleted" : "Remove product"}>
                                       <FiTrash2 />
                                     </button>
                                   </td>
@@ -683,7 +701,10 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                                     <div className="text-sm font-medium break-words">{product.product_name || "Unnamed Product"}</div>
                                     <div className="text-xs text-gray-400 mt-0.5">HSN: {product.hsn_code || "N/A"} · Avail: {product.product_qty || "0"} · UOM: {product.uom || "N/A"}</div>
                                   </div>
-                                  <button onClick={() => handleRemoveProduct(category.id, product.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded shrink-0" title="Remove product">
+                                  <button onClick={() => handleRemoveProduct(category.id, product.id)}
+                                    disabled={product.isExisting}
+                                    className={`p-1.5 rounded shrink-0 ${product.isExisting ? "text-gray-300 cursor-not-allowed" : "text-red-500 hover:bg-red-50"}`}
+                                    title={product.isExisting ? "Existing BOQ items cannot be deleted" : "Remove product"}>
                                     <FiTrash2 />
                                   </button>
                                 </div>
@@ -695,6 +716,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
                                   <label className="flex flex-col gap-1">
                                     <span className="text-xs font-medium text-gray-600">Quantity</span>
                                     <input type="text" inputMode="numeric" pattern="[0-9]*\.?[0-9]*" value={product.qty}
+                                      min={product.requisitionedQty || 0}
                                       onChange={(e) => { const value = e.target.value; if (value === "" || /^\d*\.?\d*$/.test(value)) { handleProductFieldChange(category.id, product.id, "qty", value) } }}
                                       onBlur={(e) => { if (e.target.value === "") { handleProductFieldChange(category.id, product.id, "qty", "1") } }}
                                       placeholder="Qty" className="h-10 px-2 text-base border rounded focus:outline-none focus:ring-1 focus:ring-blue-500" />
