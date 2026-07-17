@@ -222,11 +222,11 @@ export const projectService = {
       throw error
     }
   },
-  updateStockAlloted: async (projectId, requisitionId, lineId, itemKind, stockAlloted) => {
+  updateStockAlloted: async (projectId, requisitionId, lineId, itemKind, stockAlloted, remarks) => {
     try {
       const response = await axios.put(
         `${API_URL}/projects/${projectId}/requisitions/${requisitionId}/lines/${lineId}/stock`,
-        { itemKind, stockAlloted },
+        { itemKind, stockAlloted, remarks },
         getAuthHeaders()
       )
       return response.data

@@ -391,6 +391,8 @@ export default function MaterialRequisition() {
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Code</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Project Name</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Product Name</th>
+                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Make</th>
+                      <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">UOM</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">MTR Qty</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Stock Allotted</th>
                       <th className="h-12 px-4 text-left align-middle font-semibold text-gray-700">Purchase MTR</th>
@@ -409,6 +411,8 @@ export default function MaterialRequisition() {
                         <td className="p-4 align-middle text-gray-700 font-medium">{req.mtrCode || "N/A"}</td>
                         <td className="p-4 align-middle text-gray-700">{req.projectName || "N/A"}</td>
                         <td className="p-4 align-middle text-gray-700">{req.productName || "N/A"}</td>
+                        <td className="p-4 align-middle text-gray-700">{req.make || "N/A"}</td>
+                        <td className="p-4 align-middle text-gray-700">{req.uom || "N/A"}</td>
                         <td className="p-4 align-middle text-gray-700">
                           {editingMtrId === req.id ? (
                             <input
@@ -424,15 +428,29 @@ export default function MaterialRequisition() {
                         </td>
                         <td className="p-4 align-middle text-gray-700">
                           {editingMtrId === req.id ? (
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editedMtrData.stockAlloted}
-                              onChange={(e) => handleInputChange(e, "stockAlloted")}
-                              className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                            />
+                            <div className="flex flex-col gap-1">
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editedMtrData.stockAlloted}
+                                onChange={(e) => handleInputChange(e, "stockAlloted")}
+                                className="w-24 p-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                              />
+                              <textarea
+                                value={editedMtrData.remarks || ""}
+                                onChange={(e) => handleInputChange(e, "remarks")}
+                                placeholder="Remark for purchase..."
+                                rows={2}
+                                className="w-40 p-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                              />
+                            </div>
                           ) : (
-                            req.stockAlloted
+                            <div>
+                              <div>{req.stockAlloted}</div>
+                              {req.remarks && (
+                                <div className="text-xs text-gray-500 italic break-words max-w-[10rem]">"{req.remarks}"</div>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="p-4 align-middle text-gray-700">
