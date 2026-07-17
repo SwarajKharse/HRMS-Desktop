@@ -88,13 +88,6 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
     }
   }
 
-  const handleSaveComparison = async (comparisonData) => {
-    await comparisonSheetService.saveComparisonSheet(
-      { ...comparisonData, itemKind: selectedMtrForComparison?.itemKind || "BILLABLE" },
-      user?.userId || 1,
-    )
-  }
-
   const hasLineFilter = !!(productQuery || (priorityFilter && priorityFilter !== "All") || requiredOnDate || remarkQuery)
 
   const lineMatches = (l) => {
@@ -301,7 +294,7 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
             setSelectedMtrForComparison(null)
             fetchRequisitions()
           }}
-          onSave={mode === "purchaser" ? handleSaveComparison : undefined}
+          onSave={fetchRequisitions}
         />
       )}
     </div>

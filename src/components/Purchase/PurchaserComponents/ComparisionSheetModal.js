@@ -1,229 +1,329 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, Fragment } from "react"
 import { FiX, FiChevronDown, FiChevronUp, FiPlus, FiTrash2, FiCheck, FiXCircle, FiClock } from "react-icons/fi"
 import { motion, AnimatePresence } from "framer-motion"
 import VendorDropdown from "./VendorDropdown"
+import AddComparisonItemsModal from "./AddComparisonItemsModal"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
 
-// Helper function to format dates for display
 const formatDate = (dateString) => {
   if (!dateString) return "N/A"
   const date = new Date(dateString)
   return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
 }
 
+const emptyCell = { rate: "", leadTime: "" }
+
 export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "purchaser" }) {
   const isManagerMode = mode === "manager"
+  const itemKind = mtr?.itemKind || mtr?.type || "BILLABLE"
+
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false)
   const [isComparisonExpanded, setIsComparisonExpanded] = useState(true)
-  const [comparisons, setComparisons] = useState([
-    { id: 1, vendorName: "", qty: mtr?.purchaseMTR || 0, rate: 0, value: 0, leadTime: "" },
-    { id: 2, vendorName: "", qty: mtr?.purchaseMTR || 0, rate: 0, value: 0, leadTime: "" },
-    { id: 3, vendorName: "", qty: mtr?.purchaseMTR || 0, rate: 0, value: 0, leadTime: "" },
-  ])
-  const [selectedVendor, setSelectedVendor] = useState("")
-  const [loading, setSaving] = useState(false)
+
+  const [comparisonSheetId, setComparisonSheetId] = useState(null)
+  const [comparisonSheetCreated, setComparisonSheetCreated] = useState(false)
+  const [lines, setLines] = useState([])
+  const [vendorColumns, setVendorColumns] = useState([])
+  const [cells, setCells] = useState({})
+  const [selectedVendorColumnKey, setSelectedVendorColumnKey] = useState("")
+  const [showAddItemModal, setShowAddItemModal] = useState(false)
+
+  const [saving, setSaving] = useState(false)
   const [isLoadingData, setIsLoadingData] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
-  const [comparisonSheetCreated, setComparisonSheetCreated] = useState(false)
 
   const [pmApprovalStatus, setPmApprovalStatus] = useState(mtr?.boqMtr?.purchaseManagerApprovalStatus || "PENDING")
   const [pmApprovalRemarks, setPmApprovalRemarks] = useState(mtr?.boqMtr?.purchaseManagerApprovalRemarks || "")
   const [pmApprovalLoading, setPmApprovalLoading] = useState(false)
 
-  useEffect(() => {
-    const loadComparisonSheetData = async () => {
-      if (!mtr?.id) {
-        console.log("[v0] No MTR ID available")
-        return
-      }
+  const keyCounter = useRef(0)
+  const nextKey = (prefix) => `${prefix}-${keyCounter.current++}`
 
+  const seedDefaultSheet = () => {
+    const itemLineKey = nextKey("line")
+    setLines([
+      {
+        key: itemLineKey,
+        id: null,
+        lineType: "ITEM",
+        itemKind,
+        boqMtrId: itemKind === "CATEGORY" ? null : mtr.id,
+        boqCategoryMtrId: itemKind === "CATEGORY" ? mtr.id : null,
+        itemName: mtr.productName,
+        make: mtr.make || "",
+        uom: mtr.uom || "",
+        qty: mtr.purchaseMTR || 0,
+      },
+      { key: "misc", id: null, lineType: "MISC_EXPENSE", itemName: "Miscellaneous expense", qty: null },
+      { key: "disc", id: null, lineType: "DISCOUNT", itemName: "Discount", qty: null },
+    ])
+    setVendorColumns([
+      { key: nextKey("col"), id: null, vendorId: null, vendorName: "" },
+      { key: nextKey("col"), id: null, vendorId: null, vendorName: "" },
+      { key: nextKey("col"), id: null, vendorId: null, vendorName: "" },
+    ])
+    setCells({})
+    setSelectedVendorColumnKey("")
+  }
+
+  const hydrateFromFullSheet = (full) => {
+    const loadedLines = (full.lines || [])
+      .slice()
+      .sort((a, b) => (a.lineOrder ?? 0) - (b.lineOrder ?? 0))
+      .map((l) => ({
+        key: `line-${l.id}`,
+        id: l.id,
+        lineType: l.lineType,
+        itemKind: l.itemKind,
+        boqMtrId: l.boqMtrId,
+        boqCategoryMtrId: l.boqCategoryMtrId,
+        itemName: l.itemName,
+        make: l.make || "",
+        uom: l.uom || "",
+        qty: l.qty,
+      }))
+    const loadedColumns = (full.vendorColumns || [])
+      .slice()
+      .sort((a, b) => (a.columnOrder ?? 0) - (b.columnOrder ?? 0))
+      .map((c) => ({ key: `col-${c.id}`, id: c.id, vendorId: c.vendorId, vendorName: c.vendorName }))
+    const loadedCells = {}
+    ;(full.cells || []).forEach((cell) => {
+      const lineKey = `line-${cell.lineId}`
+      const colKey = `col-${cell.vendorColumnId}`
+      if (!loadedCells[lineKey]) loadedCells[lineKey] = {}
+      loadedCells[lineKey][colKey] = { rate: cell.rate ?? "", leadTime: cell.leadTime || "" }
+    })
+
+    setLines(loadedLines)
+    setVendorColumns(loadedColumns)
+    setCells(loadedCells)
+
+    if (full.selectedVendorId) {
+      const col = loadedColumns.find((c) => c.vendorId === full.selectedVendorId)
+      if (col) setSelectedVendorColumnKey(col.key)
+    }
+    setPmApprovalStatus(mtr?.boqMtr?.purchaseManagerApprovalStatus || "PENDING")
+    setPmApprovalRemarks(mtr?.boqMtr?.purchaseManagerApprovalRemarks || "")
+  }
+
+  useEffect(() => {
+    const load = async () => {
+      if (!mtr?.id) return
       setIsLoadingData(true)
       try {
-        console.log("[v0] Fetching MTR with comparison sheet data for ID:", mtr.id)
-
-        // Fetch the complete MTR data with comparison sheet information
-        const mtrWithComparisonData = await comparisonSheetService.getMTRWithComparisonSheet(mtr.id, mtr.itemKind || "BILLABLE")
-        console.log("[v0] MTR with comparison sheet data:", mtrWithComparisonData)
-
-        // Check if comparison sheet exists and load the data
-        if (mtrWithComparisonData.comparisonSheetId && mtrWithComparisonData.comparisonSheetCreated) {
+        const mtrWithSheet = await comparisonSheetService.getMTRWithComparisonSheet(mtr.id, itemKind)
+        if (mtrWithSheet.comparisonSheetId && mtrWithSheet.comparisonSheetCreated) {
           setComparisonSheetCreated(true)
-          console.log("[v0] Loading comparison sheet data for ID:", mtrWithComparisonData.comparisonSheetId)
-          const comparisonSheetData = await comparisonSheetService.getComparisonSheetById(
-            mtrWithComparisonData.comparisonSheetId,
-          )
-
-          console.log("[v0] Raw API response:", comparisonSheetData)
-          console.log("[v0] API response comparisonItems:", comparisonSheetData?.comparisonItems)
-
-          // Update comparisons with loaded data
-          if (
-            comparisonSheetData &&
-            comparisonSheetData.comparisonItems &&
-            comparisonSheetData.comparisonItems.length > 0
-          ) {
-            console.log("[v0] Processing comparison items:", comparisonSheetData.comparisonItems)
-            const loadedComparisons = comparisonSheetData.comparisonItems.map((item, index) => ({
-              id: index + 1,
-              vendorName: item.vendor?.vendorName || "", // Access vendor name through vendor object
-              qty: item.quantity || mtr?.purchaseMTR || 0, // Use quantity instead of qty
-              rate: item.rate || 0,
-              value: item.value || 0,
-              leadTime: item.leadTime || "",
-            }))
-
-            console.log("[v0] Loaded comparisons:", loadedComparisons)
-
-            // Ensure we have at least 3 rows
-            while (loadedComparisons.length < 3) {
-              loadedComparisons.push({
-                id: loadedComparisons.length + 1,
-                vendorName: "",
-                qty: mtr?.purchaseMTR || 0,
-                rate: 0,
-                value: 0,
-                leadTime: "",
-              })
-            }
-
-            console.log("[v0] Final comparisons to set:", loadedComparisons)
-            setComparisons(loadedComparisons)
-          } else {
-            console.log("[v0] No comparison items found in API response")
-          }
-
-          if (comparisonSheetData.selectedVendor) {
-            const selectedVendorName =
-              typeof comparisonSheetData.selectedVendor === "string"
-                ? comparisonSheetData.selectedVendor
-                : comparisonSheetData.selectedVendor.vendorName
-            console.log("[v0] Setting selected vendor:", selectedVendorName)
-            setSelectedVendor(selectedVendorName)
-          }
+          setComparisonSheetId(mtrWithSheet.comparisonSheetId)
+          const full = await comparisonSheetService.getFullComparisonSheet(mtrWithSheet.comparisonSheetId)
+          hydrateFromFullSheet(full)
         } else {
-          console.log("[v0] No comparison sheet data found for this MTR")
           setComparisonSheetCreated(false)
+          setComparisonSheetId(null)
+          seedDefaultSheet()
         }
-      } catch (error) {
-        console.error("[v0] Error loading comparison sheet data:", error)
-        console.error("[v0] Error details:", error.message, error.stack)
+      } catch (err) {
+        console.error("Error loading comparison sheet data:", err)
         setError("Error loading comparison sheet data")
+        seedDefaultSheet()
       } finally {
         setIsLoadingData(false)
       }
     }
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mtr?.id])
 
-    loadComparisonSheetData()
-  }, [mtr?.id]) // Updated dependency to only watch for MTR ID changes
+  const updateCell = (lineKey, colKey, field, value) => {
+    setCells((prev) => ({
+      ...prev,
+      [lineKey]: {
+        ...(prev[lineKey] || {}),
+        [colKey]: { ...(prev[lineKey]?.[colKey] || emptyCell), [field]: value },
+      },
+    }))
+  }
 
-  const updateComparison = (id, field, value) => {
-    setComparisons((prev) =>
-      prev.map((comp) => {
-        if (comp.id === id) {
-          const updated = { ...comp, [field]: value }
-          if (field === "qty" || field === "rate") {
-            updated.value = (Number.parseFloat(updated.qty) || 0) * (Number.parseFloat(updated.rate) || 0)
-          }
-          return updated
-        }
-        return comp
-      }),
+  const addVendorColumn = () => {
+    setVendorColumns((prev) => [...prev, { key: nextKey("col"), id: null, vendorId: null, vendorName: "" }])
+  }
+
+  const setVendorForColumn = (colKey, vendor) => {
+    setVendorColumns((prev) =>
+      prev.map((c) => (c.key === colKey ? { ...c, vendorId: vendor.id, vendorName: vendor.vendorName } : c)),
     )
   }
 
-  const addComparison = () => {
-    const newId = Math.max(...comparisons.map((c) => c.id)) + 1
-    setComparisons((prev) => [
-      ...prev,
-      {
-        id: newId,
-        vendorName: "",
-        qty: mtr?.purchaseMTR || 0,
-        rate: 0,
-        value: 0,
-        leadTime: "",
-      },
-    ])
+  const handleAddItems = (selectedMtrs) => {
+    const newLines = selectedMtrs.map((m) => ({
+      key: nextKey("line"),
+      id: null,
+      lineType: "ITEM",
+      itemKind: m.type || "BILLABLE",
+      boqMtrId: (m.type || "BILLABLE") === "CATEGORY" ? null : m.id,
+      boqCategoryMtrId: (m.type || "BILLABLE") === "CATEGORY" ? m.id : null,
+      itemName: m.productName,
+      make: m.make || "",
+      uom: m.uom || "",
+      qty: m.purchaseMTR || 0,
+    }))
+    setLines((prev) => {
+      const itemLines = prev.filter((l) => l.lineType === "ITEM")
+      const otherLines = prev.filter((l) => l.lineType !== "ITEM")
+      return [...itemLines, ...newLines, ...otherLines]
+    })
   }
 
-  const removeComparison = (id) => {
-    if (comparisons.length > 3) {
-      setComparisons((prev) => prev.filter((comp) => comp.id !== id))
+  const removeLine = (lineKey) => {
+    setLines((prev) => prev.filter((l) => l.key !== lineKey))
+    setCells((prev) => {
+      const next = { ...prev }
+      delete next[lineKey]
+      return next
+    })
+  }
+
+  const cellAmount = (line, colKey) => {
+    const cell = cells[line.key]?.[colKey]
+    const rate = Number.parseFloat(cell?.rate)
+    if (Number.isNaN(rate)) return 0
+    if (line.lineType === "ITEM") {
+      return (Number.parseFloat(line.qty) || 0) * rate
     }
+    return rate // MISC_EXPENSE / DISCOUNT rate field is a direct amount
   }
 
-  const vendorOptions = comparisons
-    .filter((comp) => comp.vendorName.trim() !== "")
-    .map((comp) => comp.vendorName.trim())
+  const columnTotal = (colKey) => {
+    let total = 0
+    lines.forEach((line) => {
+      const amt = cellAmount(line, colKey)
+      total += line.lineType === "DISCOUNT" ? -amt : amt
+    })
+    return total
+  }
+
+  const filledColumnKeys = vendorColumns.filter((c) => c.vendorId).map((c) => c.key)
+  const totalsWithValues = filledColumnKeys
+    .map((key) => ({ key, total: columnTotal(key) }))
+    .filter((t) => t.total > 0)
+    .sort((a, b) => a.total - b.total)
+  const rankByColumnKey = {}
+  totalsWithValues.slice(0, 3).forEach((t, idx) => {
+    rankByColumnKey[t.key] = idx + 1 // 1 = L1, 2 = L2, 3 = L3
+  })
+  const rankBadgeClass = { 1: "bg-green-100 text-green-800", 2: "bg-blue-100 text-blue-800", 3: "bg-amber-100 text-amber-800" }
+
+  const removeVendorColumn = (colKey) => {
+    setVendorColumns((prev) => prev.filter((c) => c.key !== colKey))
+    setCells((prev) => {
+      const next = {}
+      Object.keys(prev).forEach((lineKey) => {
+        const lineCells = { ...(prev[lineKey] || {}) }
+        delete lineCells[colKey]
+        next[lineKey] = lineCells
+      })
+      return next
+    })
+    if (selectedVendorColumnKey === colKey) setSelectedVendorColumnKey("")
+  }
+
+  const itemLines = lines.filter((l) => l.lineType === "ITEM")
+  const fixedLines = lines.filter((l) => l.lineType !== "ITEM")
 
   const handleSave = async () => {
     setError("")
     setSuccess("")
 
-    const invalidComparisons = comparisons.filter((comp) => !comp.vendorName.trim())
-    if (invalidComparisons.length > 0) {
-      setError("Please fill in all vendor names")
+    if (itemLines.length === 0) {
+      setError("Add at least one item to compare.")
       return
     }
-
-    if (!selectedVendor) {
-      setError("Please select a vendor")
+    const validColumns = vendorColumns.filter((c) => c.vendorId)
+    if (validColumns.length === 0) {
+      setError("Please select at least one vendor.")
       return
     }
 
     setSaving(true)
     try {
-      const comparisonData = {
-        boqMtrId: mtr.id,
-        items: comparisons.map((comp) => ({
-          vendorName: comp.vendorName.trim(),
-          qty: Number.parseFloat(comp.qty) || 0,
-          rate: Number.parseFloat(comp.rate) || 0,
-          value: comp.value,
-          leadTime: comp.leadTime.trim(),
-        })),
-        selectedVendor: selectedVendor.trim(),
+      const lineDTOs = lines.map((l, idx) => ({
+        key: l.key,
+        lineType: l.lineType,
+        itemKind: l.itemKind,
+        boqMtrId: l.boqMtrId,
+        boqCategoryMtrId: l.boqCategoryMtrId,
+        itemName: l.itemName,
+        make: l.make,
+        uom: l.uom,
+        qty: l.qty !== null && l.qty !== undefined && l.qty !== "" ? Number.parseFloat(l.qty) : null,
+        lineOrder: idx,
+      }))
+      const vendorColumnDTOs = validColumns.map((c, idx) => ({ key: c.key, vendorId: c.vendorId, columnOrder: idx }))
+      const cellDTOs = []
+      lines.forEach((l) => {
+        validColumns.forEach((c) => {
+          const cell = cells[l.key]?.[c.key]
+          if (cell && cell.rate !== "" && cell.rate !== null && cell.rate !== undefined) {
+            cellDTOs.push({
+              lineKey: l.key,
+              vendorColumnKey: c.key,
+              rate: Number.parseFloat(cell.rate) || 0,
+              leadTime: cell.leadTime || "",
+            })
+          }
+        })
+      })
+
+      const selectedColumn = vendorColumns.find((c) => c.key === selectedVendorColumnKey)
+
+      const payload = {
+        comparisonSheetId,
         createdBy: "1",
+        lines: lineDTOs,
+        vendorColumns: vendorColumnDTOs,
+        cells: cellDTOs,
+        selectedVendorId: selectedColumn ? selectedColumn.vendorId : null,
       }
 
-      console.log("[v0] Saving comparison data:", comparisonData)
+      const saved = await comparisonSheetService.saveCombinedComparisonSheet(payload)
+      setComparisonSheetId(saved.id)
+      setComparisonSheetCreated(true)
 
-      if (onSave) {
-        await onSave(comparisonData)
-      }
+      const full = await comparisonSheetService.getFullComparisonSheet(saved.id)
+      hydrateFromFullSheet(full)
 
       setSuccess("Comparison sheet saved successfully!")
-      setComparisonSheetCreated(true)
-      setTimeout(() => {
-        onClose()
-      }, 1500)
-    } catch (error) {
-      console.error("Error saving comparison sheet:", error)
+      if (onSave) await onSave()
+      setTimeout(() => onClose(), 1200)
+    } catch (err) {
+      console.error("Error saving comparison sheet:", err)
       setError("Error saving comparison sheet. Please try again.")
     } finally {
       setSaving(false)
     }
   }
 
-  const handleSavePMApproval = async () => {
-    if (!pmApprovalStatus || pmApprovalStatus === "PENDING") {
-      setError("Please select an approval status")
+  const handleApprove = async () => {
+    setError("")
+    setSuccess("")
+    const col = vendorColumns.find((c) => c.key === selectedVendorColumnKey)
+    if (!col || !col.id) {
+      setError("Select a vendor to approve.")
       return
     }
     setPmApprovalLoading(true)
-    setError("")
-    setSuccess("")
     try {
-      await comparisonSheetService.updatePurchaseManagerApprovalStatus(mtr.id, pmApprovalStatus, pmApprovalRemarks, mtr.itemKind || "BILLABLE")
-      setSuccess("Vendor approval status updated successfully!")
+      await comparisonSheetService.approveVendorForSheet(comparisonSheetId, col.id, pmApprovalRemarks, 1)
+      setSuccess("Vendor approved — all items in this comparison are now approved for that vendor.")
       setTimeout(() => {
         if (onSave) onSave()
         onClose()
       }, 1200)
-    } catch (error) {
+    } catch (err) {
+      console.error("Error approving vendor:", err)
       setError("Failed to update approval status. Please try again.")
     } finally {
       setPmApprovalLoading(false)
@@ -231,6 +331,8 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
   }
 
   if (!mtr) return null
+
+  const isApproved = mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"
 
   return (
     <motion.div
@@ -244,10 +346,9 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.95 }}
-        className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between p-4 border-b bg-blue-50">
           <h3 className="text-lg font-bold text-blue-700">
             Comparison Sheet - Material Requisition
@@ -258,7 +359,6 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
           </button>
         </div>
 
-        {/* Error and Success Message Display */}
         {(error || success) && (
           <div className={`p-4 ${error ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"} border-b`}>
             <p className={`text-sm ${error ? "text-red-700" : "text-green-700"}`}>{error || success}</p>
@@ -275,7 +375,6 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         ) : (
           <div className="flex-1 overflow-y-auto">
             <div className="min-h-0">
-              {/* Material Requisition Details - Collapsible */}
               <div className="border-b border-blue-200">
                 <button
                   onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}
@@ -361,30 +460,12 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                             </div>
                           </div>
                         </div>
-
-                        {mtr.boqMtr?.purchaseManagerApprovalStatus && mtr.boqMtr.purchaseManagerApprovalStatus !== "PENDING" && (
-                          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                              <div>
-                                <p className="font-medium text-gray-600">Approval Date:</p>
-                                <p>{formatDate(mtr.boqMtr?.purchaseManagerApprovalDate)}</p>
-                              </div>
-                              {mtr.boqMtr?.purchaseManagerApprovalStatus && (
-                                <div className="col-span-2">
-                                  <p className="font-medium text-gray-600">PM Remarks:</p>
-                                  <p className="text-gray-700">{mtr.boqMtr.purchaseManagerApprovalRemarks}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              {/* Comparison Sheet - Collapsible */}
               <div className="border-b border-amber-200">
                 <button
                   onClick={() => setIsComparisonExpanded(!isComparisonExpanded)}
@@ -420,116 +501,194 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                         <div className="p-6 border-l-4 border-amber-400">
                           <div className="flex items-center justify-between mb-4">
                             <h5 className="text-lg font-semibold text-amber-700">Vendor Comparisons</h5>
-                            {!isManagerMode && (
-                              <button
-                                onClick={addComparison}
-                                className="flex items-center gap-2 px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
-                              >
-                                <FiPlus className="w-4 h-4" />
-                                Add More
-                              </button>
+                            {!isManagerMode && !isApproved && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => setShowAddItemModal(true)}
+                                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                  <FiPlus className="w-4 h-4" />
+                                  Add Another Item
+                                </button>
+                                <button
+                                  onClick={addVendorColumn}
+                                  className="flex items-center gap-2 px-3 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
+                                >
+                                  <FiPlus className="w-4 h-4" />
+                                  Add Vendor
+                                </button>
+                              </div>
                             )}
                           </div>
 
-                          {/* Comparison Table */}
                           <div className="overflow-x-auto">
-                            <table className="w-full border border-gray-200 rounded-lg">
+                            <table className="w-full border border-gray-200 rounded-lg text-sm">
                               <thead className="bg-gray-50">
                                 <tr>
-                                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
-                                    Vendor Name
+                                  <th rowSpan={2} className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r align-bottom">
+                                    Item
                                   </th>
-                                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Qty</th>
-                                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">Rate</th>
-                                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
-                                    Value
+                                  <th rowSpan={2} className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r align-bottom">
+                                    Make
                                   </th>
-                                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-700 border-b">
-                                    Lead Time
+                                  <th rowSpan={2} className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r align-bottom">
+                                    UOM
                                   </th>
-                                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-700 border-b">
-                                    Action
+                                  <th rowSpan={2} className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r align-bottom">
+                                    Qty
                                   </th>
+                                  {vendorColumns.map((col) => {
+                                    const rank = rankByColumnKey[col.key]
+                                    return (
+                                      <th key={col.key} colSpan={3} className="px-3 py-2 text-center font-medium text-gray-700 border-b border-r">
+                                        <div className="flex items-center justify-center gap-2">
+                                          {rank && (
+                                            <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${rankBadgeClass[rank]}`}>
+                                              L{rank}
+                                            </span>
+                                          )}
+                                          <div className="flex-1 min-w-0">
+                                            {isManagerMode ? (
+                                              col.vendorName || "—"
+                                            ) : (
+                                              <VendorDropdown
+                                                value={col.vendorName}
+                                                onChange={() => {}}
+                                                onSelectVendor={(vendor) => setVendorForColumn(col.key, vendor)}
+                                                placeholder="Select vendor"
+                                              />
+                                            )}
+                                          </div>
+                                          {!isManagerMode && !isApproved && (
+                                            <button
+                                              onClick={() => removeVendorColumn(col.key)}
+                                              title="Remove vendor"
+                                              className="p-1 text-red-500 hover:bg-red-50 rounded-md"
+                                            >
+                                              <FiTrash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </th>
+                                    )
+                                  })}
+                                  {!isManagerMode && !isApproved && <th rowSpan={2} className="px-2 py-2 border-b" />}
+                                </tr>
+                                <tr>
+                                  {vendorColumns.map((col) => (
+                                    <Fragment key={col.key}>
+                                      <th className="px-2 py-1 text-right font-medium text-gray-600 border-b border-r">Rate</th>
+                                      <th className="px-2 py-1 text-right font-medium text-gray-600 border-b border-r">Amount</th>
+                                      <th className="px-2 py-1 text-left font-medium text-gray-600 border-b border-r">Lead Time</th>
+                                    </Fragment>
+                                  ))}
                                 </tr>
                               </thead>
                               <tbody>
-                                {comparisons.map((comparison, index) => (
-                                  <tr key={comparison.id} className="border-b hover:bg-gray-50">
-                                    <td className="px-4 py-3 relative">
-                                      {isManagerMode ? (
-                                        <span className="text-sm text-gray-700">{comparison.vendorName || "—"}</span>
-                                      ) : (
-                                        <VendorDropdown
-                                          value={comparison.vendorName}
-                                          onChange={(vendorName) =>
-                                            updateComparison(comparison.id, "vendorName", vendorName)
-                                          }
-                                          placeholder="Select or add vendor"
-                                        />
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <input
-                                        type="number"
-                                        value={comparison.qty}
-                                        onChange={(e) => updateComparison(comparison.id, "qty", e.target.value)}
-                                        step="0.01"
-                                        readOnly={isManagerMode}
-                                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isManagerMode ? "bg-gray-100 text-gray-600" : ""}`}
-                                      />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <input
-                                        type="number"
-                                        value={comparison.rate}
-                                        onChange={(e) => updateComparison(comparison.id, "rate", e.target.value)}
-                                        step="0.01"
-                                        placeholder="0.00"
-                                        readOnly={isManagerMode}
-                                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isManagerMode ? "bg-gray-100 text-gray-600" : ""}`}
-                                      />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <input
-                                        type="number"
-                                        value={comparison.value.toFixed(2)}
-                                        readOnly
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600"
-                                      />
-                                    </td>
-                                    <td className="px-4 py-3">
-                                      <input
-                                        type="text"
-                                        value={comparison.leadTime}
-                                        onChange={(e) => updateComparison(comparison.id, "leadTime", e.target.value)}
-                                        placeholder="e.g., 7 days"
-                                        readOnly={isManagerMode}
-                                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isManagerMode ? "bg-gray-100 text-gray-600" : ""}`}
-                                      />
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                      {!isManagerMode && comparisons.length > 3 && (
-                                        <button
-                                          onClick={() => removeComparison(comparison.id)}
-                                          className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                                        >
-                                          <FiTrash2 className="w-4 h-4" />
-                                        </button>
-                                      )}
-                                    </td>
+                                {itemLines.map((line) => (
+                                  <tr key={line.key} className="border-b hover:bg-gray-50">
+                                    <td className="px-3 py-2 border-r">{line.itemName}</td>
+                                    <td className="px-3 py-2 border-r">{line.make || "—"}</td>
+                                    <td className="px-3 py-2 border-r">{line.uom || "—"}</td>
+                                    <td className="px-3 py-2 border-r">{line.qty ?? "—"}</td>
+                                    {vendorColumns.map((col) => {
+                                      const cell = cells[line.key]?.[col.key] || emptyCell
+                                      return (
+                                        <Fragment key={`${line.key}-${col.key}`}>
+                                          <td className="px-2 py-1 border-r">
+                                            <input
+                                              type="number"
+                                              step="0.01"
+                                              value={cell.rate}
+                                              readOnly={isManagerMode || isApproved}
+                                              onChange={(e) => updateCell(line.key, col.key, "rate", e.target.value)}
+                                              className={`w-24 px-2 py-1 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-blue-500 ${isManagerMode || isApproved ? "bg-gray-100 text-gray-600" : ""}`}
+                                            />
+                                          </td>
+                                          <td className="px-2 py-1 border-r text-right text-gray-700">
+                                            {cellAmount(line, col.key).toFixed(2)}
+                                          </td>
+                                          <td className="px-2 py-1 border-r">
+                                            <input
+                                              type="text"
+                                              value={cell.leadTime}
+                                              readOnly={isManagerMode || isApproved}
+                                              onChange={(e) => updateCell(line.key, col.key, "leadTime", e.target.value)}
+                                              placeholder="e.g. 7 days"
+                                              className={`w-24 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${isManagerMode || isApproved ? "bg-gray-100 text-gray-600" : ""}`}
+                                            />
+                                          </td>
+                                        </Fragment>
+                                      )
+                                    })}
+                                    {!isManagerMode && !isApproved && (
+                                      <td className="px-2 py-1 text-center">
+                                        {itemLines.length > 1 && (
+                                          <button onClick={() => removeLine(line.key)} className="p-1 text-red-600 hover:bg-red-50 rounded-md">
+                                            <FiTrash2 className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                      </td>
+                                    )}
                                   </tr>
                                 ))}
+
+                                {fixedLines.map((line) => (
+                                  <tr key={line.key} className="border-b bg-gray-50">
+                                    <td colSpan={4} className="px-3 py-2 border-r font-medium text-gray-600 italic">
+                                      {line.itemName}
+                                    </td>
+                                    {vendorColumns.map((col) => {
+                                      const cell = cells[line.key]?.[col.key] || emptyCell
+                                      return (
+                                        <Fragment key={`${line.key}-${col.key}`}>
+                                          <td colSpan={2} className="px-2 py-1 border-r">
+                                            <input
+                                              type="number"
+                                              step="0.01"
+                                              value={cell.rate}
+                                              readOnly={isManagerMode || isApproved}
+                                              onChange={(e) => updateCell(line.key, col.key, "rate", e.target.value)}
+                                              placeholder="Amount"
+                                              className={`w-24 px-2 py-1 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-blue-500 ${isManagerMode || isApproved ? "bg-gray-100 text-gray-600" : ""}`}
+                                            />
+                                          </td>
+                                          <td className="px-2 py-1 border-r" />
+                                        </Fragment>
+                                      )
+                                    })}
+                                    {!isManagerMode && !isApproved && <td />}
+                                  </tr>
+                                ))}
+
+                                <tr className="bg-amber-50 font-semibold">
+                                  <td colSpan={4} className="px-3 py-2 border-r text-right">
+                                    Total
+                                  </td>
+                                  {vendorColumns.map((col) => {
+                                    const total = columnTotal(col.key)
+                                    const rank = rankByColumnKey[col.key]
+                                    return (
+                                      <td
+                                        key={`${col.key}-total`}
+                                        colSpan={3}
+                                        className={`px-3 py-2 border-r text-right ${rank ? rankBadgeClass[rank] : ""}`}
+                                      >
+                                        {total.toFixed(2)}
+                                        {rank && <span className="ml-1 text-xs font-normal">(L{rank})</span>}
+                                      </td>
+                                    )
+                                  })}
+                                  {!isManagerMode && !isApproved && <td />}
+                                </tr>
                               </tbody>
                             </table>
                           </div>
 
-                          {/* Vendor Selection */}
                           <div className="mt-6">
-                            <label className="block text-sm font-medium text-amber-700 mb-2">
-                              Select Vendor for MTR:
-                              </label>
+                            <label className="block text-sm font-medium text-amber-700 mb-2">Select Vendor:</label>
 
-                            {mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED" && (
+                            {isApproved && (
                               <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded-md">
                                 <p className="text-sm text-green-700 font-medium">
                                   ✓ Vendor selection is locked - PM has approved the selected vendor
@@ -538,23 +697,25 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                             )}
                             <div className="w-full max-w-md relative">
                               <select
-                                value={selectedVendor}
-                                onChange={(e) => setSelectedVendor(e.target.value)}
-                                disabled={isManagerMode || mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"}
+                                value={selectedVendorColumnKey}
+                                onChange={(e) => setSelectedVendorColumnKey(e.target.value)}
+                                disabled={isApproved}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                               >
                                 <option value="">-- Select Vendor --</option>
-                                {vendorOptions.length > 0 ? (
-                                  vendorOptions.map((vendor, index) => (
-                                    <option key={index} value={vendor}>
-                                      {vendor}
-                                    </option>
-                                  ))
-                                ) : (
-                                  <option value="" disabled>
-                                    No vendors selected in comparison items above
-                                  </option>
-                                )}
+                                {vendorColumns
+                                  .filter((c) => c.vendorId)
+                                  .slice()
+                                  .sort((a, b) => columnTotal(a.key) - columnTotal(b.key))
+                                  .map((c) => {
+                                    const rank = rankByColumnKey[c.key]
+                                    return (
+                                      <option key={c.key} value={c.key}>
+                                        {rank ? `L${rank} — ` : ""}
+                                        {c.vendorName} (Total: {columnTotal(c.key).toFixed(2)})
+                                      </option>
+                                    )
+                                  })}
                               </select>
                             </div>
                           </div>
@@ -565,23 +726,9 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                 </AnimatePresence>
               </div>
 
-              {/* Approval Section (Manager mode only, and only once filled) */}
               {isManagerMode && comparisonSheetCreated && (
                 <div className="p-4 border-t border-amber-200 bg-amber-50 space-y-3">
                   <h5 className="text-md font-semibold text-amber-700">Vendor Approval</h5>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 block mb-1">Update Approval Status:</label>
-                    <select
-                      value={pmApprovalStatus}
-                      onChange={(e) => setPmApprovalStatus(e.target.value)}
-                      disabled={pmApprovalLoading}
-                      className="w-full h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="PENDING">Pending</option>
-                      <option value="APPROVED">Approved</option>
-                      <option value="REJECTED">Rejected</option>
-                    </select>
-                  </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700 block mb-1">Remarks:</label>
                     <textarea
@@ -589,7 +736,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                       onChange={(e) => setPmApprovalRemarks(e.target.value)}
                       placeholder="Enter approval remarks for selected vendor..."
                       rows={3}
-                      disabled={pmApprovalLoading}
+                      disabled={pmApprovalLoading || isApproved}
                       className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -599,7 +746,6 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
           </div>
         )}
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
           <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
             Cancel
@@ -607,28 +753,32 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
           {isManagerMode ? (
             comparisonSheetCreated && (
               <button
-                onClick={handleSavePMApproval}
-                disabled={pmApprovalLoading || pmApprovalStatus === "PENDING"}
+                onClick={handleApprove}
+                disabled={pmApprovalLoading || isApproved || !selectedVendorColumnKey}
                 className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {pmApprovalLoading ? "Saving..." : "Update Vendor Approval"}
+                {isApproved ? "Vendor Approved" : pmApprovalLoading ? "Approving..." : "Approve Selected Vendor"}
               </button>
             )
           ) : (
             <button
               onClick={handleSave}
-              disabled={loading || mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"}
+              disabled={saving || isApproved}
               className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"
-                ? "Vendor Approved - Cannot Modify"
-                : loading
-                  ? "Saving..."
-                  : "Save Comparison Sheet"}
+              {isApproved ? "Vendor Approved - Cannot Modify" : saving ? "Saving..." : "Save Comparison Sheet"}
             </button>
           )}
         </div>
       </motion.div>
+
+      {showAddItemModal && (
+        <AddComparisonItemsModal
+          excludeMtrIds={itemLines.map((l) => (l.itemKind === "CATEGORY" ? l.boqCategoryMtrId : l.boqMtrId))}
+          onClose={() => setShowAddItemModal(false)}
+          onAdd={handleAddItems}
+        />
+      )}
     </motion.div>
   )
 }

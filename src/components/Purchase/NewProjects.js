@@ -436,28 +436,33 @@ function NewProjects() {
                           </td>
 
                           <td className="px-6 py-4">
-                            {project.purchaser ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-medium text-gray-700">
-                                  {project.purchaser.firstName} {project.purchaser.lastName}
-                                </span>
+                            {(() => {
+                              const assigned = project.purchasers && project.purchasers.length > 0
+                                ? project.purchasers
+                                : (project.purchaser ? [project.purchaser] : [])
+                              return assigned.length > 0 ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium text-gray-700">
+                                    {assigned.map((p) => `${p.firstName} ${p.lastName}`).join(", ")}
+                                  </span>
+                                  <button
+                                    className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                    onClick={(e) => handleAssignPurchaserClick(e, project)}
+                                    title="Edit Assigned Purchasers"
+                                  >
+                                    <FiEdit2 size={14} />
+                                  </button>
+                                </div>
+                              ) : (
                                 <button
-                                  className="text-gray-400 hover:text-indigo-600 transition-colors"
+                                  className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"
                                   onClick={(e) => handleAssignPurchaserClick(e, project)}
-                                  title="Edit Assigned Purchaser"
+                                  title="Assign Purchasers"
                                 >
-                                  <FiEdit2 size={14} />
+                                  Assign Purchaser
                                 </button>
-                              </div>
-                            ) : (
-                              <button
-                                className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"
-                                onClick={(e) => handleAssignPurchaserClick(e, project)}
-                                title="Assign Purchaser"
-                              >
-                                Assign Purchaser
-                              </button>
-                            )}
+                              )
+                            })()}
                           </td>
 
                         {/* <td className="px-6 py-4">
@@ -655,6 +660,7 @@ function NewProjects() {
               projectId={selectedProjectForPurchaser.id}
               projectName={selectedProjectForPurchaser.project_name}
               currentPurchaser={selectedProjectForPurchaser.purchaser}
+              currentPurchasers={selectedProjectForPurchaser.purchasers}
               onClose={() => {
                 setShowAssignPurchaser(false)
                 setSelectedProjectForPurchaser(null)
