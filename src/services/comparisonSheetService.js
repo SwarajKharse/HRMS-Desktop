@@ -481,4 +481,41 @@ export const comparisonSheetService = {
       throw error
     }
   },
+
+  // Combined (multi-item) comparison sheet
+  saveCombinedComparisonSheet: async (payload) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/material-requisitions/comparison-sheet/combined`, payload)
+      return response.data
+    } catch (error) {
+      console.error("Error saving combined comparison sheet:", error)
+      throw error
+    }
+  },
+
+  getFullComparisonSheet: async (id) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/comparison-sheet/${id}/full`)
+      return response.data
+    } catch (error) {
+      console.error("Error fetching full comparison sheet:", error)
+      throw error
+    }
+  },
+
+  approveVendorForSheet: async (id, vendorColumnId, remarks = "", currentUserId) => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/material-requisitions/comparison-sheet/${id}/approve-vendor`,
+        null,
+        {
+          params: { vendorColumnId, remarks, currentUserId },
+        },
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error approving vendor for comparison sheet:", error)
+      throw error
+    }
+  },
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { FiChevronDown, FiPlus } from "react-icons/fi"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
 
-export default function VendorDropdown({ value, onChange, placeholder = "Select vendor" }) {
+export default function VendorDropdown({ value, onChange, onSelectVendor, placeholder = "Select vendor" }) {
   const [isOpen, setIsOpen] = useState(false)
   const [vendors, setVendors] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
@@ -48,6 +48,7 @@ export default function VendorDropdown({ value, onChange, placeholder = "Select 
       const newVendor = await comparisonSheetService.createVendor(searchTerm.trim())
       setVendors((prev) => [...prev, newVendor])
       onChange(newVendor.vendorName)
+      if (onSelectVendor) onSelectVendor(newVendor)
       setIsOpen(false)
       setSearchTerm("")
     } catch (error) {
@@ -55,8 +56,9 @@ export default function VendorDropdown({ value, onChange, placeholder = "Select 
     }
   }
 
-  const handleSelectVendor = (vendorName) => {
-    onChange(vendorName)
+  const handleSelectVendor = (vendor) => {
+    onChange(vendor.vendorName)
+    if (onSelectVendor) onSelectVendor(vendor)
     setIsOpen(false)
     setSearchTerm("")
   }
@@ -97,7 +99,7 @@ export default function VendorDropdown({ value, onChange, placeholder = "Select 
                   <div
                     key={vendor.id}
                     className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                    onClick={() => handleSelectVendor(vendor.vendorName)}
+                    onClick={() => handleSelectVendor(vendor)}
                   >
                     {vendor.vendorName}
                   </div>

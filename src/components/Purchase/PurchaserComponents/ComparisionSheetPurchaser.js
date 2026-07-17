@@ -262,18 +262,6 @@ export default function ComparisionSheetPurchaser() {
     }
   }
 
-  const handleSaveComparisonSheet = async (comparisonData) => {
-    try {
-      console.log("[v0] Saving comparison sheet data:", comparisonData)
-      const result = await comparisonSheetService.saveComparisonSheet(comparisonData,currentUserId)
-      console.log("[v0] Comparison sheet saved successfully:", result)
-      return result
-    } catch (error) {
-      console.error("[v0] Error saving comparison sheet:", error)
-      throw error
-    }
-  }
-
   const handleMTRUpdate = (updatedMTR) => {
     setRequisitions((prev) => prev.map((req) => (req.id === updatedMTR.id ? { ...req, ...updatedMTR } : req)))
   }
@@ -585,7 +573,7 @@ export default function ComparisionSheetPurchaser() {
             setShowDetailsModal(false)
             setSelectedMTRForDetails(null)
           }}
-          onSave={handleSaveComparisonSheet}
+          onSave={fetchMaterialRequisitions}
         />
       )}
     </div>

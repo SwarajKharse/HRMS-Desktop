@@ -244,6 +244,15 @@ export const projectService = {
       throw error
     }
   },
+  updatePurchasers: async (projectId, purchaserIds) => {
+    try {
+      const response = await axios.put(`${API_URL}/projects/${projectId}/purchasers`, purchaserIds, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error updating purchasers:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
   getAllRequisitions: async () => {
     try {
       const response = await axios.get(`${API_URL}/projects/all-requisitions`, getAuthHeaders())
