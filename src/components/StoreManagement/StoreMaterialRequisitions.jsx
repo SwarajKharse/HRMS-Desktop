@@ -32,6 +32,7 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
   const [remarkQuery, setRemarkQuery] = useState("")
   const [expanded, setExpanded] = useState({})
   const [editingStock, setEditingStock] = useState({})
+  const [editingRemarks, setEditingRemarks] = useState({})
   const [savingStock, setSavingStock] = useState({})
 
   const fetchRequisitions = useCallback(async () => {
@@ -94,16 +95,33 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
     setEditingStock((prev) => ({ ...prev, [lineId]: value }))
   }
 
+  const startEditingLine = (line) => {
+    setEditingStock((prev) => (prev[line.id] !== undefined ? prev : { ...prev, [line.id]: line.stockAlloted ?? "" }))
+    setEditingRemarks((prev) => (prev[line.id] !== undefined ? prev : { ...prev, [line.id]: line.remarks || "" }))
+  }
+
+  const handleRemarksChange = (lineId, value) => {
+    setEditingRemarks((prev) => ({ ...prev, [lineId]: value }))
+  }
+
+  const cancelEditingLine = (lineId) => {
+    setEditingStock((prev) => { const n = { ...prev }; delete n[lineId]; return n })
+    setEditingRemarks((prev) => { const n = { ...prev }; delete n[lineId]; return n })
+  }
+
   const handleStockSave = async (req, line) => {
     const value = editingStock[line.id]
-    if (value === undefined || value === "") return
-    const stock = parseFloat(value)
-    if (isNaN(stock) || stock < 0) { alert("Invalid stock quantity."); return }
-    if (stock > line.mtrQty) { alert(`Stock cannot exceed MTR Qty (${line.mtrQty}).`); return }
+    const stockProvided = value !== undefined && value !== ""
+    const stock = stockProvided ? parseFloat(value) : (line.stockAlloted || 0)
+    if (stockProvided) {
+      if (isNaN(stock) || stock < 0) { alert("Invalid stock quantity."); return }
+      if (stock > line.mtrQty) { alert(`Stock cannot exceed MTR Qty (${line.mtrQty}).`); return }
+    }
+    const remarks = editingRemarks[line.id] !== undefined ? editingRemarks[line.id] : line.remarks
 
     setSavingStock((prev) => ({ ...prev, [line.id]: true }))
     try {
-      await projectService.updateStockAlloted(req.projectId, req.id, line.id, line.itemKind, stock)
+      await projectService.updateStockAlloted(req.projectId, req.id, line.id, line.itemKind, stock, remarks)
       setRequisitions((prev) => prev.map((r) => {
         if (r.id !== req.id) return r
         return {
@@ -111,11 +129,11 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
           lines: (r.lines || []).map((l) => {
             if (l.id !== line.id) return l
             const purchaseMTR = Math.max(0, (l.mtrQty || 0) - stock)
-            return { ...l, stockAlloted: stock, purchaseMTR }
+            return { ...l, stockAlloted: stock, purchaseMTR, remarks }
           })
         }
       }))
-      setEditingStock((prev) => { const n = { ...prev }; delete n[line.id]; return n })
+      cancelEditingLine(line.id)
     } catch (e) {
       alert("Failed to save stock: " + (e?.response?.data?.message || e.message))
     } finally {
@@ -210,6 +228,8 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
                           <thead className="bg-gray-100 text-gray-700 text-xs">
                             <tr>
                               <th className="text-left px-4 py-2 pl-10 font-semibold">Item</th>
+                              <th className="text-left px-3 py-2 font-semibold">Make</th>
+                              <th className="text-left px-3 py-2 font-semibold">UOM</th>
                               <th className="text-right px-3 py-2 font-semibold">MTR Qty</th>
                               <th className="text-right px-3 py-2 font-semibold">Stock Allotted</th>
                               <th className="text-right px-3 py-2 font-semibold">Purchase Qty</th>
@@ -219,10 +239,11 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
                           <tbody className="divide-y">
                             {lines.map((l, i) => {
                               const meta = typeMeta(l.type)
-                              const isEditing = editingStock[l.id] !== undefined
-                              const stockVal = isEditing ? editingStock[l.id] : (l.stockAlloted ?? "")
+                              const isEditing = editingStock[l.id] !== undefined || editingRemarks[l.id] !== undefined
+                              const stockVal = editingStock[l.id] !== undefined ? editingStock[l.id] : (l.stockAlloted ?? "")
+                              const remarksVal = editingRemarks[l.id] !== undefined ? editingRemarks[l.id] : (l.remarks || "")
                               const purchaseVal = isEditing
-                                ? Math.max(0, (l.mtrQty || 0) - parseFloat(editingStock[l.id] || 0))
+                                ? Math.max(0, (l.mtrQty || 0) - parseFloat(editingStock[l.id] ?? l.stockAlloted ?? 0))
                                 : (l.purchaseMTR ?? "")
                               return (
                                 <tr key={l.id ?? i} className="hover:bg-gray-50">
@@ -236,26 +257,54 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
                                         {l.priority || "MEDIUM"}
                                       </span>
                                       {l.expectedDeliveryDate && <span className="text-[10px] text-gray-500">📅 {new Date(l.expectedDeliveryDate).toLocaleDateString()}</span>}
-                                      {l.remarks && <span className="text-[10px] text-gray-500 italic">"{l.remarks}"</span>}
                                     </div>
                                   </td>
+                                  <td className="px-3 py-2 text-left text-gray-600">{l.make || "—"}</td>
+                                  <td className="px-3 py-2 text-left text-gray-600">{l.uom || "—"}</td>
                                   <td className="px-3 py-2 text-right font-medium text-gray-800">{numOrDash(l.mtrQty)}</td>
                                   <td className="px-3 py-2 text-right">
-                                    <div className="flex items-center justify-end gap-1">
-                                      <input
-                                        type="number" min="0" max={l.mtrQty}
-                                        value={stockVal}
-                                        onChange={(e) => handleStockChange(l.id, e.target.value)}
-                                        className="w-20 h-8 rounded border border-blue-300 px-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                      />
-                                      {isEditing && (
-                                        <button onClick={() => handleStockSave(req, l)}
-                                          disabled={savingStock[l.id]}
-                                          className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
-                                          {savingStock[l.id] ? "..." : "Save"}
-                                        </button>
-                                      )}
-                                    </div>
+                                    {isEditing ? (
+                                      <div className="flex flex-col items-end gap-1">
+                                        <div className="flex items-center justify-end gap-1">
+                                          <input
+                                            type="number" min="0" max={l.mtrQty}
+                                            value={stockVal}
+                                            onChange={(e) => handleStockChange(l.id, e.target.value)}
+                                            className="w-20 h-8 rounded border border-blue-300 px-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                          <button onClick={() => handleStockSave(req, l)}
+                                            disabled={savingStock[l.id]}
+                                            className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50">
+                                            {savingStock[l.id] ? "..." : "Save"}
+                                          </button>
+                                          <button onClick={() => cancelEditingLine(l.id)}
+                                            className="px-2 py-1 text-xs rounded bg-gray-200 text-gray-700 hover:bg-gray-300">
+                                            ✕
+                                          </button>
+                                        </div>
+                                        <textarea
+                                          value={remarksVal}
+                                          onChange={(e) => handleRemarksChange(l.id, e.target.value)}
+                                          placeholder="Remark for purchase..."
+                                          rows={2}
+                                          className="w-48 rounded border border-blue-300 px-2 py-1 text-xs text-left focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-col items-end gap-1">
+                                        <div className="flex items-center justify-end gap-1">
+                                          <span className="text-gray-700">{numOrDash(l.stockAlloted)}</span>
+                                          <button onClick={() => startEditingLine(l)}
+                                            title="Edit stock allotted / remark"
+                                            className="p-1 rounded text-blue-600 hover:bg-blue-50">
+                                            ✎
+                                          </button>
+                                        </div>
+                                        {l.remarks && (
+                                          <div className="w-48 text-[10px] text-gray-500 italic text-right break-words">"{l.remarks}"</div>
+                                        )}
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="px-3 py-2 text-right text-gray-600">{numOrDash(purchaseVal)}</td>
                                   <td className="px-3 py-2 text-right text-gray-600 pr-4">

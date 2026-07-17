@@ -214,6 +214,8 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
                           <thead className="bg-gray-100 text-gray-700 text-xs">
                             <tr>
                               <th className="text-left px-4 py-2 pl-10 font-semibold">Item</th>
+                              <th className="text-left px-3 py-2 font-semibold">Make</th>
+                              <th className="text-left px-3 py-2 font-semibold">UOM</th>
                               <th className="text-right px-3 py-2 font-semibold">MTR Qty</th>
                               <th className="text-right px-3 py-2 font-semibold">Stock Allotted</th>
                               <th className="text-right px-3 py-2 font-semibold">Purchase Qty</th>
@@ -236,11 +238,17 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
                                         {l.priority || "MEDIUM"}
                                       </span>
                                       {l.expectedDeliveryDate && <span className="text-[10px] text-gray-500">📅 {new Date(l.expectedDeliveryDate).toLocaleDateString()}</span>}
-                                      {l.remarks && <span className="text-[10px] text-gray-500 italic">"{l.remarks}"</span>}
                                     </div>
                                   </td>
+                                  <td className="px-3 py-2 text-left text-gray-600">{l.make || "—"}</td>
+                                  <td className="px-3 py-2 text-left text-gray-600">{l.uom || "—"}</td>
                                   <td className="px-3 py-2 text-right font-medium text-gray-800">{numOrDash(l.mtrQty)}</td>
-                                  <td className="px-3 py-2 text-right text-gray-700">{numOrDash(l.stockAlloted)}</td>
+                                  <td className="px-3 py-2 text-right text-gray-700">
+                                    {numOrDash(l.stockAlloted)}
+                                    {l.remarks && (
+                                      <div className="text-[10px] text-gray-500 italic text-right break-words">"{l.remarks}"</div>
+                                    )}
+                                  </td>
                                   <td className="px-3 py-2 text-right text-gray-600">{numOrDash(l.purchaseMTR)}</td>
                                   <td className="px-3 py-2 text-right text-gray-600">
                                     <span className={(l.mtrQty || 0) - (l.dcQty || 0) > 0 ? "text-red-600 font-semibold" : ""}>
