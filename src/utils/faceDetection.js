@@ -1,17 +1,22 @@
-import * as faceapi from "face-api.js"
-
+let faceapi = null
 let modelsLoaded = false
+
+const loadFaceapi = async () => {
+  if (!faceapi) {
+    faceapi = await import("face-api.js")
+  }
+  return faceapi
+}
 
 export const initializeFaceDetection = async () => {
   if (modelsLoaded) return
-
   const MODEL_URL = "/models"
-
   try {
+    const fa = await loadFaceapi()
     await Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-      faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-      faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+      fa.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      fa.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+      fa.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
     ])
     modelsLoaded = true
     return true
@@ -25,14 +30,13 @@ export const detectFace = async (imageElement) => {
   if (!modelsLoaded) {
     await initializeFaceDetection()
   }
-
-  const options = new faceapi.TinyFaceDetectorOptions({
+  const fa = await loadFaceapi()
+  const options = new fa.TinyFaceDetectorOptions({
     inputSize: 512,
     scoreThreshold: 0.5,
   })
-
   try {
-    const detection = await faceapi.detectSingleFace(imageElement, options)
+    const detection = await fa.detectSingleFace(imageElement, options)
     return !!detection
   } catch (error) {
     console.error("Error detecting face:", error)
