@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { projectService } from "../../services/projectService"
 import CreateRequisition from "./CreateRequisition"
+import { useAuth } from "../../contexts/AuthContext"
 
 const formatDate = (dateString) => {
   if (!dateString) return ""
@@ -31,6 +32,7 @@ const statusBadge = (s) => {
 const numOrDash = (v) => (v === null || v === undefined || v === "" ? "—" : v)
 
 export default function ProjectMaterialRequisition({ mode = "pm", assignedProjectIds = null }) {
+  const { user } = useAuth()
   const [requisitions, setRequisitions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -72,7 +74,7 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
   const handleApproval = async (req, status) => {
     const remarks = status === "REJECTED" ? prompt("Rejection reason (optional):") ?? "" : ""
     try {
-      await projectService.setRequisitionApproval(req.projectId, req.id, status, remarks)
+      await projectService.setRequisitionApproval(req.projectId, req.id, status, remarks, user?.userId)
       fetchRequisitions()
     } catch (e) {
       alert("Failed to update approval: " + (e?.response?.data?.message || e.message))
@@ -82,7 +84,12 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
   const hasLineFilter = !!productQuery || priorityFilter !== "All" || !!requiredOnDate || !!remarkQuery
 
   const lineMatches = (l) => {
-    if (productQuery && !(l.productName || "").toLowerCase().includes(productQuery.toLowerCase())) return false
+    if (productQuery) {
+      const q = productQuery.toLowerCase()
+      const matchesName = (l.productName || "").toLowerCase().includes(q)
+      const matchesCode = (l.productCode || "").toLowerCase().includes(q)
+      if (!matchesName && !matchesCode) return false
+    }
     if (priorityFilter !== "All" && (l.priority || "MEDIUM").toUpperCase() !== priorityFilter) return false
     if (requiredOnDate) {
       if (!l.expectedDeliveryDate) return false
@@ -127,8 +134,8 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
                 className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-blue-800">Product name</label>
-              <input type="text" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Search item..."
+              <label className="text-xs font-medium text-blue-800">Product name / code</label>
+              <input type="text" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Search item name or code..."
                 className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" />
             </div>
             <div className="flex flex-col gap-1">
@@ -196,11 +203,19 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
                     <div className="flex items-center justify-between px-4 py-3">
                       <button onClick={() => toggle(req.id)} className="flex items-center gap-2 text-left flex-1 min-w-0">
                         <span className="text-gray-500 w-4">{open ? "▾" : "▸"}</span>
-                        <span className="font-semibold text-gray-800">
-                          {req.projectName || "Project"} — Requisition {req.requisitionNo}
-                        </span>
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(req.status)}`}>{req.status}</span>
-                        <span className="text-xs text-gray-400">({count} item{count !== 1 ? "s" : ""})</span>
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-800">
+                              {req.projectName || "Project"} — Requisition {req.requisitionNo}
+                            </span>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(req.status)}`}>{req.status}</span>
+                            <span className="text-xs text-gray-400">({count} item{count !== 1 ? "s" : ""})</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-0.5">
+                            {req.createdByName && <span>Filled by: {req.createdByName}</span>}
+                            {req.approvedByName && <span>Approved by: {req.approvedByName}</span>}
+                          </div>
+                        </div>
                       </button>
                       <span className="text-xs text-gray-400 shrink-0">{formatDate(req.createdAt)}</span>
                       <div className="flex items-center gap-2 ml-3 shrink-0">
@@ -256,6 +271,11 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
                                     <span className="flex items-center gap-2">
                                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${meta.cls}`}>{meta.label}</span>
                                       <span className="text-gray-700">{l.productName}</span>
+                                      {l.productCode && (
+                                        <span className="text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                                          {l.productCode}
+                                        </span>
+                                      )}
                                     </span>
                                     <div className="flex items-center gap-3 mt-1 pl-1">
                                       <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${l.priority === "HIGH" ? "bg-red-100 text-red-700" : l.priority === "LOW" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>

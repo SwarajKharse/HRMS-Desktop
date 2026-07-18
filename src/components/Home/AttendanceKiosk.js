@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import * as faceapi from "face-api.js";
 import { authService } from "../../services/authService";
 import { attendanceService } from "../../services/attendanceService";
 import { FiCheck, FiX, FiLoader, FiClock, FiCamera, FiAlertCircle } from "react-icons/fi";
@@ -8,6 +7,7 @@ const AttendanceKiosk = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const detectionIntervalRef = useRef(null);
+  const faceapiRef = useRef(null);
 
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -26,6 +26,8 @@ const AttendanceKiosk = () => {
     const loadModels = async () => {
       const MODEL_URL = "/models";
       try {
+        const faceapi = await import("face-api.js");
+        faceapiRef.current = faceapi;
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -88,6 +90,9 @@ const AttendanceKiosk = () => {
       }
 
       try {
+        const faceapi = faceapiRef.current;
+        if (!faceapi) return;
+
         const options = new faceapi.TinyFaceDetectorOptions({
           inputSize: 512,
           scoreThreshold: 0.5,

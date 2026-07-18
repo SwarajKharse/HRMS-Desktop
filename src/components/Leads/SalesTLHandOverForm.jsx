@@ -247,6 +247,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
               salestlApprovalRemarks: item.salestlApprovalRemarks,
               pmApprovalDate: item.pmApprovalDate,
               salestlApprovalDate: item.salestlApprovalDate,
+              mtrs: item.mtrs || [],
             })),
           }
           setExistingBOQData(existingBOQ)

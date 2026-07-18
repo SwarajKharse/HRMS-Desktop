@@ -280,9 +280,9 @@ export const projectService = {
       throw error
     }
   },
-  setRequisitionApproval: async (projectId, requisitionId, status, remarks = "") => {
+  setRequisitionApproval: async (projectId, requisitionId, status, remarks = "", currentUserId) => {
     try {
-      const response = await axios.put(`${API_URL}/projects/${projectId}/requisitions/${requisitionId}/approval`, { status, remarks }, getAuthHeaders())
+      const response = await axios.put(`${API_URL}/projects/${projectId}/requisitions/${requisitionId}/approval`, { status, remarks, currentUserId: currentUserId != null ? String(currentUserId) : undefined }, getAuthHeaders())
       return response.data
     } catch (error) {
       console.error("Error setting requisition approval:", error.response ? error.response.data : error.message)

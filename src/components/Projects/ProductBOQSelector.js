@@ -47,6 +47,8 @@ function ProductBOQSelector({
   const [activeProductSearch, setActiveProductSearch] = useState(null) // Stores the categoryId (leadProductTypeId) for which product search is active
   const [filteredProducts, setFilteredProducts] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
+  const [addedItemSearch, setAddedItemSearch] = useState("")
+  const [lastAddedProductId, setLastAddedProductId] = useState(null)
   const [showDropdown, setShowDropdown] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -292,10 +294,12 @@ function ProductBOQSelector({
           initialSupplyRate,
           initialInstallationRate,
         )
+        const requisitionedQty = (item.mtrs || []).reduce((sum, mtr) => sum + (Number(mtr.mtrQty) || 0), 0)
         const product = {
           id: item.id,
           productId: item.product.id,
           productName: item.product.productName || "Unknown Product",
+          itemCode: item.product.itemCode || "",
           hsnCode: item.product.hsnCode || "",
           productDescription: item.product.productDescription || "",
           productQty: item.product.productQty || 0,
@@ -311,6 +315,7 @@ function ProductBOQSelector({
           leadProductTypeId: categoryId,
           categoryInfo: extractCategoryInfo(item.product),
           isExisting: true,
+          requisitionedQty,
           pmApprovalStatus: item.pmApprovalStatus,
           salestlApprovalStatus: item.salestlApprovalStatus,
           pmApprovalRemarks: item.pmApprovalRemarks,
@@ -364,6 +369,15 @@ function ProductBOQSelector({
     }
   }, [selectedProductsByCategory, onProductCountChange])
   // </CHANGE>
+
+  useEffect(() => {
+    if (!lastAddedProductId) return
+    const row = document.getElementById(`boq-product-${lastAddedProductId}`)
+    if (row) {
+      row.scrollIntoView({ behavior: "smooth", block: "center" })
+    }
+    setLastAddedProductId(null)
+  }, [selectedProductsByCategory, lastAddedProductId])
 
   const extractCategoryInfo = (product) => {
     if (!product)
@@ -509,10 +523,12 @@ function ProductBOQSelector({
       product.supplyRate || 0,
       product.installationRate || 0,
     )
+    const newProductId = Date.now()
     const updatedProduct = {
-      id: Date.now(),
+      id: newProductId,
       productId: product.id,
       productName: product.productName || product.product_name || "Unknown Product",
+      itemCode: product.itemCode || product.item_code || "",
       hsnCode: product.hsnCode || product.hsn_code || "",
       productDescription: product.productDescription || product.product_description || "",
       productQty: product.productQty || product.product_qty || 0,
@@ -540,6 +556,8 @@ function ProductBOQSelector({
       ...prev,
       [activeProductSearch]: [...(prev[activeProductSearch] || []), updatedProduct],
     }))
+    setExpandedCategories((prev) => ({ ...prev, [activeProductSearch]: true }))
+    setLastAddedProductId(newProductId)
     setShowDropdown(false)
     setSearchTerm("")
     setActiveProductSearch(null)
@@ -549,6 +567,16 @@ function ProductBOQSelector({
     setSelectedProductsByCategory((prev) => {
       const updatedCategoryProducts = prev[categoryId].map((product) => {
         if (product.id === productId) {
+          if (field === "qty") {
+            const requisitionedQty = product.requisitionedQty || 0
+            const numericValue = Number.parseFloat(value)
+            if (value !== "" && !Number.isNaN(numericValue) && numericValue < requisitionedQty) {
+              alert(
+                `Cannot decrease qty for "${product.productName}" below ${requisitionedQty} — that quantity has already been requisitioned.`,
+              )
+              return product
+            }
+          }
           const updatedProduct = { ...product, [field]: value }
           if (field === "qty" || field === "supplyRate" || field === "installationRate") {
             const { supplyAmount, installationAmount, total } = calculateAmounts(
@@ -572,6 +600,13 @@ function ProductBOQSelector({
   }
 
   const handleRemoveProduct = (categoryId, productId) => {
+    const product = (selectedProductsByCategory[categoryId] || []).find((p) => p.id === productId)
+    if (product && (product.requisitionedQty || 0) > 0) {
+      alert(
+        `Cannot delete "${product.productName}" — it already has ${product.requisitionedQty} requisitioned against it.`,
+      )
+      return
+    }
     setSelectedProductsByCategory((prev) => {
       const updatedCategory = prev[categoryId].filter((product) => product.id !== productId)
       if (updatedCategory.length === 0) {
@@ -639,14 +674,27 @@ function ProductBOQSelector({
       products.map((product) => ({ ...product, leadProductTypeId: Number.parseInt(categoryId) })),
     )
     if (allProducts.length === 0) {
-      setError("Please add at least one product to the BOQ")
+      const msg = "Please add at least one product to the BOQ"
+      alert(msg)
+      setError(msg)
       return
     }
     const invalidProducts = allProducts.filter(
       (p) => !p.qty || Number.parseFloat(p.qty) <= 0
     )
     if (invalidProducts.length > 0) {
-      setError("Please enter valid quantities for all products")
+      const names = invalidProducts.map((p) => p.productName || "Unknown Product").join("\n• ")
+      const msg = `Please enter a valid quantity for the following item(s):\n\n• ${names}`
+      alert(msg)
+      setError(`Invalid quantity for: ${invalidProducts.map((p) => p.productName || "Unknown Product").join(", ")}`)
+      return
+    }
+    const missingMakeProducts = allProducts.filter((p) => !p.make || !p.make.trim())
+    if (missingMakeProducts.length > 0) {
+      const names = missingMakeProducts.map((p) => p.productName || "Unknown Product").join("\n• ")
+      const msg = `Please enter "Make" for the following item(s) before saving:\n\n• ${names}`
+      alert(msg)
+      setError(`Make missing for: ${missingMakeProducts.map((p) => p.productName || "Unknown Product").join(", ")}`)
       return
     }
     setSaving(true)
@@ -703,7 +751,9 @@ function ProductBOQSelector({
       }
       } catch (err) {
       console.error("Error saving BOQ:", err)
-      setError(`Failed to save BOQ: ${err.message || err}`)
+      const backendMsg = err?.response?.data?.message || err?.response?.data || err.message || err
+      alert(`Failed to save BOQ: ${backendMsg}`)
+      setError(`Failed to save BOQ: ${backendMsg}`)
     } finally {
       setSaving(false)
     }
@@ -912,19 +962,47 @@ function ProductBOQSelector({
         )}
         {selectedCategories.length > 0 && (
           <div className="mt-6">
-            <h4 className="font-medium mb-4">
-              BOQ Categories ({selectedCategories.length} categories, {getTotalProductCount()} total items)
-            </h4>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <h4 className="font-medium">
+                BOQ Categories ({selectedCategories.length} categories, {getTotalProductCount()} total items)
+              </h4>
+              <div className="relative w-full sm:w-72">
+                <FiSearch className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                <input
+                  type="text"
+                  value={addedItemSearch}
+                  onChange={(e) => setAddedItemSearch(e.target.value)}
+                  placeholder="Filter by item name or code..."
+                  className="w-full pl-7 pr-3 py-1.5 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+            </div>
             {selectedCategories.map((category) => {
-              const categoryProducts = selectedProductsByCategory[category.id] || []
+              const allCategoryProducts = selectedProductsByCategory[category.id] || []
+              const categoryProducts = addedItemSearch
+                ? allCategoryProducts.filter((p) => {
+                    const q = addedItemSearch.toLowerCase()
+                    return (
+                      (p.productName || "").toLowerCase().includes(q) ||
+                      (p.itemCode || "").toLowerCase().includes(q)
+                    )
+                  })
+                : allCategoryProducts
+              const categorySupplyTotal = allCategoryProducts.reduce((s, p) => s + (p.supplyAmount || 0), 0)
+              const categoryInstallationTotal = allCategoryProducts.reduce(
+                (s, p) => s + (p.installationAmount || 0),
+                0,
+              )
+              const isExpanded = addedItemSearch ? categoryProducts.length > 0 : !!expandedCategories[category.id]
               return (
                 <div key={category.id} className="mb-4 border rounded-lg">
-                  <div className="flex items-center justify-between p-3 bg-gray-50">
+                  <div className="p-3 bg-gray-50">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div
                       className="flex items-center cursor-pointer hover:bg-gray-100 transition-colors flex-1 -m-3 p-3"
-                      onClick={() => toggleCategoryExpansion(category.id)}
+                      onClick={() => !addedItemSearch && toggleCategoryExpansion(category.id)}
                     >
-                      {expandedCategories[category.id] ? (
+                      {isExpanded ? (
                         <FiChevronDown className="mr-2 text-gray-500" />
                       ) : (
                         <FiChevronRight className="mr-2 text-gray-500" />
@@ -969,10 +1047,24 @@ function ProductBOQSelector({
                       Add Product
                     </button>
                   </div>
-                  {expandedCategories[category.id] && (
+                  <div className="flex items-center gap-6 mt-2 pt-2 border-t border-gray-200 text-xs whitespace-nowrap overflow-x-auto">
+                    <span className="font-medium text-purple-700">
+                      Supply: <span className="tabular-nums">₹{categorySupplyTotal.toFixed(2)}</span>
+                    </span>
+                    <span className="font-medium text-amber-600">
+                      Installation: <span className="tabular-nums">₹{categoryInstallationTotal.toFixed(2)}</span>
+                    </span>
+                    <span className="font-medium text-green-700">
+                      Total: <span className="tabular-nums">₹{(categorySupplyTotal + categoryInstallationTotal).toFixed(2)}</span>
+                    </span>
+                  </div>
+                  </div>
+                  {isExpanded && (
                     <div className="overflow-x-auto">
-                      {categoryProducts.length === 0 ? (
+                      {allCategoryProducts.length === 0 ? (
                         <div className="p-4 text-center text-gray-500">No products added to this category yet.</div>
+                      ) : categoryProducts.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">No items match your filter.</div>
                       ) : (
                         <table className="min-w-full divide-y divide-gray-200">
                           <thead>
@@ -1021,7 +1113,12 @@ function ProductBOQSelector({
                             {categoryProducts.map((product, index) => {
                               const categoryInfo = product.categoryInfo || extractCategoryInfo(product)
                               return (
-                                <tr key={product.id} className={index % 2 === 0 ? "bg-gray-50" : ""}>
+                                <tr
+                                  key={product.id}
+                                  id={`boq-product-${product.id}`}
+                                  className={index % 2 === 0 ? "bg-gray-50" : ""}
+                                >
+
                                   {approvalSelectionMode[category.id] && (
                                     <td className="px-3 py-2">
                                       <input
@@ -1041,11 +1138,18 @@ function ProductBOQSelector({
                                     </td>
                                   )}
                                   <td className="px-3 py-2">
-                                    <div
-                                      className="text-sm font-medium truncate max-w-xs"
-                                      title={product.productName || "Unnamed Product"}
-                                    >
-                                      {product.productName || "Unnamed Product"}
+                                    <div className="flex items-center gap-1.5 max-w-xs">
+                                      {product.itemCode && (
+                                        <span className="shrink-0 text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                                          {product.itemCode}
+                                        </span>
+                                      )}
+                                      <span
+                                        className="text-sm font-medium truncate"
+                                        title={product.productName || "Unnamed Product"}
+                                      >
+                                        {product.productName || "Unnamed Product"}
+                                      </span>
                                     </div>
                                     <div className="text-xs text-gray-500">HSN: {product.hsnCode || "N/A"}</div>
                                     <div className="text-xs text-gray-400">Available: {product.productQty || "0"}</div>
@@ -1214,6 +1318,26 @@ function ProductBOQSelector({
                               )
                             })}
                           </tbody>
+                          <tfoot>
+                            <tr className="bg-gray-100 font-semibold">
+                              <td
+                                colSpan={(approvalSelectionMode[category.id] ? 1 : 0) + 5}
+                                className="px-3 py-2 text-sm text-right text-gray-700"
+                              >
+                                Total of {category.name}
+                              </td>
+                              <td className="px-3 py-2 text-sm text-purple-700">
+                                ₹{categorySupplyTotal.toFixed(2)}
+                              </td>
+                              <td className="px-3 py-2 text-sm text-amber-600">
+                                ₹{categoryInstallationTotal.toFixed(2)}
+                              </td>
+                              <td className="px-3 py-2 text-sm text-green-700">
+                                ₹{(categorySupplyTotal + categoryInstallationTotal).toFixed(2)}
+                              </td>
+                              <td colSpan={3} />
+                            </tr>
+                          </tfoot>
                         </table>
                       )}
                     </div>

@@ -42,7 +42,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
   const keyCounter = useRef(0)
   const nextKey = (prefix) => `${prefix}-${keyCounter.current++}`
 
-  const seedDefaultSheet = () => {
+  const seedDefaultSheet = (detail) => {
     const itemLineKey = nextKey("line")
     setLines([
       {
@@ -53,8 +53,9 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         boqMtrId: itemKind === "CATEGORY" ? null : mtr.id,
         boqCategoryMtrId: itemKind === "CATEGORY" ? mtr.id : null,
         itemName: mtr.productName,
-        make: mtr.make || "",
-        uom: mtr.uom || "",
+        productCode: detail?.productCode || mtr.productCode || "",
+        make: detail?.make || mtr.make || "",
+        uom: detail?.uom || mtr.uom || "",
         qty: mtr.purchaseMTR || 0,
       },
       { key: "misc", id: null, lineType: "MISC_EXPENSE", itemName: "Miscellaneous expense", qty: null },
@@ -81,6 +82,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         boqMtrId: l.boqMtrId,
         boqCategoryMtrId: l.boqCategoryMtrId,
         itemName: l.itemName,
+        productCode: l.productCode || "",
         make: l.make || "",
         uom: l.uom || "",
         qty: l.qty,
@@ -123,7 +125,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         } else {
           setComparisonSheetCreated(false)
           setComparisonSheetId(null)
-          seedDefaultSheet()
+          seedDefaultSheet(mtrWithSheet)
         }
       } catch (err) {
         console.error("Error loading comparison sheet data:", err)
@@ -166,6 +168,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
       boqMtrId: (m.type || "BILLABLE") === "CATEGORY" ? null : m.id,
       boqCategoryMtrId: (m.type || "BILLABLE") === "CATEGORY" ? m.id : null,
       itemName: m.productName,
+      productCode: m.productCode || "",
       make: m.make || "",
       uom: m.uom || "",
       qty: m.purchaseMTR || 0,
@@ -216,7 +219,10 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
   })
   const rankBadgeClass = { 1: "bg-green-100 text-green-800", 2: "bg-blue-100 text-blue-800", 3: "bg-amber-100 text-amber-800" }
 
+  const MIN_VENDOR_COLUMNS = 3
+
   const removeVendorColumn = (colKey) => {
+    if (vendorColumns.length <= MIN_VENDOR_COLUMNS) return
     setVendorColumns((prev) => prev.filter((c) => c.key !== colKey))
     setCells((prev) => {
       const next = {}
@@ -529,6 +535,9 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                                     Item
                                   </th>
                                   <th rowSpan={2} className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r align-bottom">
+                                    Code
+                                  </th>
+                                  <th rowSpan={2} className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r align-bottom">
                                     Make
                                   </th>
                                   <th rowSpan={2} className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r align-bottom">
@@ -559,7 +568,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                                               />
                                             )}
                                           </div>
-                                          {!isManagerMode && !isApproved && (
+                                          {!isManagerMode && !isApproved && vendorColumns.length > MIN_VENDOR_COLUMNS && (
                                             <button
                                               onClick={() => removeVendorColumn(col.key)}
                                               title="Remove vendor"
@@ -588,6 +597,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                                 {itemLines.map((line) => (
                                   <tr key={line.key} className="border-b hover:bg-gray-50">
                                     <td className="px-3 py-2 border-r">{line.itemName}</td>
+                                    <td className="px-3 py-2 border-r font-mono text-xs text-blue-700">{line.productCode || "—"}</td>
                                     <td className="px-3 py-2 border-r">{line.make || "—"}</td>
                                     <td className="px-3 py-2 border-r">{line.uom || "—"}</td>
                                     <td className="px-3 py-2 border-r">{line.qty ?? "—"}</td>
@@ -635,7 +645,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
 
                                 {fixedLines.map((line) => (
                                   <tr key={line.key} className="border-b bg-gray-50">
-                                    <td colSpan={4} className="px-3 py-2 border-r font-medium text-gray-600 italic">
+                                    <td colSpan={5} className="px-3 py-2 border-r font-medium text-gray-600 italic">
                                       {line.itemName}
                                     </td>
                                     {vendorColumns.map((col) => {
@@ -662,7 +672,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                                 ))}
 
                                 <tr className="bg-amber-50 font-semibold">
-                                  <td colSpan={4} className="px-3 py-2 border-r text-right">
+                                  <td colSpan={5} className="px-3 py-2 border-r text-right">
                                     Total
                                   </td>
                                   {vendorColumns.map((col) => {
