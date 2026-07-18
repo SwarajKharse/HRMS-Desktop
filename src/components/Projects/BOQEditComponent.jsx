@@ -580,6 +580,7 @@ function BOQEditComponent({
               id: item.id, // CRITICAL CHANGE: Use item.id directly for existing BOQ items
               product_id: product.id || 0, // This is the ProductsMaster ID
               product_name: product.productName || product.product_name || product.name || "Unknown Product", // Prioritize productName
+              item_code: product.itemCode || product.item_code || "",
               hsn_code: product.hsnCode || product.hsn_code || "",
               product_description: product.productDescription || product.product_description || "",
               qty: item.totalQty || 0,
@@ -2021,7 +2022,17 @@ function BOQEditComponent({
                                         <AiOutlineArrowDown size={16} className="mt-1 text-gray-400 flex-shrink-0" />
                                       )}
                                       <div className="min-w-0">
-                                        <div className="font-semibold text-base break-words">{product.product_name}</div>
+                                        <div
+                                          className="font-semibold text-base break-words"
+                                          title={product.product_name}
+                                        >
+                                          {product.item_code && (
+                                            <span className="mr-2 text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded align-middle">
+                                              {product.item_code}
+                                            </span>
+                                          )}
+                                          {product.product_name}
+                                        </div>
                                         {isOpen && (
                                           <div className="text-sm text-gray-500 mt-0.5">
                                             · UOM: {product.uom}  · Make: {product.make || "N/A"} . HSN: {product.hsn_code}

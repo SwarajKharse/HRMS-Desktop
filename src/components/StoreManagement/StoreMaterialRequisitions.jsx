@@ -61,7 +61,12 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
   const hasLineFilter = !!productQuery || priorityFilter !== "All" || !!requiredOnDate || !!remarkQuery
 
   const lineMatches = (l) => {
-    if (productQuery && !(l.productName || "").toLowerCase().includes(productQuery.toLowerCase())) return false
+    if (productQuery) {
+      const q = productQuery.toLowerCase()
+      const matchesName = (l.productName || "").toLowerCase().includes(q)
+      const matchesCode = (l.productCode || "").toLowerCase().includes(q)
+      if (!matchesName && !matchesCode) return false
+    }
     if (priorityFilter !== "All" && (l.priority || "MEDIUM").toUpperCase() !== priorityFilter) return false
     if (requiredOnDate) {
       if (!l.expectedDeliveryDate) return false
@@ -156,8 +161,8 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
                 className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium text-blue-800">Product name</label>
-              <input type="text" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Search item..."
+              <label className="text-xs font-medium text-blue-800">Product name / code</label>
+              <input type="text" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} placeholder="Search item name or code..."
                 className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             </div>
             <div className="flex flex-col gap-1">
@@ -212,10 +217,18 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
                     <div className="flex items-center justify-between px-4 py-3">
                       <button onClick={() => toggle(req.id)} className="flex items-center gap-2 text-left flex-1 min-w-0">
                         <span className="text-gray-500 w-4">{open ? "▾" : "▸"}</span>
-                        <span className="font-semibold text-gray-800">
-                          {req.projectName || "Project"} — Requisition {req.requisitionNo}
-                        </span>
-                        <span className="text-xs text-gray-400">({lines.length} item{lines.length !== 1 ? "s" : ""})</span>
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-800">
+                              {req.projectName || "Project"} — Requisition {req.requisitionNo}
+                            </span>
+                            <span className="text-xs text-gray-400">({lines.length} item{lines.length !== 1 ? "s" : ""})</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] text-gray-500 mt-0.5">
+                            {req.createdByName && <span>Filled by: {req.createdByName}</span>}
+                            {req.approvedByName && <span>Approved by: {req.approvedByName}</span>}
+                          </div>
+                        </div>
                       </button>
                       <span className="text-xs text-gray-400 shrink-0 flex flex-col items-end gap-0.5">
                         <span>Created: {formatDate(req.createdAt)}</span>
@@ -251,6 +264,11 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
                                     <span className="flex items-center gap-2">
                                       <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${meta.cls}`}>{meta.label}</span>
                                       <span className="text-gray-700">{l.productName}</span>
+                                      {l.productCode && (
+                                        <span className="text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                                          {l.productCode}
+                                        </span>
+                                      )}
                                     </span>
                                     <div className="flex items-center gap-3 mt-1 pl-1">
                                       <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${l.priority === "HIGH" ? "bg-red-100 text-red-700" : l.priority === "LOW" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>

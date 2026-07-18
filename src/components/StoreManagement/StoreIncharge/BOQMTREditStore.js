@@ -153,6 +153,7 @@ function BOQMTREditStore({ projectId, projectName, existingBOQ, onSave, onClose 
             id: item.id || Date.now() + Math.random(),
             product_id: product.id || 0,
             product_name: product.productName || product.product_name || product.name || "Unknown Product",
+            item_code: product.itemCode || product.item_code || "",
             hsn_code: product.hsnCode || product.hsn_code || "",
             product_description: product.productDescription || product.product_description || "",
             qty: item.totalQty || 0,
@@ -1484,7 +1485,14 @@ function BOQMTREditStore({ projectId, projectName, existingBOQ, onSave, onClose 
                                 <div className="p-4 bg-white border-b rounded-t-lg">
                                   <div className="flex items-center justify-between">
                                     <div className="flex-1">
-                                      <h4 className="font-semibold text-lg">{product.product_name}</h4>
+                                      <h4 className="font-semibold text-lg" title={product.product_name}>
+                                        {product.item_code && (
+                                          <span className="mr-2 text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded align-middle">
+                                            {product.item_code}
+                                          </span>
+                                        )}
+                                        {product.product_name}
+                                      </h4>
                                       <div className="text-sm text-gray-500 mt-1">
                                         HSN: {product.hsn_code} | UOM: {product.uom} | Qty: {product.qty} | Make:{" "}
                                         {product.make || "N/A"}
