@@ -8,6 +8,7 @@ import { FiX } from "react-icons/fi"
 import { leadService } from "../../services/leadService"
 import { projectService } from "../../services/projectService"
 // import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 // Mock services and context for demonstration purposes
 // You should replace these with your actual service and context imports
@@ -193,7 +194,7 @@ function ProjectLeadDetails({ project, activeTab, onClose, onSubmit }) {
         setSEList(siteEngineers)
         console.log("Fetched lead details:", leadDetails)
       } catch (err) {
-        setError("Failed to load lead details or related lists.")
+        setError(getErrorMessage(err, "Failed to load lead details or related lists."))
         console.error(err)
         setLead(null)
       } finally {
@@ -276,7 +277,7 @@ function ProjectLeadDetails({ project, activeTab, onClose, onSubmit }) {
       // onClose will be called from parent after successful submission
     } catch (err) {
       console.log("[v0] Error in handleSubmit:", err)
-      setError(err.message || "Failed to update project")
+      setError(getErrorMessage(err, "Failed to update project"))
       window.scrollTo(0, 0)
     } finally {
       setLoading(false)

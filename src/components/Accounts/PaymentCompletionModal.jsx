@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { FiAlertCircle, FiCheck, FiUpload, FiX, FiCalendar, FiFileText } from "react-icons/fi"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
   const [approvalStatus, setApprovalStatus] = useState("APPROVED")
@@ -76,7 +77,7 @@ function PaymentCompletionModal({ isOpen, onClose, invoice, onComplete }) {
       onComplete(updatedInvoice)
       onClose()
     } catch (err) {
-      setError(err.response?.data?.error || "Failed to complete payment")
+      setError(getErrorMessage(err, "Failed to complete payment"))
     } finally {
       setLoading(false)
     }

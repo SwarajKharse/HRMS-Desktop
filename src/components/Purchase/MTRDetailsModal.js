@@ -6,6 +6,7 @@ import { comparisonSheetService } from "../../services/comparisonSheetService"
 import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { useAuth } from "../../contexts/AuthContext"
 import { employeeService } from "../../services/employeeService" //added by Atharva
+import { getErrorMessage } from "../../utils/errorUtils"
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -180,7 +181,7 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
       }
     } catch (error) {
       console.error("Error assigning purchaser:", error)
-      setError("Failed to assign purchaser. Please try again.")
+      setError(getErrorMessage(error, "Failed to assign purchaser. Please try again."))
     } finally {
       setLoading(false)
     }
@@ -211,7 +212,7 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
       }
     } catch (error) {
       console.error("Error updating PM approval:", error)
-      setError("Failed to update PM approval status. Please try again.")
+      setError(getErrorMessage(error, "Failed to update PM approval status. Please try again."))
     } finally {
       setPmApprovalLoading(false)
     }
@@ -252,7 +253,7 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
       }
     } catch (error) {
       console.error("Error updating PO approval:", error)
-      setError("Failed to update PO approval status. Please try again.")
+      setError(getErrorMessage(error, "Failed to update PO approval status. Please try again."))
     } finally {
       setPOApprovalLoading(false)
     }
@@ -293,7 +294,7 @@ export default function MTRDetailsModal({ mtr, onClose, onSave }) {
       }
     } catch (error) {
       console.error("Error updating PI approval:", error)
-      setError("Failed to update Purchase Invoice approval status. Please try again.")
+      setError(getErrorMessage(error, "Failed to update Purchase Invoice approval status. Please try again."))
     } finally {
       setPIApprovalLoading(false)
     }

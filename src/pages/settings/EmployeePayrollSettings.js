@@ -18,6 +18,7 @@ import { payrollSettingsService } from "../../services/payrollSettingsService"
 import { allowanceService } from "../../services/allowanceService"
 import { deductionService } from "../../services/deductionService"
 import { bonusService } from "../../services/bonusService"
+import { getErrorMessage } from "../../utils/errorUtils"
 import PayrollDialog from "../../components/PayrollDialog"
 import MonthlyDataDialog from "../../components/PaySlipForms/MonthlyDataDialog"
 import AllowanceForm from "../../components/PaySlipForms/AllowanceForm"
@@ -63,7 +64,7 @@ function EmployeePayroll() {
       setEmployees(data)
       setError(null)
     } catch (err) {
-      setError("Failed to load employees")
+      setError(getErrorMessage(err, "Failed to load employees"))
     } finally {
       setLoading(false)
     }
@@ -94,7 +95,7 @@ function EmployeePayroll() {
             break
         }
       } catch (err) {
-        setError(`Failed to load ${type}s`)
+        setError(getErrorMessage(err, `Failed to load ${type}s`))
       } finally {
         setDataLoading(false)
       }
@@ -109,7 +110,7 @@ function EmployeePayroll() {
       setPayrollData(payroll)
       setShowDialog(true)
     } catch (err) {
-      setError("Failed to load payroll details")
+      setError(getErrorMessage(err, "Failed to load payroll details"))
     }
   }
 
@@ -156,7 +157,7 @@ function EmployeePayroll() {
       }
       await fetchMonthlyData(selectedEmployee.id, type)
     } catch (err) {
-      setError(`Failed to delete ${type}`)
+      setError(getErrorMessage(err, `Failed to delete ${type}`))
     }
   }
 
@@ -191,7 +192,7 @@ function EmployeePayroll() {
       setEditingItem(null)
       await fetchMonthlyData(selectedEmployee.id, type)
     } catch (err) {
-      setError(`Failed to ${editingItem ? "update" : "create"} ${type}`)
+      setError(getErrorMessage(err, `Failed to ${editingItem ? "update" : "create"} ${type}`))
     }
   }
 
@@ -202,7 +203,7 @@ function EmployeePayroll() {
       setSelectedEmployee(null)
       setPayrollData(null)
     } catch (err) {
-      throw new Error("Failed to save payroll details")
+      throw new Error(getErrorMessage(err, "Failed to save payroll details"))
     }
   }
 
@@ -219,7 +220,7 @@ function EmployeePayroll() {
       link.click()
       link.parentNode.removeChild(link)
     } catch (error) {
-      setError("Error exporting payroll details")
+      setError(getErrorMessage(error, "Error exporting payroll details"))
     } finally {
       setIsExporting(false)
     }
@@ -233,7 +234,7 @@ function EmployeePayroll() {
       await payrollSettingsService.importPayroll(file)
       alert("Payroll imported successfully!")
     } catch (error) {
-      setError("Error importing payroll details")
+      setError(getErrorMessage(error, "Error importing payroll details"))
     }
   }
 
@@ -492,7 +493,7 @@ function EmployeePayroll() {
                               setSuccessMessage("Payroll data imported successfully!")
                               setTimeout(() => setSuccessMessage(null), 3000)
                             } catch (error) {
-                              setError("Error importing payroll data. Please check your file and try again.")
+                              setError(getErrorMessage(error, "Error importing payroll data. Please check your file and try again."))
                             } finally {
                               setIsImporting(false)
                             }

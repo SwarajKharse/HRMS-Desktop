@@ -2,6 +2,7 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { FiX, FiUserX } from "react-icons/fi"
 import { terminationService } from "../../services/terminationService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function TerminationForm({ employee, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -20,7 +21,7 @@ function TerminationForm({ employee, onClose, onSubmit }) {
       onSubmit && onSubmit()
       onClose()
     } catch (err) {
-      setError(err.message || "Failed to apply termination")
+      setError(getErrorMessage(err, "Failed to apply termination"))
     } finally {
       setLoading(false)
     }

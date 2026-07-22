@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { dcQtyService } from "../../services/dcQtyService"
 import DCChalanUploadModal from "./DCChalanUploadModal"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { FiUpload, FiDownload, FiFilter } from "react-icons/fi"
 
 const DCQtyList = () => {
@@ -50,7 +51,7 @@ const DCQtyList = () => {
       })
     } catch (error) {
       console.error("Error fetching DC quantities:", error)
-      alert("Failed to fetch DC quantities")
+      alert(getErrorMessage(error, "Failed to fetch DC quantities"))
     } finally {
       setLoading(false)
     }

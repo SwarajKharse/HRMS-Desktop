@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { leaveBalanceService } from "../../services/leaveBalanceService"
 import { authService } from "../../services/authService"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { FiSearch, FiChevronLeft, FiChevronRight } from "react-icons/fi"
 
 function LeaveBookedAndBalance() {
@@ -49,7 +50,7 @@ function LeaveBookedAndBalance() {
       setFilteredData(data) // Initialize filtered data with all data
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch leave data"))
     } finally {
       setLoading(false)
     }

@@ -7,6 +7,7 @@ import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { materialRequisitionService } from "../../services/materialRequisitionService"
 import { employeeService } from "../../services/employeeService"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 
 // Helper function to format dates for display
@@ -240,7 +241,7 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
       }
     } catch (error) {
       console.error("Error assigning purchaser:", error)
-      setError("Failed to assign purchaser. Please try again.")
+      setError(getErrorMessage(error, "Failed to assign purchaser. Please try again."))
     } finally {
       setLoading(false)
     }
@@ -274,7 +275,7 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
       }
     } catch (error) {
       console.error("Error updating Purchase Manager approval:", error)
-      setError("Failed to update Purchase Manager approval status. Please try again.")
+      setError(getErrorMessage(error, "Failed to update Purchase Manager approval status. Please try again."))
     } finally {
       setPurchaseManagerApprovalLoading(false)
     }
@@ -312,7 +313,7 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
       }
     } catch (error) {
       console.error("Error updating PO approval:", error)
-      setError("Failed to update PO approval status. Please try again.")
+      setError(getErrorMessage(error, "Failed to update PO approval status. Please try again."))
     } finally {
       setPOApprovalLoading(false)
     }
@@ -351,7 +352,7 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
       }
     } catch (error) {
       console.error("Error updating PI approval:", error)
-      setError("Failed to update Purchase Invoice approval status. Please try again.")
+      setError(getErrorMessage(error, "Failed to update Purchase Invoice approval status. Please try again."))
     } finally {
       setPIApprovalLoading(false)
     }
@@ -385,7 +386,7 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
       await fetchPIDataForPO(selectedPO.id)
     } catch (error) {
       console.error("Error transferring to accounts:", error)
-      setError("Failed to transfer Purchase Invoice to Accounts. Please try again.")
+      setError(getErrorMessage(error, "Failed to transfer Purchase Invoice to Accounts. Please try again."))
     } finally {
       setTransferLoading(false)
     }
@@ -414,7 +415,7 @@ export default function PurchaseMTRDetailsModal({ mtr, onClose, onSave }) {
     } catch (error) {
       console.error("Error changing vendor:", error)
       setSelectedVendor(null) // Reset on error
-      setError("Failed to change vendor. Please try again.")
+      setError(getErrorMessage(error, "Failed to change vendor. Please try again."))
     }
   }
 

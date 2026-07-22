@@ -4,6 +4,7 @@ import { FiSearch, FiX, FiPlus, FiEdit2, FiAlertCircle, FiTrash2, FiRotateCcw } 
 import { storeService } from "../../services/storeService"
 import AddVendor from "./AddVendor"
 import EditVendor from "./EditVendor"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const VENDOR_TYPE_LABELS = {
   MATERIAL: "Material",
@@ -44,7 +45,7 @@ const VendorList = () => {
       }
     } catch (err) {
       console.error("Error fetching vendors:", err)
-      setError("Failed to fetch vendors: " + (err.message || "Unknown error"))
+      setError(getErrorMessage(err, "Failed to fetch vendors."))
     } finally {
       setLoading(false)
     }
@@ -139,8 +140,7 @@ const VendorList = () => {
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
       console.error("Error toggling vendor status:", err)
-      const msg = err.response?.data || err.message || "Failed to update vendor status."
-      setError(typeof msg === "string" ? msg : "Failed to update vendor status.")
+      setError(getErrorMessage(err, "Failed to update vendor status."))
     }
   }
 

@@ -3,6 +3,7 @@
 import { useState } from "react"
 import PurchaseInvoiceForm from "./PurchaseInvoiceForm"
 import { purchaseInvoiceService } from "../../../services/purchaseInvoiceService"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 const PurchaseInvoiceFormIntegration = ({ invoice, onClose, onSuccess, isOpen }) => {
   const [loading, setLoading] = useState(false)
@@ -29,7 +30,7 @@ const PurchaseInvoiceFormIntegration = ({ invoice, onClose, onSuccess, isOpen })
       }, 1500)
     } catch (error) {
       console.error("Error updating invoice:", error)
-      const errorMessage = error.response?.data?.message || "Failed to update invoice. Please try again."
+      const errorMessage = getErrorMessage(error, "Failed to update invoice. Please try again.")
       setError(errorMessage)
     } finally {
       setLoading(false)

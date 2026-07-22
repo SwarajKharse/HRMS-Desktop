@@ -7,6 +7,7 @@ import ProductImportExport from "./ProductImportExport"
 import AddProduct from "./AddProduct"
 import ProductEditForm from "./ProductEditForm"
 import { FcViewDetails } from "react-icons/fc";
+import { getErrorMessage } from "../../utils/errorUtils"
 
 
 const BASE_URL = `${process.env.REACT_APP_API_URL}/store`
@@ -70,7 +71,7 @@ const ProductList = () => {
       }
     } catch (error) {
       console.error("Error fetching products:", error)
-      setError("Failed to fetch products: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to fetch products."))
     } finally {
       setLoading(false)
     }
@@ -147,7 +148,7 @@ const ProductList = () => {
       setSuccessMessage("Product updated successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
-      setError("Failed to update lead")
+      setError(getErrorMessage(error, "Failed to update lead"))
     }
   }
 

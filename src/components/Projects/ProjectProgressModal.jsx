@@ -3,6 +3,7 @@ import { useState } from "react"
 import { FiX, FiChevronDown, FiChevronRight } from "react-icons/fi"
 import { useEffect } from "react"
 import { projectService } from "../../services/projectService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 export default function ProjectProgressModal({ projectId, projectName, isOpen, onClose }) {
   const [progress, setProgress] = useState(null)
@@ -165,7 +166,7 @@ export default function ProjectProgressModal({ projectId, projectName, isOpen, o
       resetForm()
       fetchProgress()
     } catch (err) {
-      setSaveError(typeof err === "string" ? err : err?.error || "Failed to save progress.")
+      setSaveError(getErrorMessage(err, "Failed to save progress."))
     } finally {
       setSaving(false)
     }
@@ -199,7 +200,7 @@ export default function ProjectProgressModal({ projectId, projectName, isOpen, o
       setEditingLogId(null)
       fetchProgress()
     } catch (err) {
-      setEditError(typeof err === "string" ? err : err?.error || "Failed to update entry.")
+      setEditError(getErrorMessage(err, "Failed to update entry."))
     }
   }
   const deleteEntry = async (logId) => {
@@ -210,7 +211,7 @@ export default function ProjectProgressModal({ projectId, projectName, isOpen, o
       setEditingLogId(null)
       fetchProgress()
     } catch (err) {
-      setEditError(typeof err === "string" ? err : err?.error || "Failed to delete entry.")
+      setEditError(getErrorMessage(err, "Failed to delete entry."))
     }
   }
 

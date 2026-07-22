@@ -7,6 +7,7 @@ import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import { projectService } from "../../services/projectService"
 import ProductBOQSelector from "../Projects/ProductBOQSelector"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
   const { user } = useAuth()
@@ -202,7 +203,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
         setProductTypelist(leadProductType)
       }
     } catch (err) {
-      setError("Failed to load departments and designations")
+      setError(getErrorMessage(err, "Failed to load departments and designations"))
       console.error(err)
     } finally {
       setDataLoading(false)
@@ -279,7 +280,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
       setSuccessMessage("Project title updated successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
-      setError(err.message || "Failed to update project title")
+      setError(getErrorMessage(err, "Failed to update project title"))
     } finally {
       setLoading(false)
     }
@@ -317,7 +318,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
       console.error("Error saving BOQ:", err)
-      setError(err.message || "Failed to save BOQ")
+      setError(getErrorMessage(err, "Failed to save BOQ"))
       window.scrollTo(0, 0)
     }
   }
@@ -396,7 +397,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
       onClose()
     } catch (err) {
       console.error("Error updating BOQ status:", err)
-      setError(`Failed to update BOQ status: ${err.message || err}`)
+      setError(getErrorMessage(err, "Failed to update BOQ status"))
     } finally {
       setLoading(false)
     }
@@ -559,7 +560,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
       onClose()
     } catch (err) {
       console.error("Handover error:", err)
-      setError(err.message || "Failed to complete handover")
+      setError(getErrorMessage(err, "Failed to complete handover"))
       window.scrollTo(0, 0)
     } finally {
       setLoading(false)
@@ -717,7 +718,7 @@ const SalesTLHandOverForm = ({ lead, activeTab, onClose, onSubmit }) => {
       } else if (error.response?.status === 404) {
         setError("PO PDF generation endpoint not found. Please contact support.")
       } else {
-        setError(`Failed to generate PO PDF: ${error.message || "Unknown error"}`)
+        setError(getErrorMessage(error, "Failed to generate PO PDF"))
       }
 
       window.scrollTo(0, 0)

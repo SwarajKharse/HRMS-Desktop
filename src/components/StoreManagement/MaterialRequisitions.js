@@ -4,6 +4,7 @@ import { materialRequisitionService } from "../../services/materialRequisitionSe
 import { FiSave, FiX, FiEye, FiEdit3 } from "react-icons/fi"
 import StoreManagerMTRDetailsModal from "./StoreManagerMTRDetailsModal"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const formatDate = (dateString) => {
   if (!dateString) return ""
@@ -76,7 +77,7 @@ export default function MaterialRequisition() {
       setCurrentPage(data.number || 0)
     } catch (e) {
       console.error("Failed to fetch material requisitions:", e)
-      setError("Failed to load material requisitions. Please try again.")
+      setError(getErrorMessage(e, "Failed to load material requisitions. Please try again."))
     } finally {
       setLoading(false)
     }
@@ -257,7 +258,7 @@ export default function MaterialRequisition() {
       alert("Material Requisition updated successfully!")
     } catch (e) {
       console.error("Failed to save material requisition:", e)
-      setError(`Failed to save material requisition: ${e.message}`)
+      setError(getErrorMessage(e, "Failed to save material requisition."))
     } finally {
       setLoading(false)
     }

@@ -9,6 +9,7 @@ import L from "leaflet";
 import icon from "leaflet/dist/images/marker-icon.png";
 import iconShadow from "leaflet/dist/images/marker-shadow.png";
 import { authService } from "../../services/authService";
+import { getErrorMessage } from "../../utils/errorUtils";
 
 // Fix for default marker icons in leaflet
 const DefaultIcon = L.icon({
@@ -57,7 +58,7 @@ function GeoFencing() {
       setShapes(fences);
     } catch (error) {
       console.error("Error fetching fences:", error);
-      alert("Failed to fetch fences");
+      alert(getErrorMessage(error, "Failed to fetch fences"));
     } finally {
       setLoading(false);
     }
@@ -107,7 +108,7 @@ function GeoFencing() {
       alert("Fences saved successfully!");
     } catch (error) {
       console.error("Error saving fences:", error);
-      alert("Failed to save fences");
+      alert(getErrorMessage(error, "Failed to save fences"));
     } finally {
       setLoading(false);
     }

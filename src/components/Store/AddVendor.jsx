@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { FiX, FiPlus, FiTrash2 } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const emptyContact = (isPrimary = false) => ({
   name: "",
@@ -164,8 +165,7 @@ const AddVendor = ({ onClose, onSuccess }) => {
       onSuccess()
     } catch (err) {
       console.error("Error adding vendor:", err)
-      const msg = err.response?.data || err.message || "Failed to add vendor."
-      setError(typeof msg === "string" ? msg : "Failed to add vendor.")
+      setError(getErrorMessage(err, "Failed to add vendor."))
       setLoading(false)
     }
   }

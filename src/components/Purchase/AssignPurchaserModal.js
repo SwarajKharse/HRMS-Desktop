@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { FiX } from "react-icons/fi"
 import { employeeService } from "../../services/employeeService"
 import { projectService } from "../../services/projectService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 export default function AssignPurchaserModal({ projectId, projectName, currentPurchaser, currentPurchasers, onClose, onSave }) {
   const [purchasers, setPurchasers] = useState([])
@@ -45,7 +46,7 @@ export default function AssignPurchaserModal({ projectId, projectName, currentPu
       if (onSave) onSave()
       onClose()
     } catch (e) {
-      setError("Failed to assign purchasers: " + (e?.response?.data?.message || e.message))
+      setError(getErrorMessage(e, "Failed to assign purchasers"))
     } finally {
       setLoading(false)
     }

@@ -2,6 +2,7 @@
 import React, { useState } from "react"
 import { FiUpload, FiDownload, FiX } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const SkillSetImportExport = ({ onClose, onSuccess }) => {
   const [importFile, setImportFile] = useState(null)
@@ -42,7 +43,7 @@ const SkillSetImportExport = ({ onClose, onSuccess }) => {
       onSuccess() // Refresh the list in the parent component
     } catch (error) {
       console.error("Import error:", error)
-      setImportError(error.message || "Failed to import skill sets.")
+      setImportError(getErrorMessage(error, "Failed to import skill sets."))
     } finally {
       setIsImporting(false)
       setImportFile(null)
@@ -70,7 +71,7 @@ const SkillSetImportExport = ({ onClose, onSuccess }) => {
       setExportMessage("Skill Sets exported successfully!")
     } catch (error) {
       console.error("Export error:", error)
-      setExportError(error.message || "Failed to export skill sets.")
+      setExportError(getErrorMessage(error, "Failed to export skill sets."))
     } finally {
       setIsExporting(false)
     }

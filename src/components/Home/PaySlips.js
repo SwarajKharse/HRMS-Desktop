@@ -4,6 +4,7 @@ import { format, addMonths, subMonths } from "date-fns"
 import { FiChevronLeft, FiChevronRight, FiDownload, FiAlertCircle, FiRefreshCw } from "react-icons/fi"
 import { payslipService } from "../../services/payslipService"
 import { authService } from "../../services/authService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function Payslips() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -30,7 +31,7 @@ function Payslips() {
       setPayslips(data)
       setError(null)
     } catch (err) {
-      setError(err.message || "Failed to load payslips")
+      setError(getErrorMessage(err, "Failed to load payslips"))
     } finally {
       setLoading(false)
     }
@@ -54,7 +55,7 @@ function Payslips() {
       setSuccessMessage("All payslips refreshed successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
-      setError(err.message || "Failed to refresh payslips")
+      setError(getErrorMessage(err, "Failed to refresh payslips"))
     } finally {
       setRefreshingAll(false)
     }
@@ -70,7 +71,7 @@ function Payslips() {
       setSuccessMessage(`Payslip refreshed successfully`)
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
-      setError(err.message || "Failed to refresh payslip")
+      setError(getErrorMessage(err, "Failed to refresh payslip"))
     } finally {
       setRefreshing((prev) => ({ ...prev, [empId]: false }))
     }
@@ -88,7 +89,7 @@ function Payslips() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      setError(err.message || "Failed to download payslip")
+      setError(getErrorMessage(err, "Failed to download payslip"))
     }
   }
 
@@ -112,7 +113,7 @@ function Payslips() {
         link.click()
         link.parentNode.removeChild(link)
       } catch (error) {
-        setError("Error exporting payslips details")
+        setError(getErrorMessage(error, "Error exporting payslips details"))
       } finally {
         setIsExporting(false)
       }

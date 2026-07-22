@@ -3,6 +3,7 @@ import { roleBasedPermissionService } from "../../services/roleBasedPermissionSe
 import { Switch } from "@headlessui/react";
 import { RiUserSettingsLine, RiShieldUserLine, RiCloseLine, RiSearchLine } from "react-icons/ri";
 import { authService } from "../../services/authService";
+import { getErrorMessage } from "../../utils/errorUtils";
 import { motion, AnimatePresence } from "framer-motion"
 
 const RoleBasedSettings = () => {
@@ -132,7 +133,7 @@ const RoleBasedSettings = () => {
       }
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(getErrorMessage(err, "Failed to fetch permissions"));
     } finally {
       setLoading(false);
     }
@@ -159,7 +160,7 @@ const RoleBasedSettings = () => {
         setSelectedEmployee({ ...selectedEmployee, [permissionKey]: value })
       }
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to update permission"))
     } finally {
       setSavingEmployeeId(null)
     }
@@ -188,7 +189,7 @@ const RoleBasedSettings = () => {
         })
       );
     } catch (err) {
-      setError(err.message);
+      setError(getErrorMessage(err, "Failed to allow all permissions"));
     } finally {
       setSavingEmployeeId(null);
     }
@@ -201,7 +202,7 @@ const RoleBasedSettings = () => {
       // Re-fetch all permissions to get the reset values
       await fetchPermissions();
     } catch (err) {
-      setError(err.message);
+      setError(getErrorMessage(err, "Failed to reset permissions"));
     } finally {
       setSavingEmployeeId(null);
     }

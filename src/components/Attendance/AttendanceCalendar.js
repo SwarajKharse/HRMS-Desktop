@@ -19,6 +19,7 @@ import { FiChevronLeft, FiChevronRight, FiClock } from "react-icons/fi";
 import { attendanceService } from "../../services/attendanceService";
 import { authService } from "../../services/authService";
 import { holidayService } from "../../services/holidayService";
+import { getErrorMessage } from "../../utils/errorUtils";
 
 // Simplified status configuration with fewer categories but clear indicators
 const STATUS_CONFIG = {
@@ -133,7 +134,7 @@ function AttendanceCalendar() {
       calculateStatusSummary(data);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(getErrorMessage(err, "Failed to fetch attendance data"));
     } finally {
       setLoading(false);
     }

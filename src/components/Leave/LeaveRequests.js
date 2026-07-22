@@ -4,6 +4,7 @@ import { format, differenceInDays } from "date-fns"
 import { FiCheck, FiX, FiClock, FiAlertCircle } from "react-icons/fi"
 import { authService } from "../../services/authService"
 import { leaveRequestService } from "../../services/leaveRequestService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function LeaveRequests() {
   const [leaveRequests, setLeaveRequests] = useState([]);
@@ -22,7 +23,7 @@ function LeaveRequests() {
         setLeaveRequests(data)
       }
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch leave requests"))
     } finally {
       setLoading(false)
     }

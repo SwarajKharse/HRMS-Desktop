@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { FiSave, FiUpload, FiX } from "react-icons/fi";
 import { organizationService } from "../../services/organizationService";
+import { getErrorMessage } from "../../utils/errorUtils";
 
 function ImageUpload({
   imagePreview,
@@ -187,7 +188,7 @@ function OrganizationDetailsForm({ organization, onSubmit }) {
       onSubmit && onSubmit();
       window.location.reload();
     } catch (err) {
-      setError(err.message);
+      setError(getErrorMessage(err, "Failed to save organization details"));
     } finally {
       setLoading(false);
     }

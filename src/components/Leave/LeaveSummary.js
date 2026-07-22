@@ -30,6 +30,7 @@ import { leaveRequestService } from "../../services/leaveRequestService"
 import { leaveBalanceService } from "../../services/leaveBalanceService"
 import LeaveForm from "./LeaveForm"
 import { authService } from "../../services/authService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function LeaveSummary() {
   const [viewType, setViewType] = useState("list")
@@ -98,7 +99,7 @@ function LeaveSummary() {
         setLeaves(leavesData);
       }
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch leave summary"))
     } finally {
       setLoading(false)
     }

@@ -12,6 +12,7 @@ import DCHistoryModal from "./DCHistoryModal"
 import ProjectProgressModal from "./ProjectProgressModal"
 import ProjectSummary from "./ProjectSummary"
 import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function SiteEngineerProjects() {
   const navigate = useNavigate()
@@ -81,7 +82,7 @@ function SiteEngineerProjects() {
       setTotalResults(projectData.totalResults || 0)
       setLoading(false)
     } catch (error) {
-      setError("Failed to fetch projects")
+      setError(getErrorMessage(error, "Failed to fetch projects"))
       setLoading(false)
     }
   }, [currentPage, leadsPerPage, userId]) // user?.orgId was not used in the function, removed from dependencies
@@ -109,7 +110,7 @@ function SiteEngineerProjects() {
       setTypelist(leadType)
       setProductTypelist(leadProductType)
     } catch (err) {
-      setError("Error while fetching data")
+      setError(getErrorMessage(err, "Error while fetching data"))
       console.error(err)
     }
   }
@@ -136,7 +137,7 @@ function SiteEngineerProjects() {
       setShowForm(false)
       setSelectedLead(null)
     } catch (error) {
-      setError("Failed to add employee")
+      setError(getErrorMessage(error, "Failed to add employee"))
     }
   }
 

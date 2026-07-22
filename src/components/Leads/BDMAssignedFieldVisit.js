@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { FiEdit2, FiAlertCircle, FiX, FiCheck, FiChevronRight, FiFilter, FiSearch } from "react-icons/fi"
 
 function BDMAssignedFieldVisit() {
@@ -88,7 +89,7 @@ function BDMAssignedFieldVisit() {
       setLoading(false)
     } catch (error) {
       console.error("Error fetching leads:", error)
-      setError("Failed to fetch leads: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to fetch leads"))
       setLoading(false)
     }
   }, [currentPage, leadsPerPage, appliedFilters, userId])
@@ -113,7 +114,7 @@ function BDMAssignedFieldVisit() {
       setProductTypelist(leadProductType)
       setSseList(sseData)
     } catch (err) {
-      setError("Error while fetching data")
+      setError(getErrorMessage(err, "Error while fetching data"))
       console.error(err)
     }
   }
@@ -147,7 +148,7 @@ function BDMAssignedFieldVisit() {
       setSuccessMessage("Lead updated successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
-      setError("Failed to update lead")
+      setError(getErrorMessage(error, "Failed to update lead"))
     }
   }
 
@@ -567,6 +568,7 @@ function BDMAssignedFieldVisit() {
                     unassignedleads.map((lead) => (
                       <motion.tr
                         key={lead.id}
+                        data-highlight-id={`lead-row-${lead.id}`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -641,6 +643,7 @@ function BDMAssignedFieldVisit() {
                   {unassignedleads.map((lead) => (
                     <motion.div
                       key={lead.id}
+                      data-highlight-id={`lead-row-${lead.id}`}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}

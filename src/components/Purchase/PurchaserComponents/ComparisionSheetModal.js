@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import VendorDropdown from "./VendorDropdown"
 import AddComparisonItemsModal from "./AddComparisonItemsModal"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A"
@@ -129,7 +130,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         }
       } catch (err) {
         console.error("Error loading comparison sheet data:", err)
-        setError("Error loading comparison sheet data")
+        setError(getErrorMessage(err, "Error loading comparison sheet data"))
         seedDefaultSheet()
       } finally {
         setIsLoadingData(false)
@@ -306,7 +307,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
       setTimeout(() => onClose(), 1200)
     } catch (err) {
       console.error("Error saving comparison sheet:", err)
-      setError("Error saving comparison sheet. Please try again.")
+      setError(getErrorMessage(err, "Error saving comparison sheet. Please try again."))
     } finally {
       setSaving(false)
     }
@@ -330,7 +331,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
       }, 1200)
     } catch (err) {
       console.error("Error approving vendor:", err)
-      setError("Failed to update approval status. Please try again.")
+      setError(getErrorMessage(err, "Failed to update approval status. Please try again."))
     } finally {
       setPmApprovalLoading(false)
     }

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { FiX, FiPlus, FiEdit2, FiTrash2, FiAlertCircle } from "react-icons/fi"
 import { motion } from "framer-motion"
 import { materialRequisitionService } from "../../../services/materialRequisitionService"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 const formatDate = (dateString) => {
   if (!dateString) return "N/A"
@@ -35,7 +36,7 @@ export default function StoreInchargeMTRDetailsModal({ mtr, onClose, currentUser
       setDcQtyList(data)
     } catch (error) {
       console.error("Failed to fetch DC Qty list:", error)
-      setErrorMessage("Failed to fetch DC Qty list")
+      setErrorMessage(getErrorMessage(error, "Failed to fetch DC Qty list"))
     }
   }
 
@@ -77,7 +78,7 @@ export default function StoreInchargeMTRDetailsModal({ mtr, onClose, currentUser
       setEditingDCQty(null)
     } catch (error) {
       console.error("Failed to save DC Qty:", error)
-      setErrorMessage("Failed to save DC Qty")
+      setErrorMessage(getErrorMessage(error, "Failed to save DC Qty"))
     } finally {
       setLoading(false)
     }
@@ -96,7 +97,7 @@ export default function StoreInchargeMTRDetailsModal({ mtr, onClose, currentUser
       setDeleteConfirm(null)
     } catch (error) {
       console.error("Failed to delete DC Qty:", error)
-      setErrorMessage("Failed to delete DC Qty")
+      setErrorMessage(getErrorMessage(error, "Failed to delete DC Qty"))
     }
   }
 

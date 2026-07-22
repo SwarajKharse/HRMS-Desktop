@@ -20,6 +20,7 @@ import { attendanceService } from "../../services/attendanceService"
 import { holidayService } from "../../services/holidayService"
 import { authService } from "../../services/authService"
 import { leaveBalanceService } from "../../services/leaveBalanceService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 // Simplified status configuration with fewer categories but clear indicators
 const STATUS_CONFIG = {
@@ -171,7 +172,7 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
         )
       } catch (err) {
         console.error("Failed to fetch leave types:", err)
-        setError("Failed to load leave types")
+        setError(getErrorMessage(err, "Failed to load leave types"))
       } finally {
         setLoadingLeaveTypes(false)
       }
@@ -216,7 +217,7 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
       onClose()
     } catch (error) {
       console.error("Failed to update attendance:", error)
-      setError("Failed to update attendance. Please try again.")
+      setError(getErrorMessage(error, "Failed to update attendance. Please try again."))
     } finally {
       setUpdating(false)
     }
@@ -547,7 +548,7 @@ function EmployeeAttendance({ employeeId }) {
       calculateStatusSummary(data)
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch attendance data"))
     } finally {
       setLoading(false)
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { payslipService } from "../../services/payslipService"
 import { payrollSettingsService } from "../../services/payrollSettingsService"
 import { employeeService } from "../../services/employeeService"
@@ -210,7 +211,7 @@ const Reports = () => {
       link.click()
       link.remove()
     } catch (err) {
-      setError(err.message || "Failed to generate report")
+      setError(getErrorMessage(err, "Failed to generate report"))
       console.error("Report generation error:", err)
     } finally {
       setLoading(false)

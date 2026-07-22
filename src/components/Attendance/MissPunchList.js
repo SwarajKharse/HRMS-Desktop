@@ -4,6 +4,7 @@ import { missPunchService } from "../../services/missPunchService"
 import { format } from "date-fns"
 import { FiClock, FiCheck, FiX, FiAlertCircle } from "react-icons/fi";
 import { authService } from "../../services/authService";
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function MissPunchList() {
   const [requests, setRequests] = useState([])
@@ -19,7 +20,7 @@ function MissPunchList() {
       const data = await missPunchService.getEmployeeRequests(authService.getUser().sub) // Replace with actual employee ID
       setRequests(data)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch miss punch requests"))
     } finally {
       setLoading(false)
     }

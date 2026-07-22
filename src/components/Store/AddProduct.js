@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { FiX, FiAlertTriangle, FiPlus, FiCheck } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const AddProduct = ({ onClose, onSuccess }) => {
   // Form state
@@ -94,7 +95,7 @@ const AddProduct = ({ onClose, onSuccess }) => {
       } */
     } catch (error) {
       console.error("Error loading main groups:", error)
-      setError("Failed to load main groups")
+      setError(getErrorMessage(error, "Failed to load main groups"))
     } finally {
       setLoading((prev) => ({ ...prev, mainGroups: false }))
     }
@@ -113,7 +114,7 @@ const AddProduct = ({ onClose, onSuccess }) => {
       }
     } catch (error) {
       console.error("Error loading categories:", error)
-      setError("Failed to load categories")
+      setError(getErrorMessage(error, "Failed to load categories"))
     } finally {
       setLoading((prev) => ({ ...prev, categories: false }))
     }
@@ -132,7 +133,7 @@ const AddProduct = ({ onClose, onSuccess }) => {
       }
     } catch (error) {
       console.error("Error loading subcategories:", error)
-      setError("Failed to load subcategories")
+      setError(getErrorMessage(error, "Failed to load subcategories"))
     } finally {
       setLoading((prev) => ({ ...prev, subcategories: false }))
     }
@@ -181,7 +182,7 @@ const AddProduct = ({ onClose, onSuccess }) => {
         throw new Error("Failed to create main group")
       }
     } catch (error) {
-      setError("Failed to create main group: " + error.message)
+      setError(getErrorMessage(error, "Failed to create main group."))
     }
   }
 
@@ -217,7 +218,7 @@ const AddProduct = ({ onClose, onSuccess }) => {
         throw new Error("Failed to create category")
       }
     } catch (error) {
-      setError("Failed to create category: " + error.message)
+      setError(getErrorMessage(error, "Failed to create category."))
     }
   }
 
@@ -251,7 +252,7 @@ const AddProduct = ({ onClose, onSuccess }) => {
         throw new Error("Failed to create subcategory")
       }
     } catch (error) {
-      setError("Failed to create subcategory: " + error.message)
+      setError(getErrorMessage(error, "Failed to create subcategory."))
     }
   }
 
@@ -321,7 +322,7 @@ const AddProduct = ({ onClose, onSuccess }) => {
         throw new Error(errorData.message || "Failed to create product")
       }
     } catch (error) {
-      setError("Failed to create product: " + error.message)
+      setError(getErrorMessage(error, "Failed to create product."))
     } finally {
       setLoading((prev) => ({ ...prev, submit: false }))
     }

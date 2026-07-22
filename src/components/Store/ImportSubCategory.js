@@ -3,6 +3,7 @@ import { FiSearch, FiDownload, FiUpload, FiX, FiCheck, FiAlertCircle } from "rea
 import { storeService } from "../../services/storeService"
 import { useNavigate } from "react-router-dom";
 import { encryptId } from "../../utils/crypto"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function ImportSubCategory() {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ function ImportSubCategory() {
       setLoading(false);
     } catch (error) {
       console.error("Error fetching subcategories:", error);
-      setError("Failed to fetch subcategories: " + (error.message || "Unknown error"));
+      setError(getErrorMessage(error, "Failed to fetch subcategories."));
       setLoading(false);
     }
   };
@@ -87,9 +88,7 @@ function ImportSubCategory() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Export error:", error);
-      setError("Error exporting subcategories: " + (error.response?.status === 403 ?
-        "Permission denied. Please check your authorization." :
-        "An unexpected error occurred."));
+      setError(getErrorMessage(error, "Error exporting subcategories. Please check your authorization and try again."));
     } finally {
       setIsExporting(false);
     }
@@ -106,7 +105,7 @@ function ImportSubCategory() {
       //fetchSubCategories(currentPage, itemsPerPage, searchQuery);
     } catch (error) {
       console.log(error);
-      setError("Error importing subcategories data. Please check your file and try again.");
+      setError(getErrorMessage(error, "Error importing subcategories data. Please check your file and try again."));
     } finally {
       setIsImporting(false);
     }

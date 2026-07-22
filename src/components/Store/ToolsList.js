@@ -6,6 +6,7 @@ import { storeService } from "../../services/storeService"
 import ToolsImportExport from "./ToolsImportExport"
 import AddTool from "./AddTool"
 import ToolEditForm from "./ToolEditForm"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const ToolsList = () => {
   // State for tools and pagination
@@ -51,7 +52,7 @@ const ToolsList = () => {
       }
     } catch (error) {
       console.error("Error fetching tools:", error)
-      setError("Failed to fetch tools: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to fetch tools."))
     } finally {
       setLoading(false)
     }
@@ -89,7 +90,7 @@ const ToolsList = () => {
       setSuccessMessage("Tool updated successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
-      setError("Failed to update tool")
+      setError(getErrorMessage(error, "Failed to update tool"))
     }
   }
 

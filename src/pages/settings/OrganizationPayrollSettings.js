@@ -6,6 +6,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiDollarSign, FiPercent, FiAlertCircle, FiCh
 import { orgFixedAllowancesService } from "../../services/orgFixedAllowancesService"
 import { orgBasicDaSlabsService } from "../../services/orgBasicDaSlabsService"
 import { authService } from "../../services/authService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function OrganizationPayrollSettings() {
   // Tab state
@@ -64,7 +65,7 @@ function OrganizationPayrollSettings() {
       setBasicDaSlabs(basicDaSlabsData)
       setFixedAllowances(fixedAllowancesData)
     } catch (err) {
-      setError("Failed to load payroll settings. Please try again.")
+      setError(getErrorMessage(err, "Failed to load payroll settings. Please try again."))
       console.error("Error fetching data:", err)
     } finally {
       setLoading(false)
@@ -183,7 +184,7 @@ function OrganizationPayrollSettings() {
         setSuccessMessage(null)
       }, 3000)
     } catch (err) {
-      setError(err.message || "Failed to save Basic DA Slab")
+      setError(getErrorMessage(err, "Failed to save Basic DA Slab"))
       console.error("Error submitting Basic DA Slab:", err)
     } finally {
       setSubmitting(false)
@@ -236,7 +237,7 @@ function OrganizationPayrollSettings() {
         setSuccessMessage(null)
       }, 3000)
     } catch (err) {
-      setError(err.message || "Failed to save Fixed Allowance")
+      setError(getErrorMessage(err, "Failed to save Fixed Allowance"))
       console.error("Error submitting Fixed Allowance:", err)
     } finally {
       setSubmitting(false)
@@ -282,7 +283,7 @@ function OrganizationPayrollSettings() {
         setSuccessMessage(null)
       }, 3000)
     } catch (err) {
-      setError(err.message || "Failed to delete Basic DA Slab")
+      setError(getErrorMessage(err, "Failed to delete Basic DA Slab"))
       console.error("Error deleting Basic DA Slab:", err)
     } finally {
       setSubmitting(false)
@@ -307,7 +308,7 @@ function OrganizationPayrollSettings() {
         setSuccessMessage(null)
       }, 3000)
     } catch (err) {
-      setError(err.message || "Failed to delete Fixed Allowance")
+      setError(getErrorMessage(err, "Failed to delete Fixed Allowance"))
       console.error("Error deleting Fixed Allowance:", err)
     } finally {
       setSubmitting(false)

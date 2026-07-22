@@ -4,6 +4,7 @@ import { FiLogOut, FiCheck, FiX } from "react-icons/fi"
 import { resignationService } from "../../services/resignationService"
 import { useAuth } from "../../contexts/AuthContext"
 import { format } from "date-fns"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function Resignations() {
   const [pendingResignations, setPendingResignations] = useState([])
@@ -23,7 +24,7 @@ function Resignations() {
       setPendingResignations(data.filter((r) => r.status === "Pending"))
       setAllResignations(data)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch resignations"))
     } finally {
       setLoading(false)
     }
@@ -34,7 +35,7 @@ function Resignations() {
       await resignationService.approveResignation(id)
       await fetchResignations()
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to approve resignation"))
     }
   }
 
@@ -43,7 +44,7 @@ function Resignations() {
       await resignationService.rejectResignation(id)
       await fetchResignations()
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to reject resignation"))
     }
   }
 

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react"
 import { FiX } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const ToolEditForm = ({ tool, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
@@ -45,7 +46,7 @@ const ToolEditForm = ({ tool, onClose, onSubmit }) => {
       onSubmit() // Call parent's onSubmit to refresh list and close form
     } catch (err) {
       console.error("Error updating tool:", err)
-      setError(err.message || "Failed to update tool.")
+      setError(getErrorMessage(err, "Failed to update tool."))
       setLoading(false)
     }
   }

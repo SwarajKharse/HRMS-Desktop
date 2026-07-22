@@ -15,6 +15,7 @@ import {
   FiCheck,
 } from "react-icons/fi"
 import { employeeService } from "../services/employeeService"
+import { getErrorMessage } from "../utils/errorUtils"
 import { useAuth } from "../contexts/AuthContext"
 import EmployeeForm from "../components/EmployeeForm"
 import WarningForm from "../components/Forms/WarningForm"
@@ -57,7 +58,7 @@ function Onboarding() {
       setFilteredEmployees(data)
       setLoading(false)
     } catch (error) {
-      setError("Failed to fetch employees")
+      setError(getErrorMessage(error, "Failed to fetch employees"))
       setLoading(false)
     }
   }, [activeView, user?.orgId])
@@ -105,7 +106,7 @@ function Onboarding() {
       setShowForm(false)
       setSelectedEmployee(null)
     } catch (error) {
-      setError("Failed to add employee")
+      setError(getErrorMessage(error, "Failed to add employee"))
     }
   }
 
@@ -144,7 +145,7 @@ function Onboarding() {
       link.click()
       link.parentNode.removeChild(link)
     } catch (error) {
-      setError("Error exporting employees")
+      setError(getErrorMessage(error, "Error exporting employees"))
     } finally {
       setIsExporting(false)
     }
@@ -527,7 +528,7 @@ function Onboarding() {
                             setTimeout(() => setSuccessMessage(null), 3000)
                             fetchEmployees()
                           } catch (error) {
-                            setError("Error importing employee data. Please check your file and try again.")
+                            setError(getErrorMessage(error, "Error importing employee data. Please check your file and try again."))
                           } finally {
                             setIsImporting(false)
                           }

@@ -4,6 +4,7 @@ import { FiX, FiAlertCircle } from "react-icons/fi";
 import { authService } from "../../services/authService";
 import { designationService } from "../../services/designationService";
 import { departmentService } from "../../services/departmentService";
+import { getErrorMessage } from "../../utils/errorUtils";
 
 function DesignationForm({ designation, designations, orgId, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -52,7 +53,7 @@ function DesignationForm({ designation, designations, orgId, onClose, onSubmit }
       await onSubmit()
       onClose()
     } catch (err) {
-      setError(err.message || "Failed to save designation")
+      setError(getErrorMessage(err, "Failed to save designation"))
     } finally {
       setLoading(false)
     }

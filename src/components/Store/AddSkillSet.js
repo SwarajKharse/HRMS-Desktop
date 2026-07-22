@@ -2,6 +2,7 @@
 import React, { useState } from "react"
 import { FiX } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const AddSkillSet = ({ onClose, onSuccess }) => {
   const [skillSetName, setSkillSetName] = useState("")
@@ -25,7 +26,7 @@ const AddSkillSet = ({ onClose, onSuccess }) => {
       onSuccess()
     } catch (err) {
       console.error("Error adding skill set:", err)
-      setError(err.message || "Failed to add skill set.")
+      setError(getErrorMessage(err, "Failed to add skill set."))
       setLoading(false)
     }
   }

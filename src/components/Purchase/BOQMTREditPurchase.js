@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import BillableProductSelector from "./BillableProductSelector"
 import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { leadService } from "../../services/leadService"
 
 function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClose }) {
@@ -115,7 +116,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
           const skillSet = (item.skillSetItems || []).map((ss) => ({
             ...ss,
             id: ss.id || 0,
-            name: ss.skillset_name || "Unknown Skillset",
+            name: ss.productName || ss.skillset_name || ss.name || "Unknown Skillset",
             qty: ss.qty || 0,
             materialRequisitions: (ss.materialRequisitions || []).map((mtr, mtrIndex) => ({
               id: mtr.id || Date.now() + mtrIndex,
@@ -133,7 +134,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
           const tools = (item.toolsItems || []).map((t) => ({
             ...t,
             id: t.id || 0,
-            name: t.tool_name || "Unknown Tool",
+            name: t.productName || t.tool_name || t.name || "Unknown Tool",
             qty: t.qty || 0,
             make: t.make || "",
             materialRequisitions: (t.materialRequisitions || []).map((mtr, mtrIndex) => ({
@@ -188,7 +189,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
         setIsBOQInitializedFromProps(true)
       } catch (err) {
         console.error("Error processing BOQ data:", err)
-        setError("Error processing BOQ data: " + err.message)
+        setError(getErrorMessage(err, "Error processing BOQ data"))
         setBOQProducts([])
       }
     } else if (!existingBOQ && !isBOQInitializedFromProps) {
@@ -247,7 +248,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
       setAvailableSkillsets(skillsetsData)
     } catch (err) {
       console.error("Error fetching skillsets:", err)
-      setError(`Failed to load skillsets: ${err.message}`)
+      setError(getErrorMessage(err, "Failed to load skillsets"))
       setAvailableSkillsets([])
     }
   }
@@ -273,7 +274,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
       setAvailableTools(toolsData)
     } catch (err) {
       console.error("Error fetching tools:", err)
-      setError(`Failed to load tools: ${err.message}`)
+      setError(getErrorMessage(err, "Failed to load tools"))
       setAvailableTools([])
     }
   }
@@ -390,7 +391,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
         onClose()
       } catch (error) {
         console.error("Error updating approval status:", error)
-        setError("Failed to update approval status: " + error.message)
+        setError(getErrorMessage(error, "Failed to update approval status"))
       }
     }
     return (
@@ -1034,7 +1035,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
       onClose()
     } catch (err) {
       console.error("Error saving BOQ with material requisitions:", err)
-      setError(`Error saving BOQ: ${err.message || err}`)
+      setError(getErrorMessage(err, "Error saving BOQ"))
     } finally {
       setLoading(false)
       setShowChangesSummary(false)
@@ -1342,7 +1343,7 @@ function BOQMTREditPurchase({ projectId, projectName, existingBOQ, onSave, onClo
       setShowChangesSummary(true)
     } catch (err) {
       console.error("Error preparing summary:", err)
-      setError("Error preparing summary: " + err.message)
+      setError(getErrorMessage(err, "Error preparing summary"))
     }
   }
 

@@ -2,6 +2,7 @@
 import React, { useState } from "react"
 import { FiX } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const AddTool = ({ onClose, onSuccess }) => {
   const [toolName, setToolName] = useState("")
@@ -25,7 +26,7 @@ const AddTool = ({ onClose, onSuccess }) => {
       onSuccess()
     } catch (err) {
       console.error("Error adding tool:", err)
-      setError(err.message || "Failed to add tool.")
+      setError(getErrorMessage(err, "Failed to add tool."))
       setLoading(false)
     }
   }

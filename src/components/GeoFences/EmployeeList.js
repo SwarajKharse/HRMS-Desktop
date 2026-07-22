@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { FiCheck, FiAlertCircle, FiSearch, FiFilter } from "react-icons/fi"
 import { employeeService } from "../../services/employeeService"
 import { authService } from "../../services/authService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function Toggle({ checked, onChange, disabled }) {
   return (
@@ -42,7 +43,7 @@ function EmployeeList() {
       setEmployees(data)
       setError(null)
     } catch (err) {
-      setError(err.message || "Failed to fetch employees")
+      setError(getErrorMessage(err, "Failed to fetch employees"))
     } finally {
       setLoading(false)
     }
@@ -58,7 +59,7 @@ function EmployeeList() {
       setSuccessMessage("Geofencing status updated successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
-      setError(err.message || "Failed to update geofencing status")
+      setError(getErrorMessage(err, "Failed to update geofencing status"))
       setTimeout(() => setError(null), 3000)
     } finally {
       setUpdating((prev) => ({ ...prev, [employeeId]: false }))

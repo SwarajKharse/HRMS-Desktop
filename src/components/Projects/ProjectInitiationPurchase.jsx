@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { FiX, FiCalendar, FiTruck, FiPackage } from "react-icons/fi"
 import { projectService } from "../services/projectService" // Actual import
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function ProjectInitiation({ project, onClose, onSave }) {
   const [loading, setLoading] = useState(true)
@@ -123,7 +124,7 @@ function ProjectInitiation({ project, onClose, onSave }) {
         setLoading(false)
       } catch (error) {
         console.error("Error fetching data:", error)
-        setError("Failed to load project data")
+        setError(getErrorMessage(error, "Failed to load project data"))
         setLoading(false)
       }
     }
@@ -243,7 +244,7 @@ function ProjectInitiation({ project, onClose, onSave }) {
       onClose() // Close the modal after successful save
     } catch (error) {
       console.error("Error saving project initiation plan:", error)
-      setError("Failed to save project initiation plan")
+      setError(getErrorMessage(error, "Failed to save project initiation plan"))
     } finally {
       setLoading(false)
     }

@@ -4,6 +4,7 @@ import { FiUserX } from "react-icons/fi"
 import { terminationService } from "../../services/terminationService"
 import { useAuth } from "../../contexts/AuthContext"
 import { format } from "date-fns"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function Terminations() {
   const [terminations, setTerminations] = useState([])
@@ -20,7 +21,7 @@ function Terminations() {
       const data = await terminationService.getTerminationsByOrgId(user.orgId)
       setTerminations(data)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch terminations"))
     } finally {
       setLoading(false)
     }

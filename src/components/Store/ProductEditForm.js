@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { FiX, FiAlertTriangle, FiPlus, FiCheck } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
@@ -89,7 +90,7 @@ function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
       setStepsSuccess("Process steps saved successfully!")
       setTimeout(() => setStepsSuccess(null), 2000)
     } catch (err) {
-      setStepsError(typeof err === "string" ? err : err?.error || "Failed to save process steps")
+      setStepsError(getErrorMessage(err, "Failed to save process steps"))
     } finally {
       setStepsSaving(false)
     }
@@ -176,7 +177,7 @@ function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
       setMainGroups(response)
     } catch (error) {
       console.error("Error loading main groups:", error)
-      setError("Failed to load main groups")
+      setError(getErrorMessage(error, "Failed to load main groups"))
     } finally {
       setLoading((prev) => ({ ...prev, mainGroups: false }))
     }
@@ -193,7 +194,7 @@ function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
       }
     } catch (error) {
       console.error("Error loading categories:", error)
-      setError("Failed to load categories")
+      setError(getErrorMessage(error, "Failed to load categories"))
     } finally {
       setLoading((prev) => ({ ...prev, categories: false }))
     }
@@ -210,7 +211,7 @@ function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
       }
     } catch (error) {
       console.error("Error loading subcategories:", error)
-      setError("Failed to load subcategories")
+      setError(getErrorMessage(error, "Failed to load subcategories"))
     } finally {
       setLoading((prev) => ({ ...prev, subcategories: false }))
     }
@@ -253,7 +254,7 @@ function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
         throw new Error("Failed to create main group")
       }
     } catch (error) {
-      setError("Failed to create main group: " + error.message)
+      setError(getErrorMessage(error, "Failed to create main group."))
     }
   }
 
@@ -280,7 +281,7 @@ function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
         throw new Error("Failed to create category")
       }
     } catch (error) {
-      setError("Failed to create category: " + error.message)
+      setError(getErrorMessage(error, "Failed to create category."))
     }
   }
 
@@ -307,7 +308,7 @@ function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
         throw new Error("Failed to create subcategory")
       }
     } catch (error) {
-      setError("Failed to create subcategory: " + error.message)
+      setError(getErrorMessage(error, "Failed to create subcategory."))
     }
   }
 
@@ -366,7 +367,7 @@ function ProductEditForm({ product, activeTab, onClose, onSubmit }) {
         throw new Error("Failed to update product")
       }
     } catch (error) {
-      setError("Failed to update product: " + error.message)
+      setError(getErrorMessage(error, "Failed to update product."))
     } finally {
       setLoading((prev) => ({ ...prev, submit: false }))
     }

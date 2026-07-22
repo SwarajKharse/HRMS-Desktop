@@ -6,6 +6,7 @@ import { FiAlertCircle, FiCheck, FiFilePlus, FiTrash2 } from "react-icons/fi"
 import { leadService } from "../services/leadService"
 import { data } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
+import { getErrorMessage } from "../utils/errorUtils"
 
 function AddLead() {
   const [rows, setRows] = useState([])
@@ -130,7 +131,7 @@ function AddLead() {
       setTypelist(leadType)
       setProductTypelist(leadProductType)
     } catch (err) {
-      setError("Error while fetching data")
+      setError(getErrorMessage(err, "Error while fetching data"))
       console.error(err)
     } finally {
       setDataLoading(false)
@@ -1144,7 +1145,7 @@ function AddLead() {
         window.location.href = "/leads"
       }, 3000)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to submit lead"))
       scrollToTop()
     } finally {
       scrollToTop()

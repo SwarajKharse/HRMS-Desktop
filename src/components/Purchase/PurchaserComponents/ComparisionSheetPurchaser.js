@@ -4,6 +4,7 @@ import { comparisonSheetService } from "../../../services/comparisonSheetService
 import { FiSave, FiX, FiEdit3, FiBarChart2 } from "react-icons/fi"
 import { useAuth } from "../../../contexts/AuthContext"
 import ComparisionSheetModal from "./ComparisionSheetModal"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -72,7 +73,7 @@ export default function ComparisionSheetPurchaser() {
       setCurrentPage(data.number || 0)
     } catch (e) {
       console.error("Failed to fetch material requisitions:", e)
-      setError("Failed to load material requisitions. Please try again.")
+      setError(getErrorMessage(e, "Failed to load material requisitions. Please try again."))
     } finally {
       setLoading(false)
     }
@@ -225,7 +226,7 @@ export default function ComparisionSheetPurchaser() {
       alert("Material Requisition updated successfully!")
     } catch (e) {
       console.error("Failed to save material requisition:", e)
-      setError(`Failed to save material requisition: ${e.message}`)
+      setError(getErrorMessage(e, "Failed to save material requisition"))
     } finally {
       setLoading(false)
     }

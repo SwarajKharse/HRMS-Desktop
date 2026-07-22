@@ -83,6 +83,15 @@ export const projectService = {
       throw error
     }
   },
+  getBOQHistory: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/boq/history`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error fetching BOQ history:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
   getRequisitionableItems: async (projectId, excludeReqId = null) => {
     try {
       const config = { ...getAuthHeaders() }
@@ -289,6 +298,24 @@ export const projectService = {
       throw error
     }
   },
+  markRequisitionWrong: async (projectId, requisitionId, remarks, role, currentUserId) => {
+    try {
+      const response = await axios.put(`${API_URL}/projects/${projectId}/requisitions/${requisitionId}/mark-wrong`, { remarks, role, currentUserId: currentUserId != null ? String(currentUserId) : undefined }, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error flagging requisition as wrong:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
+  takeBackRequisition: async (projectId, requisitionId, currentUserId) => {
+    try {
+      const response = await axios.put(`${API_URL}/projects/${projectId}/requisitions/${requisitionId}/take-back`, { currentUserId: currentUserId != null ? String(currentUserId) : undefined }, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      console.error("Error taking back requisition:", error.response ? error.response.data : error.message)
+      throw error
+    }
+  },
   // MODIFIED: Corrected to pass approvalDetails as the request body
   // Removed redundant 'status' and 'remarks' from parameters as they are part of approvalDetails
   async updateBOQItemApprovalStatus(boqItemId, approvalDetails) {
@@ -372,7 +399,7 @@ export const projectService = {
       const response = await axios.get(`${API_URL}/projects/pmlist/${user.orgId || 1}`, getAuthHeaders())
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      throw error
     }
   },
   getSiteEngineerList: async () => {
@@ -381,7 +408,7 @@ export const projectService = {
       const response = await axios.get(`${API_URL}/projects/selist/${user.orgId || 1}`, getAuthHeaders())
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      throw error
     }
   },
 
@@ -391,7 +418,7 @@ export const projectService = {
       const response = await axios.get(`${API_URL}/projects/storeinchargelist/${user.orgId || 1}`, getAuthHeaders())
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      throw error
     }
   },
 
@@ -557,7 +584,7 @@ updateBOQWithGST: async (projectId, boqData) => {
       return response.data
     } catch (error) {
       console.error("Error updating BOQ with GST:", error)
-      throw error.response?.data || error.message
+      throw error
     }
   },
 
@@ -567,7 +594,7 @@ updateBOQWithGST: async (projectId, boqData) => {
       return response.data
     } catch (error) {
       console.error("Error generating PO PDF:", error)
-      throw error.response?.data || error.message
+      throw error
     }
   },
   // </CHANGE>
@@ -586,7 +613,7 @@ updateBOQWithGST: async (projectId, boqData) => {
       return response.data
     } catch (error) {
       console.error("Error uploading PO to S3:", error)
-      throw error.response?.data || error.message
+      throw error
     }
   },
 
@@ -675,7 +702,7 @@ uploadNocFile: async (projectId, file) => {
       const response = await axios.get(`${API_URL}/projects/${projectId}/progress`, getAuthHeaders())
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      throw error
     }
   },
 
@@ -684,7 +711,7 @@ uploadNocFile: async (projectId, file) => {
       const response = await axios.post(`${API_URL}/projects/${projectId}/progress`, payload, getAuthHeaders())
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      throw error
     }
   },
 
@@ -693,7 +720,7 @@ uploadNocFile: async (projectId, file) => {
       const response = await axios.get(`${API_URL}/projects/progress-summary`, getAuthHeaders())
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      throw error
     }
   },
 
@@ -702,7 +729,7 @@ uploadNocFile: async (projectId, file) => {
       const response = await axios.put(`${API_URL}/projects/${projectId}/progress/${logId}`, payload, getAuthHeaders())
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      throw error
     }
   },
 
@@ -711,7 +738,7 @@ uploadNocFile: async (projectId, file) => {
       const response = await axios.delete(`${API_URL}/projects/${projectId}/progress/${logId}`, getAuthHeaders())
       return response.data
     } catch (error) {
-      throw error.response?.data || error.message
+      throw error
     }
   },
 }

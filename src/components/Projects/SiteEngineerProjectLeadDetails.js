@@ -5,6 +5,7 @@ import { FiX } from "react-icons/fi"
 import { leadService } from "../../services/leadService"
 import { projectService } from "../../services/projectService"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const ExpandableSection = ({ title, isExpanded, onToggle, children, bgColor, borderColor, headerTextColor }) => (
   <div className={`rounded-lg border-2 ${borderColor} overflow-hidden shadow-sm`}>
@@ -145,7 +146,7 @@ function SiteEngineerProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }
           employee_updatedby: { id: userId },
         })
       } catch (err) {
-        setError("Failed to load project details or related lists.")
+        setError(getErrorMessage(err, "Failed to load project details or related lists."))
         console.error(err)
         setLead(null)
         setProjectData({
@@ -238,8 +239,7 @@ function SiteEngineerProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }
       }
     } catch (err) {
       console.error(err)
-      const errorMsg = err.response?.data?.message || err.message || "Failed to upload handover file"
-      setError(errorMsg)
+      setError(getErrorMessage(err, "Failed to upload handover file"))
     } finally {
       setHandoverFileUploading(false)
     }
@@ -288,8 +288,7 @@ function SiteEngineerProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }
       }
     } catch (err) {
       console.error(err)
-      const errorMsg = err.response?.data?.message || err.message || "Failed to upload NOC file"
-      setError(errorMsg)
+      setError(getErrorMessage(err, "Failed to upload NOC file"))
     } finally {
       setNocFileUploading(false)
     }
@@ -352,7 +351,7 @@ function SiteEngineerProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }
       onClose()
     } catch (err) {
       console.log(err)
-      setError(err.message || "Failed to update project")
+      setError(getErrorMessage(err, "Failed to update project"))
       window.scrollTo(0, 0)
     } finally {
       setLoading(false)

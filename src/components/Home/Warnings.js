@@ -4,6 +4,7 @@ import { FiAlertTriangle } from "react-icons/fi"
 import { warningService } from "../../services/warningService"
 import { useAuth } from "../../contexts/AuthContext"
 import { format } from "date-fns"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function Warnings() {
   const [warnings, setWarnings] = useState([])
@@ -20,7 +21,7 @@ function Warnings() {
       const data = await warningService.getWarningsByOrgId(user.orgId)
       setWarnings(data)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch warnings"))
     } finally {
       setLoading(false)
     }

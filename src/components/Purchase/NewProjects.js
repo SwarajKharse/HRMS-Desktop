@@ -12,6 +12,7 @@ import BOQEditComponent from "../Projects/BOQEditComponent"
 import ProjectProcurement from "./ProjectProcurement" // Changed from ProjectInitiationIntegration
 import ProjectSummary from "./ProjectSummary"
 import AssignPurchaserModal from "./AssignPurchaserModal"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function NewProjects() {
   const navigate = useNavigate()
@@ -87,7 +88,7 @@ function NewProjects() {
       setLoading(false)
       console.log("Fetched project data:", projectData.content)
     } catch (error) {
-      setError("Failed to fetch projects")
+      setError(getErrorMessage(error, "Failed to fetch projects"))
       setLoading(false)
     }
   }, [currentPage, leadsPerPage, user?.orgId, userId]) // Removed unassignedleads from dependencies
@@ -110,7 +111,7 @@ function NewProjects() {
         setTypelist(leadType)
         setProductTypelist(leadProductType)
       } catch (err) {
-        setError("Error while fetching data")
+        setError(getErrorMessage(err, "Error while fetching data"))
         console.error(err)
       }
     }
@@ -147,7 +148,7 @@ function NewProjects() {
       setShowForm(false)
       setSelectedLead(null)
     } catch (error) {
-      setError("Failed to add employee")
+      setError(getErrorMessage(error, "Failed to add employee"))
     }
   }
 
@@ -205,7 +206,7 @@ function NewProjects() {
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
       console.error("Error saving BOQ:", error)
-      setError("Failed to save BOQ: " + (error.message || error))
+      setError(getErrorMessage(error, "Failed to save BOQ"))
     } finally {
       setLoading(false)
     }

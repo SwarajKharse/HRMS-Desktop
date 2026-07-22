@@ -4,6 +4,7 @@ import { FiX, FiUpload, FiFile } from "react-icons/fi"
 import { motion } from "framer-motion"
 import { purchaseInvoiceService } from "../../../services/purchaseInvoiceService"
 import { useAuth } from "../../../contexts/AuthContext"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 export default function PIUploadModal({ mtr, purchaseOrder, onClose, onSuccess }) {
   const { user } = useAuth()
@@ -86,7 +87,7 @@ export default function PIUploadModal({ mtr, purchaseOrder, onClose, onSuccess }
       }
     } catch (error) {
       console.error("Error uploading Purchase Invoice:", error)
-      setError(error.response?.data?.message || "Failed to upload Purchase Invoice. Please try again.")
+      setError(getErrorMessage(error, "Failed to upload Purchase Invoice. Please try again."))
     } finally {
       setLoading(false)
     }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Fragment } from "react"
 import { FiAlertCircle, FiX, FiChevronRight } from "react-icons/fi"
 import { receivableService } from "../../../services/receivableService"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 function BOQModal({ isOpen, onClose, projectId }) {
   const [boqData, setBOQData] = useState(null)
@@ -23,7 +24,7 @@ function BOQModal({ isOpen, onClose, projectId }) {
       const data = await receivableService.getProjectBOQ(projectId)
       setBOQData(data)
     } catch (err) {
-      setError("Failed to fetch BOQ data")
+      setError(getErrorMessage(err, "Failed to fetch BOQ data"))
     } finally {
       setLoading(false)
     }

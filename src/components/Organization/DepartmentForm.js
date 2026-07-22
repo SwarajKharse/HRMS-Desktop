@@ -3,6 +3,7 @@ import { motion } from "framer-motion"
 import { FiX, FiAlertCircle } from "react-icons/fi";
 import { authService } from "../../services/authService";
 import { departmentService } from "../../services/departmentService";
+import { getErrorMessage } from "../../utils/errorUtils";
 
 function DepartmentForm({ department, departments, orgId, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -43,7 +44,7 @@ function DepartmentForm({ department, departments, orgId, onClose, onSubmit }) {
       await onSubmit();
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to save department")
+      setError(getErrorMessage(err, "Failed to save department"))
     } finally {
       setLoading(false)
     }

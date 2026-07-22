@@ -3,6 +3,7 @@ import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { FiDownload, FiAlertCircle } from "react-icons/fi"
 import { payslipService } from "../../services/payslipService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function EmployeePayslips({ employeeId }) {
   const [payslips, setPayslips] = useState([])
@@ -21,7 +22,7 @@ function EmployeePayslips({ employeeId }) {
       setPayslips(data)
       setError(null)
     } catch (err) {
-      setError(err.message || "Failed to load payslips")
+      setError(getErrorMessage(err, "Failed to load payslips"))
     } finally {
       setLoading(false)
     }
@@ -39,7 +40,7 @@ function EmployeePayslips({ employeeId }) {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      setError("Failed to download payslip")
+      setError(getErrorMessage(err, "Failed to download payslip"))
     }
   }
 

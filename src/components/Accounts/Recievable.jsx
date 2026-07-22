@@ -16,6 +16,7 @@ import {
 import { receivableService } from "../../services/receivableService"
 import ProjectManagementModal from "./Accountant/ProjectManagementModal"
 import { employeeService } from "../../services/employeeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function BOQModal({ isOpen, onClose, projectId }) {
   const [boqData, setBOQData] = useState(null)
@@ -36,7 +37,7 @@ function BOQModal({ isOpen, onClose, projectId }) {
       const data = await receivableService.getProjectBOQ(projectId)
       setBOQData(data)
     } catch (err) {
-      setError("Failed to fetch BOQ data")
+      setError(getErrorMessage(err, "Failed to fetch BOQ data"))
     } finally {
       setLoading(false)
     }
@@ -190,7 +191,7 @@ function AssignAssistantModal({ isOpen, onClose, projectId, onAssign }) {
       const data = await employeeService.getAssignableList("Accountant")
       setAssistants(data)
     } catch (err) {
-      setError("Failed to fetch assistants")
+      setError(getErrorMessage(err, "Failed to fetch assistants"))
     } finally {
       setLoading(false)
     }
@@ -223,7 +224,7 @@ function AssignAssistantModal({ isOpen, onClose, projectId, onAssign }) {
       onClose()
     } catch (err) {
       console.error("Failed to assign assistant:", err)
-      setError("Failed to assign assistant")
+      setError(getErrorMessage(err, "Failed to assign assistant"))
     } finally {
       setLoading(false)
     }
@@ -341,7 +342,7 @@ function InvoiceManagementModal({ isOpen, onClose, onSuccess, projectId, project
       setTotalResults(data.totalItems || 0)
       setLoading(false)
     } catch (err) {
-      setError("Failed to fetch invoices")
+      setError(getErrorMessage(err, "Failed to fetch invoices"))
       setLoading(false)
     }
   }, [currentPage, itemsPerPage, searchQuery, invoiceTypeFilter, approvalStatusFilter, paymentStatusFilter, projectId])
@@ -390,7 +391,7 @@ function InvoiceManagementModal({ isOpen, onClose, onSuccess, projectId, project
         if (onSuccess) onSuccess()
       }, 2000)
     } catch (err) {
-      setError("Failed to update invoices")
+      setError(getErrorMessage(err, "Failed to update invoices"))
     } finally {
       setLoading(false)
     }
@@ -419,7 +420,7 @@ function InvoiceManagementModal({ isOpen, onClose, onSuccess, projectId, project
       await fetchInvoices()
       setTimeout(() => setSuccess(null), 2000)
     } catch (err) {
-      setError("Failed to upload payment document")
+      setError(getErrorMessage(err, "Failed to upload payment document"))
     } finally {
       setLoading(false)
     }
@@ -801,7 +802,7 @@ function Recievable() {
       setTotalResults(data.totalItems || 0)
       setLoading(false)
     } catch (error) {
-      setError("Failed to fetch projects")
+      setError(getErrorMessage(error, "Failed to fetch projects"))
       setLoading(false)
     }
   }, [currentPage, itemsPerPage, searchQuery, projectNameFilter, statusFilter])

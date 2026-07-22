@@ -1,9 +1,12 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
 import { notificationService } from "../services/notification-service"
+import { playNotificationSound, unlockAudio } from "../utils/notificationSound"
 
 const NotificationBell = ({ userId }) => {
+  const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
@@ -23,6 +26,7 @@ const NotificationBell = ({ userId }) => {
           const newestNotification = newNotifications[0]
           setLatestNotification(newestNotification)
           setShowToast(true)
+          playNotificationSound()
 
           setTimeout(() => setShowToast(false), 10000)
         }
@@ -37,6 +41,26 @@ const NotificationBell = ({ userId }) => {
       console.error("Error fetching notifications:", error)
     }
   }
+
+  useEffect(() => {
+    // Web Audio playback later (from the polling timer, not a gesture) needs the
+    // AudioContext unlocked by a real user interaction first, or browsers keep it muted.
+    // Must be registered on the CAPTURE phase: this app's buttons routinely call
+    // e.stopPropagation() (see NewProjects.js row actions, this file's own rows, etc.),
+    // which would stop a bubble-phase listener on window from ever seeing the click.
+    // A capture-phase listener fires before that stopPropagation() call can happen.
+    const unlockOnce = () => {
+      unlockAudio()
+      window.removeEventListener("click", unlockOnce, true)
+      window.removeEventListener("keydown", unlockOnce, true)
+    }
+    window.addEventListener("click", unlockOnce, true)
+    window.addEventListener("keydown", unlockOnce, true)
+    return () => {
+      window.removeEventListener("click", unlockOnce, true)
+      window.removeEventListener("keydown", unlockOnce, true)
+    }
+  }, [])
 
   useEffect(() => {
     if (userId) {
@@ -71,6 +95,21 @@ const NotificationBell = ({ userId }) => {
     } catch (error) {
       console.error("Error deleting notification:", error)
     }
+  }
+
+  const handleNotificationClick = async (notification) => {
+    if (!notification.isRead) {
+      await markAsRead(notification.id)
+    }
+    setShowToast(false)
+    setIsOpen(false)
+
+    if (!notification.route) return
+    const separator = notification.route.includes("?") ? "&" : "?"
+    const destination = notification.highlightTarget
+      ? `${notification.route}${separator}highlight=${encodeURIComponent(notification.highlightTarget)}`
+      : notification.route
+    navigate(destination)
   }
 
   const getNotificationIcon = (type) => {
@@ -119,6 +158,39 @@ const NotificationBell = ({ userId }) => {
             />
           </svg>
         )
+      case "POSITIVE":
+        return (
+          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M5 13l4 4L19 7"
+            />
+          </svg>
+        )
+      case "NEGATIVE":
+        return (
+          <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        )
+      case "REQUISITION_FILLED":
+        return (
+          <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
+          </svg>
+        )
       default:
         return (
           <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,6 +215,12 @@ const NotificationBell = ({ userId }) => {
         return "bg-gradient-to-r from-red-600 to-red-600"
       case "APPROVAL":
         return "bg-gradient-to-r from-purple-500 to-purple-600"
+      case "POSITIVE":
+        return "bg-gradient-to-r from-green-600 to-green-700"
+      case "NEGATIVE":
+        return "bg-gradient-to-r from-red-600 to-red-700"
+      case "REQUISITION_FILLED":
+        return "bg-gradient-to-r from-amber-500 to-amber-600"
       case "DEADLINE":
         return "bg-gradient-to-r from-orange-500 to-orange-600"
       default:
@@ -177,7 +255,10 @@ const NotificationBell = ({ userId }) => {
           <div
             className={`${getToastBgGradient(latestNotification.type)} rounded-xl shadow-2xl p-[2px] min-w-[340px] max-w-md`}
           >
-            <div className="bg-white rounded-[10px] p-4">
+            <div
+              className={`bg-white rounded-[10px] p-4 ${latestNotification.route ? "cursor-pointer" : ""}`}
+              onClick={() => latestNotification.route && handleNotificationClick(latestNotification)}
+            >
               <div className="flex items-start space-x-3">
                 <div className={`flex-shrink-0 mt-1 p-2 rounded-lg ${getToastBgGradient(latestNotification.type)}`}>
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,7 +277,10 @@ const NotificationBell = ({ userId }) => {
                       <p className="text-sm text-gray-700 leading-relaxed">{latestNotification.message}</p>
                     </div>
                     <button
-                      onClick={() => setShowToast(false)}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowToast(false)
+                      }}
                       className="flex-shrink-0 ml-3 text-gray-400 hover:text-gray-700 transition-colors p-1 hover:bg-gray-100 rounded-full"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,7 +326,7 @@ const NotificationBell = ({ userId }) => {
 
         {/* Dropdown */}
         {isOpen && (
-          <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+          <div className="fixed inset-x-4 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 w-auto sm:w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
             <div className="p-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
               {unreadCount > 0 && (
@@ -274,9 +358,10 @@ const NotificationBell = ({ userId }) => {
                 notifications.map((notification) => (
                   <div
                     key={notification.id}
+                    onClick={() => handleNotificationClick(notification)}
                     className={`p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150 ${
-                      !notification.isRead ? "bg-blue-50" : ""
-                    }`}
+                      notification.route ? "cursor-pointer" : ""
+                    } ${!notification.isRead ? "bg-blue-50" : ""}`}
                   >
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0 mt-1">{getNotificationIcon(notification.type)}</div>
@@ -294,7 +379,10 @@ const NotificationBell = ({ userId }) => {
                           <div className="flex items-center space-x-2 ml-2">
                             {!notification.isRead && (
                               <button
-                                onClick={() => markAsRead(notification.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  markAsRead(notification.id)
+                                }}
                                 className="text-blue-600 hover:text-blue-800"
                                 title="Mark as read"
                               >
@@ -309,7 +397,10 @@ const NotificationBell = ({ userId }) => {
                               </button>
                             )}
                             <button
-                              onClick={() => deleteNotification(notification.id)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                deleteNotification(notification.id)
+                              }}
                               className="text-red-600 hover:text-red-800"
                               title="Delete"
                             >

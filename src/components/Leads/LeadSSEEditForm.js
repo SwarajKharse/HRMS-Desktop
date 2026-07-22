@@ -4,6 +4,7 @@ import { FiX, FiCalendar, FiUpload, FiTrash2 } from "react-icons/fi"
 import { authService } from "../../services/authService"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
@@ -158,7 +159,7 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
       
 
     } catch (err) {
-      setError("Failed to load departments and designations")
+      setError(getErrorMessage(err, "Failed to load departments and designations"))
       console.error(err)
     } finally {
       setDataLoading(false)
@@ -482,7 +483,7 @@ function LeadSSEEditForm({ lead, activeTab, onClose, onSubmit }) {
       onClose() // Only close after successful submission and parent handle
     } catch (err) {
       console.log(err)
-      setError(err.message || "Failed to update lead")
+      setError(getErrorMessage(err, "Failed to update lead"))
       window.scrollTo(0, 0) // Scroll to top to show error
     } finally {
       setLoading(false)

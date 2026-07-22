@@ -4,6 +4,7 @@ import { FiCalendar, FiPlus, FiEdit2, FiTrash2, FiChevronLeft, FiChevronRight } 
 import { format } from "date-fns"
 import { holidayService } from "../../services/holidayService"
 import { authService } from "../../services/authService"
+import { getErrorMessage } from "../../utils/errorUtils"
 import HolidayForm from "../../components/Holiday/HolidayForm"
 
 function HolidaySettings() {
@@ -27,7 +28,7 @@ function HolidaySettings() {
       setHolidays(data);
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch holidays"))
     } finally {
       setLoading(false)
     }
@@ -44,7 +45,7 @@ function HolidaySettings() {
         await holidayService.deleteHoliday(id)
         await fetchHolidays()
       } catch (err) {
-        setError(err.message)
+        setError(getErrorMessage(err, "Failed to save holiday"))
       }
     }
   }

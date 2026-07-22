@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react"
 import { dcQtyService } from "../../services/dcQtyService"
 import { FiX, FiUpload, FiCheckSquare, FiSquare } from "react-icons/fi"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const DCChalanUploadModal = ({ dcQty, onClose, onSuccess }) => {
   const [projectDcQties, setProjectDcQties] = useState([])
@@ -27,7 +28,7 @@ const DCChalanUploadModal = ({ dcQty, onClose, onSuccess }) => {
       setProjectDcQties(availableDcQties)
     } catch (error) {
       console.error("Error fetching project DC quantities:", error)
-      alert("Failed to fetch DC quantities for this project")
+      alert(getErrorMessage(error, "Failed to fetch DC quantities for this project"))
     }
   }
 
@@ -87,7 +88,7 @@ const DCChalanUploadModal = ({ dcQty, onClose, onSuccess }) => {
       onSuccess()
     } catch (error) {
       console.error("Error uploading DC chalan:", error)
-      alert("Failed to upload DC chalan. Please try again.")
+      alert(getErrorMessage(error, "Failed to upload DC chalan. Please try again."))
     } finally {
       setLoading(false)
     }

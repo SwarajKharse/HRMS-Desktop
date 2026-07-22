@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { FiEdit2, FiAlertCircle, FiX, FiCheck, FiDownload, FiChevronRight, FiFilter, FiSearch } from "react-icons/fi"
 
 function AssignLeadsToBDM() {
@@ -96,7 +97,7 @@ function AssignLeadsToBDM() {
       setLoading(false)
     } catch (error) {
       console.error("Error fetching leads:", error)
-      setError("Failed to fetch leads")
+      setError(getErrorMessage(error, "Failed to fetch leads"))
       setLoading(false)
     }
   }, [currentPage, leadsPerPage, appliedFilters])
@@ -138,7 +139,7 @@ function AssignLeadsToBDM() {
       setBdmList(bdmData)
       //setEmployeeList(employees)
     } catch (err) {
-      setError("Error while fetching data "+err)
+      setError(getErrorMessage(err, "Error while fetching data"))
       console.error(err)
     }
   }
@@ -194,7 +195,7 @@ function AssignLeadsToBDM() {
       setShowExportOptions(false)
     } catch (error) {
       console.error("Export error:", error)
-      setError("Failed to export leads: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to export leads"))
     } finally {
       setIsExporting(false)
     }
@@ -231,7 +232,7 @@ function AssignLeadsToBDM() {
       setSuccessMessage("Lead updated successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
-      setError("Failed to update lead")
+      setError(getErrorMessage(error, "Failed to update lead"))
     }
   }
 

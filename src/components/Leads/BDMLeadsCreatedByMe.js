@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { FiEdit2, FiAlertCircle, FiCheck, FiChevronRight, FiFilter, FiSearch } from "react-icons/fi"
 
 function BDMLeadsCreatedByMe() {
@@ -87,7 +88,7 @@ function BDMLeadsCreatedByMe() {
       setLoading(false)
     } catch (error) {
       console.error("Error fetching leads:", error)
-      setError("Failed to fetch leads: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to fetch leads"))
       setLoading(false)
     }
   }, [currentPage, leadsPerPage, appliedFilters, userId])
@@ -117,7 +118,7 @@ function BDMLeadsCreatedByMe() {
       setProductTypelist(leadProductType)
       setSseList(sseData)
     } catch (err) {
-      setError("Error while fetching data")
+      setError(getErrorMessage(err, "Error while fetching data"))
       console.error(err)
     }
   }
@@ -146,7 +147,7 @@ function BDMLeadsCreatedByMe() {
       setSuccessMessage("Lead updated successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
-      setError("Failed to update lead")
+      setError(getErrorMessage(error, "Failed to update lead"))
     }
   }
 

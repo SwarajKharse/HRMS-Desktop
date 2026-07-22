@@ -9,6 +9,7 @@ import { useAuth } from "../../contexts/AuthContext"
 import { projectService } from "../../services/projectService"
 import { storeService } from "../../services/storeService"
 import ProductBOQSelector from "../Projects/ProductBOQSelector"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
@@ -231,7 +232,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
         setProductTypelist(leadProductType)
       }
     } catch (err) {
-      setError("Failed to load departments and designations")
+      setError(getErrorMessage(err, "Failed to load departments and designations"))
       console.error(err)
     } finally {
       setDataLoading(false)
@@ -297,7 +298,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       setSuccessMessage("Project title updated successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
-      setError(err.message || "Failed to update project title")
+      setError(getErrorMessage(err, "Failed to update project title"))
     } finally {
       setLoading(false)
     }
@@ -354,7 +355,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
         setAvailableProducts(productsData)
       } catch (err) {
         console.error("Error fetching products:", err)
-        setError(`Failed to load products: ${err.message}`)
+        setError(getErrorMessage(err, "Failed to load products"))
         setAvailableProducts([])
       } finally {
         setLoading(false)
@@ -433,7 +434,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
           setSuccessMessage("Project and BOQ saved successfully")
         } catch (boqError) {
           console.error("BOQ creation failed:", boqError)
-          setError("Project saved successfully, but BOQ creation failed: " + (boqError.message || boqError))
+          setError(getErrorMessage(boqError, "Project saved successfully, but BOQ creation failed"))
           setLoading(false)
           return
         }
@@ -449,7 +450,7 @@ function SalesTLHandOverForm({ lead, activeTab, onClose, onSubmit }) {
       onClose()
     } catch (err) {
       console.error("Handover error:", err)
-      setError(err.message || "Failed to complete handover")
+      setError(getErrorMessage(err, "Failed to complete handover"))
       window.scrollTo(0, 0)
     } finally {
       setLoading(false)

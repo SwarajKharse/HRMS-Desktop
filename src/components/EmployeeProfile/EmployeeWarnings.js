@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { warningService } from "../../services/warningService"
 import { format } from "date-fns"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function EmployeeWarnings({ employeeId }) {
   const [warnings, setWarnings] = useState([])
@@ -18,7 +19,7 @@ function EmployeeWarnings({ employeeId }) {
       setWarnings(data)
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch warnings"))
     } finally {
       setLoading(false)
     }

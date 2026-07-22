@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { comparisonSheetService } from "../services/comparisonSheetService"
 import { useAuth } from "../contexts/AuthContext"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -70,7 +71,7 @@ export default function POUploadTable({ onUploadPOClick }) {
       setCurrentPage(data.number || 0)
     } catch (e) {
       console.error("Failed to fetch material requisitions:", e)
-      setError("Failed to load material requisitions. Please try again.")
+      setError(getErrorMessage(e, "Failed to load material requisitions. Please try again."))
     } finally {
       setLoading(false)
     }

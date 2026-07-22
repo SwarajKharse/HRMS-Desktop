@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef, Fragment } from "react"
 import { FiUpload, FiEdit2, FiLoader, FiCheck } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const ALLOWED_DC_FILE_TYPES = ["application/pdf", "image/jpeg", "image/jpg", "image/png"]
 const MAX_DC_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -64,7 +65,7 @@ export default function DeliveryChallan() {
       setDcableLines(Array.isArray(lines) ? lines : [])
       setPastDCs(Array.isArray(dcs) ? dcs : [])
     } catch (e) {
-      setError(e?.response?.data?.message || "Failed to load DC data for this project.")
+      setError(getErrorMessage(e, "Failed to load DC data for this project."))
     } finally {
       setLoading(false)
     }
@@ -123,7 +124,7 @@ export default function DeliveryChallan() {
       await loadProjectData(selectedProjectId)
       alert("Delivery challan created successfully!")
     } catch (e) {
-      setError(e?.response?.data?.message || "Failed to create delivery challan.")
+      setError(getErrorMessage(e, "Failed to create delivery challan."))
     } finally {
       setSaving(false)
     }
@@ -146,7 +147,7 @@ export default function DeliveryChallan() {
       setSavedDcId(dc.id)
       setTimeout(() => setSavedDcId((id) => (id === dc.id ? null : id)), 2000)
     } catch (e) {
-      alert("Failed to upload DC copy: " + (e?.response?.data?.message || e.message))
+      alert("Failed to upload DC copy: " + getErrorMessage(e, e.message))
     } finally {
       setUploadingDcId(null)
     }

@@ -4,6 +4,7 @@ import { FiPlus, FiFileText } from "react-icons/fi"
 import { leaveTypeService } from "../../services/leaveTypeService"
 import LeaveTypeForm from "../../components/LeaveType/LeaveTypeForm";
 import { authService } from "../../services/authService";
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function LeaveSettings() {
   const [leaveTypes, setLeaveTypes] = useState([])
@@ -25,7 +26,7 @@ function LeaveSettings() {
       setLeaveTypes(data);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(getErrorMessage(err, "Failed to save leave type"));
     } finally {
       setLoading(false);
     }

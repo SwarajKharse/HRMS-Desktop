@@ -13,9 +13,12 @@ import DCHistoryModal from "./DCHistoryModal"
 import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
 import ProjectSummary from "./ProjectSummary"
 import ProjectProgressModal from "./ProjectProgressModal"
+import { useHighlightTarget } from "../../hooks/useHighlightTarget"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function NewProjects() {
   const navigate = useNavigate()
+  useHighlightTarget()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [unassignedleads, setLeads] = useState([])
@@ -35,6 +38,8 @@ function NewProjects() {
   const [showTerminationForm, setShowTerminationForm] = useState(false)
   const [showSummary, setShowSummary] = useState(false)
   const [summaryProjectId, setSummaryProjectId] = useState(null)
+  const [showAssignmentWarning, setShowAssignmentWarning] = useState(false)
+  const [pendingRequisitionProjectIds, setPendingRequisitionProjectIds] = useState(() => new Set())
   const { user } = useAuth()
   var userId = ""
 
@@ -95,7 +100,7 @@ function NewProjects() {
 
       console.log(unassignedleads)
     } catch (error) {
-      setError("Failed to fetch projects")
+      setError(getErrorMessage(error, "Failed to fetch projects"))
       setLoading(false)
     }
   }, [currentPage, leadsPerPage, user?.orgId, userId, search])
@@ -117,6 +122,26 @@ function NewProjects() {
       .catch((err) => console.error("Failed to load progress summary:", err))
   }, [])
 
+  // BOQ button blinks while a project has a requisition awaiting PM approval —
+  // independent of any notification click, and clears once it's approved/rejected.
+  useEffect(() => {
+    const fetchPendingRequisitions = () => {
+      projectService.getAllRequisitions()
+        .then((data) => {
+          const ids = new Set(
+            (Array.isArray(data) ? data : [])
+              .filter((r) => (r.status || "").toUpperCase() === "PENDING")
+              .map((r) => r.projectId)
+          )
+          setPendingRequisitionProjectIds(ids)
+        })
+        .catch((err) => console.error("Failed to load pending requisitions:", err))
+    }
+    fetchPendingRequisitions()
+    const interval = setInterval(fetchPendingRequisitions, 15000)
+    return () => clearInterval(interval)
+  }, [])
+
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
@@ -133,7 +158,7 @@ function NewProjects() {
       setTypelist(leadType)
       setProductTypelist(leadProductType)
     } catch (err) {
-      setError("Error while fetching data")
+      setError(getErrorMessage(err, "Error while fetching data"))
       console.error(err)
     }
   }
@@ -165,8 +190,25 @@ function NewProjects() {
       setShowForm(false)
       setSelectedLead(null)
     } catch (error) {
-      setError("Failed to add employee")
+      setError(getErrorMessage(error, "Failed to add employee"))
     }
+  }
+
+  // BOQ/Progress/DC History/Summary all assume a PM and SE are already assigned to
+  // the project; block those actions with a popup instead until both are set (the
+  // Edit button is exempt, since that's where PM/SE actually get assigned).
+  // SE assignment is the multi-select siteEngineers list (project.siteEngineer, the
+  // singular field, is always null — assignment goes through the plural endpoint).
+  const hasRequiredAssignments = (project) =>
+    Boolean(project.projectManager) && Array.isArray(project.siteEngineers) && project.siteEngineers.length > 0
+
+  const guardAssignedAction = (e, project, action) => {
+    if (!hasRequiredAssignments(project)) {
+      e.stopPropagation()
+      setShowAssignmentWarning(true)
+      return
+    }
+    action(e)
   }
 
   const handleSummary = (e, project) => {
@@ -240,7 +282,7 @@ function NewProjects() {
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
       console.error("Error saving BOQ:", error)
-      setError("Failed to save BOQ: " + (error.message || error))
+      setError(getErrorMessage(error, "Failed to save BOQ."))
     } finally {
       setLoading(false)
     }
@@ -431,22 +473,27 @@ function NewProjects() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-4">
                             <button
-                              className="flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium"
-                              onClick={(e) => handleBOQEdit(e, project)}
-                              title="Edit BOQ"
+                              data-highlight-id={`boq-btn-${project.id}`}
+                              className={`flex items-center gap-1.5 px-3 py-1 rounded-md transition-colors text-sm font-medium ${
+                                pendingRequisitionProjectIds.has(project.id)
+                                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200 pending-blink"
+                                  : "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                              }`}
+                              onClick={(e) => guardAssignedAction(e, project, (ev) => handleBOQEdit(ev, project))}
+                              title={pendingRequisitionProjectIds.has(project.id) ? "Requisition pending your approval" : "Edit BOQ"}
                             >
                               <FiFileText size={14} /> BOQ
                             </button>
                             <button
                               className="flex items-center gap-1.5 px-3 py-1 bg-purple-100 text-purple-700 rounded-md hover:bg-purple-200 transition-colors text-sm font-medium"
-                              onClick={() => { setDcHistoryProject(project); setShowDCHistory(true) }}
+                              onClick={(e) => guardAssignedAction(e, project, () => { setDcHistoryProject(project); setShowDCHistory(true) })}
                               title="DC History"
                             >
                               <FiTruck size={14} /> DC History
                             </button>
                             <button
                               className="flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"
-                              onClick={() => { setProgressProject(project); setShowProgress(true) }}
+                              onClick={(e) => guardAssignedAction(e, project, () => { setProgressProject(project); setShowProgress(true) })}
                               title="Project Progress"
                             >
                               <FiTrendingUp size={14} /> Progress: {Math.round(progressMap[project.id] || 0)}%
@@ -456,7 +503,7 @@ function NewProjects() {
                         <td className="px-6 py-4">
                           <button
                             className="flex items-center gap-1.5 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md hover:bg-indigo-200 transition-colors text-sm font-medium"
-                            onClick={(e) => handleSummary(e, project)}
+                            onClick={(e) => guardAssignedAction(e, project, (ev) => handleSummary(ev, project))}
                             title="View Summary"
                           >
                             <FiBarChart2 size={14} /> Summary
@@ -517,29 +564,34 @@ function NewProjects() {
                               <ProjectInitiationIntegration project={project} compact />
                             </div>
                             <button
-                              className="flex flex-col items-center justify-center gap-0.5 py-2 bg-blue-50 text-blue-700 rounded-lg active:bg-blue-100"
-                              onClick={(e) => handleBOQEdit(e, project)}
+                              data-highlight-id={`boq-btn-${project.id}`}
+                              className={`flex flex-col items-center justify-center gap-0.5 py-2 rounded-lg ${
+                                pendingRequisitionProjectIds.has(project.id)
+                                  ? "bg-amber-50 text-amber-800 active:bg-amber-100 pending-blink"
+                                  : "bg-blue-50 text-blue-700 active:bg-blue-100"
+                              }`}
+                              onClick={(e) => guardAssignedAction(e, project, (ev) => handleBOQEdit(ev, project))}
                             >
                               <FiFileText size={16} />
                               <span className="text-[10px] font-medium">BOQ</span>
                             </button>
                             <button
                               className="flex flex-col items-center justify-center gap-0.5 py-2 bg-purple-50 text-purple-700 rounded-lg active:bg-purple-100"
-                              onClick={(e) => { e.stopPropagation(); setDcHistoryProject(project); setShowDCHistory(true) }}
+                              onClick={(e) => guardAssignedAction(e, project, () => { setDcHistoryProject(project); setShowDCHistory(true) })}
                             >
                               <FiTruck size={16} />
                               <span className="text-[10px] font-medium">DC</span>
                             </button>
                             <button
                               className="flex flex-col items-center justify-center gap-0.5 py-2 bg-green-50 text-green-700 rounded-lg active:bg-green-100"
-                              onClick={(e) => { e.stopPropagation(); setProgressProject(project); setShowProgress(true) }}
+                              onClick={(e) => guardAssignedAction(e, project, () => { setProgressProject(project); setShowProgress(true) })}
                             >
                               <FiTrendingUp size={16} />
                               <span className="text-[10px] font-medium">Progress</span>
                             </button>
                             <button
                               className="flex flex-col items-center justify-center gap-0.5 py-2 bg-indigo-50 text-indigo-700 rounded-lg active:bg-indigo-100"
-                              onClick={(e) => { e.stopPropagation(); setSummaryProjectId(project.id); setShowSummary(true) }}
+                              onClick={(e) => guardAssignedAction(e, project, () => { setSummaryProjectId(project.id); setShowSummary(true) })}
                             >
                               <FiBarChart2 size={16} />
                               <span className="text-[10px] font-medium">Summary</span>
@@ -682,6 +734,41 @@ function NewProjects() {
           />
         )}
       </AnimatePresence>
+
+      {showAssignmentWarning && (
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowAssignmentWarning(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between mb-3">
+              <h3 className="text-lg font-semibold text-gray-900">Assignment Required</h3>
+              <button
+                onClick={() => setShowAssignmentWarning(false)}
+                className="text-gray-400 hover:text-gray-700 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-sm text-gray-600">
+              Please assign a Project Manager and Site Engineer to this project before performing this action. Use the edit (pencil) icon on this row to assign them.
+            </p>
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowAssignmentWarning(false)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

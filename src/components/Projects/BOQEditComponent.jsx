@@ -22,6 +22,7 @@ import CreateRequisition from "./CreateRequisition"
 import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
 import { leadService } from "../../services/leadService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function BOQEditComponent({
   projectId,
@@ -36,6 +37,10 @@ function BOQEditComponent({
 }) {
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [showRequisitionModal, setShowRequisitionModal] = useState(false)
+  // BOQ history is browsed in place (like requisition history) rather than in a popup:
+  // boqVersionIdx null/at-last means "latest" (live, editable) data is shown.
+  const [boqVersions, setBOQVersions] = useState([])
+  const [boqVersionIdx, setBOQVersionIdx] = useState(null)
   const [boqProducts, setBOQProducts] = useState([])
   const [availableSkillsets, setAvailableSkillsets] = useState([])
   const [availableTools, setAvailableTools] = useState([])
@@ -80,27 +85,6 @@ function BOQEditComponent({
       }
     } catch (error) {
       console.error("Error refetching BOQ data:", error)
-    }
-  }
-
-  const approveAllPmInGroup = async (productTypeGroup) => {
-    const pendingProducts = (productTypeGroup.products || []).filter(
-      (p) => (p.pmApprovalStatus || "PENDING").toUpperCase() !== "APPROVED",
-    )
-    if (pendingProducts.length === 0) return
-    try {
-      setError("")
-      for (const product of pendingProducts) {
-        await projectService.updateBOQItemApprovalStatus(product.id, {
-          approvalType: "PM",
-          statusValue: "APPROVED",
-          remarks: "",
-        })
-      }
-      await refetchBOQData()
-    } catch (error) {
-      console.error("Error approving all PM items in group:", error)
-      setError("Failed to approve all items: " + error.message)
     }
   }
 
@@ -151,7 +135,7 @@ function BOQEditComponent({
       await refetchBOQData()
     } catch (error) {
       console.error("Error updating category item approval status:", error)
-      setError("Failed to update category item approval status: " + error.message)
+      setError(getErrorMessage(error, "Failed to update category item approval status."))
     }
   }
 
@@ -240,7 +224,7 @@ function BOQEditComponent({
       await refetchBOQData()
     } catch (error) {
       console.error("Error updating MTR approval status:", error)
-      setError("Failed to update MTR approval status: " + error.message)
+      setError(getErrorMessage(error, "Failed to update MTR approval status."))
     }
   }
 
@@ -341,13 +325,55 @@ function BOQEditComponent({
         console.log("[v0] Data fetch completed successfully")
       } catch (err) {
         console.error("[v0] Error fetching initial data:", err)
-        setError("Error fetching initial data: " + err.message)
+        setError(getErrorMessage(err, "Error fetching initial data."))
       } finally {
         setLoading(false)
       }
     }
     fetchInitialData()
   }, [])
+
+  useEffect(() => {
+    if (!projectId) return
+    projectService
+      .getBOQHistory(projectId)
+      .then((data) => setBOQVersions(Array.isArray(data) ? data : []))
+      .catch((e) => console.error("Error loading BOQ history:", e))
+  }, [projectId])
+
+  const boqLastVersionIdx = boqVersions.length - 1
+  const boqEffectiveVersionIdx = boqVersionIdx == null ? boqLastVersionIdx : Math.min(boqVersionIdx, boqLastVersionIdx)
+  const isLatestBOQVersion = boqVersions.length === 0 || boqEffectiveVersionIdx === boqLastVersionIdx
+  const currentBOQVersion = boqVersions[boqEffectiveVersionIdx]
+  const previousBOQVersion = boqEffectiveVersionIdx > 0 ? boqVersions[boqEffectiveVersionIdx - 1] : null
+
+  const findBOQVersionLine = (version, itemId) =>
+    version?.items?.find((l) => String(l.itemId) === String(itemId))
+
+  // Renders a qty value that swaps to the browsed historical version (with a
+  // "(was X)" diff against the prior version) instead of the live editable value —
+  // same behavior as the requisition history's inline qty diff.
+  const renderVersionAwareQty = (itemId, liveQty) => {
+    if (isLatestBOQVersion) {
+      return <span className="font-medium text-gray-800">{liveQty}</span>
+    }
+    const line = findBOQVersionLine(currentBOQVersion, itemId)
+    const prevLine = findBOQVersionLine(previousBOQVersion, itemId)
+    const qty = line ? line.qty : liveQty
+    const changed = !!previousBOQVersion && !!prevLine && Number(prevLine.qty) !== Number(line?.qty)
+    const isNew = !!previousBOQVersion && !prevLine && !!line
+    return (
+      <span className={changed ? "font-medium text-amber-800" : "font-medium text-gray-800"}>
+        {qty ?? 0}
+        {changed && <span className="ml-1 text-xs text-amber-700">(was {prevLine.qty ?? "—"})</span>}
+        {isNew && (
+          <span className="ml-1 text-[10px] uppercase tracking-wide text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
+            new
+          </span>
+        )}
+      </span>
+    )
+  }
 
   const cleanProjectCode = (name) => {
     return name ? name.replace(/[^a-zA-Z0-9]/g, "") : ""
@@ -419,11 +445,11 @@ function BOQEditComponent({
     if (category === "nonBillable" && (item.product_name || item.productName)) {
       return item.product_name || item.productName
     }
-    if (category === "skillSet" && (item.name || item.skillset_name)) {
-      return item.name || item.skillset_name
+    if (category === "skillSet" && (item.name || item.skillset_name || item.productName)) {
+      return item.name || item.skillset_name || item.productName
     }
-    if (category === "tools" && (item.name || item.tool_name)) {
-      return item.name || item.tool_name
+    if (category === "tools" && (item.name || item.tool_name || item.productName)) {
+      return item.name || item.tool_name || item.productName
     }
 
     // If no name but has referenceId, look it up from available lists
@@ -526,8 +552,9 @@ function BOQEditComponent({
             const skillSet = (item.skillSetItems || []).map((ss) => ({
               ...ss,
               id: ss.id,
-              name: ss.name || ss.skillset_name || ss.itemDescription || "Unknown Skillset",
-              skillset_name: ss.skillset_name || ss.name || ss.itemDescription,
+              name: ss.name || ss.skillset_name || ss.productName || ss.itemDescription || "Unknown Skillset",
+              skillset_name: ss.skillset_name || ss.name || ss.productName || ss.itemDescription,
+              productName: ss.productName || ss.name || ss.skillset_name || ss.itemDescription,
               qty: ss.qty || 0,
               materialRequisitions: (ss.materialRequisitions || []).map((mtr, mtrIndex) => ({
                 id: mtr.id,
@@ -552,8 +579,9 @@ function BOQEditComponent({
             const tools = (item.toolsItems || []).map((tool) => ({
               ...tool,
               id: tool.id,
-              name: tool.name || tool.tool_name || tool.itemDescription || "Unknown Tool",
-              tool_name: tool.tool_name || tool.name || tool.itemDescription,
+              name: tool.name || tool.tool_name || tool.productName || tool.itemDescription || "Unknown Tool",
+              tool_name: tool.tool_name || tool.name || tool.productName || tool.itemDescription,
+              productName: tool.productName || tool.name || tool.tool_name || tool.itemDescription,
               qty: tool.qty || 0,
               make: tool.make || "",
               materialRequisitions: (tool.materialRequisitions || []).map((mtr, mtrIndex) => ({
@@ -616,7 +644,7 @@ function BOQEditComponent({
           setIsBOQInitializedFromProps(true)
         } catch (err) {
           console.error("Error processing BOQ data:", err)
-          setError("Error processing BOQ data: " + err.message)
+          setError(getErrorMessage(err, "Error processing BOQ data."))
           setBOQProducts([])
         }
       } else if (!existingBOQ && !isBOQInitializedFromProps) {
@@ -812,7 +840,7 @@ function BOQEditComponent({
         onClose()
       } catch (error) {
         console.error("Failed to update approval status:", error)
-        setError("Failed to update approval status: " + error.message)
+        setError(getErrorMessage(error, "Failed to update approval status."))
       }
     }
 
@@ -1360,7 +1388,7 @@ function BOQEditComponent({
       onClose()
     } catch (err) {
       console.error("Error saving BOQ with material requisitions:", err)
-      setError(`Error saving BOQ: ${err.message || err}`)
+      setError(getErrorMessage(err, "Error saving BOQ."))
     } finally {
       setLoading(false)
       setShowChangesSummary(false)
@@ -1382,8 +1410,9 @@ function BOQEditComponent({
       return response
     } catch (err) {
       console.error("Error saving billable BOQ items:", err)
-      setError(`Error saving BOQ: ${err.message || err}`)
-      alert(`Failed to save billable item changes: ${err.message || err}`)
+      const errorMsg = getErrorMessage(err, "Error saving BOQ.")
+      setError(errorMsg)
+      alert(`Failed to save billable item changes: ${errorMsg}`)
       throw err
     } finally {
       setLoading(false)
@@ -1455,6 +1484,7 @@ function BOQEditComponent({
       id: null,
       referenceId: skillset.id,
       name: skillset.skillset_name,
+      productName: skillset.skillset_name,
       qty: "",
       make: null,
       materialRequisitions: [],
@@ -1481,6 +1511,7 @@ function BOQEditComponent({
       id: null,
       referenceId: tool.id,
       name: tool.tool_name,
+      productName: tool.tool_name,
       qty: "",
       make: null,
       materialRequisitions: [],
@@ -1751,7 +1782,7 @@ function BOQEditComponent({
       setShowChangesSummary(true)
     } catch (err) {
       console.error("Error preparing summary:", err)
-      setError("Error preparing summary: " + err.message)
+      setError(getErrorMessage(err, "Error preparing summary."))
     }
   }
 
@@ -1941,6 +1972,42 @@ function BOQEditComponent({
           </div>
         )}
         <div className="flex-1 overflow-auto p-6">
+          {boqVersions.length > 1 && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+              <FiClock size={13} className="text-gray-400" />
+              <span className="text-gray-500">
+                {isLatestBOQVersion
+                  ? `Latest (v${boqVersions[boqLastVersionIdx].versionNo} of ${boqVersions.length})`
+                  : `Version ${currentBOQVersion.versionNo} of ${boqVersions.length}`}
+              </span>
+              <span className="flex items-center gap-2 ml-auto">
+                <button
+                  onClick={() => setBOQVersionIdx(Math.max(0, boqEffectiveVersionIdx - 1))}
+                  disabled={boqEffectiveVersionIdx === 0}
+                  className="px-2 py-0.5 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Older"
+                >
+                  ◀
+                </button>
+                <span className="text-gray-600">
+                  {currentBOQVersion?.editedAt ? new Date(currentBOQVersion.editedAt).toLocaleString() : ""}
+                </span>
+                <button
+                  onClick={() => setBOQVersionIdx(Math.min(boqLastVersionIdx, boqEffectiveVersionIdx + 1))}
+                  disabled={isLatestBOQVersion}
+                  className="px-2 py-0.5 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Newer"
+                >
+                  ▶
+                </button>
+              </span>
+              {!isLatestBOQVersion && (
+                <span className="w-full text-amber-700">
+                  Viewing history — quantities below are from this version. Click ▶ to return to latest before editing.
+                </span>
+              )}
+            </div>
+          )}
           <div className="mb-3 md:mb-6 flex justify-end gap-2">
             {!readOnly && (
               <button
@@ -1974,17 +2041,6 @@ function BOQEditComponent({
                             {productTypeGroup.products.length} product{productTypeGroup.products.length > 1 ? "s" : ""}
                           </div>
                         </div>
-                        {!readOnly && canApprove &&
-                          productTypeGroup.products.some(
-                            (p) => (p.pmApprovalStatus || "PENDING").toUpperCase() !== "APPROVED",
-                          ) && (
-                            <button
-                              onClick={() => approveAllPmInGroup(productTypeGroup)}
-                              className="mr-2 px-3 py-2 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
-                            >
-                              ✓ PM Approve All
-                            </button>
-                          )}
                         <button
                           onClick={() => toggleProductTypeExpansion(productTypeGroup.id)}
                           className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
@@ -2042,7 +2098,7 @@ function BOQEditComponent({
                                     </div>
                                     <div className="flex items-center flex-wrap gap-2 pl-6 md:pl-0 md:flex-shrink-0">
                                       <span className="text-xs text-gray-500 whitespace-nowrap">
-                                        BOQ Qty. <span className="font-medium text-gray-800">{product.qty}</span>
+                                        BOQ Qty. {renderVersionAwareQty(product.id, product.qty)}
                                         {"  ||  "}
                                         Remaining <span className="font-medium text-gray-800">{calculateRemainingQty(product)}</span>
                                       </span>
@@ -2140,7 +2196,7 @@ function BOQEditComponent({
                                                     <div className="flex items-center justify-between gap-3">
                                                       <div className="min-w-0">
                                                         <div className="font-medium">{getProductNameByReferenceId(item, "nonBillable")}{item.item_code ? ` (${item.item_code})` : ""}</div>
-                                                        <div className="text-sm text-gray-500">Qty: {item.qty || 0} | Make: {item.make || "N/A"}</div>
+                                                        <div className="text-sm text-gray-500">Qty: {renderVersionAwareQty(item.id, item.qty || 0)} | Make: {item.make || "N/A"}</div>
                                                       </div>
                                                       {!readOnly && (
                                                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -2210,7 +2266,7 @@ function BOQEditComponent({
                                                     <div className="flex items-center justify-between gap-3">
                                                       <div className="min-w-0">
                                                         <div className="font-medium">{getProductNameByReferenceId(item, "skillSet")}</div>
-                                                        <div className="text-sm text-gray-500">Qty: {item.qty || 0}</div>
+                                                        <div className="text-sm text-gray-500">Qty: {renderVersionAwareQty(item.id, item.qty || 0)}</div>
                                                       </div>
                                                       {!readOnly && (
                                                       <div className="flex items-center gap-2 flex-shrink-0">
@@ -2280,7 +2336,7 @@ function BOQEditComponent({
                                                     <div className="flex items-center justify-between gap-3">
                                                       <div className="min-w-0">
                                                         <div className="font-medium">{getProductNameByReferenceId(item, "tools")}</div>
-                                                        <div className="text-sm text-gray-500">Qty: {item.qty || 0} | Make: {item.make || "N/A"}</div>
+                                                        <div className="text-sm text-gray-500">Qty: {renderVersionAwareQty(item.id, item.qty || 0)} | Make: {item.make || "N/A"}</div>
                                                       </div>
                                                       {!readOnly && (
                                                       <div className="flex items-center gap-2 flex-shrink-0">

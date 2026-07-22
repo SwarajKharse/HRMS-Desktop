@@ -4,6 +4,7 @@ import { format, addDays, subDays } from "date-fns"
 import { leaveReportService } from "../../services/leaveReportService"
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi"
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function DailyLeaveStatus() {
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -22,7 +23,7 @@ function DailyLeaveStatus() {
       setLeaveData(data)
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch leave data"))
     } finally {
       setLoading(false)
     }

@@ -2,6 +2,7 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { missPunchService } from "../../services/missPunchService"
 import { authService } from "../../services/authService";
+import { getErrorMessage } from "../../utils/errorUtils"
 import { format } from "date-fns"
 import { FiClock, FiCalendar, FiMessageSquare } from "react-icons/fi"
 
@@ -28,7 +29,7 @@ function MissPunchForm({ isOpen, onClose, onSubmit }) {
       onSubmit()
       onClose()
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to submit request")
+      setError(getErrorMessage(err, "Failed to submit request"))
     } finally {
       setLoading(false)
     }

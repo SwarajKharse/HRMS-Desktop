@@ -4,6 +4,7 @@ import { FiX, FiAlertCircle } from "react-icons/fi";
 import { differenceInDays, parseISO } from "date-fns";
 import { leaveRequestService } from "../../services/leaveRequestService";
 import { authService } from "../../services/authService";
+import { getErrorMessage } from "../../utils/errorUtils";
 
 function LeaveForm({ isOpen, onClose, onSubmit, leaveTypes }) {
   const [formData, setFormData] = useState({
@@ -111,7 +112,7 @@ function LeaveForm({ isOpen, onClose, onSubmit, leaveTypes }) {
       if (onSubmit) await onSubmit();
       onClose();
     } catch (err) {
-      setError(err.message || "Failed to apply leave");
+      setError(getErrorMessage(err, "Failed to apply leave"));
     } finally {
       setLoading(false);
     }

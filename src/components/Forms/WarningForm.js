@@ -2,6 +2,7 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { FiX, FiAlertTriangle } from "react-icons/fi"
 import { warningService } from "../../services/warningService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function WarningForm({ employee, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -20,7 +21,7 @@ function WarningForm({ employee, onClose, onSubmit }) {
       onSubmit && onSubmit()
       onClose()
     } catch (err) {
-      setError(err.message || "Failed to issue warning")
+      setError(getErrorMessage(err, "Failed to issue warning"))
     } finally {
       setLoading(false)
     }

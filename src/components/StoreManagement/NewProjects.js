@@ -11,6 +11,7 @@ import ProjectLeadDetails from "./ProjectLeadDetails"
 import BOQEditComponent from "../Projects/BOQEditComponent"
 import ProjectSummary from "../Projects/ProjectSummary"
 import ProjectDispatch from "./ProjectDispatch"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function NewProjects() {
   const navigate = useNavigate()
@@ -73,7 +74,7 @@ function NewProjects() {
       setLoading(false)
       console.log("Fetched project data:", projectData.content)
     } catch (error) {
-      setError("Failed to fetch projects")
+      setError(getErrorMessage(error, "Failed to fetch projects"))
       setLoading(false)
     }
   }, [currentPage, leadsPerPage, user?.orgId, userId])
@@ -94,7 +95,7 @@ function NewProjects() {
         setTypelist(leadType)
         setProductTypelist(leadProductType)
       } catch (err) {
-        setError("Error while fetching data")
+        setError(getErrorMessage(err, "Error while fetching data"))
         console.error(err)
       }
     }
@@ -135,7 +136,7 @@ function NewProjects() {
       setSelectedLead(null)
     } catch (error) {
       console.error("[v0] Error updating project:", error)
-      setError("Failed to update project: " + (error.message || error))
+      setError(getErrorMessage(error, "Failed to update project."))
       setTimeout(() => setError(null), 5000)
     }
   }
@@ -185,7 +186,7 @@ function NewProjects() {
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
       console.error("Error saving BOQ:", error)
-      setError("Failed to save BOQ: " + (error.message || error))
+      setError(getErrorMessage(error, "Failed to save BOQ."))
     } finally {
       setLoading(false)
     }

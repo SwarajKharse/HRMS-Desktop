@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { FiX, FiSave } from "react-icons/fi"
 import { paymentCycleService } from "../../services/paymentCycleService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const PaymentCycleList = () => {
   const [paymentCycles, setPaymentCycles] = useState([])
@@ -30,7 +31,7 @@ const PaymentCycleList = () => {
       }
     } catch (error) {
       console.error("Error fetching payment cycles:", error)
-      setError("Failed to fetch payment cycles: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to fetch payment cycles."))
     } finally {
       setLoading(false)
     }
@@ -52,7 +53,7 @@ const PaymentCycleList = () => {
       }
     } catch (error) {
       console.error("Error initializing payment cycles:", error)
-      setError("Failed to initialize payment cycles: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to initialize payment cycles."))
     } finally {
       setLoading(false)
     }
@@ -82,7 +83,7 @@ const PaymentCycleList = () => {
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
       console.error("Error saving payment cycles:", error)
-      setError("Failed to save payment cycles: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to save payment cycles."))
     } finally {
       setLoading(false)
     }

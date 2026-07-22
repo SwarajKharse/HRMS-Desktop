@@ -6,6 +6,7 @@ import { authService } from "../../services/authService"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import SalesTLHandOverForm from "./SalesTLHandOverForm"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
@@ -296,7 +297,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
         setProductTypelist(leadProductType)
       }
     } catch (err) {
-      setError("Failed to load departments and designations")
+      setError(getErrorMessage(err, "Failed to load departments and designations"))
       console.error(err)
     } finally {
       setDataLoading(false)
@@ -455,6 +456,14 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
     setFormData({
       ...formData,
       salestl_approval_status: newValue,
+      proposal_rejection_remark: newValue === "1" ? "" : formData.proposal_rejection_remark,
+    })
+  }
+  const handleProposalRejectionRemarkChange = (e) => {
+    const { value } = e.target
+    setFormData({
+      ...formData,
+      proposal_rejection_remark: value,
     })
   }
   const handleSharedStatus = (e) => {
@@ -690,7 +699,7 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
       onClose() // Only close after successful submission and parent handling
     } catch (err) {
       console.log(err)
-      setError(err.message || "Failed to update lead")
+      setError(getErrorMessage(err, "Failed to update lead"))
       window.scrollTo(0, 0) // Scroll to top to show error
     } finally {
       setLoading(false)
@@ -1671,7 +1680,9 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                 <div className="space-y-4 rounded-lg bg-white border p-4">
                   <h3 className="font-semibold text-lg border-b pb-2">Proposal Approval</h3>
                   {/* Approve Proposal */}
-                  {(activeTab === "sse-inprogress-leads" || activeTab === "assigned-leads") && (
+                  {(activeTab === "sse-inprogress-leads" ||
+                    activeTab === "assigned-leads" ||
+                    activeTab === "salestl-won-leads") && (
                     <div className="space-y-4 rounded-lg bg-white border p-4 mt-4">
                       <h4 className="font-semibold text-sm border-b pb-2">Proposal Documents</h4>
                       {/* List of existing proposal documents */}
@@ -1684,29 +1695,53 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                         ) : uploadedDocuments.length > 0 ? (
                           <div className="space-y-2">
                             {uploadedDocuments.map((doc, index) => (
-                              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                                <div className="flex items-center">
-                                  <FiFile className="mr-2 text-blue-600" />
-                                  <span className="text-sm font-medium">{doc.fileName || `Document ${index + 1}`}</span>
+                              <div
+                                key={index}
+                                className={`p-3 rounded-md border ${
+                                  doc.status === "1"
+                                    ? "bg-green-50 border-green-200"
+                                    : doc.status === "0"
+                                      ? "bg-red-50 border-red-200"
+                                      : "bg-gray-50 border-gray-100"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center">
+                                    <FiFile className="mr-2 text-blue-600" />
+                                    <span className="text-sm font-medium">{doc.fileName || `Document ${index + 1}`}</span>
+                                  </div>
+                                  <div className="flex items-center">
+                                    <span
+                                      className={`text-xs mr-3 font-semibold ${
+                                        doc.status === "1"
+                                          ? "text-green-700"
+                                          : doc.status === "0"
+                                            ? "text-red-700"
+                                            : "text-gray-500"
+                                      }`}
+                                    >
+                                      {doc.status === null ? "Pending" : null}
+                                      {doc.status === "1" ? "Approved" : null}
+                                      {doc.status === "0" ? "Rejected" : null}
+                                    </span>
+                                    <span className="text-xs text-gray-500 mr-3">
+                                      {new Date(doc.uploadedAt).toLocaleDateString()}
+                                    </span>
+                                    <a
+                                      href={doc.fileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:text-blue-800"
+                                    >
+                                      <FiExternalLink />
+                                    </a>
+                                  </div>
                                 </div>
-                                <div className="flex items-center">
-                                  <span className="text-xs text-gray-500 mr-3">
-                                    {doc.status === null ? "Pending" : null}
-                                    {doc.status === "1" ? "Approved" : null}
-                                    {doc.status === "0" ? "Rejected" : null}
-                                  </span>
-                                  <span className="text-xs text-gray-500 mr-3">
-                                    {new Date(doc.uploadedAt).toLocaleDateString()}
-                                  </span>
-                                  <a
-                                    href={doc.fileUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:text-blue-800"
-                                  >
-                                    <FiExternalLink />
-                                  </a>
-                                </div>
+                                {doc.status === "0" && doc.rejectionRemark ? (
+                                  <p className="text-xs text-red-700 mt-2 pl-6">
+                                    Rejection Remark: {doc.rejectionRemark}
+                                  </p>
+                                ) : null}
                               </div>
                             ))}
                           </div>
@@ -1744,18 +1779,31 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                         </div>
                       )}
                       {showProposalApproval() && (
-                        <div className="flex items-center gap-2 mt-4">
-                          <label className="text-sm font-medium text-gray-700">Approve Proposal:</label>
-                          <select
-                            name="salestl_approval_status"
-                            value={formData.salestl_approval_status !== null ? formData.salestl_approval_status : ""}
-                            className="mt-1 rounded-md border border-gray-300 px-3 py-2"
-                            onChange={(e) => handleProposalApproval(e)}
-                          >
-                            <option value={null}>Please select</option>
-                            <option value="1">Yes</option>
-                            <option value="0">No</option>
-                          </select>
+                        <div className="mt-4 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium text-gray-700">Approve Proposal:</label>
+                            <select
+                              name="salestl_approval_status"
+                              value={formData.salestl_approval_status !== null ? formData.salestl_approval_status : ""}
+                              className="mt-1 rounded-md border border-gray-300 px-3 py-2"
+                              onChange={(e) => handleProposalApproval(e)}
+                            >
+                              <option value={null}>Please select</option>
+                              <option value="1">Yes</option>
+                              <option value="0">No</option>
+                            </select>
+                          </div>
+                          {formData.salestl_approval_status === "0" && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700">Rejection Remark:</label>
+                              <textarea
+                                name="proposal_rejection_remark"
+                                className="mt-1 block w-full rounded-md border border-gray-300"
+                                value={formData.proposal_rejection_remark || ""}
+                                onChange={handleProposalRejectionRemarkChange}
+                              ></textarea>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1794,100 +1842,6 @@ function LeadEditForm({ lead, activeTab, onClose, onSubmit }) {
                     </div>
                   ) : null}
                   {/* Shared Status End */}
-                  {activeTab !== "salestl-won-leads" ? (
-                    <>
-                      {lead.salestl_shared_status === "1" ? (
-                        <div className="space-y-4 rounded-lg bg-white border p-4 mt-4">
-                          <h4 className="font-semibold text-sm border-b pb-2">Approved Proposal Documents</h4>
-                          <div className="mt-4">
-                            {uploadedDocuments.filter((doc) => doc.document_type === "proposal" && doc.status === "1")
-                              .length > 0 ? (
-                              <div className="space-y-2">
-                                {uploadedDocuments
-                                  .filter((doc) => doc.document_type === "proposal" && doc.status === "1")
-                                  .map((doc, index) => (
-                                    <div
-                                      key={index}
-                                      className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
-                                    >
-                                      <div className="flex items-center">
-                                        <FiFile className="mr-2 text-green-600" />
-                                        <span className="text-sm font-medium">
-                                          {doc.fileName || `Proposal ${index + 1}`}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                        <span className="text-xs text-green-600 font-semibold">Approved</span>
-                                        <span className="text-xs text-gray-500">
-                                          {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : "N/A"}
-                                        </span>
-                                        <a
-                                          href={doc.fileUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-blue-600 hover:text-blue-800"
-                                        >
-                                          <FiExternalLink />
-                                        </a>
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-gray-500 py-2">No approved proposal documents.</p>
-                            )}
-                          </div>
-                        </div>
-                      ) : null}
-                    </>
-                  ) : null}
-                  {activeTab === "salestl-won-leads" ? (
-                    <>
-                      {lead.salestl_shared_status === "1" ? (
-                        <div className="space-y-4 rounded-lg bg-white border p-4 mt-4">
-                          <h4 className="font-semibold text-sm border-b pb-2">Approved Proposal Documents</h4>
-                          {/* Display only approved proposals (status = 1) */}
-                          <div className="mt-4">
-                            {uploadedDocuments.filter((doc) => doc.status === "1").length > 0 ? (
-                              <div className="space-y-2">
-                                {uploadedDocuments
-                                  .filter((doc) => doc.status === "1")
-                                  .map((doc, index) => (
-                                    <div
-                                      key={index}
-                                      className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
-                                    >
-                                      <div className="flex items-center">
-                                        <FiFile className="mr-2 text-green-600" />
-                                        <span className="text-sm font-medium">
-                                          {doc.fileName || `Proposal ${index + 1}`}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-3">
-                                        <span className="text-xs text-green-600 font-semibold">Approved</span>
-                                        <span className="text-xs text-gray-500">
-                                          {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : "N/A"}
-                                        </span>
-                                        <a
-                                          href={doc.fileUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-blue-600 hover:text-blue-800"
-                                        >
-                                          <FiExternalLink />
-                                        </a>
-                                      </div>
-                                    </div>
-                                  ))}
-                              </div>
-                            ) : (
-                              <p className="text-sm text-gray-500 py-2">No approved proposal documents.</p>
-                            )}
-                          </div>
-                        </div>
-                      ) : null}
-                    </>
-                  ) : null}
 
                   {/* Lead Status (Won/Lost) - editable for both Sales TL and SSE */}
                   {lead.salestl_shared_status === "1" ? (

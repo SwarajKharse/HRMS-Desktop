@@ -6,6 +6,7 @@ import { storeService } from "../../services/storeService"
 import SkillSetImportExport from "./SkillSetImportExport"
 import AddSkillSet from "./AddSkillSet"
 import SkillSetEditForm from "./SkillSetEditForm"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const SkillSetList = () => {
   // State for skill sets and pagination
@@ -51,7 +52,7 @@ const SkillSetList = () => {
       }
     } catch (error) {
       console.error("Error fetching skill sets:", error)
-      setError("Failed to fetch skill sets: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to fetch skill sets."))
     } finally {
       setLoading(false)
     }
@@ -89,7 +90,7 @@ const SkillSetList = () => {
       setSuccessMessage("Skill Set updated successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
-      setError("Failed to update skill set")
+      setError(getErrorMessage(error, "Failed to update skill set"))
     }
   }
 

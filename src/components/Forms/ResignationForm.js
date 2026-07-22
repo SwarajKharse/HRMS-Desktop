@@ -2,6 +2,7 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { FiX, FiLogOut } from "react-icons/fi"
 import { resignationService } from "../../services/resignationService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function ResignationForm({ employee, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -20,7 +21,7 @@ function ResignationForm({ employee, onClose, onSubmit }) {
       onSubmit && onSubmit()
       onClose()
     } catch (err) {
-      setError(err.message || "Failed to apply resignation")
+      setError(getErrorMessage(err, "Failed to apply resignation"))
     } finally {
       setLoading(false)
     }
