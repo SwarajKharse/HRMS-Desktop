@@ -5,6 +5,7 @@ import { FiX } from "react-icons/fi"
 import { leadService } from "../../services/leadService"
 import { projectService } from "../../services/projectService"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 // Moved ExpandableSection component definition outside ProjectLeadDetails
 const ExpandableSection = ({ title, isExpanded, onToggle, children, bgColor, borderColor, headerTextColor }) => (
@@ -160,7 +161,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
           employee_updatedby: { id: userId }, // Always ensure this is the current user
         })
       } catch (err) {
-        setError("Failed to load project details or related lists.")
+        setError(getErrorMessage(err, "Failed to load project details or related lists."))
         console.error(err)
         setLead(null)
         // Ensure projectData is reset to defaults or minimal on error
@@ -259,7 +260,7 @@ function ProjectLeadDetails({ leadId, activeTab, onClose, onSubmit }) {
       onClose()
     } catch (err) {
       console.log(err)
-      setError(err.message || "Failed to update project")
+      setError(getErrorMessage(err, "Failed to update project"))
       window.scrollTo(0, 0)
     } finally {
       setLoading(false)

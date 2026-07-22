@@ -4,6 +4,7 @@ import { projectService } from "../../services/projectService"
 import { comparisonSheetService } from "../../services/comparisonSheetService"
 import { useAuth } from "../../contexts/AuthContext"
 import ComparisionSheetModal from "./PurchaserComponents/ComparisionSheetModal"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const formatDate = (dateString) => {
   if (!dateString) return ""
@@ -54,7 +55,7 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
       }
       setRequisitions(approved)
     } catch (e) {
-      setError("Failed to load requisitions. Please try again.")
+      setError(getErrorMessage(e, "Failed to load requisitions. Please try again."))
     } finally {
       setLoading(false)
     }
@@ -63,6 +64,18 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
   useEffect(() => { fetchRequisitions() }, [fetchRequisitions])
 
   const toggle = (id) => setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
+
+  const handleMarkWrong = async (req) => {
+    const remarks = prompt("Why is this requisition wrong? (required)")
+    if (remarks == null) return
+    if (!remarks.trim()) { alert("A remark is required to flag a requisition as wrong."); return }
+    try {
+      await projectService.markRequisitionWrong(req.projectId, req.id, remarks.trim(), "PURCHASE", user?.userId)
+      fetchRequisitions()
+    } catch (e) {
+      alert(getErrorMessage(e, "Failed to flag requisition"))
+    }
+  }
 
   const handleOpenComparison = async (l, req) => {
     setLoadingComparison(true)
@@ -82,7 +95,7 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
       })
       setShowComparisonModal(true)
     } catch (e) {
-      alert("Failed to load comparison data: " + (e?.response?.data?.message || e.message))
+      alert(getErrorMessage(e, "Failed to load comparison data"))
     } finally {
       setLoadingComparison(false)
     }
@@ -213,6 +226,22 @@ export default function MaterialRequisitionPurchase({ assignedProjectIds = null,
                         </div>
                       </button>
                       <span className="text-xs text-gray-400 shrink-0">{formatDate(req.createdAt)}</span>
+                      <div className="ml-3 shrink-0">
+                        {req.wrongRequisitionFlag ? (
+                          <span className="px-2.5 py-1 text-xs rounded bg-orange-100 text-orange-700" title={req.wrongRequisitionRemarks || ""}>
+                            Flagged wrong
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleMarkWrong(req)}
+                            disabled={req.poUploaded}
+                            title={req.poUploaded ? "PO already uploaded — can no longer be flagged" : "Flag this requisition as wrongly approved"}
+                            className="px-2.5 py-1 text-xs rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Wrong Requisition
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {open && (
                       <div className="border-t border-gray-200 overflow-x-auto">

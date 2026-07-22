@@ -18,6 +18,7 @@ import {
 import { purchaseInvoiceService } from "../../../services/purchaseInvoiceService"
 import { useAuth } from "../../../contexts/AuthContext"
 import PurchaseInvoiceFormIntegration from "./PurchaseInvoiceFormIntegration"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 function PayablePIComponent() {
   const navigate = useNavigate()
@@ -64,7 +65,7 @@ function PayablePIComponent() {
       setTotalResults(data.totalItems || 0)
       setLoading(false)
     } catch (error) {
-      setError("Failed to fetch purchase invoices")
+      setError(getErrorMessage(error, "Failed to fetch purchase invoices"))
       setLoading(false)
     }
   }, [currentPage, itemsPerPage, searchQuery, projectNameFilter, statusFilter, user.userId])

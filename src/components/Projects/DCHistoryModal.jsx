@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, Fragment } from "react"
 import { FiX, FiUpload, FiEdit2, FiLoader, FiCheck } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const fmtDateTime = (s) => { if (!s) return ""; try { return new Date(s).toLocaleString() } catch { return "" } }
 
@@ -54,7 +55,7 @@ export default function DCHistoryModal({ projectId, projectName, isOpen, onClose
       setSavedKey(key)
       setTimeout(() => setSavedKey((k) => (k === key ? null : k)), 2000)
     } catch (err) {
-      alert("Failed to upload signed DC copy: " + (err.response?.data?.message || err.message))
+      alert("Failed to upload signed DC copy: " + getErrorMessage(err, err.message))
     } finally {
       setUploadingKey(null)
     }

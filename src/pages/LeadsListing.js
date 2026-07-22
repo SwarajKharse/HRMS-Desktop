@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useSearchParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import UnAssignedLeads from "../components/Leads/UnAssignedLeads"
 import SSEAssignedLeads from "../components/Leads/SSEAssignedLeads"
@@ -19,11 +20,15 @@ import { BiWon } from "react-icons/bi"
 import { VscEditSession } from "react-icons/vsc"
 import { FaCreativeCommonsBy } from "react-icons/fa6"
 import { useAuth } from "../contexts/AuthContext"
+import { useHighlightTarget } from "../hooks/useHighlightTarget"
 
 function LeadsListing() {
   const { employee } = useAuth()
+  useHighlightTarget()
   const tabsContainerRef = useRef(null)
   const activeTabRef = useRef(null)
+  const deepLinkTabRef = useRef(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Add state for main tab selection
   const [activeMainTab, setActiveMainTab] = useState("SalesTL")
@@ -125,6 +130,20 @@ function LeadsListing() {
   const validTabIds = availableTabs.map((tab) => tab.id)
   const availableMainTabs = getAvailableMainTabs()
 
+  // Maps a tab id to the main tab group it lives under, for ?tab= deep links (e.g. from notifications).
+  const getMainTabForTabId = (tabId) => {
+    if (["unassigned-leads", "sse-assigned-leads", "assign-leads-bdm", "salestl-won-leads", "salestl-update-master-table"].includes(tabId)) {
+      return "SalesTL"
+    }
+    if (["see-new-leads", "sse-inprocess-leads", "sse-won-leads"].includes(tabId)) {
+      return "SSE"
+    }
+    if (["bdm-assigned-field-visit", "bdm-leads-by-me"].includes(tabId)) {
+      return "BDM"
+    }
+    return null
+  }
+
   // Initialize activeTab from sessionStorage with validation against available tabs
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
@@ -149,7 +168,8 @@ function LeadsListing() {
   // Reset active tab when main tab changes for users with main tabs
   useEffect(() => {
     if (shouldShowMainTabs()) {
-      setActiveTab(validTabIds[0])
+      setActiveTab(deepLinkTabRef.current || validTabIds[0])
+      deepLinkTabRef.current = null
     }
   }, [activeMainTab])
 
@@ -159,6 +179,23 @@ function LeadsListing() {
       setActiveMainTab(availableMainTabs[0])
     }
   }, [availableMainTabs, activeMainTab])
+
+  // Deep link support: ?tab=<id> (e.g. /leads?tab=unassigned-leads from a notification click).
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab")
+    if (!requestedTab || !employee) return
+    const mainTab = getMainTabForTabId(requestedTab)
+    if (!mainTab) return
+
+    deepLinkTabRef.current = requestedTab
+    setActiveMainTab(mainTab)
+    setActiveTab(requestedTab)
+
+    const next = new URLSearchParams(searchParams)
+    next.delete("tab")
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee])
 
   // Scroll active tab into view when it changes
   useEffect(() => {

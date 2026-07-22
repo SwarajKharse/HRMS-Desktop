@@ -28,6 +28,7 @@ import { allowanceService } from "../../services/allowanceService";
 import { deductionService } from "../../services/deductionService";
 import { bonusService } from "../../services/bonusService";
 import { payslipService } from "../../services/payslipService";
+import { getErrorMessage } from "../../utils/errorUtils";
 
 // Modals / Forms
 import PayrollDialog from "../../components/PayrollDialog";
@@ -116,7 +117,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
       setLocalEarlyCheckOuts(data.earlyCheckOuts || []);
       setError(null);
     } catch (err) {
-      setError("Failed to load payroll report");
+      setError(getErrorMessage(err, "Failed to load payroll report"));
       setReport(null);
     } finally {
       setReportLoading(false);
@@ -256,7 +257,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
       fetchReport(employeeId, selectedMonth, selectedYear)
     } catch (error) {
       console.error("Failed to include all overtimes:", error)
-      setError("Failed to update all overtime entries. Please try again.")
+      setError(getErrorMessage(error, "Failed to update all overtime entries. Please try again."))
       // Revert local state on error
       fetchReport(employeeId, selectedMonth, selectedYear)
     } finally {
@@ -291,7 +292,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
       fetchReport(employeeId, selectedMonth, selectedYear)
     } catch (error) {
       console.error("Failed to remove all overtimes:", error)
-      setError("Failed to update all overtime entries. Please try again.")
+      setError(getErrorMessage(error, "Failed to update all overtime entries. Please try again."))
       // Revert local state on error
       fetchReport(employeeId, selectedMonth, selectedYear)
     } finally {
@@ -338,7 +339,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
       }
       fetchReport(employeeId, selectedMonth, selectedYear);
     } catch (err) {
-      setError(`Failed to delete ${type}`);
+      setError(getErrorMessage(err, `Failed to delete ${type}`));
     }
   };
 
@@ -389,7 +390,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
       setEditingType(null);
       fetchReport(employeeId, selectedMonth, selectedYear);
     } catch (err) {
-      setError(`Failed to ${editingItem ? "update" : "create"} ${type}`);
+      setError(getErrorMessage(err, `Failed to ${editingItem ? "update" : "create"} ${type}`));
     }
   };
 
@@ -409,7 +410,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
       link.click()
       link.remove()
     } catch (error) {
-      setError("Failed to download CTC breakdown")
+      setError(getErrorMessage(error, "Failed to download CTC breakdown"))
       console.error(error)
     } finally {
       setDownloadLoading(null)
@@ -428,7 +429,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
       link.click()
       link.remove()
     } catch (error) {
-      setError("Failed to download monthly salary report")
+      setError(getErrorMessage(error, "Failed to download monthly salary report"))
       console.error(error)
     } finally {
       setDownloadLoading(null)
@@ -447,7 +448,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
       link.click()
       link.remove()
     } catch (error) {
-      setError("Failed to download payslip PDF")
+      setError(getErrorMessage(error, "Failed to download payslip PDF"))
       console.error(error)
     } finally {
       setDownloadLoading(null)
@@ -1106,7 +1107,7 @@ const EmployeePayrollReport = ({ employeeId }) => {
                 setShowPayrollDialog(false);
                 fetchReport(employeeId, selectedMonth, selectedYear);
               } catch (err) {
-                setError("Failed to save payroll details");
+                setError(getErrorMessage(err, "Failed to save payroll details"));
               }
             }}
           />

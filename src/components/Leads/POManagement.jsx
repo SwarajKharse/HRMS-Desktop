@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion } from "framer-motion"
 import { FiX, FiUpload, FiFile, FiExternalLink, FiAlertCircle } from "react-icons/fi"
 import { leadService } from "../../services/leadService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function POManagement({ lead, onClose, onSubmit }) {
   const fileInputRef = useRef(null)
@@ -67,7 +68,7 @@ function POManagement({ lead, onClose, onSubmit }) {
       await onSubmit()
     } catch (err) {
       console.error("Error uploading PO:", err)
-      setError(err.message || "Failed to upload PO")
+      setError(getErrorMessage(err, "Failed to upload PO"))
     } finally {
       setLoading(false)
     }

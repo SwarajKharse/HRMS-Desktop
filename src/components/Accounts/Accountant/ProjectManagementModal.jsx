@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { FiX, FiUpload, FiFile, FiCheck, FiAlertCircle, FiCalendar } from "react-icons/fi"
 import { projectManagementService } from "../../../services/projectManagementService"
 import { useAuth } from "../../../contexts/AuthContext"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 // Approval Status Badge Component
 const ApprovalStatusBadge = ({ status }) => {
@@ -83,7 +84,7 @@ function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, o
       }
     } catch (err) {
       console.error("Error fetching purchase orders:", err)
-      setError("Failed to fetch purchase orders")
+      setError(getErrorMessage(err, "Failed to fetch purchase orders"))
     }
   }
 
@@ -116,7 +117,7 @@ function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, o
       setTimeout(() => setSuccess(null), 3000)
       if (onSuccess) onSuccess()
     } catch (err) {
-      setError("Failed to update purchase order status")
+      setError(getErrorMessage(err, "Failed to update purchase order status"))
     } finally {
       setLoading(false)
     }
@@ -157,7 +158,7 @@ function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, o
       setTimeout(() => setSuccess(null), 3000)
       if (onSuccess) onSuccess()
     } catch (err) {
-      setError("Failed to upload invoice document")
+      setError(getErrorMessage(err, "Failed to upload invoice document"))
     } finally {
       setLoading(false)
     }
@@ -187,7 +188,7 @@ function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, o
       await fetchInvoiceDocuments()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError("Failed to upload payment document")
+      setError(getErrorMessage(err, "Failed to upload payment document"))
     } finally {
       setLoading(false)
     }
@@ -201,7 +202,7 @@ function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, o
       await fetchInvoiceDocuments()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError("Failed to update approval status")
+      setError(getErrorMessage(err, "Failed to update approval status"))
     } finally {
       setLoading(false)
     }
@@ -223,7 +224,7 @@ function ProjectManagementModal({ isOpen, onClose, projectId, purchaseOrderId, o
       await fetchInvoiceDocuments()
       setTimeout(() => setSuccess(null), 3000)
     } catch (err) {
-      setError("Failed to update shared date")
+      setError(getErrorMessage(err, "Failed to update shared date"))
     } finally {
       setLoading(false)
     }

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FiClock, FiAlertCircle, FiCheck } from "react-icons/fi"
 import { attendanceSettingsService } from "../../services/attendanceSettingsService"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { useAuth } from "../../contexts/AuthContext"
 
 function AttendanceSettings() {
@@ -41,7 +42,7 @@ function AttendanceSettings() {
       }
       setError(null)
     } catch (err) {
-      setError("Failed to load attendance settings")
+      setError(getErrorMessage(err, "Failed to load attendance settings"))
     } finally {
       setLoading(false)
     }
@@ -73,7 +74,7 @@ function AttendanceSettings() {
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (err) {
-      setError("Failed to save attendance settings")
+      setError(getErrorMessage(err, "Failed to save attendance settings"))
     } finally {
       setSaving(false)
     }

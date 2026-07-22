@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { missPunchService } from "../../services/missPunchService"
 import { format } from "date-fns"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function EmployeeMissPunch({ employeeId }) {
   const [requests, setRequests] = useState([])
@@ -18,7 +19,7 @@ function EmployeeMissPunch({ employeeId }) {
       setRequests(data)
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch miss punch requests"))
     } finally {
       setLoading(false)
     }

@@ -4,6 +4,7 @@ import { FiX, FiCalendar, FiUpload, FiTrash2,FiFile, FiExternalLink } from "reac
 import { authService } from "../../services/authService"
 import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function LeadSSEEditFormInProgress({ lead, activeTab, onClose, onSubmit }) {
   const { user } = useAuth()
@@ -234,7 +235,7 @@ function LeadSSEEditFormInProgress({ lead, activeTab, onClose, onSubmit }) {
 
 
     } catch (err) {
-      setError("Failed to load departments and designations")
+      setError(getErrorMessage(err, "Failed to load departments and designations"))
       console.error(err)
     } finally {
       setDataLoading(false)
@@ -613,7 +614,7 @@ function LeadSSEEditFormInProgress({ lead, activeTab, onClose, onSubmit }) {
       onClose() // Only close after successful submission and parent handle
     } catch (err) {
       console.log(err)
-      setError(err.message || "Failed to update lead")
+      setError(getErrorMessage(err, "Failed to update lead"))
       window.scrollTo(0, 0) // Scroll to top to show error
     } finally {
       setLoading(false)
@@ -1354,30 +1355,52 @@ function LeadSSEEditFormInProgress({ lead, activeTab, onClose, onSubmit }) {
                 ) : uploadedDocuments.length > 0 ? (
                   <div className="space-y-2">
                     {uploadedDocuments.map((doc, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                        <div className="flex items-center">
-                          <FiFile className="mr-2 text-blue-600" />
-                          <span className="text-sm font-medium">{doc.fileName || `Document ${index + 1}`}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <span className="text-xs text-gray-500 mr-3">
-                            {doc.status === null ? "Pending" : null}
-                            {doc.status === "1" ? "Approved" : null}
-                            {doc.status === "0" ? "Rejected" : null}
-                          </span>
+                      <div
+                        key={index}
+                        className={`p-3 rounded-md border ${
+                          doc.status === "1"
+                            ? "bg-green-50 border-green-200"
+                            : doc.status === "0"
+                              ? "bg-red-50 border-red-200"
+                              : "bg-gray-50 border-gray-100"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <FiFile className="mr-2 text-blue-600" />
+                            <span className="text-sm font-medium">{doc.fileName || `Document ${index + 1}`}</span>
+                          </div>
+                          <div className="flex items-center">
+                            <span
+                              className={`text-xs mr-3 font-semibold ${
+                                doc.status === "1"
+                                  ? "text-green-700"
+                                  : doc.status === "0"
+                                    ? "text-red-700"
+                                    : "text-gray-500"
+                              }`}
+                            >
+                              {doc.status === null ? "Pending" : null}
+                              {doc.status === "1" ? "Approved" : null}
+                              {doc.status === "0" ? "Rejected" : null}
+                            </span>
 
-                          <span className="text-xs text-gray-500 mr-3">
-                            {new Date(doc.uploadedAt).toLocaleDateString()}
-                          </span>
-                          <a
-                            href={doc.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800"
-                          >
-                            <FiExternalLink />
-                          </a>
+                            <span className="text-xs text-gray-500 mr-3">
+                              {new Date(doc.uploadedAt).toLocaleDateString()}
+                            </span>
+                            <a
+                              href={doc.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              <FiExternalLink />
+                            </a>
+                          </div>
                         </div>
+                        {doc.status === "0" && doc.rejectionRemark ? (
+                          <p className="text-xs text-red-700 mt-2 pl-6">Rejection Remark: {doc.rejectionRemark}</p>
+                        ) : null}
                       </div>
                     ))}
                   </div>

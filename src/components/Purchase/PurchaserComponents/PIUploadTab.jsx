@@ -5,6 +5,7 @@ import { comparisonSheetService } from "../../../services/comparisonSheetService
 import { purchaseInvoiceService } from "../../../services/purchaseInvoiceService"
 import { grnService } from "../../../services/grnService"
 import { useAuth } from "../../../contexts/AuthContext"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 const PIUploadTab = () => {
   const { user } = useAuth()
@@ -204,7 +205,7 @@ const PIUploadTab = () => {
       fetchApprovedPOs()
     } catch (error) {
       console.error("Error submitting PI:", error)
-      showMessage("error", "Error submitting PI. Please try again.")
+      showMessage("error", getErrorMessage(error, "Error submitting PI. Please try again."))
     } finally {
       setUploadingPI(false)
     }
@@ -269,7 +270,7 @@ const PIUploadTab = () => {
       fetchApprovedPOs()
     } catch (error) {
       console.error("Error uploading GRN:", error)
-      showMessage("error", error.response?.data?.message || "Failed to upload GRN")
+      showMessage("error", getErrorMessage(error, "Failed to upload GRN"))
     } finally {
       setUploadingGRN(false)
     }

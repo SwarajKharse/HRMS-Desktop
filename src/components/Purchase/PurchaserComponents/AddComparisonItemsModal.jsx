@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { FiX, FiSearch } from "react-icons/fi"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 export default function AddComparisonItemsModal({ excludeMtrIds = [], onClose, onAdd }) {
   const [items, setItems] = useState([])
@@ -23,7 +24,7 @@ export default function AddComparisonItemsModal({ excludeMtrIds = [], onClose, o
       )
     } catch (e) {
       console.error("Error loading items for comparison sheet:", e)
-      setError("Failed to load pending items.")
+      setError(getErrorMessage(e, "Failed to load pending items."))
     } finally {
       setLoading(false)
     }
@@ -126,7 +127,8 @@ export default function AddComparisonItemsModal({ excludeMtrIds = [], onClose, o
                       )}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {mtr.projectName} • Make: {mtr.make || "N/A"} • UOM: {mtr.uom || "N/A"} • Qty: {mtr.purchaseMTR}
+                      {mtr.projectName}
+                      {mtr.requisitionNo != null && ` (Requisition ${mtr.requisitionNo})`} • Make: {mtr.make || "N/A"} • UOM: {mtr.uom || "N/A"} • Qty: {mtr.purchaseMTR}
                     </div>
                   </div>
                 </label>

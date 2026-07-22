@@ -22,6 +22,7 @@ import CreateRequisition from "./CreateRequisition"
 import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
 import { leadService } from "../../services/leadService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onSave, onClose, currentUserId }) {
   const [showAddProductModal, setShowAddProductModal] = useState(false)
@@ -143,7 +144,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
         console.log("[v0] Data fetch completed successfully")
       } catch (err) {
         console.error("[v0] Error fetching initial data:", err)
-        setError("Error fetching initial data: " + err.message)
+        setError(getErrorMessage(err, "Error fetching initial data."))
       } finally {
         setLoading(false)
       }
@@ -281,7 +282,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
             const skillSet = (item.skillSetItems || []).map((ss) => ({
               ...ss,
               id: ss.id, // Preserve existing skillset item ID for frontend state
-              name: ss.skillset_name || ss.itemDescription || "Unknown Skillset", // Use skillset_name or itemDescription as fallback
+              name: ss.productName || ss.skillset_name || ss.itemDescription || "Unknown Skillset", // Use productName/skillset_name or itemDescription as fallback
               qty: ss.qty || 0,
               materialRequisitions: (ss.materialRequisitions || []).map((mtr, mtrIndex) => ({
                 id: mtr.id, // Preserve existing category MTR ID for frontend state
@@ -300,7 +301,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
             const tools = (item.toolsItems || []).map((t) => ({
               ...t,
               id: t.id, // Preserve existing tool item ID for frontend state
-              name: t.tool_name || t.itemDescription || "Unknown Tool", // Use tool_name or itemDescription as fallback
+              name: t.productName || t.tool_name || t.itemDescription || "Unknown Tool", // Use productName/tool_name or itemDescription as fallback
               qty: t.qty || 0,
               make: t.make || "",
               materialRequisitions: (t.materialRequisitions || []).map((mtr, mtrIndex) => ({
@@ -355,7 +356,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
           setIsBOQInitializedFromProps(true)
         } catch (err) {
           console.error("Error processing BOQ data:", err)
-          setError("Error processing BOQ data: " + err.message)
+          setError(getErrorMessage(err, "Error processing BOQ data."))
           setBOQProducts([])
         }
       } else if (!existingBOQ && !isBOQInitializedFromProps) {
@@ -460,7 +461,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
         onClose()
       } catch (error) {
         console.error("Error updating approval status:", error)
-        setError("Failed to update approval status: " + error.message)
+        setError(getErrorMessage(error, "Failed to update approval status."))
       }
     }
     return (
@@ -1029,7 +1030,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
       onClose()
     } catch (err) {
       console.error("Error saving BOQ with material requisitions:", err)
-      setError(`Error saving BOQ: ${err.message || err}`)
+      setError(getErrorMessage(err, "Error saving BOQ."))
     } finally {
       setLoading(false)
       setShowChangesSummary(false)
@@ -1113,6 +1114,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
                 id: null, // CRITICAL: Ensure BOQCategoryItem's own ID is null for new items
                 referenceId: skillset.id, // NEW: Pass the master data ID as referenceId
                 name: skillset.skillset_name, // Use 'name' for display
+                productName: skillset.skillset_name,
                 qty: "",
                 make: null, // Skillsets do not have make
                 materialRequisitions: [],
@@ -1145,6 +1147,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
                 id: null, // CRITICAL: Ensure BOQCategoryItem's own ID is null for new items
                 referenceId: tool.id, // NEW: Pass the master data ID as referenceId
                 name: tool.tool_name, // Use 'name' for display
+                productName: tool.tool_name,
                 qty: "",
                 make: "", // Tools can have make
                 materialRequisitions: [],
@@ -1337,7 +1340,7 @@ function SiteEngineerBOQEditComponent({ projectId, projectName, existingBOQ, onS
       setShowChangesSummary(true)
     } catch (err) {
       console.error("Error preparing summary:", err)
-      setError("Error preparing summary: " + err.message)
+      setError(getErrorMessage(err, "Error preparing summary."))
     }
   }
 

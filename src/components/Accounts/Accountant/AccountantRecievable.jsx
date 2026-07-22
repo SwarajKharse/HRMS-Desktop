@@ -6,6 +6,7 @@ import { receivableService } from "../../../services/receivableService"
 import { useAuth } from "../../../contexts/AuthContext"
 import ProjectManagementModal from "./ProjectManagementModal"
 import BOQModal from "./BOQModal"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 function AccountantRecievable() {
   const [loading, setLoading] = useState(true)
@@ -49,7 +50,7 @@ function AccountantRecievable() {
       setTotalResults(data.totalItems || 0)
       setLoading(false)
     } catch (error) {
-      setError("Failed to fetch projects")
+      setError(getErrorMessage(error, "Failed to fetch projects"))
       setLoading(false)
     }
   }, [currentPage, itemsPerPage, searchQuery, projectNameFilter, statusFilter, user])

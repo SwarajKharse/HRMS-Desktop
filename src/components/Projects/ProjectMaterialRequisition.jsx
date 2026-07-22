@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 import { projectService } from "../../services/projectService"
 import CreateRequisition from "./CreateRequisition"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const formatDate = (dateString) => {
   if (!dateString) return ""
@@ -59,7 +60,7 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
       setRequisitions(scoped)
     } catch (e) {
       console.error("Failed to fetch requisitions:", e)
-      setError("Failed to load requisitions. Please try again.")
+      setError(getErrorMessage(e, "Failed to load requisitions. Please try again."))
     } finally {
       setLoading(false)
     }
@@ -77,7 +78,17 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
       await projectService.setRequisitionApproval(req.projectId, req.id, status, remarks, user?.userId)
       fetchRequisitions()
     } catch (e) {
-      alert("Failed to update approval: " + (e?.response?.data?.message || e.message))
+      alert("Failed to update approval: " + getErrorMessage(e, e.message))
+    }
+  }
+
+  const handleTakeBack = async (req) => {
+    if (!window.confirm(`Take back Requisition ${req.requisitionNo}? It will return to pending and no longer be visible to Store/Purchase.`)) return
+    try {
+      await projectService.takeBackRequisition(req.projectId, req.id, user?.userId)
+      fetchRequisitions()
+    } catch (e) {
+      alert("Failed to take back requisition: " + getErrorMessage(e, e.message))
     }
   }
 
@@ -224,6 +235,11 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
                             Rejected: "{req.pmApprovalRemarks}"
                           </span>
                         )}
+                        {req.wrongRequisitionFlag && (
+                          <span className="text-xs text-orange-700 italic max-w-xs truncate" title={req.wrongRequisitionRemarks || ""}>
+                            ⚠ Flagged wrong by {req.wrongRequisitionFlaggedByRole === "PURCHASE" ? "Purchase" : "Store"}: "{req.wrongRequisitionRemarks}"
+                          </span>
+                        )}
                         {(req.status || "").toUpperCase() === "PENDING" && (
                           <>
                             {mode === "pm" && (
@@ -245,6 +261,14 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
                               </button>
                             )}
                           </>
+                        )}
+                        {mode === "pm" && (req.status || "").toUpperCase() === "APPROVED" && (
+                          <button onClick={() => handleTakeBack(req)}
+                            disabled={req.poUploaded}
+                            title={req.poUploaded ? "PO already uploaded — can no longer be taken back" : "Take back this requisition to Pending"}
+                            className="px-2.5 py-1 text-xs rounded bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                            Take Back
+                          </button>
                         )}
                       </div>
                     </div>

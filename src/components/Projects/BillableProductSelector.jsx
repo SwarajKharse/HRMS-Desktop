@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react"
 import { FiSearch, FiPlus, FiTrash2, FiX, FiEdit2, FiSave, FiChevronDown, FiChevronRight } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function BillableProductSelector({ projectId, onSave, leadProductTypes, existingBOQ = null, isEditMode = false }) {
   const [products, setProducts] = useState([])
@@ -202,7 +203,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
         setFilteredProducts(productsData)
       } catch (err) {
         console.error("Error fetching products (BillableProductSelector):", err)
-        setError(`Failed to load products: ${err.message}`)
+        setError(getErrorMessage(err, "Failed to load products."))
         setProducts([])
         setFilteredProducts([])
       } finally {
@@ -447,7 +448,7 @@ function BillableProductSelector({ projectId, onSave, leadProductTypes, existing
       onSave(boqData, isEditMode)
     } catch (err) {
       console.error("Error saving BOQ (BillableProductSelector):", err)
-      setError(`Failed to save BOQ: ${err.message || err}`)
+      setError(getErrorMessage(err, "Failed to save BOQ."))
     } finally {
       setSaving(false)
     }

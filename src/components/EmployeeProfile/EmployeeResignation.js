@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { resignationService } from "../../services/resignationService"
 import { format } from "date-fns"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function EmployeeResignation({ employeeId }) {
   const [resignation, setResignation] = useState(null)
@@ -21,7 +22,7 @@ function EmployeeResignation({ employeeId }) {
       setResignation(data)
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch resignation details"))
     } finally {
       setLoading(false)
     }

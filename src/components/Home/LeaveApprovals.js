@@ -4,6 +4,7 @@ import { format } from "date-fns"
 import { FiCheck, FiX, FiAlertCircle, FiClock } from "react-icons/fi"
 import { leaveRequestService } from "../../services/leaveRequestService"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function LeaveApprovals() {
   const [leaveRequests, setLeaveRequests] = useState([])
@@ -24,7 +25,7 @@ function LeaveApprovals() {
       try {
         fetchLeaveRequests(employee)
       } catch (err) {
-        setError(err.message)
+        setError(getErrorMessage(err, "Failed to fetch leave requests"))
         setLoading(false)
       }
     }
@@ -53,7 +54,7 @@ function LeaveApprovals() {
 
       setLeaveRequests(data)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch leave requests"))
     } finally {
       setLoading(false)
     }
@@ -88,7 +89,7 @@ function LeaveApprovals() {
       setSelectedRequest(null)
       setActionType(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to submit leave action"))
     } finally {
       setActionInProgress(false)
     }

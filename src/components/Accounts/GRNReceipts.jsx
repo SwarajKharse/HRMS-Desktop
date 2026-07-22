@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { FiFileText, FiLoader, FiX, FiCalendar, FiDollarSign, FiClock, FiCheckCircle, FiAward } from "react-icons/fi"
 import { grnService } from "../../services/grnService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 export default function GRNReceipts({ poId }) {
   const [grns, setGrns] = useState([])
@@ -22,7 +23,7 @@ export default function GRNReceipts({ poId }) {
       setGrns(Array.isArray(data) ? data : [])
     } catch (err) {
       console.log("[v0] Error fetching GRNs:", err)
-      setError("Failed to load GRNs")
+      setError(getErrorMessage(err, "Failed to load GRNs"))
       setGrns([])
     } finally {
       setLoading(false)

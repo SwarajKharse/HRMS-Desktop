@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { FiX } from "react-icons/fi"
 import { projectService } from "../../services/projectService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function ProjectSummary({ projectId, onClose }) {
   const [summaryData, setSummaryData] = useState(null)
@@ -30,7 +31,7 @@ function ProjectSummary({ projectId, onClose }) {
       setSummaryData(data)
     } catch (err) {
       console.error("[v0] Error fetching project summary:", err)
-      setError("Failed to load project summary: " + (err.message || "Unknown error"))
+      setError(getErrorMessage(err, "Failed to load project summary."))
       setSummaryData(null)
     } finally {
       setLoading(false)

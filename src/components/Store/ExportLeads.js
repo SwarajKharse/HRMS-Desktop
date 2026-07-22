@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { FiDownload } from "react-icons/fi"
 import { leadService } from "../../services/leadService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const ExportLeads = () => {
   const [loading, setLoading] = useState(false)
@@ -16,7 +17,7 @@ const ExportLeads = () => {
       setLoading(false)
     } catch (err) {
       console.error("Error exporting leads:", err)
-      setError(err.message || "Failed to export leads.")
+      setError(getErrorMessage(err, "Failed to export leads."))
       setLoading(false)
     }
   }

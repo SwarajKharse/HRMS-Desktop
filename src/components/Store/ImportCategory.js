@@ -17,6 +17,7 @@ import {
 import { storeService } from "../../services/storeService"
 import { useAuth } from "../../contexts/AuthContext"
 import EmployeeForm from "../../components/EmployeeForm"
+import { getErrorMessage } from "../../utils/errorUtils"
 import WarningForm from "../../components/Forms/WarningForm"
 import TerminationForm from "../../components/Forms/TerminationForm";
 import { encryptId } from "../../utils/crypto"
@@ -53,7 +54,7 @@ function ImportCategory() {
       setFilteredEmployees(data)
       setLoading(false)
     } catch (error) {
-      setError("Failed to fetch employees")
+      setError(getErrorMessage(error, "Failed to fetch employees"))
       setLoading(false)
     }
   }, [activeView, user?.orgId])
@@ -103,7 +104,7 @@ function ImportCategory() {
       setShowForm(false)
       setSelectedEmployee(null)
     } catch (error) {
-      setError("Failed to add employee")
+      setError(getErrorMessage(error, "Failed to add employee"))
     }
   }
 
@@ -144,9 +145,7 @@ function ImportCategory() {
       window.URL.revokeObjectURL(url); // Clean up the URL object
     } catch (error) {
       console.error("Export error:", error);
-      setError("Error exporting categories: " + (error.response?.status === 403 ? 
-        "Permission denied. Please check your authorization." : 
-        "An unexpected error occurred."));
+      setError(getErrorMessage(error, "Error exporting categories. Please check your authorization and try again."));
     } finally {
       setIsExporting(false);
     }
@@ -420,7 +419,7 @@ function ImportCategory() {
                                   setTimeout(() => setSuccessMessage(null), 3000)
                                   fetchEmployees()
                                 } catch (error) {
-                                  setError("Error importing categories data. Please check your file and try again.")
+                                  setError(getErrorMessage(error, "Error importing categories data. Please check your file and try again."))
                                 } finally {
                                   setIsImporting(false)
                                 }

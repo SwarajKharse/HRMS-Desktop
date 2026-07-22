@@ -1,6 +1,8 @@
 "use client"
 import { useState, useEffect, useCallback } from "react"
 import { projectService } from "../../services/projectService"
+import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const formatDate = (dateString) => {
   if (!dateString) return ""
@@ -20,6 +22,7 @@ const typeMeta = (type) => {
 const numOrDash = (v) => (v === null || v === undefined || v === "" ? "—" : v)
 
 export default function StoreMaterialRequisitions({ mode = "manager", assignedProjectIds = null }) {
+  const { user } = useAuth()
   const [requisitions, setRequisitions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -48,7 +51,7 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
       }
       setRequisitions(approved)
     } catch (e) {
-      setError("Failed to load requisitions. Please try again.")
+      setError(getErrorMessage(e, "Failed to load requisitions. Please try again."))
     } finally {
       setLoading(false)
     }
@@ -140,9 +143,21 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
       }))
       cancelEditingLine(line.id)
     } catch (e) {
-      alert("Failed to save stock: " + (e?.response?.data?.message || e.message))
+      alert("Failed to save stock: " + getErrorMessage(e, e.message))
     } finally {
       setSavingStock((prev) => ({ ...prev, [line.id]: false }))
+    }
+  }
+
+  const handleMarkWrong = async (req) => {
+    const remarks = prompt("Why is this requisition wrong? (required)")
+    if (remarks == null) return
+    if (!remarks.trim()) { alert("A remark is required to flag a requisition as wrong."); return }
+    try {
+      await projectService.markRequisitionWrong(req.projectId, req.id, remarks.trim(), "STORE", user?.userId)
+      fetchRequisitions()
+    } catch (e) {
+      alert("Failed to flag requisition: " + getErrorMessage(e, e.message))
     }
   }
 
@@ -234,6 +249,22 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
                         <span>Created: {formatDate(req.createdAt)}</span>
                         {req.pmApprovalDate && <span className="text-green-600">Approved: {formatDate(req.pmApprovalDate)}</span>}
                       </span>
+                      <div className="ml-3 shrink-0">
+                        {req.wrongRequisitionFlag ? (
+                          <span className="px-2.5 py-1 text-xs rounded bg-orange-100 text-orange-700" title={req.wrongRequisitionRemarks || ""}>
+                            Flagged wrong
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleMarkWrong(req)}
+                            disabled={req.poUploaded}
+                            title={req.poUploaded ? "PO already uploaded — can no longer be flagged" : "Flag this requisition as wrongly approved"}
+                            className="px-2.5 py-1 text-xs rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            Wrong Requisition
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {open && (
                       <div className="border-t border-gray-200 overflow-x-auto">

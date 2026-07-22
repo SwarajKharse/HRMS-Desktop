@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { format, addDays, subDays } from "date-fns"
 import { attendanceService } from "../../services/attendanceService"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { FiChevronLeft, FiChevronRight, FiSearch, FiX } from "react-icons/fi"
 
 const STATUS_CONFIG = {
@@ -106,7 +107,7 @@ function AttendanceReport() {
       setFilteredData(data)
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch attendance report"))
     } finally {
       setLoading(false)
     }

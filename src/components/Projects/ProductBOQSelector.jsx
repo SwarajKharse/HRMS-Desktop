@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { FiSearch, FiPlus, FiTrash2, FiX, FiEdit2, FiSave, FiChevronDown, FiChevronRight } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
 import { projectService } from "../../services/projectService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ = null, isEditMode = false }) {
   const [products, setProducts] = useState([])
@@ -200,7 +201,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
       setFilteredProducts(mappedProducts)
     } catch (err) {
       console.error("Error fetching products:", err)
-      setError(`Failed to load products: ${err.message}`)
+      setError(getErrorMessage(err, "Failed to load products."))
       setProducts([])
       setFilteredProducts([])
     } finally {
@@ -219,7 +220,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
       )
     } catch (err) {
       console.error("Error fetching categories:", err)
-      setError(`Failed to load categories: ${err.message}`)
+      setError(getErrorMessage(err, "Failed to load categories."))
     }
   }
 
@@ -393,7 +394,7 @@ function ProductBOQSelector({ projectId, onSave, leadProductTypes, existingBOQ =
       }
     } catch (err) {
       console.error("Error saving BOQ:", err)
-      setError(`Failed to save BOQ: ${err.message || err}`)
+      setError(getErrorMessage(err, "Failed to save BOQ."))
     } finally {
       setSaving(false)
     }

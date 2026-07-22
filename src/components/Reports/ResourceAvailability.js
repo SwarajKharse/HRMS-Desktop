@@ -5,6 +5,7 @@ import { leaveReportService } from "../../services/leaveReportService"
 import { attendanceService } from "../../services/attendanceService"
 import { FiChevronLeft, FiChevronRight, FiSearch, FiUpload, FiDownload, FiX } from "react-icons/fi"
 import { authService } from "../../services/authService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function ResourceAvailability() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -74,7 +75,7 @@ function ResourceAvailability() {
       setFilteredData(data)
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch resource availability data"))
     } finally {
       setLoading(false)
     }
@@ -110,7 +111,7 @@ function ResourceAvailability() {
       setSuccessMessage("Attendance data exported successfully!")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
-      setError("Failed to export attendance data")
+      setError(getErrorMessage(err, "Failed to export attendance data"))
     } finally {
       setIsExporting(false)
     }
@@ -125,7 +126,7 @@ function ResourceAvailability() {
       setTimeout(() => setSuccessMessage(null), 3000)
       fetchResourceData() // Refresh the data
     } catch (err) {
-      setError("Failed to import attendance data")
+      setError(getErrorMessage(err, "Failed to import attendance data"))
     } finally {
       setIsImporting(false)
     }

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
 import { projectService } from "../../services/projectService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const TYPE_BADGE = {
   BILLABLE: "bg-blue-100 text-blue-800",
@@ -74,7 +75,14 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
     let result = Array.from(map.values())
     if (term) {
       result = result
-        .map((g) => ({ ...g, items: g.items.filter((it) => (it.name || "").toLowerCase().includes(term)) }))
+        .map((g) => ({
+          ...g,
+          items: g.items.filter(
+            (it) =>
+              (it.name || "").toLowerCase().includes(term) ||
+              (it.productCode || "").toLowerCase().includes(term),
+          ),
+        }))
         .filter((g) => g.items.length > 0 || (g.title || "").toLowerCase().includes(term))
     }
     return result
@@ -124,6 +132,7 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
           refId: l.refId,
           type: l.type,
           name: l.productName,
+          productCode: l.productCode || (match ? match.productCode : null),
           pending: match ? match.pending : (l.mtrQty || 0),
           qty: l.mtrQty != null ? String(l.mtrQty) : "",
           priority: l.priority || "MEDIUM",
@@ -134,7 +143,7 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
       setLines(prefilled)
       setStep("build")
     } catch (e) {
-      setError(e?.response?.data?.message || "Failed to open requisition for editing.")
+      setError(getErrorMessage(e, "Failed to open requisition for editing."))
       setEditingReqId(null)
     }
   }
@@ -150,7 +159,7 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
       await loadAll()
       setLines([]); setEditingReqId(null); setStep("history")
     } catch (e) {
-      setError(e?.response?.data?.message || "Failed to save requisition.")
+      setError(getErrorMessage(e, "Failed to save requisition."))
       setStep("build")
     } finally {
       setSaving(false)
@@ -163,6 +172,11 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
       <div key={lineKey(it)} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
         <span className="flex items-center gap-2 min-w-0">
           <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${TYPE_BADGE[it.type] || "bg-gray-100 text-gray-700"}`}>{typeLabel(it.type)}</span>
+          {it.productCode && (
+            <span className="shrink-0 text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+              {it.productCode}
+            </span>
+          )}
           <span className="break-words min-w-0">{it.name}</span>
         </span>
         <span className="flex items-center gap-2 shrink-0">
@@ -265,6 +279,11 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
                                         <td className="px-4 py-2 pl-10">
                                           <span className="flex items-center gap-2">
                                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGE[l.type] || "bg-gray-100 text-gray-700"}`}>{typeLabel(l.type)}</span>
+                                            {l.productCode && (
+                                              <span className="text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                                                {l.productCode}
+                                              </span>
+                                            )}
                                             <span>{l.productName}</span>
                                             {isNew && <span className="text-[10px] uppercase tracking-wide text-green-700 bg-green-100 px-1.5 py-0.5 rounded">new</span>}
                                           </span>
@@ -392,7 +411,14 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
                             const k = lineKey(l)
                             return (
                               <tr key={k}>
-                                <td className="px-3 py-2">{l.name}</td>
+                                <td className="px-3 py-2">
+                                  {l.productCode && (
+                                    <span className="mr-1.5 text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                                      {l.productCode}
+                                    </span>
+                                  )}
+                                  {l.name}
+                                </td>
                                 <td className="px-3 py-2"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGE[l.type] || "bg-gray-100 text-gray-700"}`}>{typeLabel(l.type)}</span></td>
                                 <td className="px-3 py-2 text-right text-gray-500">{l.pending}</td>
                                 <td className="px-3 py-2 text-right"><input type="number" min="0" max={l.pending} value={l.qty} onChange={(e) => updateQty(k, e.target.value)} className="w-24 h-9 rounded-md border border-blue-300 px-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" /></td>
@@ -415,7 +441,14 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
                           <div key={k} className="border border-gray-200 rounded-lg p-3">
                             <div className="flex items-start justify-between gap-2 mb-3">
                               <div className="min-w-0">
-                                <div className="font-medium text-gray-900 break-words">{l.name}</div>
+                                <div className="font-medium text-gray-900 break-words">
+                                  {l.productCode && (
+                                    <span className="mr-1.5 text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded align-middle">
+                                      {l.productCode}
+                                    </span>
+                                  )}
+                                  {l.name}
+                                </div>
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGE[l.type] || "bg-gray-100 text-gray-700"}`}>{typeLabel(l.type)}</span>
                                   <span className="text-xs text-gray-500">{l.pending} pending</span>
@@ -467,7 +500,14 @@ export default function CreateRequisition({ projectId, createdBy = null, isOpen,
                 <tbody className="divide-y">
                   {lines.map((l) => (
                     <tr key={lineKey(l)}>
-                      <td className="px-3 py-2">{l.name}</td>
+                      <td className="px-3 py-2">
+                        {l.productCode && (
+                          <span className="mr-1.5 text-[11px] font-mono font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                            {l.productCode}
+                          </span>
+                        )}
+                        {l.name}
+                      </td>
                       <td className="px-3 py-2"><span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_BADGE[l.type] || "bg-gray-100 text-gray-700"}`}>{typeLabel(l.type)}</span></td>
                       <td className="px-3 py-2 text-right font-medium">{l.qty}</td>
                     </tr>

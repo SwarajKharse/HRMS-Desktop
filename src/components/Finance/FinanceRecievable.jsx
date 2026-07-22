@@ -11,6 +11,7 @@ import {
 } from "react-icons/fi"
 import { receivableService } from "../../services/receivableService"
 import { financeReceivableService } from "../../services/financeReceivableService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 // ─── BOQ Modal (read-only, same as Accounts) ────────────────────────────────
 function BOQModal({ isOpen, onClose, projectId }) {
@@ -30,7 +31,7 @@ function BOQModal({ isOpen, onClose, projectId }) {
       const data = await receivableService.getProjectBOQ(projectId)
       setBOQData(data)
     } catch (err) {
-      setError("Failed to fetch BOQ data")
+      setError(getErrorMessage(err, "Failed to fetch BOQ data"))
     } finally {
       setLoading(false)
     }
@@ -196,7 +197,7 @@ function InvoiceViewModal({ isOpen, onClose, projectId, projectName }) {
       setTotalPages(data.totalPages || 1)
       setTotalResults(data.totalItems || 0)
     } catch (err) {
-      setError("Failed to fetch invoices")
+      setError(getErrorMessage(err, "Failed to fetch invoices"))
     } finally {
       setLoading(false)
     }
@@ -487,7 +488,7 @@ function FinanceRecievable() {
       setTotalPages(data.totalPages || 1)
       setTotalResults(data.totalItems || 0)
     } catch (err) {
-      setError("Failed to fetch projects")
+      setError(getErrorMessage(err, "Failed to fetch projects"))
     } finally {
       setLoading(false)
     }
@@ -515,7 +516,7 @@ function FinanceRecievable() {
       fetchProjects()
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
-      setError("Failed to update handover status")
+      setError(getErrorMessage(err, "Failed to update handover status"))
     }
   }
 

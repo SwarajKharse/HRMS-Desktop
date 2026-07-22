@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiX, FiAlertCircle } from "react-icons/fi";
 import { leaveTypeService } from "../../services/leaveTypeService";
+import { getErrorMessage } from "../../utils/errorUtils";
 
 function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -52,7 +53,7 @@ function LeaveTypeForm({ leaveType, orgId, onClose, onSubmit }) {
       if (onSubmit) await onSubmit()
         onClose()
     } catch (err) {
-      setError(err.message || "Failed to save leave type");
+      setError(getErrorMessage(err, "Failed to save leave type"));
       window.scrollTo(0, 0);
     } finally {
       setLoading(false);

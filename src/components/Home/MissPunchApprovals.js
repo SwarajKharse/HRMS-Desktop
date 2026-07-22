@@ -4,6 +4,7 @@ import { missPunchService } from "../../services/missPunchService"
 import { format } from "date-fns"
 import { FiCheck, FiX, FiMessageSquare, FiLoader } from "react-icons/fi"
 import { useAuth } from "../../contexts/AuthContext"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function MissPunchApprovals() {
   const [requests, setRequests] = useState([])
@@ -25,7 +26,7 @@ function MissPunchApprovals() {
       const data = await missPunchService.getPendingRequests()
       setRequests(data)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch miss punch requests"))
     } finally {
       setLoading(false)
     }
@@ -50,7 +51,7 @@ function MissPunchApprovals() {
       await fetchPendingRequests()
       setShowCommentsDialog(false)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to submit action"))
     } finally {
       setActionLoading(false)
     }

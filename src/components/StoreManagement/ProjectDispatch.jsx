@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Calendar, Truck, Package, X } from "lucide-react"
 import { projectService } from "../../services/projectService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function ProjectDispatch({ project, onClose, onSave }) {
   const [loading, setLoading] = useState(true)
@@ -246,7 +247,7 @@ function ProjectDispatch({ project, onClose, onSave }) {
         setLoading(false)
       } catch (error) {
         console.error("Error fetching data:", error)
-        setError("Failed to load project data. Please ensure the project exists and try again.")
+        setError(getErrorMessage(error, "Failed to load project data. Please ensure the project exists and try again."))
         setLoading(false)
       }
     }
@@ -387,7 +388,7 @@ function ProjectDispatch({ project, onClose, onSave }) {
       })
     } catch (err) {
       console.error("Error saving initial project details:", err)
-      setError(err.message || "Failed to save initial project details.")
+      setError(getErrorMessage(err, "Failed to save initial project details."))
     } finally {
       setLoading(false)
     }
@@ -530,7 +531,7 @@ function ProjectDispatch({ project, onClose, onSave }) {
       onSave(saveRequest)
     } catch (error) {
       console.error("Error saving project dispatch plan:", error)
-      setError("Failed to save project dispatch plan")
+      setError(getErrorMessage(error, "Failed to save project dispatch plan"))
     } finally {
       setLoading(false)
     }

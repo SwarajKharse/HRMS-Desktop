@@ -5,6 +5,7 @@ import { organizationService } from "../../services/organizationService"
 import { departmentService } from "../../services/departmentService"
 import { designationService } from "../../services/designationService"
 import { authService } from "../../services/authService"
+import { getErrorMessage } from "../../utils/errorUtils"
 import DepartmentForm from "../../components/Organization/DepartmentForm"
 import DesignationForm from "../../components/Organization/DesignationForm"
 import OrganizationDetailsForm from "../../components/Organization/OrganizationDetailsForm"
@@ -54,7 +55,7 @@ function OrganizationSettings() {
       setDepartments(deptData)
       setDesignations(desigData)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to save organization settings"))
     } finally {
       setLoading(false)
     }
@@ -71,7 +72,7 @@ function OrganizationSettings() {
         await departmentService.deleteDepartment(id)
         await fetchData()
       } catch (err) {
-        setError(err.message)
+        setError(getErrorMessage(err, "Failed to save department"))
       }
     }
   }
@@ -87,7 +88,7 @@ function OrganizationSettings() {
         await designationService.deleteDesignation(id)
         await fetchData()
       } catch (err) {
-        setError(err.message)
+        setError(getErrorMessage(err, "Failed to save designation"))
       }
     }
   }

@@ -17,6 +17,7 @@ import {
 } from "react-icons/fi"
 import { projectService } from "../../services/projectService" // Assuming path is correct
 import { storeService } from "../../services/storeService" // Assuming path is correct
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function ProductBOQSelector({
   projectId,
@@ -60,6 +61,50 @@ function ProductBOQSelector({
   const [showApprovalModal, setShowApprovalModal] = useState(null) // State for approval modal
   const [approvalSelectionMode, setApprovalSelectionMode] = useState({})
   const [selectedForApproval, setSelectedForApproval] = useState({})
+
+  // BOQ history is browsed in place (like requisition history), not in a popup:
+  // boqVersionIdx null/at-last means "latest" (live, editable) data is shown.
+  const [boqVersions, setBOQVersions] = useState([])
+  const [boqVersionIdx, setBOQVersionIdx] = useState(null)
+
+  useEffect(() => {
+    if (!projectId) return
+    projectService
+      .getBOQHistory(projectId)
+      .then((data) => setBOQVersions(Array.isArray(data) ? data : []))
+      .catch((e) => console.error("Error loading BOQ history:", e))
+  }, [projectId])
+
+  const boqLastVersionIdx = boqVersions.length - 1
+  const boqEffectiveVersionIdx = boqVersionIdx == null ? boqLastVersionIdx : Math.min(boqVersionIdx, boqLastVersionIdx)
+  const isLatestBOQVersion = boqVersions.length === 0 || boqEffectiveVersionIdx === boqLastVersionIdx
+  const currentBOQVersion = boqVersions[boqEffectiveVersionIdx]
+  const previousBOQVersion = boqEffectiveVersionIdx > 0 ? boqVersions[boqEffectiveVersionIdx - 1] : null
+
+  const findBOQVersionLine = (version, itemId) =>
+    version?.items?.find((l) => String(l.itemId) === String(itemId))
+
+  // While browsing history, the qty input is replaced with read-only text showing
+  // that version's value plus a "(was X)" diff against the prior version.
+  const renderVersionAwareQty = (itemId, liveQty, liveInput) => {
+    if (isLatestBOQVersion) return liveInput
+    const line = findBOQVersionLine(currentBOQVersion, itemId)
+    const prevLine = findBOQVersionLine(previousBOQVersion, itemId)
+    const qty = line ? line.qty : liveQty
+    const changed = !!previousBOQVersion && !!prevLine && Number(prevLine.qty) !== Number(line?.qty)
+    const isNew = !!previousBOQVersion && !prevLine && !!line
+    return (
+      <span className={changed ? "font-medium text-amber-800 text-sm" : "font-medium text-gray-800 text-sm"}>
+        {qty ?? 0}
+        {changed && <span className="ml-1 text-xs text-amber-700">(was {prevLine.qty ?? "—"})</span>}
+        {isNew && (
+          <span className="ml-1 text-[10px] uppercase tracking-wide text-green-700 bg-green-100 px-1 py-0.5 rounded">
+            new
+          </span>
+        )}
+      </span>
+    )
+  }
 
   const calculateAmounts = (qty, supplyRate, installationRate) => {
     const parsedQty = Number.parseFloat(qty) || 0
@@ -170,7 +215,7 @@ function ProductBOQSelector({
         onClose()
       } catch (error) {
         console.error("Error updating approval status:", error)
-        setModalError("Failed to update approval status: " + (error.message || "Unknown error"))
+        setModalError(getErrorMessage(error, "Failed to update approval status."))
       } finally {
         setModalLoading(false)
       }
@@ -469,7 +514,7 @@ function ProductBOQSelector({
       setFilteredProducts(mappedProducts)
     } catch (err) {
       console.error("Error fetching products:", err)
-      setError(`Failed to load products: ${err.message}`)
+      setError(getErrorMessage(err, "Failed to load products."))
       setProducts([])
       setFilteredProducts([])
     } finally {
@@ -487,7 +532,7 @@ function ProductBOQSelector({
       )
     } catch (err) {
       console.error("Error fetching categories:", err)
-      setError(`Failed to load categories: ${err.message}`)
+      setError(getErrorMessage(err, "Failed to load categories."))
     }
   }
 
@@ -751,7 +796,7 @@ function ProductBOQSelector({
       }
       } catch (err) {
       console.error("Error saving BOQ:", err)
-      const backendMsg = err?.response?.data?.message || err?.response?.data || err.message || err
+      const backendMsg = getErrorMessage(err, "Failed to save BOQ.")
       alert(`Failed to save BOQ: ${backendMsg}`)
       setError(`Failed to save BOQ: ${backendMsg}`)
     } finally {
@@ -818,6 +863,44 @@ function ProductBOQSelector({
             </div>
           )}
         </div>
+        {boqVersions.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2 text-xs bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+            <FiClock size={13} className="text-gray-400" />
+            <span className="text-gray-500">
+              {isLatestBOQVersion
+                ? `Latest (v${boqVersions[boqLastVersionIdx].versionNo} of ${boqVersions.length})`
+                : `Version ${currentBOQVersion.versionNo} of ${boqVersions.length}`}
+            </span>
+            <span className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={() => setBOQVersionIdx(Math.max(0, boqEffectiveVersionIdx - 1))}
+                disabled={boqEffectiveVersionIdx === 0}
+                className="px-2 py-0.5 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Older"
+              >
+                ◀
+              </button>
+              <span className="text-gray-600">
+                {currentBOQVersion?.editedAt ? new Date(currentBOQVersion.editedAt).toLocaleString() : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => setBOQVersionIdx(Math.min(boqLastVersionIdx, boqEffectiveVersionIdx + 1))}
+                disabled={isLatestBOQVersion}
+                className="px-2 py-0.5 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Newer"
+              >
+                ▶
+              </button>
+            </span>
+            {!isLatestBOQVersion && (
+              <span className="w-full text-amber-700">
+                Viewing history — quantities below are from this version. Click ▶ to return to latest before editing.
+              </span>
+            )}
+          </div>
+        )}
         {error && (
           <div className="bg-red-50 text-red-600 p-3 rounded-lg flex items-center gap-2 border border-red-100">
             <span className="text-sm font-medium">{error}</span>
@@ -1176,25 +1259,29 @@ function ProductBOQSelector({
                                     />
                                   </td>
                                   <td className="px-3 py-2">
-                                    <input
-                                      type="text"
-                                      inputMode="numeric"
-                                      pattern="[0-9]*\.?[0-9]*"
-                                      value={product.qty}
-                                      onChange={(e) => {
-                                        const value = e.target.value
-                                        if (value === "" || /^\d*\.?\d*$/.test(value)) {
-                                          handleProductFieldChange(category.id, product.id, "qty", value)
-                                        }
-                                      }}
-                                      onBlur={(e) => {
-                                        if (e.target.value === "") {
-                                          handleProductFieldChange(category.id, product.id, "qty", "1")
-                                        }
-                                      }}
-                                      placeholder="Qty"
-                                      className="w-16 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                    />
+                                    {renderVersionAwareQty(
+                                      product.id,
+                                      product.qty,
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*\.?[0-9]*"
+                                        value={product.qty}
+                                        onChange={(e) => {
+                                          const value = e.target.value
+                                          if (value === "" || /^\d*\.?\d*$/.test(value)) {
+                                            handleProductFieldChange(category.id, product.id, "qty", value)
+                                          }
+                                        }}
+                                        onBlur={(e) => {
+                                          if (e.target.value === "") {
+                                            handleProductFieldChange(category.id, product.id, "qty", "1")
+                                          }
+                                        }}
+                                        placeholder="Qty"
+                                        className="w-16 p-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                      />
+                                    )}
                                   </td>
                                   <td className="px-3 py-2">
                                     <input

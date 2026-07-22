@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { FiX, FiAlertCircle, FiArrowLeft, FiArrowRight } from "react-icons/fi"
 import { useAuth } from "../contexts/AuthContext"
 import { organizationService } from "../services/organizationService"
+import { getErrorMessage } from "../utils/errorUtils"
 
 function Register() {
   const navigate = useNavigate()
@@ -104,7 +105,7 @@ function Register() {
         })
       }
     } catch (err) {
-      setError(err.message || "Registration failed")
+      setError(getErrorMessage(err, "Registration failed"))
       window.scrollTo(0, 0)
     } finally {
       setLoading(false)

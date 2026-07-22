@@ -3,6 +3,7 @@ import { motion } from "framer-motion"
 import { format } from "date-fns"
 import { FiCheck, FiX, FiClock, FiAlertCircle } from "react-icons/fi"
 import { leaveRequestService } from "../../services/leaveRequestService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function EmployeeLeaves({ employeeId }) {
   const [leaveRequests, setLeaveRequests] = useState([])
@@ -19,7 +20,7 @@ function EmployeeLeaves({ employeeId }) {
       setLeaveRequests(data)
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch leave requests"))
     } finally {
       setLoading(false)
     }

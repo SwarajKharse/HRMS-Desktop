@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { motion } from "framer-motion"
 import { employeeService } from "../../services/employeeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 export default function ResetPassword({ employee, onClose, onSubmit }) {
   const [newPassword, setNewPassword] = useState("")
@@ -15,7 +16,7 @@ export default function ResetPassword({ employee, onClose, onSubmit }) {
       await employeeService.resetPassword(employee.id, newPassword)
       onSubmit()
     } catch (err) {
-      setError(err.response?.message || "Failed to reset password")
+      setError(getErrorMessage(err, "Failed to reset password"))
     } finally {
       setLoading(false)
     }

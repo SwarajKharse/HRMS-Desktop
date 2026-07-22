@@ -4,6 +4,7 @@ import { FiX, FiUpload, FiDownload, FiTrash2 } from "react-icons/fi"
 import { motion } from "framer-motion"
 import { purchaseOrderService } from "../../../services/purchaseOrderService"
 import POUploadModal from "./POUploadModal"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 // Helper function to format dates for display
 const formatDate = (dateString) => {
@@ -31,7 +32,7 @@ export default function MTRDetailsModal({ mtr, onClose }) {
       setPurchaseOrders(pos)
     } catch (err) {
       console.error("Failed to fetch purchase orders:", err)
-      setError("Failed to load purchase orders")
+      setError(getErrorMessage(err, "Failed to load purchase orders"))
     } finally {
       setLoading(false)
     }
@@ -48,7 +49,7 @@ export default function MTRDetailsModal({ mtr, onClose }) {
       await fetchPurchaseOrders() // Refresh the list
     } catch (err) {
       console.error("Failed to remove PO:", err)
-      setError("Failed to remove purchase order")
+      setError(getErrorMessage(err, "Failed to remove purchase order"))
     } finally {
       setLoading(false)
     }

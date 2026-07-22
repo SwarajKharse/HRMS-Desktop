@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { FiX, FiPlus, FiTrash2, FiAlertTriangle } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 const validatePhone = (phone) => /^[0-9\-+()\s]{10,}$/.test(phone)
@@ -193,8 +194,7 @@ const EditVendor = ({ vendor, onClose, onSubmit }) => {
       onSubmit()
     } catch (err) {
       console.error("Error updating vendor:", err)
-      const msg = err.response?.data || err.message || "Failed to update vendor."
-      setError(typeof msg === "string" ? msg : "Failed to update vendor.")
+      setError(getErrorMessage(err, "Failed to update vendor."))
       setLoading(false)
     }
   }

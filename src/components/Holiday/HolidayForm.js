@@ -3,6 +3,7 @@ import { motion } from "framer-motion"
 import { FiX, FiAlertCircle } from "react-icons/fi"
 import { holidayService } from "../../services/holidayService"
 import { authService } from "../../services/authService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function HolidayForm({ holiday, onClose, onSubmit }) {
   const [formData, setFormData] = useState({
@@ -50,7 +51,7 @@ function HolidayForm({ holiday, onClose, onSubmit }) {
       if (onSubmit) await onSubmit()
       onClose()
     } catch (err) {
-      setError(err.message || "Failed to save holiday")
+      setError(getErrorMessage(err, "Failed to save holiday"))
     } finally {
       setLoading(false)
     }

@@ -7,6 +7,7 @@ import { leadService } from "../../services/leadService"
 import { useAuth } from "../../contexts/AuthContext"
 import LeadEditForm from "./LeadEditForm"
 import SalesTLHandOverForm from "./SalesTLHandOverForm"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { FiEdit2, FiAlertCircle, FiCheck, FiDownload, FiChevronRight, FiFilter, FiSearch, FiBell } from "react-icons/fi"
 import { TbTransferIn } from "react-icons/tb"
 
@@ -106,7 +107,7 @@ function SalesTLWonLeads() {
       setLoading(false)
     } catch (error) {
       console.error("[v0] Error fetching leads:", error)
-      setError("Failed to fetch leads")
+      setError(getErrorMessage(error, "Failed to fetch leads"))
       setLoading(false)
     }
   }, [currentPage, leadsPerPage, appliedFilters])
@@ -146,7 +147,7 @@ function SalesTLWonLeads() {
       setSseList(sseData)
       setBdmList(bdmData)
     } catch (err) {
-      setError("Error while fetching data")
+      setError(getErrorMessage(err, "Error while fetching data"))
       console.error(err)
     }
   }
@@ -158,7 +159,7 @@ function SalesTLWonLeads() {
         setEmployeeList([...sseList, ...bdmList])
       } catch (err) {
         console.error("Error fetching employee data:", err)
-        setError("Error while fetching employee data")
+        setError(getErrorMessage(err, "Error while fetching employee data"))
       }
     }
 
@@ -220,7 +221,7 @@ function SalesTLWonLeads() {
       setSuccessMessage("Lead updated successfully")
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
-      setError("Failed to update lead")
+      setError(getErrorMessage(error, "Failed to update lead"))
     }
   }
 
@@ -257,7 +258,7 @@ function SalesTLWonLeads() {
       setShowExportOptions(false)
     } catch (error) {
       console.error("Export error:", error)
-      setError("Failed to export leads: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to export leads"))
     } finally {
       setIsExporting(false)
     }
@@ -944,6 +945,7 @@ function SalesTLWonLeads() {
                       return (
                         <motion.tr
                           key={lead.id}
+                          data-highlight-id={`lead-row-${lead.id}`}
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
@@ -1073,6 +1075,7 @@ function SalesTLWonLeads() {
                     return (
                       <motion.div
                         key={lead.id}
+                        data-highlight-id={`lead-row-${lead.id}`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}

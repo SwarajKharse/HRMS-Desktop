@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { terminationService } from "../../services/terminationService"
 import { format } from "date-fns"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function EmployeeTermination({ employeeId }) {
   const [termination, setTermination] = useState(null)
@@ -18,7 +19,7 @@ function EmployeeTermination({ employeeId }) {
       setTermination(Array.isArray(data) ? data[0] : data) // Handle both array and single object response
       setError(null)
     } catch (err) {
-      setError(err.message)
+      setError(getErrorMessage(err, "Failed to fetch termination details"))
     } finally {
       setLoading(false)
     }

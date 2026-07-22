@@ -4,6 +4,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiAlertCircle } from "react-icons/fi"
 import { tdsSlabService } from "../../services/tdsSlabService"
 import TdsSlabForm from "../../components/TdsSlabForm"
 import { authService } from "../../services/authService";
+import { getErrorMessage } from "../../utils/errorUtils"
 
 function TdsSlabSettings() {
   const [tdsSlabs, setTdsSlabs] = useState([])
@@ -23,7 +24,7 @@ function TdsSlabSettings() {
       setTdsSlabs(data)
       setError(null)
     } catch (err) {
-      setError("Failed to load TDS slabs")
+      setError(getErrorMessage(err, "Failed to load TDS slabs"))
     } finally {
       setLoading(false)
     }
@@ -35,7 +36,7 @@ function TdsSlabSettings() {
       await fetchTdsSlabs()
       setShowForm(false)
     } catch (err) {
-      setError("Failed to create TDS slab")
+      setError(getErrorMessage(err, "Failed to create TDS slab"))
     }
   }
 
@@ -46,7 +47,7 @@ function TdsSlabSettings() {
       setShowForm(false)
       setEditingSlab(null)
     } catch (err) {
-      setError("Failed to update TDS slab")
+      setError(getErrorMessage(err, "Failed to update TDS slab"))
     }
   }
 
@@ -56,7 +57,7 @@ function TdsSlabSettings() {
         await tdsSlabService.deleteTdsSlab(id)
         await fetchTdsSlabs()
       } catch (err) {
-        setError("Failed to delete TDS slab")
+        setError(getErrorMessage(err, "Failed to delete TDS slab"))
       }
     }
   }

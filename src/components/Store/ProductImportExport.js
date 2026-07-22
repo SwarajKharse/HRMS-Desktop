@@ -3,6 +3,7 @@
 import { useState, useRef } from "react"
 import { FiDownload, FiUpload, FiX, FiAlertTriangle } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const ProductImportExport = ({ onClose, onSuccess }) => {
   const [isExporting, setIsExporting] = useState(false)
@@ -34,12 +35,7 @@ const ProductImportExport = ({ onClose, onSuccess }) => {
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
       console.error("Export error:", error)
-      setError(
-        "Error exporting products: " +
-          (error.response?.status === 403
-            ? "Permission denied. Please check your authorization."
-            : "An unexpected error occurred."),
-      )
+      setError(getErrorMessage(error, "Error exporting products. Please check your authorization and try again."))
     } finally {
       setIsExporting(false)
     }
@@ -106,24 +102,7 @@ const ProductImportExport = ({ onClose, onSuccess }) => {
       }, 6000)
     } catch (error) {
       console.error("Import error:", error)
-
-      let errorMessage = "Error importing products: "
-
-      if (error.response && error.response.data) {
-        if (typeof error.response.data === "string") {
-          errorMessage += error.response.data
-        } else if (error.response.data.message) {
-          errorMessage += error.response.data.message
-        } else {
-          errorMessage += JSON.stringify(error.response.data)
-        }
-      } else if (error.message) {
-        errorMessage += error.message
-      } else {
-        errorMessage += "Please check your file and try again."
-      }
-
-      setError(errorMessage)
+      setError(getErrorMessage(error, "Error importing products. Please check your file and try again."))
     } finally {
       setIsImporting(false)
       // Reset the file input
@@ -165,7 +144,7 @@ const ProductImportExport = ({ onClose, onSuccess }) => {
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
       console.error("Error downloading CSV:", error)
-      setError("Failed to download error CSV")
+      setError(getErrorMessage(error, "Failed to download error CSV"))
     }
   }
 

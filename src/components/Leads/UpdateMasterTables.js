@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { leadService } from "../../services/leadService"
+import { getErrorMessage } from "../../utils/errorUtils"
 import { FiEdit2, FiAlertCircle, FiCheck, FiDownload, FiPlus, FiSave, FiX, FiTrash2 } from "react-icons/fi"
 
 function MasterTables() {
@@ -89,7 +90,7 @@ function MasterTables() {
       }
     } catch (error) {
       console.error("Error fetching lead sources:", error)
-      setError("Failed to fetch lead sources: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to fetch lead sources"))
     } finally {
       setLoadingSources(false)
     }
@@ -119,7 +120,7 @@ function MasterTables() {
       }
     } catch (error) {
       console.error("Error fetching lead types:", error)
-      setError("Failed to fetch lead types: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to fetch lead types"))
     } finally {
       setLoadingTypes(false)
     }
@@ -149,7 +150,7 @@ function MasterTables() {
       }
     } catch (error) {
       console.error("Error fetching lead product types:", error)
-      setError("Failed to fetch lead product types: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to fetch lead product types"))
     } finally {
       setLoadingProductTypes(false)
     }
@@ -240,7 +241,7 @@ function MasterTables() {
       fetchLeadSources()
     } catch (error) {
       console.error("Error adding lead source:", error)
-      setError("Failed to add lead source: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to add lead source"))
     } finally {
       setSubmittingSource(false)
     }
@@ -266,7 +267,7 @@ function MasterTables() {
       fetchLeadTypes()
     } catch (error) {
       console.error("Error adding lead type:", error)
-      setError("Failed to add lead type: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to add lead type"))
     } finally {
       setSubmittingType(false)
     }
@@ -292,7 +293,7 @@ function MasterTables() {
       fetchLeadProductTypes()
     } catch (error) {
       console.error("Error adding lead product type:", error)
-      setError("Failed to add lead product type: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to add lead product type"))
     } finally {
       setSubmittingProductType(false)
     }
@@ -346,7 +347,7 @@ function MasterTables() {
       fetchLeadSources()
     } catch (error) {
       console.error("Error updating lead source:", error)
-      setError("Failed to update lead source: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to update lead source"))
     } finally {
       setSubmittingSource(false)
     }
@@ -372,7 +373,7 @@ function MasterTables() {
       fetchLeadTypes()
     } catch (error) {
       console.error("Error updating lead type:", error)
-      setError("Failed to update lead type: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to update lead type"))
     } finally {
       setSubmittingType(false)
     }
@@ -398,7 +399,7 @@ function MasterTables() {
       fetchLeadProductTypes()
     } catch (error) {
       console.error("Error updating lead product type:", error)
-      setError("Failed to update lead product type: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to update lead product type"))
     } finally {
       setSubmittingProductType(false)
     }
@@ -432,7 +433,7 @@ function MasterTables() {
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch (error) {
       console.error("Error deleting item:", error)
-      setError("Failed to delete item: " + (error.message || "Unknown error"))
+      setError(getErrorMessage(error, "Failed to delete item"))
     } finally {
       setShowDeleteDialog(false)
       setItemToDelete({ id: null, type: null })

@@ -2,6 +2,7 @@
 import React, { useState } from "react"
 import { FiUpload, FiDownload, FiX } from "react-icons/fi"
 import { storeService } from "../../services/storeService"
+import { getErrorMessage } from "../../utils/errorUtils"
 
 const ToolsImportExport = ({ onClose, onSuccess }) => {
   const [importFile, setImportFile] = useState(null)
@@ -41,7 +42,7 @@ const ToolsImportExport = ({ onClose, onSuccess }) => {
       onSuccess() // Refresh the list in the parent component
     } catch (error) {
       console.error("Import error:", error)
-      setImportError(error.message || "Failed to import tools.")
+      setImportError(getErrorMessage(error, "Failed to import tools."))
     } finally {
       setIsImporting(false)
       setImportFile(null)
@@ -69,7 +70,7 @@ const ToolsImportExport = ({ onClose, onSuccess }) => {
       setExportMessage("Tools exported successfully!")
     } catch (error) {
       console.error("Export error:", error)
-      setExportError(error.message || "Failed to export tools.")
+      setExportError(getErrorMessage(error, "Failed to export tools."))
     } finally {
       setIsExporting(false)
     }

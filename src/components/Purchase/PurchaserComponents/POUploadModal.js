@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { FiX, FiUpload, FiCheck, FiAlertCircle } from "react-icons/fi"
 import { purchaseOrderService } from "../../../services/purchaseOrderService"
+import { getErrorMessage } from "../../../utils/errorUtils"
 
 const POUploadModal = ({ isOpen, onClose }) => {
   const [step, setStep] = useState(1)
@@ -48,7 +49,7 @@ const POUploadModal = ({ isOpen, onClose }) => {
       const vendorList = await purchaseOrderService.getAllVendors()
       setVendors(vendorList)
     } catch (err) {
-      setError("Failed to fetch vendors")
+      setError(getErrorMessage(err, "Failed to fetch vendors"))
     } finally {
       setLoading(false)
     }
@@ -61,7 +62,7 @@ const POUploadModal = ({ isOpen, onClose }) => {
       setVendorMTRs(mtrs)
       setSelectedMTRs(mtrs.map((mtr) => mtr.id))
     } catch (err) {
-      setError("Failed to fetch MTRs for selected vendor")
+      setError(getErrorMessage(err, "Failed to fetch MTRs for selected vendor"))
       setVendorMTRs([])
       setSelectedMTRs([])
     } finally {
@@ -149,7 +150,7 @@ const POUploadModal = ({ isOpen, onClose }) => {
         setError(result.message || "Failed to upload PO")
       }
     } catch (err) {
-      setError("Failed to upload Purchase Order")
+      setError(getErrorMessage(err, "Failed to upload Purchase Order"))
     } finally {
       setLoading(false)
     }

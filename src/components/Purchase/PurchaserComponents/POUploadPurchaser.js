@@ -6,6 +6,7 @@ import { purchaseOrderService } from "../../../services/purchaseOrderService"
 import { purchaseInvoiceService } from "../../../services/purchaseInvoiceService"
 import { grnService } from "../../../services/grnService"
 import { useAuth } from "../../../contexts/AuthContext"
+import { getErrorMessage } from "../../../utils/errorUtils"
 import VendorDropdownPOUpload from "./VendorDropdownPOUpload"
 import PODetailsModal from "./PODetailsModal"
 
@@ -87,7 +88,7 @@ function PIUploadModal({ isOpen, onClose, po, onSuccess }) {
       onClose()
     } catch (e) {
       console.error("Error uploading PI:", e)
-      setError("Failed to upload PI. Please try again.")
+      setError(getErrorMessage(e, "Failed to upload PI. Please try again."))
     } finally {
       setUploading(false)
     }
@@ -229,7 +230,7 @@ function GRNUploadModal({ isOpen, onClose, po, onSuccess }) {
       onClose()
     } catch (e) {
       console.error("Error uploading GRN:", e)
-      setError(e.response?.data?.message || "Failed to upload GRN. Please try again.")
+      setError(getErrorMessage(e, "Failed to upload GRN. Please try again."))
     } finally {
       setUploading(false)
     }
@@ -383,7 +384,7 @@ function UploadPOModal({ isOpen, onClose, onSuccess, user }) {
       setTimeout(() => { handleClose(); onSuccess("PO uploaded successfully!") }, 1500)
     } catch (e) {
       console.error("Error uploading PO:", e)
-      showMessage("error", "Error uploading PO. Please try again.")
+      showMessage("error", getErrorMessage(e, "Error uploading PO. Please try again."))
     } finally {
       setUploading(false)
     }

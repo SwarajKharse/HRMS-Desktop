@@ -4,6 +4,7 @@ import { format } from "date-fns"
 import { FiDownload, FiAlertCircle } from "react-icons/fi"
 import { payslipService } from "../services/payslipService"
 import { useAuth } from "../contexts/AuthContext"
+import { getErrorMessage } from "../utils/errorUtils"
 
 function Payroll() {
   const [payslips, setPayslips] = useState([])
@@ -26,7 +27,7 @@ function Payroll() {
       setPayslips(sortedData)
       setError(null)
     } catch (err) {
-      setError("Failed to load payslips")
+      setError(getErrorMessage(err, "Failed to load payslips"))
     } finally {
       setLoading(false)
     }
@@ -44,7 +45,7 @@ function Payroll() {
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      setError("Failed to download payslip")
+      setError(getErrorMessage(err, "Failed to download payslip"))
     }
   }
 

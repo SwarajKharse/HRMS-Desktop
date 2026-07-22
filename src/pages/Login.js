@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { FiAlertCircle, FiUserPlus } from "react-icons/fi"
 import { useAuth } from "../contexts/AuthContext"
+import { getErrorMessage } from "../utils/errorUtils"
 
 function Login() {
   const navigate = useNavigate()
@@ -57,7 +58,7 @@ function Login() {
       await login(formData.phone, formData.password)
       navigate("/")
     } catch (err) {
-      setError(err.message || "Invalid credentials")
+      setError(getErrorMessage(err, "Invalid credentials"))
     } finally {
       setLoading(false)
     }
