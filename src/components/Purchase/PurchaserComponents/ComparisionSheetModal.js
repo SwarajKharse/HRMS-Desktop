@@ -16,9 +16,15 @@ const formatDate = (dateString) => {
 
 const emptyCell = { rate: "", leadTime: "" }
 
+// Category sub-types (NONBILLABLE/TOOLS/SKILLSET, etc.) are all backed by BOQCategoryMTR rows,
+// not BOQMTR — only an exact "BILLABLE" type/itemKind maps to a BOQMTR id. Comparing against
+// the literal string "CATEGORY" here would misclassify those sub-types as BILLABLE and send a
+// BOQCategoryMTR id as boqMtrId, which the backend then can't find.
+const normalizeItemKind = (kind) => ((kind || "BILLABLE").toUpperCase() === "BILLABLE" ? "BILLABLE" : "CATEGORY")
+
 export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "purchaser" }) {
   const isManagerMode = mode === "manager"
-  const itemKind = mtr?.itemKind || mtr?.type || "BILLABLE"
+  const itemKind = normalizeItemKind(mtr?.itemKind || mtr?.type)
 
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false)
   const [isComparisonExpanded, setIsComparisonExpanded] = useState(true)
@@ -39,6 +45,8 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
   const [pmApprovalStatus, setPmApprovalStatus] = useState(mtr?.boqMtr?.purchaseManagerApprovalStatus || "PENDING")
   const [pmApprovalRemarks, setPmApprovalRemarks] = useState(mtr?.boqMtr?.purchaseManagerApprovalRemarks || "")
   const [pmApprovalLoading, setPmApprovalLoading] = useState(false)
+  const [pmRejectLoading, setPmRejectLoading] = useState(false)
+  const [hasPurchaseOrder, setHasPurchaseOrder] = useState(false)
 
   const keyCounter = useRef(0)
   const nextKey = (prefix) => `${prefix}-${keyCounter.current++}`
@@ -110,6 +118,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
     }
     setPmApprovalStatus(mtr?.boqMtr?.purchaseManagerApprovalStatus || "PENDING")
     setPmApprovalRemarks(mtr?.boqMtr?.purchaseManagerApprovalRemarks || "")
+    setHasPurchaseOrder(!!full.hasPurchaseOrder)
   }
 
   useEffect(() => {
@@ -161,19 +170,22 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
   }
 
   const handleAddItems = (selectedMtrs) => {
-    const newLines = selectedMtrs.map((m) => ({
-      key: nextKey("line"),
-      id: null,
-      lineType: "ITEM",
-      itemKind: m.type || "BILLABLE",
-      boqMtrId: (m.type || "BILLABLE") === "CATEGORY" ? null : m.id,
-      boqCategoryMtrId: (m.type || "BILLABLE") === "CATEGORY" ? m.id : null,
-      itemName: m.productName,
-      productCode: m.productCode || "",
-      make: m.make || "",
-      uom: m.uom || "",
-      qty: m.purchaseMTR || 0,
-    }))
+    const newLines = selectedMtrs.map((m) => {
+      const kind = normalizeItemKind(m.type)
+      return {
+        key: nextKey("line"),
+        id: null,
+        lineType: "ITEM",
+        itemKind: kind,
+        boqMtrId: kind === "CATEGORY" ? null : m.id,
+        boqCategoryMtrId: kind === "CATEGORY" ? m.id : null,
+        itemName: m.productName,
+        productCode: m.productCode || "",
+        make: m.make || "",
+        uom: m.uom || "",
+        qty: m.purchaseMTR || 0,
+      }
+    })
     setLines((prev) => {
       const itemLines = prev.filter((l) => l.lineType === "ITEM")
       const otherLines = prev.filter((l) => l.lineType !== "ITEM")
@@ -334,6 +346,28 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
       setError(getErrorMessage(err, "Failed to update approval status. Please try again."))
     } finally {
       setPmApprovalLoading(false)
+    }
+  }
+
+  const handleReject = async () => {
+    setError("")
+    setSuccess("")
+    if (!window.confirm("Reject and unlock this comparison sheet? The purchaser will be able to change the vendor comparison again.")) {
+      return
+    }
+    setPmRejectLoading(true)
+    try {
+      await comparisonSheetService.rejectVendorForSheet(comparisonSheetId, pmApprovalRemarks, 1)
+      setSuccess("Vendor approval rejected — the comparison sheet is unlocked for editing again.")
+      setTimeout(() => {
+        if (onSave) onSave()
+        onClose()
+      }, 1200)
+    } catch (err) {
+      console.error("Error rejecting vendor:", err)
+      setError(getErrorMessage(err, "Failed to reject/unlock the comparison sheet. Please try again."))
+    } finally {
+      setPmRejectLoading(false)
     }
   }
 
@@ -704,6 +738,11 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                                 <p className="text-sm text-green-700 font-medium">
                                   ✓ Vendor selection is locked - PM has approved the selected vendor
                                 </p>
+                                {isManagerMode && hasPurchaseOrder && (
+                                  <p className="text-xs text-green-700 mt-1">
+                                    A purchase order has already been uploaded for this comparison, so it can no longer be rejected/unlocked.
+                                  </p>
+                                )}
                               </div>
                             )}
                             <div className="w-full max-w-md relative">
@@ -745,9 +784,9 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                     <textarea
                       value={pmApprovalRemarks}
                       onChange={(e) => setPmApprovalRemarks(e.target.value)}
-                      placeholder="Enter approval remarks for selected vendor..."
+                      placeholder={isApproved ? "Enter reason for rejecting/unlocking this vendor selection..." : "Enter approval remarks for selected vendor..."}
                       rows={3}
-                      disabled={pmApprovalLoading || isApproved}
+                      disabled={pmApprovalLoading || pmRejectLoading}
                       className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -763,13 +802,25 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
           </button>
           {isManagerMode ? (
             comparisonSheetCreated && (
-              <button
-                onClick={handleApprove}
-                disabled={pmApprovalLoading || isApproved || !selectedVendorColumnKey}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {isApproved ? "Vendor Approved" : pmApprovalLoading ? "Approving..." : "Approve Selected Vendor"}
-              </button>
+              <>
+                {isApproved && (
+                  <button
+                    onClick={handleReject}
+                    disabled={pmRejectLoading || hasPurchaseOrder}
+                    title={hasPurchaseOrder ? "A purchase order has already been uploaded for this comparison" : ""}
+                    className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {pmRejectLoading ? "Rejecting..." : "Reject & Unlock"}
+                  </button>
+                )}
+                <button
+                  onClick={handleApprove}
+                  disabled={pmApprovalLoading || isApproved || !selectedVendorColumnKey}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isApproved ? "Vendor Approved" : pmApprovalLoading ? "Approving..." : "Approve Selected Vendor"}
+                </button>
+              </>
             )
           ) : (
             <button
@@ -785,7 +836,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
 
       {showAddItemModal && (
         <AddComparisonItemsModal
-          excludeMtrIds={itemLines.map((l) => (l.itemKind === "CATEGORY" ? l.boqCategoryMtrId : l.boqMtrId))}
+          excludeMtrIds={itemLines.map((l) => l.boqCategoryMtrId ?? l.boqMtrId)}
           onClose={() => setShowAddItemModal(false)}
           onAdd={handleAddItems}
         />

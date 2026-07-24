@@ -518,4 +518,20 @@ export const comparisonSheetService = {
       throw error
     }
   },
+
+  rejectVendorForSheet: async (id, remarks = "", currentUserId) => {
+    try {
+      const response = await axios.put(
+        `${API_BASE_URL}/material-requisitions/comparison-sheet/${id}/reject-vendor`,
+        null,
+        {
+          params: { remarks, currentUserId },
+        },
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error rejecting vendor for comparison sheet:", error)
+      throw error
+    }
+  },
 }

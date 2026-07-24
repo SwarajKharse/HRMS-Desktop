@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useSearchParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import NewProjects from "../components/StoreManagement/NewProjects"
 import StoreMaterialRequisitions from "../components/StoreManagement/StoreMaterialRequisitions"
@@ -14,6 +15,8 @@ function Projects() {
   const { employee } = useAuth()
   const tabsContainerRef = useRef(null)
   const activeTabRef = useRef(null)
+  const deepLinkTabRef = useRef(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [activeMainTab, setActiveMainTab] = useState("StoreManager")
 
@@ -51,6 +54,18 @@ function Projects() {
   const validTabIds = availableTabs.map((tab) => tab.id)
   const availableMainTabs = getAvailableMainTabs()
 
+  // Maps a tab id to the main tab group it lives under, for ?tab= deep links (e.g. from notifications).
+  const getMainTabForTabId = (tabId) => {
+    if (allTabs[0].id === tabId || allTabs[1].id === tabId) return "StoreManager"
+    if (allTabs[3].id === tabId) return "StoreIncharge"
+    if (allTabs[2].id === tabId) {
+      // DC Quantities tab is shared by both main tabs — land on whichever this user has.
+      if (isManager() || isManagement()) return "StoreManager"
+      if (isSubordinate()) return "StoreIncharge"
+    }
+    return null
+  }
+
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== "undefined") {
       const savedTab = sessionStorage.getItem("storeActiveTab")
@@ -68,8 +83,28 @@ function Projects() {
   }, [validTabIds, activeTab])
 
   useEffect(() => {
-    if (shouldShowMainTabs()) setActiveTab(validTabIds[0])
+    if (shouldShowMainTabs()) {
+      setActiveTab(deepLinkTabRef.current || validTabIds[0])
+      deepLinkTabRef.current = null
+    }
   }, [activeMainTab])
+
+  // Deep link support: ?tab=<id> (e.g. /store?tab=mtr from a notification click).
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab")
+    if (!requestedTab || !employee) return
+    const mainTab = getMainTabForTabId(requestedTab)
+    if (!mainTab) return
+
+    deepLinkTabRef.current = requestedTab
+    setActiveMainTab(mainTab)
+    setActiveTab(requestedTab)
+
+    const next = new URLSearchParams(searchParams)
+    next.delete("tab")
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee])
 
   useEffect(() => {
     if (shouldShowMainTabs() && !availableMainTabs.includes(activeMainTab)) {
