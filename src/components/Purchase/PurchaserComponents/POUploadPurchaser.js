@@ -315,14 +315,14 @@ function GRNUploadModal({ isOpen, onClose, po, onSuccess }) {
 
 // ─── Upload PO Modal (3-step, unchanged logic) ───────────────────────────────
 function UploadPOModal({ isOpen, onClose, onSuccess, user }) {
-  const [currentStep, setCurrentStep] = useState(1)
   const [selectedVendor, setSelectedVendor] = useState("")
-  const [selectedMTRs, setSelectedMTRs] = useState([])
   const [mtrs, setMtrs] = useState([])
+  const [selectedLines, setSelectedLines] = useState({}) // { [mtrId]: { mtr, qty } }
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [poFile, setPOFile] = useState(null)
   const [poNumber, setPONumber] = useState("")
+  const [poDate, setPODate] = useState("")
   const [message, setMessage] = useState({ type: "", text: "" })
 
   const showMessage = (type, text) => {
@@ -331,53 +331,90 @@ function UploadPOModal({ isOpen, onClose, onSuccess, user }) {
   }
 
   const reset = () => {
-    setCurrentStep(1)
     setSelectedVendor("")
-    setSelectedMTRs([])
     setMtrs([])
+    setSelectedLines({})
     setPOFile(null)
     setPONumber("")
+    setPODate("")
     setMessage({ type: "", text: "" })
   }
 
   const handleClose = () => { reset(); onClose() }
 
-  useEffect(() => {
-    if (selectedVendor && currentStep === 2) fetchMTRs()
-  }, [selectedVendor, currentStep])
-
-  const fetchMTRs = async () => {
+  const fetchMTRs = useCallback(async (vendorName) => {
+    setLoading(true)
+    setSelectedLines({})
     try {
-      setLoading(true)
-      const data = await comparisonSheetService.getMTRsByApprovedVendor({ vendorName: selectedVendor, assignedPurchaser: user?.userId || 1 })
+      const data = await comparisonSheetService.getMTRsByApprovedVendor({ vendorName, assignedPurchaser: user?.userId || 1 })
       setMtrs(data || [])
-      setSelectedMTRs(data?.map((m) => m.id) || [])
     } catch (e) {
       console.error("Error fetching MTRs:", e)
       setMtrs([])
     } finally {
       setLoading(false)
     }
+  }, [user?.userId])
+
+  useEffect(() => {
+    if (selectedVendor) fetchMTRs(selectedVendor)
+  }, [selectedVendor, fetchMTRs])
+
+  const remainingFor = (mtr) => mtr.remainingPoQty ?? mtr.purchaseMTR ?? 0
+
+  const toggleLine = (mtr) => {
+    setSelectedLines((prev) => {
+      const next = { ...prev }
+      if (next[mtr.id]) {
+        delete next[mtr.id]
+      } else {
+        next[mtr.id] = { mtr, qty: String(remainingFor(mtr)) }
+      }
+      return next
+    })
   }
 
+  const updateQty = (mtrId, value) => {
+    setSelectedLines((prev) => {
+      if (!prev[mtrId]) return prev
+      let v = value
+      const remaining = remainingFor(prev[mtrId].mtr)
+      const n = Number.parseFloat(value)
+      if (!Number.isNaN(n) && n > remaining) v = String(remaining)
+      if (!Number.isNaN(n) && n < 0) v = "0"
+      return { ...prev, [mtrId]: { ...prev[mtrId], qty: v } }
+    })
+  }
+
+  const selectedCount = Object.keys(selectedLines).length
+  const allValid = selectedCount > 0 && Object.values(selectedLines).every((s) => {
+    const n = Number.parseFloat(s.qty)
+    return !Number.isNaN(n) && n > 0 && n <= remainingFor(s.mtr)
+  })
+
   const handleUpload = async () => {
-    if (!poFile || selectedMTRs.length === 0 || !poNumber.trim()) {
-      showMessage("error", "Please enter PO Number, select a file and MTRs")
+    if (!poFile || selectedCount === 0 || !poNumber.trim() || !poDate) {
+      showMessage("error", "Please enter PO Number, PO Date, select a file and at least one item")
+      return
+    }
+    if (!allValid) {
+      showMessage("error", "Please enter a valid quantity (between 1 and the remaining quantity) for every selected item")
       return
     }
     try {
       setUploading(true)
       const formData = new FormData()
       formData.append("file", poFile)
-      selectedMTRs.forEach((id) => {
-        formData.append("mtrIds", id)
-        const matched = mtrs.find((m) => m.id === id)
-        const itemKind = matched && (matched.type || "").toUpperCase() === "BILLABLE" ? "BILLABLE" : "CATEGORY"
+      Object.values(selectedLines).forEach(({ mtr, qty }) => {
+        formData.append("mtrIds", mtr.id)
+        const itemKind = (mtr.type || "").toUpperCase() === "BILLABLE" ? "BILLABLE" : "CATEGORY"
         formData.append("itemKinds", itemKind)
+        formData.append("qtys", qty)
       })
       formData.append("vendorName", selectedVendor)
       formData.append("uploadedBy", user?.userId || 1)
       formData.append("poNumber", poNumber.trim())
+      formData.append("poDate", poDate)
       formData.append("currentUserId", user?.userId)
       await comparisonSheetService.uploadPOForMTRs(formData)
       showMessage("success", `PO uploaded successfully!`)
@@ -410,105 +447,95 @@ function UploadPOModal({ isOpen, onClose, onSuccess, user }) {
           </div>
         )}
 
-        {/* Steps */}
-        <div className="px-6 py-4 border-b">
-          <div className="flex items-center space-x-6">
-            {[{ n: 1, label: "Select Vendor" }, { n: 2, label: "Select MTRs" }, { n: 3, label: "Upload PO" }].map(({ n, label }) => (
-              <div key={n} className={`flex items-center space-x-2 ${currentStep >= n ? "text-blue-600" : "text-gray-400"}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= n ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"}`}>{n}</div>
-                <span className="font-medium">{label}</span>
-              </div>
-            ))}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="max-w-md">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Select Vendor</label>
+            <VendorDropdownPOUpload value={selectedVendor} onChange={(v) => setSelectedVendor(v)} placeholder="Search and select vendor..." />
           </div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto p-6">
-          {/* Step 1 */}
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Step 1: Select Vendor</h3>
-              <label className="block text-sm font-medium text-gray-700">Choose Vendor</label>
-              <VendorDropdownPOUpload value={selectedVendor} onChange={(v) => { setSelectedVendor(v); setCurrentStep(2) }} placeholder="Search and select vendor..." />
-            </div>
-          )}
-
-          {/* Step 2 */}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Step 2: Select MTRs</h3>
-                <button onClick={() => { setSelectedVendor(""); setCurrentStep(1) }} className="text-blue-600 hover:text-blue-800 text-sm">← Back to Vendor Selection</button>
-              </div>
-              <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-800">Selected Vendor: <span className="font-medium">{selectedVendor}</span></div>
-              {loading ? (
-                <div className="text-center py-8 text-gray-500">Loading MTRs...</div>
-              ) : mtrs.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No MTRs found for this vendor</div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <span>{selectedMTRs.length} of {mtrs.length} MTRs selected</span>
-                    <button onClick={() => setSelectedMTRs(selectedMTRs.length === mtrs.length ? [] : mtrs.map((m) => m.id))} className="text-blue-600 hover:text-blue-800 font-medium">
-                      {selectedMTRs.length === mtrs.length ? "Deselect All" : "Select All"}
-                    </button>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-3 border-b grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
-                      <div className="col-span-1">Select</div>
-                      <div className="col-span-3">Project Name</div>
-                      <div className="col-span-4">Product Name</div>
-                      <div className="col-span-2">Quantity</div>
-                      <div className="col-span-2">Created Date</div>
+          {selectedVendor && (
+            loading ? (
+              <div className="text-center py-8 text-gray-500">Loading approved items...</div>
+            ) : (
+              <>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Available Items</h3>
+                  {mtrs.length === 0 ? (
+                    <div className="text-sm text-gray-400 border border-dashed border-gray-300 rounded-md px-3 py-6 text-center">
+                      No PM-approved items pending a PO for this vendor.
                     </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {mtrs.map((mtr) => (
-                        <div key={mtr.id} className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 grid grid-cols-12 gap-4 items-center text-sm">
-                          <div className="col-span-1"><input type="checkbox" checked={selectedMTRs.includes(mtr.id)} onChange={() => setSelectedMTRs((prev) => prev.includes(mtr.id) ? prev.filter((id) => id !== mtr.id) : [...prev, mtr.id])} className="w-4 h-4 text-blue-600 border-gray-300 rounded" /></div>
-                          <div className="col-span-3 truncate" title={mtr.projectName}>{mtr.projectName || "N/A"}</div>
-                          <div className="col-span-4 truncate" title={mtr.productName}>{mtr.productName || "N/A"}</div>
-                          <div className="col-span-2 font-semibold">{mtr.quantity || mtr.purchaseMTR || "N/A"}</div>
-                          <div className="col-span-2">{mtr.createdAt ? new Date(mtr.createdAt).toLocaleDateString() : "N/A"}</div>
-                        </div>
-                      ))}
+                  ) : (
+                    <div className="border border-gray-200 rounded-md divide-y max-h-72 overflow-y-auto">
+                      {mtrs.map((mtr) => {
+                        const remaining = remainingFor(mtr)
+                        const line = selectedLines[mtr.id]
+                        const checked = !!line
+                        return (
+                          <div key={mtr.id} className="flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 gap-3">
+                            <label className="flex items-center gap-2 flex-1 min-w-0">
+                              <input type="checkbox" checked={checked} onChange={() => toggleLine(mtr)} className="h-4 w-4 shrink-0" />
+                              <span className="truncate" title={mtr.projectName}>{mtr.projectName || "N/A"}</span>
+                              <span className="text-gray-400">—</span>
+                              <span className="truncate" title={mtr.productName}>{mtr.productName || "N/A"}</span>
+                            </label>
+                            <span className="flex items-center gap-3 shrink-0">
+                              <span className="text-gray-500 text-xs">Remaining: {remaining}</span>
+                              {checked && (
+                                <input
+                                  type="number" min="0" max={remaining} step="any" placeholder="Qty"
+                                  value={line.qty}
+                                  onChange={(e) => updateQty(mtr.id, e.target.value)}
+                                  className="w-20 h-8 rounded border border-blue-300 px-2 text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              )}
+                              {checked && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleLine(mtr)}
+                                  title="Remove from this PO"
+                                  className="text-gray-400 hover:text-red-600 shrink-0"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </span>
+                          </div>
+                        )
+                      })}
                     </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <button onClick={() => setCurrentStep(3)} disabled={selectedMTRs.length === 0} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                      Continue to Upload ({selectedMTRs.length} MTRs)
-                    </button>
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
 
-          {/* Step 3 */}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Step 3: Upload PO</h3>
-                <button onClick={() => setCurrentStep(2)} className="text-blue-600 hover:text-blue-800 text-sm">← Back to MTR Selection</button>
-              </div>
-              <div className="bg-blue-50 p-4 rounded-md space-y-1 text-sm text-blue-800">
-                <p><span className="font-medium">Vendor:</span> {selectedVendor}</p>
-                <p><span className="font-medium">Selected MTRs:</span> {selectedMTRs.length} items</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PO Number <span className="text-red-500">*</span></label>
-                <input type="text" value={poNumber} onChange={(e) => setPONumber(e.target.value)} placeholder="Enter Purchase Order Number" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Upload Purchase Order File <span className="text-red-500">*</span></label>
-                <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => setPOFile(e.target.files?.[0] || null)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                {poFile && <p className="mt-1 text-sm text-green-600">Selected: {poFile.name}</p>}
-              </div>
-              <div className="flex justify-end gap-3">
-                <button onClick={reset} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">Cancel</button>
-                <button onClick={handleUpload} disabled={!poFile || !poNumber.trim() || uploading} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                  {uploading ? "Uploading..." : "Upload PO"}
-                </button>
-              </div>
-            </div>
+                {selectedCount > 0 && (
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-100 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-blue-800">PO Number <span className="text-red-500">*</span></label>
+                        <input type="text" value={poNumber} onChange={(e) => setPONumber(e.target.value)} placeholder="Enter Purchase Order Number"
+                          className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-xs font-medium text-blue-800">PO Date <span className="text-red-500">*</span></label>
+                        <input type="date" value={poDate} onChange={(e) => setPODate(e.target.value)}
+                          className="h-10 rounded-md border border-blue-300 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </div>
+                      <div className="flex flex-col gap-1 md:col-span-2">
+                        <label className="text-xs font-medium text-blue-800">Upload Purchase Order File <span className="text-red-500">*</span></label>
+                        <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => setPOFile(e.target.files?.[0] || null)}
+                          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                        {poFile && <p className="text-xs text-green-600">Selected: {poFile.name}</p>}
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <button onClick={handleUpload} disabled={uploading || !allValid || !poFile || !poNumber.trim() || !poDate}
+                        className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                        {uploading ? "Uploading..." : `Upload PO (${selectedCount} item${selectedCount !== 1 ? "s" : ""})`}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )
           )}
         </div>
       </div>

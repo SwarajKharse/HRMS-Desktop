@@ -13,9 +13,11 @@ import ProjectProgressModal from "./ProjectProgressModal"
 import ProjectSummary from "./ProjectSummary"
 import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
 import { getErrorMessage } from "../../utils/errorUtils"
+import { useHighlightTarget } from "../../hooks/useHighlightTarget"
 
 function SiteEngineerProjects() {
   const navigate = useNavigate()
+  useHighlightTarget()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [unassignedleads, setLeads] = useState([])
@@ -323,6 +325,7 @@ function SiteEngineerProjects() {
                     unassignedleads.map((project) => (
                       <motion.tr
                         key={project.id}
+                        data-highlight-id={`project-row-${project.id}`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -403,6 +406,7 @@ function SiteEngineerProjects() {
                   {unassignedleads.map((project) => (
                     <motion.div
                       key={project.id}
+                      data-highlight-id={`project-row-${project.id}`}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}

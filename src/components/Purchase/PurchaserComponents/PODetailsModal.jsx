@@ -541,6 +541,7 @@ function PODetailsModal({
               <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-gray-200">
                 <InfoCell label="Created By">{po.uploadedByName}</InfoCell>
                 <InfoCell label="Created Date">{formatDate(po.createdAt)}</InfoCell>
+                <InfoCell label="PO Date">{formatDate(po.poDate)}</InfoCell>
                 <InfoCell label="Vendor">{po.vendorName}</InfoCell>
                 <InfoCell label="PO Status"><StatusBadge status={po.poStatus} /></InfoCell>
                 <InfoCell label="Material Status"><StatusBadge status={po.materialStatus} /></InfoCell>
@@ -562,26 +563,38 @@ function PODetailsModal({
                   <table className="w-full text-sm">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
-                        {["MTR Code", "Project", "Product", "Qty"].map((h) => (
+                        {["Project (Requisition No)", "Product (Item Code)", "Make", "UOM", "Qty"].map((h) => (
                           <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
-                      {(po.allMTRData || [po]).map((entry, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 text-xs font-medium text-gray-700">{entry.mtrCode || entry.boqMtr?.mtrCode || "N/A"}</td>
-                          <td className="px-3 py-2 text-xs text-gray-600">
-                            {entry.projectName === "Project removed by finance" ? (
-                              <span className="text-red-600 font-medium">{entry.projectName}</span>
-                            ) : (
-                              entry.projectName || "N/A"
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-xs text-gray-600">{entry.productName || "N/A"}</td>
-                          <td className="px-3 py-2 text-xs text-gray-600 font-medium">{entry.boqMtr?.purchaseMTR || "N/A"}</td>
-                        </tr>
-                      ))}
+                      {(po.allMTRData || [po]).map((entry, idx) => {
+                        const requisitionNo = entry.requisitionNo || entry.boqMtr?.requisitionNo
+                        const productCode = entry.productCode || entry.boqMtr?.productCode
+                        const qty = entry.qty ?? entry.boqMtr?.purchaseMTR
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-xs text-gray-600">
+                              {entry.projectName === "Project removed by finance" ? (
+                                <span className="text-red-600 font-medium">{entry.projectName}</span>
+                              ) : (
+                                <>
+                                  {entry.projectName || "N/A"}
+                                  {requisitionNo ? <span className="text-gray-400"> ({requisitionNo})</span> : null}
+                                </>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-gray-600">
+                              {entry.productName || "N/A"}
+                              {productCode ? <span className="text-gray-400"> ({productCode})</span> : null}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-gray-600">{entry.make || entry.boqMtr?.make || "N/A"}</td>
+                            <td className="px-3 py-2 text-xs text-gray-600">{entry.uom || entry.boqMtr?.uom || "N/A"}</td>
+                            <td className="px-3 py-2 text-xs text-gray-600 font-medium">{qty ?? "N/A"}</td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>

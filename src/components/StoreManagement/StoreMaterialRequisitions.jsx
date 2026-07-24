@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 import { projectService } from "../../services/projectService"
 import { useAuth } from "../../contexts/AuthContext"
 import { getErrorMessage } from "../../utils/errorUtils"
+import { useHighlightTarget } from "../../hooks/useHighlightTarget"
 
 const formatDate = (dateString) => {
   if (!dateString) return ""
@@ -22,6 +23,7 @@ const typeMeta = (type) => {
 const numOrDash = (v) => (v === null || v === undefined || v === "" ? "—" : v)
 
 export default function StoreMaterialRequisitions({ mode = "manager", assignedProjectIds = null }) {
+  useHighlightTarget()
   const { user } = useAuth()
   const [requisitions, setRequisitions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -129,7 +131,7 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
 
     setSavingStock((prev) => ({ ...prev, [line.id]: true }))
     try {
-      await projectService.updateStockAlloted(req.projectId, req.id, line.id, line.itemKind, stock, remarks)
+      await projectService.updateStockAlloted(req.projectId, req.id, line.id, line.itemKind, stock, remarks, user?.userId)
       setRequisitions((prev) => prev.map((r) => {
         if (r.id !== req.id) return r
         return {
@@ -228,7 +230,7 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
                 const open = hasLineFilter ? true : !!expanded[req.id]
                 const lines = req.visibleLines || req.lines || []
                 return (
-                  <div key={req.id} className="border border-gray-200 rounded-lg shadow-sm">
+                  <div key={req.id} data-highlight-id={`requisition-row-${req.id}`} className="border border-gray-200 rounded-lg shadow-sm">
                     <div className="flex items-center justify-between px-4 py-3">
                       <button onClick={() => toggle(req.id)} className="flex items-center gap-2 text-left flex-1 min-w-0">
                         <span className="text-gray-500 w-4">{open ? "▾" : "▸"}</span>
@@ -283,7 +285,8 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
                           <tbody className="divide-y">
                             {lines.map((l, i) => {
                               const meta = typeMeta(l.type)
-                              const isEditing = editingStock[l.id] !== undefined || editingRemarks[l.id] !== undefined
+                              const isLocked = l.purchaseManagerApprovalStatus === "APPROVED"
+                              const isEditing = !isLocked && (editingStock[l.id] !== undefined || editingRemarks[l.id] !== undefined)
                               const stockVal = editingStock[l.id] !== undefined ? editingStock[l.id] : (l.stockAlloted ?? "")
                               const remarksVal = editingRemarks[l.id] !== undefined ? editingRemarks[l.id] : (l.remarks || "")
                               const purchaseVal = isEditing
@@ -343,14 +346,23 @@ export default function StoreMaterialRequisitions({ mode = "manager", assignedPr
                                       <div className="flex flex-col items-end gap-1">
                                         <div className="flex items-center justify-end gap-1">
                                           <span className="text-gray-700">{numOrDash(l.stockAlloted)}</span>
-                                          <button onClick={() => startEditingLine(l)}
-                                            title="Edit stock allotted / remark"
-                                            className="p-1 rounded text-blue-600 hover:bg-blue-50">
-                                            ✎
-                                          </button>
+                                          {isLocked ? (
+                                            <span title="Locked — vendor comparison approved" className="p-1 rounded text-gray-400">
+                                              🔒
+                                            </span>
+                                          ) : (
+                                            <button onClick={() => startEditingLine(l)}
+                                              title="Edit stock allotted / remark"
+                                              className="p-1 rounded text-blue-600 hover:bg-blue-50">
+                                              ✎
+                                            </button>
+                                          )}
                                         </div>
                                         {l.remarks && (
                                           <div className="w-48 text-[10px] text-gray-500 italic text-right break-words">"{l.remarks}"</div>
+                                        )}
+                                        {isLocked && (
+                                          <div className="text-[10px] text-amber-600">Locked — comparison approved</div>
                                         )}
                                       </div>
                                     )}
