@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useSearchParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import FinancePayable from "../components/Finance/FinancePayable"
 //import PayablePI from "../components/Accounts/Accountant/PayablePI"
@@ -18,6 +19,7 @@ function Finance() {
   const { employee } = useAuth()
   const tabsContainerRef = useRef(null)
   const activeTabRef = useRef(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Define available tabs based on employee designation
   const getAvailableTabs = () => {
@@ -88,6 +90,19 @@ function Finance() {
       setActiveTab(validTabIds[0])
     }
   }, [validTabIds, activeTab])
+
+  // Deep link support: ?tab=<id> (e.g. /finance?tab=finance-payable from a notification click).
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab")
+    if (!requestedTab || !validTabIds.includes(requestedTab)) return
+
+    setActiveTab(requestedTab)
+
+    const next = new URLSearchParams(searchParams)
+    next.delete("tab")
+    setSearchParams(next, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validTabIds])
 
   // Scroll active tab into view when it changes
   useEffect(() => {

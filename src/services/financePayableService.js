@@ -74,6 +74,22 @@ export const financePayableService = {
     }
   },
 
+  approveOrRejectGRNPayable: async (grnId, approvalStatus, remarks, financeUserId) => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/finance-payables/${grnId}/approve-reject-grn`,
+        { approvalStatus, remarks, userId: financeUserId },
+        {
+          ...getAuthHeaders(),
+        },
+      )
+      return response.data
+    } catch (error) {
+      console.error("Error approving GRN:", error)
+      throw error
+    }
+  },
+
   handoverToPurchase: async (piId, financeUserId) => {
     try {
       const response = await axios.post(

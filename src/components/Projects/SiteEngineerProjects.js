@@ -41,6 +41,7 @@ function SiteEngineerProjects() {
   if (user) {
     userId = user.userId
   }
+  const [unfilledProgressProjectIds, setUnfilledProgressProjectIds] = useState(() => new Set())
   const [showMigrateDialog, setShowMigrateDialog] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
   const [isExporting, setIsExporting] = useState(false)
@@ -100,6 +101,20 @@ function SiteEngineerProjects() {
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery, dateSearchQuery, typeSearchQuery, sourceSearchQuery])
+
+  // Trigger #38 — Progress button blinks while a project has no progress logged today,
+  // clearing once an entry is saved. Persists across page loads, not a dismissible toast.
+  useEffect(() => {
+    if (!userId) return
+    const fetchUnfilledProgress = () => {
+      projectService.getUnfilledProgressToday(userId)
+        .then((ids) => setUnfilledProgressProjectIds(new Set(Array.isArray(ids) ? ids : [])))
+        .catch((err) => console.error("Failed to load unfilled progress projects:", err))
+    }
+    fetchUnfilledProgress()
+    const interval = setInterval(fetchUnfilledProgress, 60000)
+    return () => clearInterval(interval)
+  }, [userId])
 
   const fetchSourceTypeData = async () => {
     try {
@@ -364,9 +379,13 @@ function SiteEngineerProjects() {
                               DC History
                             </button>
                             <button
-                              className="px-3 py-1 bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors text-sm font-medium"
+                              className={`px-3 py-1 rounded-md transition-colors text-sm font-medium ${
+                                unfilledProgressProjectIds.has(project.id)
+                                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200 pending-blink"
+                                  : "bg-green-100 text-green-700 hover:bg-green-200"
+                              }`}
                               onClick={() => { setProgressProject(project); setShowProgress(true) }}
-                              title="Progress"
+                              title={unfilledProgressProjectIds.has(project.id) ? "Today's progress not yet logged" : "Progress"}
                             >
                               Progress
                             </button>
@@ -447,7 +466,11 @@ function SiteEngineerProjects() {
                           <span className="text-[10px] font-medium">DC</span>
                         </button>
                         <button
-                          className="flex flex-col items-center justify-center gap-0.5 py-2 bg-green-50 text-green-700 rounded-lg active:bg-green-100"
+                          className={`flex flex-col items-center justify-center gap-0.5 py-2 rounded-lg ${
+                            unfilledProgressProjectIds.has(project.id)
+                              ? "bg-amber-50 text-amber-800 active:bg-amber-100 pending-blink"
+                              : "bg-green-50 text-green-700 active:bg-green-100"
+                          }`}
                           onClick={(e) => { e.stopPropagation(); setProgressProject(project); setShowProgress(true) }}
                         >
                           <FiTrendingUp size={16} />
