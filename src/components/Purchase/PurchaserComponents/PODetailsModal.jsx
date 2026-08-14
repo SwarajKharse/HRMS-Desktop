@@ -32,11 +32,15 @@ const InfoCell = ({ label, children }) => (
   </div>
 )
 
-const BadgeCell = ({ label, status, onClick }) => (
+const BadgeCell = ({ label, status, onClick, disabledTitle }) => (
   <div>
     <p className="text-xs text-gray-500 mb-0.5">{label}</p>
     {onClick ? (
       <button onClick={onClick} className="hover:opacity-75 transition-opacity">
+        <StatusBadge status={status} />
+      </button>
+    ) : disabledTitle ? (
+      <button disabled title={disabledTitle} className="opacity-50 cursor-not-allowed">
         <StatusBadge status={status} />
       </button>
     ) : (
@@ -98,6 +102,99 @@ function ApprovalPopup({ isOpen, onClose, title, currentStatus, currentRemarks, 
   )
 }
 
+// ─── Edit PI Modal — replace an existing PENDING/REJECTED PI's file/details in place ──
+function EditPIModal({ isOpen, onClose, pi, onSuccess }) {
+  const [piFile, setPIFile] = useState(null)
+  const [payableAmount, setPayableAmount] = useState("")
+  const [expectedPaymentDate, setExpectedPaymentDate] = useState("")
+  const [remarks, setRemarks] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (isOpen && pi) {
+      setPIFile(null)
+      setPayableAmount(pi.payableAmount || "")
+      setExpectedPaymentDate(pi.expectedPaymentDate ? pi.expectedPaymentDate.split("T")[0] : "")
+      setRemarks(pi.remarks || "")
+      setError(null)
+    }
+  }, [isOpen, pi])
+
+  if (!isOpen || !pi) return null
+
+  const handleSave = async () => {
+    if (!payableAmount || !expectedPaymentDate) {
+      setError("Payable amount and expected payment date are required")
+      return
+    }
+    try {
+      setSaving(true)
+      setError(null)
+      const formData = new FormData()
+      if (piFile) formData.append("file", piFile)
+      formData.append("payableAmount", payableAmount)
+      formData.append("expectedPaymentDate", expectedPaymentDate)
+      formData.append("remarks", remarks)
+      await purchaseInvoiceService.editPurchaseInvoice(pi.id, formData)
+      onSuccess("PI updated successfully!")
+      onClose()
+    } catch (e) {
+      console.error("Error editing PI:", e)
+      setError(e?.response?.data?.message || "Failed to update PI. Please try again.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70] p-4">
+      <div className="bg-white rounded-lg w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h3 className="text-lg font-semibold">Edit PI — {pi.piNumber}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-md text-sm">{error}</div>
+          )}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+            Editing this PI will reset PM and FM approval — both will need to review it again.
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Replace PI Document</label>
+            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => setPIFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={saving} />
+            {piFile && <p className="text-xs text-green-600 mt-1">✓ {piFile.name}</p>}
+            <p className="text-xs text-gray-500 mt-1">Leave blank to keep the current document.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Payable Amount <span className="text-red-500">*</span></label>
+            <input type="number" step="0.01" value={payableAmount} onChange={(e) => setPayableAmount(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={saving} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Expected Payment Date <span className="text-red-500">*</span></label>
+            <input type="date" value={expectedPaymentDate} onChange={(e) => setExpectedPaymentDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={saving} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" rows={3} disabled={saving} />
+          </div>
+        </div>
+        <div className="border-t p-4 bg-gray-50 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm" disabled={saving}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm disabled:opacity-50">
+            {saving ? "Saving..." : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Accountant Section (Step 1 + Step 3) ────────────────────────────────────
 function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }) {
   const [paymentCycles, setPaymentCycles] = useState([])
@@ -125,24 +222,25 @@ function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }
   }, [canEdit])
 
   // Step 1 — save payment details
+    const isRevision = formData.status === "Revision from Purchase"
+
     const handleSave = async () => {
-    if (!formData.status || !formData.paymentCycle || !formData.expectedPaymentDate || !formData.payableAmount) return
+    if (!formData.status) return
+    if (!isRevision && (!formData.paymentCycle || !formData.expectedPaymentDate || !formData.payableAmount)) return
     try {
       setSaving(true)
+      const payload = isRevision
+        ? { status: formData.status }
+        : {
+            status: formData.status,
+            payableAmount: String(formData.payableAmount),
+            paymentCycle: formData.paymentCycle,
+            expectedPaymentDate: formData.expectedPaymentDate,
+          }
       if (itemType === "GRN") {
-        await grnService.updateGRNForm(item.id, {
-          status: formData.status,
-          payableAmount: String(formData.payableAmount),
-          paymentCycle: formData.paymentCycle,
-          expectedPaymentDate: formData.expectedPaymentDate,
-        })
+        await grnService.updateGRNForm(item.id, payload)
       } else {
-        await purchaseInvoiceService.updatePurchaseInvoiceForm(item.id, {
-          status: formData.status,
-          payableAmount: String(formData.payableAmount),
-          paymentCycle: formData.paymentCycle,
-          expectedPaymentDate: formData.expectedPaymentDate,
-        })
+        await purchaseInvoiceService.updatePurchaseInvoiceForm(item.id, payload)
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
@@ -195,14 +293,25 @@ function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }
         </div>
       ) : (
         <div className="space-y-3">
-          {/* ── Step 1: Payment Details ─────────────────────────── */}
-          <p className="text-xs font-medium text-gray-600">Step 1 — Payment Details</p>
-          <div className="grid grid-cols-2 gap-3">
+          {/* ── Payment Details ─────────────────────────── */}
+          {/* Locked once submitted (paymentCycle saved) and awaiting/approved by AM;
+              reopens for editing if the AM rejects it. */}
+          {(() => {
+            const step1Submitted = Boolean(item.status && item.paymentCycle)
+            const locked = step1Submitted && item.accountManagerApprovalStatus !== "REJECTED"
+            return (
+          <div className={locked ? "opacity-60 pointer-events-none" : ""}>
+          <p className="text-xs font-medium text-gray-600">
+            Payment Details
+            {locked && <span className="ml-2 text-yellow-600 font-normal">(Locked — pending/approved by AM)</span>}
+          </p>
+          <div className="grid grid-cols-2 gap-3 mt-1.5">
             <div>
               <p className="text-xs text-gray-500 mb-0.5">Status <span className="text-red-400">*</span></p>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData((p) => ({ ...p, status: e.target.value }))}
+                disabled={locked}
                 className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select</option>
@@ -217,6 +326,7 @@ function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }
                 <select
                   value={formData.paymentCycle}
                   onChange={(e) => setFormData((p) => ({ ...p, paymentCycle: e.target.value }))}
+                  disabled={locked}
                   className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Select</option>
@@ -236,6 +346,7 @@ function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }
                   type="date"
                   value={formData.expectedPaymentDate ? formData.expectedPaymentDate.split("T")[0] : ""}
                   onChange={(e) => setFormData((p) => ({ ...p, expectedPaymentDate: e.target.value }))}
+                  disabled={locked}
                   className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -248,6 +359,7 @@ function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }
                     step="0.01"
                     value={formData.payableAmount}
                     onChange={(e) => setFormData((p) => ({ ...p, payableAmount: e.target.value }))}
+                    disabled={locked}
                     className="w-full pl-6 p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
                     placeholder="0.00"
                   />
@@ -258,22 +370,28 @@ function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }
           <div className="flex justify-end">
             <button
               onClick={handleSave}
-              disabled={saving || !formData.status}
+              disabled={saving || !formData.status || locked}
               className="px-4 py-1.5 bg-blue-600 text-white rounded-md text-xs hover:bg-blue-700 disabled:opacity-50"
             >
               {saving ? "Saving..." : saved ? "✓ Saved" : "Save Details"}
             </button>
           </div>
+          </div>
+            )
+          })()}
 
-          {/* ── Step 3: Payment Done Date + Receipt ─────────────── */}
-            <div className={`pt-3 border-t border-gray-100 space-y-3 ${item.accountManagerApprovalStatus !== "APPROVED" ? "opacity-40 pointer-events-none" : ""}`}>
+          {/* ── Payment Completion ─────────────── */}
+          {(() => {
+            const step2Done = item.accountManagerApprovalStatus === "APPROVED"
+            return (
+            <div className={`pt-3 border-t border-gray-100 space-y-3 ${!step2Done ? "opacity-40 pointer-events-none" : ""}`}>
               <p className="text-xs font-medium text-gray-600">
-               Step 3 — Payment Completion
-              {item.accountManagerApprovalStatus !== "APPROVED" && (
+               Payment Completion
+              {!step2Done && (
               <span className="ml-2 text-yellow-600 font-normal">(Locked until AM approves)</span>
               )}
              </p>
-            
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs text-gray-500 mb-0.5">Payment Done Date <span className="text-red-400">*</span></p>
@@ -281,6 +399,7 @@ function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }
                   type="date"
                   value={paymentDoneDate}
                   onChange={(e) => setPaymentDoneDate(e.target.value)}
+                  disabled={!step2Done}
                   className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -293,6 +412,7 @@ function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png"
                   onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                  disabled={!step2Done}
                   className="text-xs border border-gray-300 rounded-md p-1 w-full"
                 />
                 {receiptFile && <p className="text-xs text-green-600 mt-0.5">✓ {receiptFile.name}</p>}
@@ -310,13 +430,15 @@ function AccountantSection({ item, itemType, currentUserId, canEdit, onRefresh }
             <div className="flex justify-end">
               <button
                 onClick={handleSubmitPayment}
-                disabled={submittingPayment || !paymentDoneDate}
+                disabled={submittingPayment || !paymentDoneDate || !step2Done}
                 className="px-4 py-1.5 bg-green-600 text-white rounded-md text-xs hover:bg-green-700 disabled:opacity-50"
               >
                 {submittingPayment ? "Submitting..." : paymentSaved ? "✓ Submitted" : "Submit Payment"}
               </button>
             </div>
           </div>
+            )
+          })()}
         </div>
       )}
     </div>
@@ -344,18 +466,23 @@ function AMApprovalSection({ item, currentUserId, canApprove, onRefresh, itemTyp
     }
   }
 
+  const step1Done = Boolean(item.status && item.paymentCycle)
+
   return (
     <div className="pt-2 border-t border-gray-100 space-y-3">
-      <p className="text-xs font-medium text-gray-600">Step 2 — AM Approval</p>
+      <p className="text-xs font-medium text-gray-600">AM Approval</p>
+      {canApprove && !step1Done && (
+        <p className="text-xs text-yellow-600 font-medium">Payment details (Step 1) required first</p>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <BadgeCell
           label="AM Approval"
           status={item.accountManagerApprovalStatus}
-          onClick={canApprove ? () => setShowPopup(true) : undefined}
+          onClick={canApprove && step1Done ? () => setShowPopup(true) : undefined}
         />
         <InfoCell label="AM Remark">{item.accountManagerApprovalRemarks}</InfoCell>
       </div>
-      {canApprove && (
+      {canApprove && step1Done && (
         <ApprovalPopup
           isOpen={showPopup}
           onClose={() => setShowPopup(false)}
@@ -395,10 +522,12 @@ function PODetailsModal({
   isPM = false,
   isAM = false,
   isAccountant = false,
+  isPurchaser = false,
 }) {
   const [piList, setPIList] = useState([])
   const [grnList, setGrnList] = useState([])
   const [loading, setLoading] = useState(false)
+  const [editingPI, setEditingPI] = useState(null)
 
   // Section-level and per-item collapse state — everything starts collapsed
   // except the PO number/link, which is always visible.
@@ -458,11 +587,11 @@ function PODetailsModal({
 
   const handleFMApproveGRN = (grn) => openPopup({
     title: `FM Approval — ${grn.grnNumber}`,
-    currentStatus: grn.purchaseOrder?.financeManagerApprovalStatus || "PENDING",
-    currentRemarks: grn.purchaseOrder?.financeManagerApprovalRemarks || "",
-    infoMessage: "This updates the FM approval on the associated PO.",
+    currentStatus: grn.financeManagerApprovalStatus || "PENDING",
+    currentRemarks: grn.financeManagerApprovalRemarks || "",
+    infoMessage: "This updates the FM approval on this GRN.",
     onSubmit: async (status, remarks) => {
-      await financePayableService.approveOrRejectPayable(grn.purchaseOrder?.id, status, remarks, currentUserId)
+      await financePayableService.approveOrRejectGRNPayable(grn.id, status, remarks, currentUserId)
     },
   })
 
@@ -635,13 +764,33 @@ function PODetailsModal({
                                 ) : (
                                   <span className="font-medium text-gray-900 truncate">{pi.piNumber || "N/A"}</span>
                                 )}
-                              </span>
-                              <span className="flex items-center gap-3 shrink-0">
-                                {pi.paymentReceiptUrl && (
-                                  <a href={pi.paymentReceiptUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-green-700 hover:text-green-900 text-xs underline">Payment Receipt</a>
+                                {isPurchaser && pi.approvalStatus !== "APPROVED" && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setEditingPI(pi) }}
+                                    title="Edit PI"
+                                    className="text-gray-500 hover:text-blue-600 shrink-0"
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
                                 )}
-                                <StatusBadge status={pi.paymentStatus || "PENDING"} />
                               </span>
+                              {pi.paymentStatus === "PAID" ? (
+                                <span className="flex items-center gap-3 shrink-0">
+                                  <StatusBadge status="PAID" />
+                                  {pi.paymentReceiptUrl && (
+                                    <a href={pi.paymentReceiptUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-green-700 hover:text-green-900 text-xs underline">Payment Advice</a>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-2 text-xs shrink-0 flex-wrap justify-end">
+                                  <span className="flex items-center gap-1"><span className="text-gray-500">PM:</span><StatusBadge status={pi.approvalStatus} /></span>
+                                  <span className="flex items-center gap-1"><span className="text-gray-500">FM:</span><StatusBadge status={pi.financeManagerApproval} /></span>
+                                  <span className="flex items-center gap-1"><span className="text-gray-500">Accountant:</span><StatusBadge status={pi.status || "PENDING"} /></span>
+                                  <span className="flex items-center gap-1"><span className="text-gray-500">AM:</span><StatusBadge status={pi.accountManagerApprovalStatus} /></span>
+                                </span>
+                              )}
                             </button>
                             {open && (
                               <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
@@ -656,7 +805,8 @@ function PODetailsModal({
                                   <BadgeCell label="PM Approval" status={pi.approvalStatus}
                                     onClick={isPM ? () => handlePMApprovePI(pi) : undefined} />
                                   <BadgeCell label="FM Approval" status={pi.financeManagerApproval}
-                                    onClick={isFM ? () => handleFMApprovePI(pi) : undefined} />
+                                    onClick={isFM && pi.approvalStatus === "APPROVED" ? () => handleFMApprovePI(pi) : undefined}
+                                    disabledTitle={isFM && pi.approvalStatus !== "APPROVED" ? "PM approval pending" : undefined} />
                                 </div>
                                 {(pi.approvalRemarks || pi.financeManagerApprovalRemarks) && (
                                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
@@ -718,15 +868,24 @@ function PODetailsModal({
                                   <span className="font-medium text-gray-900 truncate">{grn.grnNumber || "N/A"}</span>
                                 )}
                               </span>
-                              <span className="flex items-center gap-3 shrink-0">
-                                {grn.invoiceCopyUrl && (
-                                  <a href={grn.invoiceCopyUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-indigo-600 hover:text-indigo-800 text-xs underline">Tax Invoice</a>
-                                )}
-                                {grn.paymentReceiptUrl && (
-                                  <a href={grn.paymentReceiptUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-green-700 hover:text-green-900 text-xs underline">Payment Receipt</a>
-                                )}
-                                <StatusBadge status={grn.paymentStatus || "PENDING"} />
-                              </span>
+                              {grn.paymentStatus === "PAID" ? (
+                                <span className="flex items-center gap-3 shrink-0">
+                                  <StatusBadge status="PAID" />
+                                  {grn.paymentReceiptUrl && (
+                                    <a href={grn.paymentReceiptUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-green-700 hover:text-green-900 text-xs underline">Payment Advice</a>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="flex items-center gap-2 text-xs shrink-0 flex-wrap justify-end">
+                                  {grn.invoiceCopyUrl && (
+                                    <a href={grn.invoiceCopyUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-indigo-600 hover:text-indigo-800 underline">Tax Invoice</a>
+                                  )}
+                                  <span className="flex items-center gap-1"><span className="text-gray-500">PM:</span><StatusBadge status={grn.purchaseManagerApprovalStatus} /></span>
+                                  <span className="flex items-center gap-1"><span className="text-gray-500">FM:</span><StatusBadge status={grn.financeManagerApprovalStatus} /></span>
+                                  <span className="flex items-center gap-1"><span className="text-gray-500">Accountant:</span><StatusBadge status={grn.status || "PENDING"} /></span>
+                                  <span className="flex items-center gap-1"><span className="text-gray-500">AM:</span><StatusBadge status={grn.accountManagerApprovalStatus} /></span>
+                                </span>
+                              )}
                             </button>
                             {open && (
                               <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
@@ -740,18 +899,19 @@ function PODetailsModal({
                                 <div className="grid grid-cols-2 gap-3">
                                   <BadgeCell label="PM Approval" status={grn.purchaseManagerApprovalStatus}
                                     onClick={isPM ? () => handlePMApproveGRN(grn) : undefined} />
-                                  <BadgeCell label="FM Approval" status={grn.purchaseOrder?.financeManagerApprovalStatus}
-                                    onClick={isFM ? () => handleFMApproveGRN(grn) : undefined} />
+                                  <BadgeCell label="FM Approval" status={grn.financeManagerApprovalStatus}
+                                    onClick={isFM && grn.purchaseManagerApprovalStatus === "APPROVED" ? () => handleFMApproveGRN(grn) : undefined}
+                                    disabledTitle={isFM && grn.purchaseManagerApprovalStatus !== "APPROVED" ? "PM approval pending" : undefined} />
                                 </div>
-                                {(grn.purchaseManagerApprovalRemarks || grn.purchaseOrder?.financeManagerApprovalRemarks) && (
+                                {(grn.purchaseManagerApprovalRemarks || grn.financeManagerApprovalRemarks) && (
                                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
                                     {grn.purchaseManagerApprovalRemarks && <span>PM Remark: {grn.purchaseManagerApprovalRemarks}</span>}
-                                    {grn.purchaseOrder?.financeManagerApprovalRemarks && <span>FM Remark: {grn.purchaseOrder.financeManagerApprovalRemarks}</span>}
+                                    {grn.financeManagerApprovalRemarks && <span>FM Remark: {grn.financeManagerApprovalRemarks}</span>}
                                   </div>
                                 )}
-                                <div className={`${grn.purchaseOrder?.financeManagerApprovalStatus !== "APPROVED" ? "opacity-40 pointer-events-none" : ""}`}>
-                                  {grn.purchaseOrder?.financeManagerApprovalStatus !== "APPROVED" && (
-                                    <p className="text-xs text-yellow-600 font-medium mb-1">⚠ Locked until FM approves</p>
+                                <div className={`${(grn.purchaseManagerApprovalStatus !== "APPROVED" || grn.financeManagerApprovalStatus !== "APPROVED") ? "opacity-40 pointer-events-none" : ""}`}>
+                                  {(grn.purchaseManagerApprovalStatus !== "APPROVED" || grn.financeManagerApprovalStatus !== "APPROVED") && (
+                                    <p className="text-xs text-yellow-600 font-medium mb-1">⚠ Locked until PM and FM approve</p>
                                   )}
                                   <AccountantSection
                                     item={grn}
@@ -797,6 +957,13 @@ function PODetailsModal({
         infoMessage={approvalPopup.infoMessage}
         onSubmit={handlePopupSubmit}
         submitting={submitting}
+      />
+
+      <EditPIModal
+        isOpen={editingPI !== null}
+        onClose={() => setEditingPI(null)}
+        pi={editingPI}
+        onSuccess={() => fetchDetails()}
       />
     </div>
   )

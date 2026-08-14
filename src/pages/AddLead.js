@@ -4,11 +4,46 @@ import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { FiAlertCircle, FiCheck, FiFilePlus, FiTrash2 } from "react-icons/fi"
 import { leadService } from "../services/leadService"
-import { data } from "react-router-dom"
+import { enquiryService } from "../services/enquiryService"
+import { data, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../contexts/AuthContext"
 import { getErrorMessage } from "../utils/errorUtils"
 
+// Maps the website form's fixed service_needed codes to actual lead_type labels.
+// OTHER_MEP_SERVICES has no single label of its own — the website sends the specific
+// lead type names the user picked (from the remaining 7 categories) in other_mep_services_selected.
+const SERVICE_CODE_TO_LEAD_TYPE_LABEL = {
+  TURNKEY_SITC_FIRE_FIGHTING: "Turnkey SITC of Fire Fighting Systems",
+  AMC: "Annual Maintenance Contract (AMC)",
+  FIRE_FIGHTING_TRAINING_MOCK_DRILL: "Fire Safety Training & Mock Drill",
+}
+
+// Resolves the enquiry's service selections into a flat, human-readable list of lead type
+// names for display and for matching against the lead_type master list.
+const resolveServiceLabels = (enquiry) => {
+  if (!enquiry?.service_needed?.length) return []
+  const labels = []
+  enquiry.service_needed.forEach((code) => {
+    if (code === "OTHER_MEP_SERVICES") {
+      ;(enquiry.other_mep_services_selected || []).forEach((label) => labels.push(label))
+    } else if (SERVICE_CODE_TO_LEAD_TYPE_LABEL[code]) {
+      labels.push(SERVICE_CODE_TO_LEAD_TYPE_LABEL[code])
+    } else {
+      labels.push(code)
+    }
+  })
+  return labels
+}
+
+// Case-insensitive, whitespace-normalized comparison so a stray double-space or
+// capitalization difference from the website doesn't silently break the prefill match.
+const normalizeLabel = (str) => (str || "").trim().toLowerCase().replace(/\s+/g, " ")
+
 function AddLead() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const sourceEnquiry = location.state?.enquiry || null
+  const [discarding, setDiscarding] = useState(false)
   const [rows, setRows] = useState([])
   const [middleManrows, setMiddleManRows] = useState([])
   const [architectfirm, seArchitectFirm] = useState([])
@@ -32,17 +67,25 @@ function AddLead() {
   const [leadData, setLeadData] = useState({
     date_recieved: new Date().toISOString().split("T")[0],
     lead_source: "",
-    lead_priority: "",
-    lead_type: "",
+    lead_priority: sourceEnquiry ? "hot" : "",
+    lead_type: [], // array of selected lead_type ids; joined into a comma-separated label string on submit
     product_type: [],
     //additionalDetails: [],
     //middleManDetails: [],
     employee: {
       id: userId,
     },
-    client_name: "",
-    project_location: "",
-    office_location: "",
+    client_name: sourceEnquiry
+      ? sourceEnquiry.company_name && sourceEnquiry.city
+        ? sourceEnquiry.company_name
+        : "Please verify with client and change field"
+      : "",
+    project_location: sourceEnquiry ? "Please verify with client and change field" : "",
+    office_location: sourceEnquiry
+      ? sourceEnquiry.company_name && sourceEnquiry.city
+        ? sourceEnquiry.city
+        : "Please verify with client and change field"
+      : "",
     middle_man_client_name: "",
     middle_man_office_location: "",
     middle_man_project_location: "",
@@ -55,10 +98,13 @@ function AddLead() {
     pmc_client_name: "",
     pmc_office_location: "",
     pmc_project_location: "",
+    enquiry_service_needed: sourceEnquiry ? resolveServiceLabels(sourceEnquiry).join(", ") || undefined : undefined,
+    enquiry_message: sourceEnquiry?.message || undefined,
     is_created_by_bdm : "0"
   })
 
   const [showProductTypeDropdown, setShowProductTypeDropdown] = useState(false)
+  const [showLeadTypeDropdown, setShowLeadTypeDropdown] = useState(false)
 
   // Add click outside handler to close dropdown
   useEffect(() => {
@@ -67,13 +113,17 @@ function AddLead() {
       if (showProductTypeDropdown && dropdown && !dropdown.contains(event.target)) {
         setShowProductTypeDropdown(false)
       }
+      const leadTypeDropdown = document.getElementById("lead-type-dropdown")
+      if (showLeadTypeDropdown && leadTypeDropdown && !leadTypeDropdown.contains(event.target)) {
+        setShowLeadTypeDropdown(false)
+      }
     }
 
     document.addEventListener("mousedown", handleClickOutside)
     return () => {
       document.removeEventListener("mousedown", handleClickOutside)
     }
-  }, [showProductTypeDropdown])
+  }, [showProductTypeDropdown, showLeadTypeDropdown])
 
   const handleProductTypeSelect = (id) => {
     let updatedProductTypes
@@ -102,6 +152,23 @@ function AddLead() {
     })
   }
 
+  const handleLeadTypeSelect = (id) => {
+    const updatedLeadTypes = leadData.lead_type.includes(id)
+      ? leadData.lead_type.filter((item) => item !== id)
+      : [...leadData.lead_type, id]
+    setLeadData({
+      ...leadData,
+      lead_type: updatedLeadTypes,
+    })
+  }
+
+  const handleRemoveLeadType = (id) => {
+    setLeadData({
+      ...leadData,
+      lead_type: leadData.lead_type.filter((item) => item !== id),
+    })
+  }
+
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -120,12 +187,79 @@ function AddLead() {
     setIsValid(data ? true : false)
   }, [data])
 
+  // Once master lists are loaded, prefill lead_type/product_type from the enquiry's service_needed.
+  // AMC and Fire Safety Training & Mock Drill have no product sub-list, so the lead type itself
+  // is also used as the product type for those two.
+  useEffect(() => {
+    if (!sourceEnquiry || dataLoading || typelist.length === 0) return
+
+    const requestedServices = resolveServiceLabels(sourceEnquiry)
+    if (requestedServices.length === 0) return
+
+    // Label-mismatch cases (no matching lead_type / product_type row) are logged server-side
+    // at enquiry intake time (WebsiteEnquiryService.logLabelMismatches), not here, so a drift
+    // shows up in the application log even if nobody opens this page.
+    const matchedTypes = requestedServices
+      .map((service) => typelist.find((t) => normalizeLabel(t.label) === normalizeLabel(service)))
+      .filter(Boolean)
+    if (matchedTypes.length === 0) return
+
+    const noSubListTypes = ["Annual Maintenance Contract (AMC)", "Fire Safety Training & Mock Drill"]
+    const prefilledProductIds = new Set()
+    matchedTypes.forEach((matchedType) => {
+      if (noSubListTypes.some((t) => normalizeLabel(t) === normalizeLabel(matchedType.label))) {
+        const matchedProduct = producttypelist.find((p) => normalizeLabel(p.label) === normalizeLabel(matchedType.label))
+        if (matchedProduct) prefilledProductIds.add(matchedProduct.id)
+      }
+    })
+
+    // products_selected carries specific product picks from any category, sent as a flat
+    // array by the website. Select every one that matches a row in the product master list.
+    ;(sourceEnquiry.products_selected || []).forEach((productLabel) => {
+      const matchedProduct = producttypelist.find((p) => normalizeLabel(p.label) === normalizeLabel(productLabel))
+      if (matchedProduct) prefilledProductIds.add(matchedProduct.id)
+    })
+
+    setLeadData((prev) => ({
+      ...prev,
+      // The lead_type dropdown is multi-select; its stored value is an array of ids.
+      lead_type: matchedTypes.map((t) => t.id),
+      product_type: Array.from(prefilledProductIds),
+    }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataLoading, typelist, producttypelist])
+
+  // Once the source list is loaded, default lead_source to "Company Website" (matched by
+  // label, since the <select> value is the row's id) for enquiry conversions.
+  useEffect(() => {
+    if (!sourceEnquiry || dataLoading || sourcelist.length === 0) return
+    const websiteSource = sourcelist.find((s) => normalizeLabel(s.label) === normalizeLabel("Company Website"))
+    if (!websiteSource) return
+    setLeadData((prev) => (prev.lead_source ? prev : { ...prev, lead_source: websiteSource.id }))
+  }, [dataLoading, sourcelist, sourceEnquiry])
+
+  // Prefill the client contact-person row from the website enquiry being converted.
+  useEffect(() => {
+    if (sourceEnquiry) {
+      setRows([
+        {
+          id: 0,
+          contact_person_name: sourceEnquiry.name || "",
+          contact_person_phonenumber: sourceEnquiry.phone || "",
+          contact_person_email: sourceEnquiry.email || "",
+          contact_person_designation: "",
+        },
+      ])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const fetchSourceTypeData = async () => {
     try {
       const [leadSource, leadType, leadProductType] = await Promise.all([
         leadService.getLeadSourceList(),
-        leadService.getLeadTypeList(),
-        leadService.getLeadProductTypeList(),
+        leadService.getActiveLeadTypeList(),
+        leadService.getActiveLeadProductTypeList(),
       ])
       setSourcelist(leadSource)
       setTypelist(leadType)
@@ -277,32 +411,6 @@ function AddLead() {
         lead_priority: value,
         lead_source: leadData.lead_source,
         lead_type: leadData.lead_type,
-        product_type: leadData.product_type,
-        client_name: leadData.client_name,
-        project_location: leadData.project_location,
-        office_location: leadData.office_location,
-        middle_man_client_name: leadData.middle_man_client_name,
-        middle_man_office_location: leadData.middle_man_office_location,
-        middle_man_project_location: leadData.middle_man_project_location,
-        architect_client_name: leadData.architect_client_name,
-        architect_project_location: leadData.architect_project_location,
-        architect_office_location: leadData.architect_office_location,
-        mep_client_name: leadData.mep_client_name,
-        mep_project_location: leadData.mep_project_location,
-        mep_office_location: leadData.mep_office_location,
-        pmc_client_name: leadData.pmc_client_name,
-        pmc_project_location: leadData.pmc_project_location,
-        pmc_office_location: leadData.pmc_office_location,
-        is_created_by_bdm : leadData.is_created_by_bdm
-      })
-
-    if (name === "lead_type")
-      setLeadData({
-        ...leadData,
-        date_recieved: leadData.date_recieved,
-        lead_type: value,
-        lead_source: leadData.lead_source,
-        lead_priority: leadData.lead_priority,
         product_type: leadData.product_type,
         client_name: leadData.client_name,
         project_location: leadData.project_location,
@@ -1071,9 +1179,9 @@ function AddLead() {
         throw new Error("Please select Lead Priority")
       }
 
-      if (leadData.lead_type == undefined || leadData.lead_type == "") {
+      if (!leadData.lead_type || leadData.lead_type.length === 0) {
         setError(true)
-        throw new Error("Please select Lead Type")
+        throw new Error("Please select at least one Lead Type")
       }
 
       if (!leadData.product_type || leadData.product_type.length === 0) {
@@ -1123,8 +1231,16 @@ function AddLead() {
         }
       }))
 
+      // Lead.lead_type on the backend is still a plain String column (not multi-select like
+      // lead_product_type), so multiple selections are joined into one comma-separated string.
+      const leadTypeLabel = leadData.lead_type
+        .map((id) => typelist.find((t) => t.id === id)?.label)
+        .filter(Boolean)
+        .join(", ")
+
       const submitData = {
         ...leadData,
+        lead_type: leadTypeLabel,
         lead_recieved: new Date(leadData.date_recieved).toISOString(),
         additionalDetails: newRows,
         middleManDetails: newMiddleManrows,
@@ -1136,7 +1252,14 @@ function AddLead() {
       }
 
       console.log(submitData);
-      await leadService.createLead(submitData);
+      const createdLead = await leadService.createLead(submitData);
+      if (sourceEnquiry?.id && createdLead?.id) {
+        try {
+          await enquiryService.markConverted(sourceEnquiry.id, createdLead.id)
+        } catch (conversionErr) {
+          console.error("Lead created, but failed to mark enquiry as converted:", conversionErr)
+        }
+      }
       scrollToTop()
       setSuccess(true)
       setTimeout(() => {
@@ -1150,6 +1273,21 @@ function AddLead() {
     } finally {
       scrollToTop()
       setSaving(false)
+    }
+  }
+
+  const handleDiscardEnquiry = async () => {
+    if (!sourceEnquiry?.id) return
+    if (!window.confirm("Discard this enquiry? It will move to the Discarded Enquiries tab.")) return
+    try {
+      setDiscarding(true)
+      await enquiryService.discardEnquiry(sourceEnquiry.id)
+      navigate("/leads")
+    } catch (err) {
+      setError(getErrorMessage(err, "Failed to discard enquiry"))
+      scrollToTop()
+    } finally {
+      setDiscarding(false)
     }
   }
 
@@ -1181,6 +1319,22 @@ function AddLead() {
         <FiFilePlus className="text-blue-600 w-6 h-6" />
         <h1 className="text-2xl font-bold">Add New Lead</h1>
       </div>
+
+      {sourceEnquiry && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 p-4 rounded-md mb-4 text-sm">
+          Converting website enquiry from <strong>{sourceEnquiry.name}</strong> ({sourceEnquiry.company_name}), received{" "}
+          {sourceEnquiry.createdAt ? new Date(sourceEnquiry.createdAt).toLocaleDateString() : ""}.
+          {resolveServiceLabels(sourceEnquiry).length ? (
+            <> Services enquired: <strong>{resolveServiceLabels(sourceEnquiry).join(", ")}</strong>.</>
+          ) : null}
+          {sourceEnquiry.products_selected?.length ? (
+            <> Products enquired: <strong>{sourceEnquiry.products_selected.join(", ")}</strong>.</>
+          ) : null}
+          {sourceEnquiry.message ? <div className="mt-1 italic">"{sourceEnquiry.message}"</div> : null}
+          <div className="mt-1 text-blue-600">Fields below have been pre-filled — please review and fill in anything missing (lead type, product type, exact location).</div>
+        </div>
+      )}
+
 
       {error && (
         <div className="bg-red-50 text-red-500 p-4 rounded-md flex items-center">
@@ -1264,21 +1418,73 @@ function AddLead() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Lead Type <span className="text-red-500">*</span>
                 </label>
-                <select
-                  name="lead_type"
-                  value={leadData.lead_type}
-                  onChange={handleSelectChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select Type</option>
-                  {typelist.map((country, i) => {
-                    return (
-                      <option key={i} value={country.id}>
-                        {country.label}
-                      </option>
-                    )
-                  })}
-                </select>
+                <div id="lead-type-dropdown" className="relative mt-1">
+                  <div
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 min-h-[42px] flex flex-wrap gap-1 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowLeadTypeDropdown(!showLeadTypeDropdown)
+                    }}
+                  >
+                    {leadData.lead_type.length > 0 ? (
+                      leadData.lead_type.map((id) => {
+                        const item = typelist.find((item) => item.id === id)
+                        return (
+                          <span
+                            key={id}
+                            className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded flex items-center"
+                          >
+                            {item?.label}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleRemoveLeadType(id)
+                              }}
+                              className="ml-1 text-blue-800 hover:text-blue-900"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )
+                      })
+                    ) : (
+                      <span className="text-gray-500">Select Lead Types</span>
+                    )}
+                  </div>
+                  {showLeadTypeDropdown && (
+                    <div className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm border border-gray-300">
+                      {typelist.map((item) => (
+                        <div
+                          key={item.id}
+                          className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-gray-100 ${leadData.lead_type.includes(item.id) ? "bg-blue-50" : ""
+                            }`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleLeadTypeSelect(item.id)
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 border-gray-300 rounded text-blue-600 focus:ring-blue-500 mr-2"
+                              checked={leadData.lead_type.includes(item.id)}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                handleLeadTypeSelect(item.id)
+                              }}
+                            />
+                            <span
+                              className={`block truncate ${leadData.lead_type.includes(item.id) ? "font-medium" : "font-normal"}`}
+                            >
+                              {item.label}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -1971,7 +2177,19 @@ function AddLead() {
             </div>
           : null}
 
-          <div className="flex justify-center py-4 px-4">
+          <div className="flex justify-center gap-3 py-4 px-4">
+            {sourceEnquiry && (
+              <button
+                type="button"
+                onClick={handleDiscardEnquiry}
+                disabled={discarding || saving}
+                className={`px-4 py-2 bg-white text-red-600 border border-red-300 rounded-md hover:bg-red-50 flex items-center ${
+                  discarding ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                {discarding ? "Discarding..." : "Discard Enquiry"}
+              </button>
+            )}
 
             <button
               type="submit"

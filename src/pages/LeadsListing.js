@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
+import WebsiteEnquiries from "../components/Leads/WebsiteEnquiries"
 import UnAssignedLeads from "../components/Leads/UnAssignedLeads"
 import SSEAssignedLeads from "../components/Leads/SSEAssignedLeads"
 import AssignLeadsToBDM from "../components/Leads/AssignLeadsToBDM"
@@ -13,7 +14,7 @@ import SSEInProgressLeads from "../components/Leads/SSEInProgressLeads"
 import SalesTLWonLeads from "../components/Leads/SalesTLWonLeads"
 import UpdateMasterTables from "../components/Leads/UpdateMasterTables"
 import BDMLeadsCreatedByMe from "../components/Leads/BDMLeadsCreatedByMe"
-import { MdFiberNew, MdEngineering, MdManageAccounts } from "react-icons/md"
+import { MdFiberNew, MdEngineering, MdManageAccounts, MdMarkEmailUnread } from "react-icons/md"
 import { GrWorkshop } from "react-icons/gr"
 import { RiProgress3Line } from "react-icons/ri"
 import { BiWon } from "react-icons/bi"
@@ -36,6 +37,7 @@ function LeadsListing() {
   // Define all available tabs
   const allTabs = [
     { id: "unassigned-leads", label: "UnAssigned Leads", icon: MdFiberNew, component: UnAssignedLeads },
+    { id: "website-enquiries", label: "Website Enquiries", icon: MdMarkEmailUnread, component: WebsiteEnquiries },
     { id: "sse-assigned-leads", label: "SSE Assigned Leads", icon: MdEngineering, component: SSEAssignedLeads },
     { id: "assign-leads-bdm", label: "Assign Leads To BDM", icon: MdManageAccounts, component: AssignLeadsToBDM },
     { id: "see-new-leads", label: "New Leads", icon: MdFiberNew, component: SSENewLeads },
@@ -104,13 +106,13 @@ function LeadsListing() {
     // For users with main tabs, return tabs based on main tab selection
     if (shouldShowMainTabs()) {
       if (activeMainTab === "SalesTL" && isSuperAdmin()) {
-        return [allTabs[0], allTabs[1], allTabs[2], allTabs[7], allTabs[8]]
+        return [allTabs[1], allTabs[0], allTabs[2], allTabs[3], allTabs[8], allTabs[9]]
       } else if (activeMainTab === "SalesTL" && !isSuperAdmin()) {
-        return [allTabs[0], allTabs[1], allTabs[2], allTabs[7]]
+        return [allTabs[1], allTabs[0], allTabs[2], allTabs[3], allTabs[8]]
       }else if (activeMainTab === "SSE") {
-        return [allTabs[3], allTabs[4], allTabs[5]]
+        return [allTabs[4], allTabs[5], allTabs[6]]
       } else if (activeMainTab === "BDM") {
-        return [allTabs[6], allTabs[9]]
+        return [allTabs[7], allTabs[10]]
       }
     }
 
@@ -118,9 +120,9 @@ function LeadsListing() {
     if (designation.includes("director")) {
       return allTabs // Admin/Manager can see all tabs
     } else if (designation.includes("sales-support-engineer") || designation.includes("engineer")) {
-      return [allTabs[3], allTabs[4], allTabs[5]] // SSE can see unassigned and SSE assigned
+      return [allTabs[4], allTabs[5], allTabs[6]] // SSE can see unassigned and SSE assigned
     } else if (designation.includes("bdm") || designation.includes("business") || designation.includes("development")) {
-      return [allTabs[6], allTabs[9]] // BDM can see unassigned and BDM assigned
+      return [allTabs[7], allTabs[10]] // BDM can see unassigned and BDM assigned
     } else {
       return [allTabs[0]] // Default to just unassigned leads
     }
@@ -132,7 +134,7 @@ function LeadsListing() {
 
   // Maps a tab id to the main tab group it lives under, for ?tab= deep links (e.g. from notifications).
   const getMainTabForTabId = (tabId) => {
-    if (["unassigned-leads", "sse-assigned-leads", "assign-leads-bdm", "salestl-won-leads", "salestl-update-master-table"].includes(tabId)) {
+    if (["unassigned-leads", "website-enquiries", "sse-assigned-leads", "assign-leads-bdm", "salestl-won-leads", "salestl-update-master-table"].includes(tabId)) {
       return "SalesTL"
     }
     if (["see-new-leads", "sse-inprocess-leads", "sse-won-leads"].includes(tabId)) {

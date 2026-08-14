@@ -17,6 +17,7 @@ import { receivableService } from "../../services/receivableService"
 import ProjectManagementModal from "./Accountant/ProjectManagementModal"
 import { employeeService } from "../../services/employeeService"
 import { getErrorMessage } from "../../utils/errorUtils"
+import { useHighlightTarget } from "../../hooks/useHighlightTarget"
 
 function BOQModal({ isOpen, onClose, projectId }) {
   const [boqData, setBOQData] = useState(null)
@@ -763,6 +764,7 @@ function InvoiceManagementModal({ isOpen, onClose, onSuccess, projectId, project
 }
 
 function Recievable() {
+  useHighlightTarget()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [projects, setProjects] = useState([])
@@ -1009,6 +1011,7 @@ function Recievable() {
                   projects.map((project) => (
                     <tr
                       key={project.id}
+                      data-highlight-id={`project-row-${project.id}`}
                       className="hover:bg-gray-50 cursor-pointer transition-colors group animate-in fade-in duration-200"
                       onClick={() => handleRowClick(project)}
                     >
@@ -1195,6 +1198,7 @@ function Recievable() {
                 {projects.map((project) => (
                   <div
                     key={project.id}
+                    data-highlight-id={`project-row-${project.id}`}
                     className="p-4 hover:bg-gray-50 cursor-pointer transition-colors animate-in fade-in duration-200"
                     onClick={() => handleRowClick(project)}
                   >

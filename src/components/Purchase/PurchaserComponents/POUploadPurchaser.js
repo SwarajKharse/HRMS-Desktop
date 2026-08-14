@@ -35,50 +35,38 @@ function PIUploadModal({ isOpen, onClose, po, onSuccess }) {
   const { user } = useAuth()
   const [piFile, setPIFile] = useState(null)
   const [payableAmount, setPayableAmount] = useState("")
-  const [selectedProjectNames, setSelectedProjectNames] = useState([])
   const [expectedPaymentDate, setExpectedPaymentDate] = useState("")
   const [remarks, setRemarks] = useState("")
-  const [projectNames, setProjectNames] = useState([])
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     if (isOpen) {
-      fetchProjectNames()
       resetForm()
     }
   }, [isOpen])
 
-  const fetchProjectNames = async () => {
-    try {
-      const names = await purchaseInvoiceService.getProjectNames()
-      setProjectNames(names || [])
-    } catch (e) {
-      console.error("Error fetching project names:", e)
-    }
-  }
-
   const resetForm = () => {
     setPIFile(null)
     setPayableAmount("")
-    setSelectedProjectNames([])
     setExpectedPaymentDate("")
     setRemarks("")
     setError(null)
   }
 
   const handleSubmit = async () => {
-    if (!piFile || selectedProjectNames.length === 0 || !payableAmount || !expectedPaymentDate) {
+    if (!piFile || !payableAmount || !expectedPaymentDate) {
       setError("Please fill in all required fields")
       return
     }
     try {
       setUploading(true)
       setError(null)
+      const projectName = po.projectNames?.length > 0 ? po.projectNames.join(", ") : (po.projectName || "")
       const formData = new FormData()
       formData.append("file", piFile)
       formData.append("payableAmount", payableAmount)
-      formData.append("projectName", selectedProjectNames.join(", "))
+      formData.append("projectName", projectName)
       formData.append("expectedPaymentDate", expectedPaymentDate)
       formData.append("remarks", remarks)
       formData.append("poId", po.id)
@@ -131,20 +119,6 @@ function PIUploadModal({ isOpen, onClose, po, onSuccess }) {
           <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Payable Amount <span className="text-red-500">*</span></label>
               <input type="number" step="0.01" value={payableAmount} onChange={(e) => setPayableAmount(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" placeholder="0.00" disabled={uploading} />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Project Name(s) <span className="text-red-500">*</span></label>
-              <select
-                multiple
-                value={selectedProjectNames}
-                onChange={(e) => setSelectedProjectNames(Array.from(e.target.selectedOptions, (opt) => opt.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm h-32"
-                disabled={uploading}
-              >
-                {projectNames.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
-              <p className="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</p>
             </div>
 
           <div>
@@ -306,6 +280,86 @@ function GRNUploadModal({ isOpen, onClose, po, onSuccess }) {
           <button onClick={onClose} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm" disabled={uploading}>Cancel</button>
           <button onClick={handleSubmit} disabled={uploading} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm disabled:opacity-50">
             {uploading ? "Uploading..." : "Upload GRN"}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Edit PO Modal — replace PO Number / PO file while PM approval is pending or rejected ────
+function EditPOModal({ isOpen, onClose, po, onSuccess, user }) {
+  const [poNumber, setPONumber] = useState("")
+  const [poFile, setPOFile] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (isOpen && po) {
+      setPONumber(po.poNumber || "")
+      setPOFile(null)
+      setError(null)
+    }
+  }, [isOpen, po])
+
+  if (!isOpen || !po) return null
+
+  const handleSave = async () => {
+    if (!poNumber.trim()) {
+      setError("PO Number is required")
+      return
+    }
+    try {
+      setSaving(true)
+      setError(null)
+      const formData = new FormData()
+      if (poFile) formData.append("file", poFile)
+      formData.append("poNumber", poNumber)
+      formData.append("currentUserId", user?.userId || user?.id || 1)
+      await purchaseOrderService.updatePurchaseOrder(po.id, formData)
+      onSuccess("PO updated successfully!")
+      onClose()
+    } catch (e) {
+      console.error("Error updating PO:", e)
+      setError(getErrorMessage(e, "Failed to update PO. Please try again."))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b">
+          <h3 className="text-lg font-semibold">Edit PO — {po.poNumber}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-md text-sm">{error}</div>
+          )}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+            Editing this PO will reset PM and FM approval — both will need to review it again.
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">PO Number <span className="text-red-500">*</span></label>
+            <input type="text" value={poNumber} onChange={(e) => setPONumber(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={saving} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Replace PO Document</label>
+            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => setPOFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={saving} />
+            {poFile && <p className="text-xs text-green-600 mt-1">✓ {poFile.name}</p>}
+            <p className="text-xs text-gray-500 mt-1">Leave blank to keep the current document.</p>
+          </div>
+        </div>
+        <div className="border-t p-4 bg-gray-50 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm" disabled={saving}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm disabled:opacity-50">
+            {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>
@@ -569,6 +623,7 @@ const POUploadPurchaser = () => {
   const [showPIModal, setShowPIModal] = useState(false)
   const [showGRNModal, setShowGRNModal] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showEditPOModal, setShowEditPOModal] = useState(false)
   const [selectedPO, setSelectedPO] = useState(null)
 
   const showSuccess = (msg) => {
@@ -818,11 +873,24 @@ const POUploadPurchaser = () => {
                         <div className="space-y-1">
                           <div className="text-sm font-medium text-gray-900">{po.poNumber}</div>
                           <div className="text-xs text-gray-500">{formatDate(po.createdAt)}</div>
-                          {po.fileUrl && (
-                            <a href={po.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1 underline">
-                              View PO
-                            </a>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {po.fileUrl && (
+                              <a href={po.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1 underline">
+                                View PO
+                              </a>
+                            )}
+                            {po.approvalStatus !== "APPROVED" && (
+                              <button
+                                onClick={() => { setSelectedPO(po); setShowEditPOModal(true) }}
+                                title="Edit PO"
+                                className="text-gray-500 hover:text-blue-600"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                           {/* Previous POs expandable */}
                           {po.allPOs && po.allPOs.length > 1 && (
                             <div className="mt-1">
@@ -923,10 +991,11 @@ const POUploadPurchaser = () => {
                             </svg>
                             View Details
                           </button>
-                          {/* Upload PI */}
+                          {/* Upload PI — only enabled once PO has both PM and FM approval */}
                           <button
                             onClick={() => { setSelectedPO(po); setShowPIModal(true) }}
-                            className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 font-medium"
+                            disabled={po.approvalStatus !== "APPROVED" || po.financeManagerApprovalStatus !== "APPROVED"}
+                            className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             Upload PI
                           </button>
@@ -970,6 +1039,7 @@ const POUploadPurchaser = () => {
         isOpen={showDetailsModal && selectedPO !== null}
         onClose={() => { setShowDetailsModal(false); setTimeout(() => setSelectedPO(null), 200) }}
         po={selectedPO || {}}
+        isPurchaser={true}
       />
 
       <PIUploadModal
@@ -984,6 +1054,14 @@ const POUploadPurchaser = () => {
         onClose={() => { setShowGRNModal(false); setSelectedPO(null) }}
         po={selectedPO}
         onSuccess={(msg) => { showSuccess(msg); fetchPOs() }}
+      />
+
+      <EditPOModal
+        isOpen={showEditPOModal}
+        onClose={() => { setShowEditPOModal(false); setSelectedPO(null) }}
+        po={selectedPO}
+        onSuccess={(msg) => { showSuccess(msg); fetchPOs() }}
+        user={user}
       />
     </div>
   )

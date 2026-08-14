@@ -1100,6 +1100,25 @@ export const leadService = {
     }
   },
 
+  // Active-only lists (excludes legacy BOQ-only entries) — used on the Add Lead form.
+  getActiveLeadTypeList: async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/leadtype/active`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
+  getActiveLeadProductTypeList: async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/leadproducttype/active`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error.response?.data || error.message
+    }
+  },
+
   // Updated getLeadsAssignesToSSE method with new filter parameters
   getLeadsAssignesToSSE: async (
     sseid,

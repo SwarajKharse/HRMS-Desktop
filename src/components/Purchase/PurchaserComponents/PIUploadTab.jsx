@@ -100,7 +100,7 @@ const PIUploadTab = () => {
               poDate: poStatus.latestPO?.createdAt,
               poId: poStatus.latestPO?.id,
               pmApproval: poStatus.latestPO?.approvalStatus,
-              fmApproval: poStatus.latestPO?.financeManagerApproval,
+              fmApproval: poStatus.latestPO?.financeManagerApprovalStatus,
             })
 
             // Fetch PI list if PO exists
@@ -180,7 +180,7 @@ const PIUploadTab = () => {
 
   // Handle PI upload
   const handleUploadPI = async () => {
-    if (!piFile || !shareStatus || !payableAmount || !selectedProjectName || !expectedPaymentDate) {
+    if (!piFile || !shareStatus || !payableAmount || !expectedPaymentDate) {
       showMessage("error", "Please fill in all required fields to submit")
       return
     }
@@ -191,7 +191,7 @@ const PIUploadTab = () => {
       formData.append("file", piFile)
       formData.append("shareStatus", shareStatus)
       formData.append("payableAmount", payableAmount)
-      formData.append("projectName", selectedProjectName)
+      formData.append("projectName", selectedPOForPI?.projectName || "")
       formData.append("expectedPaymentDate", expectedPaymentDate)
       formData.append("remarks", piRemarks)
       formData.append("poId", selectedPOForPI.poId)
@@ -411,26 +411,6 @@ const PIUploadTab = () => {
                   placeholder="0.00"
                   disabled={uploadingPI}
                 />
-              </div>
-
-              {/* Project Name */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Project Name <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedProjectName}
-                  onChange={(e) => setSelectedProjectName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  disabled={uploadingPI}
-                >
-                  <option value="">Select Project</option>
-                  {projectNames.map((project) => (
-                    <option key={project} value={project}>
-                      {project}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               {/* Expected Payment Date */}

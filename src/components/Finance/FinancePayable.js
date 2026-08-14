@@ -260,20 +260,30 @@ const FinancePayable = () => {
                         </div>
                       </td>
 
-                      {/* FM Approval — clickable — financeManagerApprovalStatus field */}
+                      {/* FM Approval — clickable only once PM has approved — financeManagerApprovalStatus field */}
                       <td className="px-4 py-4">
                         <div className="space-y-1">
-                          <button
-                            onClick={() => {
-                              setSelectedPOForApproval(po)
-                              setApprovalStatus(po.financeManagerApprovalStatus || "PENDING")
-                              setApprovalRemarks(po.financeManagerApprovalRemarks || "")
-                              setShowApprovalModal(true)
-                            }}
-                            className="cursor-pointer hover:opacity-80 transition-opacity"
-                          >
-                            <StatusBadge status={po.financeManagerApprovalStatus} />
-                          </button>
+                          {po.approvalStatus === "APPROVED" ? (
+                            <button
+                              onClick={() => {
+                                setSelectedPOForApproval(po)
+                                setApprovalStatus(po.financeManagerApprovalStatus || "PENDING")
+                                setApprovalRemarks(po.financeManagerApprovalRemarks || "")
+                                setShowApprovalModal(true)
+                              }}
+                              className="cursor-pointer hover:opacity-80 transition-opacity"
+                            >
+                              <StatusBadge status={po.financeManagerApprovalStatus} />
+                            </button>
+                          ) : (
+                            <button
+                              disabled
+                              title="PM approval pending"
+                              className="opacity-50 cursor-not-allowed"
+                            >
+                              <StatusBadge status={po.financeManagerApprovalStatus} />
+                            </button>
+                          )}
                           {po.financeManagerApprovalRemarks && (
                             <p className="text-xs text-gray-500 max-w-[120px] truncate" title={po.financeManagerApprovalRemarks}>{po.financeManagerApprovalRemarks}</p>
                           )}

@@ -706,6 +706,15 @@ uploadNocFile: async (projectId, file) => {
     }
   },
 
+  getUnfilledProgressToday: async (employeeId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/progress/unfilled-today/${employeeId}`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
   saveProjectProgress: async (projectId, payload) => {
     try {
       const response = await axios.post(`${API_URL}/projects/${projectId}/progress`, payload, getAuthHeaders())

@@ -28,6 +28,20 @@ export const purchaseInvoiceService = {
     }
   },
 
+  editPurchaseInvoice: async (id, formData) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/purchase-invoices/${id}/edit`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error editing purchase invoice:", error)
+      throw error
+    }
+  },
+
   getProjectNames: async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/purchase-invoices/project-names`)
