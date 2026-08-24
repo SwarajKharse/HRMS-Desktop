@@ -24,7 +24,6 @@ const PIUploadTab = () => {
 
   // Form state
   const [piFile, setPIFile] = useState(null)
-  const [shareStatus, setShareStatus] = useState("")
   const [payableAmount, setPayableAmount] = useState("")
   const [selectedProjectName, setSelectedProjectName] = useState("")
   const [expectedPaymentDate, setExpectedPaymentDate] = useState("")
@@ -152,10 +151,8 @@ const PIUploadTab = () => {
         if (existingPI) {
           setExistingPIData(existingPI)
           setPayableAmount(existingPI.payableAmount?.toString() || "")
-          setSelectedProjectName(existingPI.projectName || "")
           setExpectedPaymentDate(existingPI.expectedPaymentDate || "")
           setPIRemarks(existingPI.remarks || "")
-          setShareStatus(existingPI.shareStatus || "")
         } else {
           setExistingPIData(null)
         }
@@ -180,7 +177,7 @@ const PIUploadTab = () => {
 
   // Handle PI upload
   const handleUploadPI = async () => {
-    if (!piFile || !shareStatus || !payableAmount || !expectedPaymentDate) {
+    if (!piFile || !payableAmount || !expectedPaymentDate) {
       showMessage("error", "Please fill in all required fields to submit")
       return
     }
@@ -189,7 +186,6 @@ const PIUploadTab = () => {
       setUploadingPI(true)
       const formData = new FormData()
       formData.append("file", piFile)
-      formData.append("shareStatus", shareStatus)
       formData.append("payableAmount", payableAmount)
       formData.append("projectName", selectedPOForPI?.projectName || "")
       formData.append("expectedPaymentDate", expectedPaymentDate)
@@ -215,7 +211,6 @@ const PIUploadTab = () => {
   const resetPIModal = () => {
     setSelectedPOForPI(null)
     setPIFile(null)
-    setShareStatus("")
     setPayableAmount("")
     setSelectedProjectName("")
     setExpectedPaymentDate("")
@@ -378,23 +373,6 @@ const PIUploadTab = () => {
                   disabled={uploadingPI}
                 />
                 {piFile && <p className="text-xs text-green-600 mt-1">✓ {piFile.name}</p>}
-              </div>
-
-              {/* Share Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Share Status <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={shareStatus}
-                  onChange={(e) => setShareStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                  disabled={uploadingPI}
-                >
-                  <option value="">Select Status</option>
-                  <option value="SHARED">Shared</option>
-                  <option value="NOT_SHARED">Not Shared</option>
-                </select>
               </div>
 
               {/* Payable Amount */}

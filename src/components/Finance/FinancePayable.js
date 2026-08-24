@@ -6,6 +6,7 @@ import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { grnService } from "../../services/grnService"
 import { useAuth } from "../../contexts/AuthContext"
 import PODetailsModal from "../Purchase/PurchaserComponents/PODetailsModal"
+import { PaymentStatusCell } from "../Purchase/PurchaserComponents/AmountBreakdownCell"
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const formatDate = (d) => {
@@ -47,6 +48,11 @@ const FinancePayable = () => {
   const [approvalRemarks, setApprovalRemarks] = useState("")
   const [submittingApproval, setSubmittingApproval] = useState(false)
 
+  // Gate: force at least one look at View Details before the approval popup opens.
+  const [viewedPOForApproval, setViewedPOForApproval] = useState(() => new Set())
+  const [showViewGate, setShowViewGate] = useState(false)
+  const [gatePO, setGatePO] = useState(null)
+
   // Filters
   const [filterPONumber, setFilterPONumber] = useState("")
   const [filterVendor, setFilterVendor] = useState("")
@@ -74,12 +80,17 @@ const FinancePayable = () => {
       const poMap = new Map()
       rawList.forEach((po) => {
         const key = po.poNumber
+        const poBasicContribution = (po.basicAmount || 0) + (po.miscellaneous || 0) - (po.discount || 0)
         if (!poMap.has(key)) {
           poMap.set(key, {
             ...po,
             projectNames: po.projectName ? [po.projectName] : [],
             allMTRIds: [po.id],
             allMTRData: [po],
+            poAmount: po.poAmount || 0,
+            poBasicAmount: poBasicContribution,
+            paidAmount: po.paidAmount || 0,
+            paymentBreakdown: po.paymentBreakdown || [],
           })
         } else {
           const existing = poMap.get(key)
@@ -90,6 +101,10 @@ const FinancePayable = () => {
             projectNames: mergedProjects,
             allMTRIds: [...existing.allMTRIds, po.id],
             allMTRData: [...existing.allMTRData, po],
+            poAmount: existing.poAmount + (po.poAmount || 0),
+            poBasicAmount: existing.poBasicAmount + poBasicContribution,
+            paidAmount: existing.paidAmount + (po.paidAmount || 0),
+            paymentBreakdown: [...existing.paymentBreakdown, ...(po.paymentBreakdown || [])],
           })
         }
       })
@@ -212,7 +227,7 @@ const FinancePayable = () => {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {["Vendor", "Project Name(s)", "PO Number / Copy", "PM Approval", "FM Approval", "PO Status", "Material Status", "Actions"].map((h) => (
+                    {["Vendor", "Project Name(s)", "PO Number / Copy", "Payment Status", "PM Approval", "FM Approval", "PO Status", "Material Status", "Actions"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -245,9 +260,19 @@ const FinancePayable = () => {
                           <div className="text-sm font-medium text-gray-900">{po.poNumber}</div>
                           <div className="text-xs text-gray-500">{formatDate(po.createdAt)}</div>
                           {po.fileUrl && (
-                            <a href={po.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs underline">View PO</a>
+                            <button onClick={() => { setSelectedPO(po); setShowDetailsModal(true); setViewedPOForApproval((s) => new Set(s).add(po.id)) }} className="text-blue-600 hover:text-blue-800 text-xs underline">View PO</button>
                           )}
                         </div>
+                      </td>
+
+                      {/* Payment Status */}
+                      <td className="px-4 py-4">
+                        <PaymentStatusCell
+                          poBasicAmount={po.poBasicAmount}
+                          poAmount={po.poAmount}
+                          paidAmount={po.paidAmount}
+                          breakdown={po.paymentBreakdown}
+                        />
                       </td>
 
                       {/* PM Approval — read only — approvalStatus field */}
@@ -266,10 +291,15 @@ const FinancePayable = () => {
                           {po.approvalStatus === "APPROVED" ? (
                             <button
                               onClick={() => {
-                                setSelectedPOForApproval(po)
-                                setApprovalStatus(po.financeManagerApprovalStatus || "PENDING")
-                                setApprovalRemarks(po.financeManagerApprovalRemarks || "")
-                                setShowApprovalModal(true)
+                                if (viewedPOForApproval.has(po.id)) {
+                                  setSelectedPOForApproval(po)
+                                  setApprovalStatus(po.financeManagerApprovalStatus || "PENDING")
+                                  setApprovalRemarks(po.financeManagerApprovalRemarks || "")
+                                  setShowApprovalModal(true)
+                                } else {
+                                  setGatePO(po)
+                                  setShowViewGate(true)
+                                }
                               }}
                               className="cursor-pointer hover:opacity-80 transition-opacity"
                             >
@@ -303,7 +333,7 @@ const FinancePayable = () => {
                       {/* Actions */}
                       <td className="px-4 py-4">
                         <button
-                          onClick={() => { setSelectedPO(po); setShowDetailsModal(true) }}
+                          onClick={() => { setSelectedPO(po); setShowDetailsModal(true); setViewedPOForApproval((s) => new Set(s).add(po.id)) }}
                           className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 font-medium flex items-center gap-1"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -339,6 +369,41 @@ const FinancePayable = () => {
         onRefresh={() => { showSuccess("Updated successfully!"); fetchPOs() }}
         isFM={true}
       />
+
+      {/* View-before-approve gate */}
+      {showViewGate && gatePO && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg w-full max-w-sm">
+            <div className="p-6 text-center space-y-4">
+              <p className="text-sm font-medium text-gray-800">Please check the PO details before approving {gatePO.poNumber}.</p>
+              <button
+                onClick={() => {
+                  setViewedPOForApproval((s) => new Set(s).add(gatePO.id))
+                  setShowViewGate(false)
+                  setSelectedPO(gatePO)
+                  setShowDetailsModal(true)
+                }}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+              >
+                View Details
+              </button>
+              <button
+                onClick={() => {
+                  setViewedPOForApproval((s) => new Set(s).add(gatePO.id))
+                  setShowViewGate(false)
+                  setSelectedPOForApproval(gatePO)
+                  setApprovalStatus(gatePO.financeManagerApprovalStatus || "PENDING")
+                  setApprovalRemarks(gatePO.financeManagerApprovalRemarks || "")
+                  setShowApprovalModal(true)
+                }}
+                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 mx-auto"
+              >
+                ✕ I've already seen it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* FM PO Level Approval Modal */}
       {showApprovalModal && selectedPOForApproval && (

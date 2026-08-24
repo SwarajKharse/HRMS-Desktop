@@ -98,4 +98,36 @@ export const grnService = {
       throw error
     }
   },
+
+  editGRN: async (grnId, formData) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/goods-receipt-notes/${grnId}/edit`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error editing GRN:", error)
+      throw error
+    }
+  },
+
+  deleteGRN: async (grnId) => {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/goods-receipt-notes/${grnId}`)
+      return response.data
+    } catch (error) {
+      console.error("Error deleting GRN:", error)
+      throw error
+    }
+  },
+
+  getAmountCap: async (poId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/goods-receipt-notes/po/${poId}/amount-cap`)
+      return response.data.remainingAmount
+    } catch (error) {
+      console.error("Error fetching GRN amount cap:", error)
+      throw error
+    }
+  },
 }

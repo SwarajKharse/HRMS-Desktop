@@ -113,6 +113,20 @@ export const purchaseOrderService = {
     }
   },
 
+  editPurchaseOrder: async (formData) => {
+    try {
+      const response = await axios.put(`${API_BASE_URL}/material-requisitions/purchase-orders/edit`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      })
+      return response.data
+    } catch (error) {
+      console.error("Error editing purchase order:", error)
+      throw error
+    }
+  },
+
   deletePurchaseOrder: async (poId) => {
     try {
       const response = await axios.delete(`${API_BASE_URL}/material-requisitions/purchase-orders/${poId}`)

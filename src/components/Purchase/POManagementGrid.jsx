@@ -8,7 +8,9 @@ import { grnService } from "../../services/grnService"
 import { useAuth } from "../../contexts/AuthContext"
 import VendorDropdownPOUpload from "./PurchaserComponents/VendorDropdownPOUpload"
 import PODetailsModal from "./PurchaserComponents/PODetailsModal"
+import { PaymentStatusCell } from "./PurchaserComponents/AmountBreakdownCell"
 import { getErrorMessage } from "../../utils/errorUtils"
+import { PIUploadModal, GRNUploadModal, UploadPOModal, EditPOModal } from "./PurchaserComponents/POUploadPurchaser"
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const formatDate = (d) => {
@@ -30,420 +32,6 @@ const StatusBadge = ({ status }) => {
   )
 }
 
-
-
-// ─── PI Upload Modal ─────────────────────────────────────────────────────────
-function PIUploadModal({ isOpen, onClose, po, onSuccess }) {
-  const { user } = useAuth()
-  const [piFile, setPIFile] = useState(null)
-  const [shareStatus, setShareStatus] = useState("")
-  const [payableAmount, setPayableAmount] = useState("")
-  const [selectedProjectName, setSelectedProjectName] = useState("")
-  const [expectedPaymentDate, setExpectedPaymentDate] = useState("")
-  const [remarks, setRemarks] = useState("")
-  const [projectNames, setProjectNames] = useState([])
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    if (isOpen) { fetchProjectNames(); resetForm() }
-  }, [isOpen])
-
-  const fetchProjectNames = async () => {
-    try {
-      const names = await purchaseInvoiceService.getProjectNames()
-      setProjectNames(names || [])
-    } catch (e) { console.error("Error fetching project names:", e) }
-  }
-
-  const resetForm = () => {
-    setPIFile(null); setShareStatus(""); setPayableAmount("")
-    setSelectedProjectName(""); setExpectedPaymentDate(""); setRemarks(""); setError(null)
-  }
-
-  const handleSubmit = async () => {
-    if (!piFile || !shareStatus || !payableAmount || !selectedProjectName || !expectedPaymentDate) {
-      setError("Please fill in all required fields"); return
-    }
-    try {
-      setUploading(true); setError(null)
-      const formData = new FormData()
-      formData.append("file", piFile)
-      formData.append("shareStatus", shareStatus)
-      formData.append("payableAmount", payableAmount)
-      formData.append("projectName", selectedProjectName)
-      formData.append("expectedPaymentDate", expectedPaymentDate)
-      formData.append("remarks", remarks)
-      formData.append("poId", po.id)
-      formData.append("uploadedBy", user?.userId || user?.id || 1)
-      await purchaseInvoiceService.uploadPurchaseInvoice(formData)
-      onSuccess("PI uploaded successfully!"); onClose()
-    } catch (e) {
-      console.error("Error uploading PI:", e)
-      setError(getErrorMessage(e, "Failed to upload PI. Please try again."))
-    } finally { setUploading(false) }
-  }
-
-  if (!isOpen || !po) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h3 className="text-xl font-semibold">Upload Purchase Invoice</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {error && <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-md text-sm">{error}</div>}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h4 className="font-semibold text-blue-900 mb-2">Purchase Order Details</h4>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div><span className="text-blue-600 font-medium">PO Number:</span> <span className="text-blue-900">{po.poNumber}</span></div>
-              <div><span className="text-blue-600 font-medium">Uploaded Date:</span> <span className="text-blue-900">{formatDate(po.createdAt)}</span></div>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">PI Document <span className="text-red-500">*</span></label>
-            <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => setPIFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={uploading} />
-            {piFile && <p className="text-xs text-green-600 mt-1">✓ {piFile.name}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Share Status <span className="text-red-500">*</span></label>
-            <select value={shareStatus} onChange={(e) => setShareStatus(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={uploading}>
-              <option value="">Select Status</option>
-              <option value="SHARED">Shared</option>
-              <option value="NOT_SHARED">Not Shared</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Payable Amount <span className="text-red-500">*</span></label>
-            <input type="number" step="0.01" value={payableAmount} onChange={(e) => setPayableAmount(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" placeholder="0.00" disabled={uploading} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project Name <span className="text-red-500">*</span></label>
-            <select value={selectedProjectName} onChange={(e) => setSelectedProjectName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={uploading}>
-              <option value="">Select Project</option>
-              {projectNames.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Expected Payment Date <span className="text-red-500">*</span></label>
-            <input type="date" value={expectedPaymentDate} onChange={(e) => setExpectedPaymentDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={uploading} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" rows={3} placeholder="Add any additional remarks..." disabled={uploading} />
-          </div>
-        </div>
-        <div className="border-t p-4 bg-gray-50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm" disabled={uploading}>Cancel</button>
-          <button onClick={handleSubmit} disabled={uploading} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm disabled:opacity-50">
-            {uploading ? "Uploading..." : "Submit PI"}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── GRN Upload Modal ────────────────────────────────────────────────────────
-function GRNUploadModal({ isOpen, onClose, po, onSuccess }) {
-  const { user } = useAuth()
-  const [grnCopyFile, setGrnCopyFile] = useState(null)
-  const [testCertificateFile, setTestCertificateFile] = useState(null)
-  const [invoiceCopyFile, setInvoiceCopyFile] = useState(null)
-  const [payableAmount, setPayableAmount] = useState("")
-  const [expectedPayableDate, setExpectedPayableDate] = useState("")
-  const [remarks, setRemarks] = useState("")
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState(null)
-  const [latestPI, setLatestPI] = useState(null)
-
-  useEffect(() => {
-    if (isOpen && po?.id) { fetchLatestPI(); resetForm() }
-  }, [isOpen, po])
-
-  const fetchLatestPI = async () => {
-    try {
-      const piList = await purchaseInvoiceService.getPurchaseInvoicesByPO(po.id)
-      if (piList && piList.length > 0) setLatestPI(piList[piList.length - 1])
-    } catch (e) { console.error("Error fetching latest PI:", e) }
-  }
-
-  const resetForm = () => {
-    setGrnCopyFile(null); setTestCertificateFile(null); setInvoiceCopyFile(null)
-    setPayableAmount(""); setExpectedPayableDate(""); setRemarks(""); setError(null)
-  }
-
-  const handleSubmit = async () => {
-    if (!grnCopyFile || !payableAmount || !expectedPayableDate) {
-      setError("Please fill in all required fields"); return
-    }
-    try {
-      setUploading(true); setError(null)
-      const formData = new FormData()
-      formData.append("poId", po.id)
-      formData.append("grnCopyFile", grnCopyFile)
-      if (testCertificateFile) formData.append("testCertificateFile", testCertificateFile)
-      if (invoiceCopyFile) formData.append("invoiceCopyFile", invoiceCopyFile)
-      formData.append("payableAmount", payableAmount)
-      formData.append("expectedPayableDate", expectedPayableDate)
-      formData.append("uploadedBy", user?.userId || user?.id || 1)
-      if (remarks) formData.append("remarks", remarks)
-      await grnService.uploadGRN(formData)
-      onSuccess("GRN uploaded successfully!"); onClose()
-    } catch (e) {
-      console.error("Error uploading GRN:", e)
-      setError(getErrorMessage(e, "Failed to upload GRN. Please try again."))
-    } finally { setUploading(false) }
-  }
-
-  if (!isOpen || !po) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b">
-          <h3 className="text-xl font-semibold">Upload GRN (Goods Received Note)</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {error && <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-md text-sm">{error}</div>}
-          {latestPI && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-semibold text-blue-900 mb-2">Purchase Invoice Details</h4>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-blue-600 font-medium">PI Number:</span> <span className="text-blue-900">{latestPI.piNumber || "N/A"}</span></div>
-                <div><span className="text-blue-600 font-medium">PO Number:</span> <span className="text-blue-900">{po.poNumber}</span></div>
-                <div><span className="text-blue-600 font-medium">Project Name:</span> <span className="text-blue-900">{latestPI.projectName || "N/A"}</span></div>
-                <div><span className="text-blue-600 font-medium">PI Amount:</span> <span className="text-blue-900">₹{latestPI.payableAmount || "0"}</span></div>
-              </div>
-            </div>
-          )}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">GRN Copy <span className="text-red-500">*</span></label>
-            <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={(e) => setGrnCopyFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={uploading} />
-            {grnCopyFile && <p className="text-xs text-green-600 mt-1">✓ {grnCopyFile.name}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Test Certificate</label>
-            <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={(e) => setTestCertificateFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={uploading} />
-            {testCertificateFile && <p className="text-xs text-green-600 mt-1">✓ {testCertificateFile.name}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Copy</label>
-            <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={(e) => setInvoiceCopyFile(e.target.files?.[0] || null)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={uploading} />
-            {invoiceCopyFile && <p className="text-xs text-green-600 mt-1">✓ {invoiceCopyFile.name}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Payable Amount <span className="text-red-500">*</span></label>
-            <input type="number" step="0.01" value={payableAmount} onChange={(e) => setPayableAmount(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" placeholder="0.00" disabled={uploading} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Expected Payable Date <span className="text-red-500">*</span></label>
-            <input type="date" value={expectedPayableDate} onChange={(e) => setExpectedPayableDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" disabled={uploading} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" rows={3} placeholder="Add any additional remarks about the GRN..." disabled={uploading} />
-          </div>
-        </div>
-        <div className="border-t p-4 bg-gray-50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 text-sm" disabled={uploading}>Cancel</button>
-          <button onClick={handleSubmit} disabled={uploading} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm disabled:opacity-50">
-            {uploading ? "Uploading..." : "Upload GRN"}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Upload PO Modal (3-step) ────────────────────────────────────────────────
-function UploadPOModal({ isOpen, onClose, onSuccess, user }) {
-  const [currentStep, setCurrentStep] = useState(1)
-  const [selectedVendor, setSelectedVendor] = useState("")
-  const [selectedMTRs, setSelectedMTRs] = useState([])
-  const [mtrs, setMtrs] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [poFile, setPOFile] = useState(null)
-  const [poNumber, setPONumber] = useState("")
-  const [message, setMessage] = useState({ type: "", text: "" })
-
-  const showMessage = (type, text) => {
-    setMessage({ type, text })
-    setTimeout(() => setMessage({ type: "", text: "" }), 5000)
-  }
-
-  const reset = () => {
-    setCurrentStep(1); setSelectedVendor(""); setSelectedMTRs([])
-    setMtrs([]); setPOFile(null); setPONumber(""); setMessage({ type: "", text: "" })
-  }
-
-  const handleClose = () => { reset(); onClose() }
-
-  useEffect(() => {
-    if (selectedVendor && currentStep === 2) fetchMTRs()
-  }, [selectedVendor, currentStep])
-
-  const fetchMTRs = async () => {
-    try {
-      setLoading(true)
-      const data = await comparisonSheetService.getMTRsByApprovedVendor({ vendorName: selectedVendor, assignedPurchaser: user?.userId || 1 })
-      setMtrs(data || [])
-      setSelectedMTRs(data?.map((m) => m.id) || [])
-    } catch (e) { console.error("Error fetching MTRs:", e); setMtrs([]) }
-    finally { setLoading(false) }
-  }
-
-  const handleUpload = async () => {
-    if (!poFile || selectedMTRs.length === 0 || !poNumber.trim()) {
-      showMessage("error", "Please enter PO Number, select a file and MTRs"); return
-    }
-    try {
-      setUploading(true)
-      const formData = new FormData()
-      formData.append("file", poFile)
-      selectedMTRs.forEach((id) => formData.append("mtrIds", id))
-      formData.append("vendorName", selectedVendor)
-      formData.append("uploadedBy", user?.userId || 1)
-      formData.append("poNumber", poNumber.trim())
-      formData.append("currentUserId", user?.userId)
-      await comparisonSheetService.uploadPOForMTRs(formData)
-      showMessage("success", "PO uploaded successfully!")
-      setTimeout(() => { handleClose(); onSuccess("PO uploaded successfully!") }, 1500)
-    } catch (e) {
-      console.error("Error uploading PO:", e)
-      showMessage("error", getErrorMessage(e, "Error uploading PO. Please try again."))
-    } finally { setUploading(false) }
-  }
-
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 flex flex-col" style={{ height: "90vh" }}>
-        <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold">Upload Purchase Order</h2>
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        {message.text && (
-          <div className={`mx-6 mt-4 p-3 rounded-md text-sm ${message.type === "success" ? "bg-green-50 border border-green-200 text-green-800" : "bg-red-50 border border-red-200 text-red-800"}`}>
-            {message.text}
-          </div>
-        )}
-        <div className="px-6 py-4 border-b">
-          <div className="flex items-center space-x-6">
-            {[{ n: 1, label: "Select Vendor" }, { n: 2, label: "Select MTRs" }, { n: 3, label: "Upload PO" }].map(({ n, label }) => (
-              <div key={n} className={`flex items-center space-x-2 ${currentStep >= n ? "text-blue-600" : "text-gray-400"}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= n ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-600"}`}>{n}</div>
-                <span className="font-medium">{label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-6">
-          {currentStep === 1 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Step 1: Select Vendor</h3>
-              <label className="block text-sm font-medium text-gray-700">Choose Vendor</label>
-              <VendorDropdownPOUpload value={selectedVendor} onChange={(v) => { setSelectedVendor(v); setCurrentStep(2) }} placeholder="Search and select vendor..." />
-            </div>
-          )}
-          {currentStep === 2 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Step 2: Select MTRs</h3>
-                <button onClick={() => { setSelectedVendor(""); setCurrentStep(1) }} className="text-blue-600 hover:text-blue-800 text-sm">← Back to Vendor Selection</button>
-              </div>
-              <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-800">Selected Vendor: <span className="font-medium">{selectedVendor}</span></div>
-              {loading ? (
-                <div className="text-center py-8 text-gray-500">Loading MTRs...</div>
-              ) : mtrs.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No MTRs found for this vendor</div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between text-sm text-gray-600">
-                    <span>{selectedMTRs.length} of {mtrs.length} MTRs selected</span>
-                    <button onClick={() => setSelectedMTRs(selectedMTRs.length === mtrs.length ? [] : mtrs.map((m) => m.id))} className="text-blue-600 hover:text-blue-800 font-medium">
-                      {selectedMTRs.length === mtrs.length ? "Deselect All" : "Select All"}
-                    </button>
-                  </div>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="bg-gray-50 px-4 py-3 border-b grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
-                      <div className="col-span-1">Select</div>
-                      <div className="col-span-3">Project Name</div>
-                      <div className="col-span-4">Product Name</div>
-                      <div className="col-span-2">Quantity</div>
-                      <div className="col-span-2">Created Date</div>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {mtrs.map((mtr) => (
-                        <div key={mtr.id} className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 grid grid-cols-12 gap-4 items-center text-sm">
-                          <div className="col-span-1"><input type="checkbox" checked={selectedMTRs.includes(mtr.id)} onChange={() => setSelectedMTRs((prev) => prev.includes(mtr.id) ? prev.filter((id) => id !== mtr.id) : [...prev, mtr.id])} className="w-4 h-4 text-blue-600 border-gray-300 rounded" /></div>
-                          <div className="col-span-3 truncate" title={mtr.projectName}>{mtr.projectName || "N/A"}</div>
-                          <div className="col-span-4 truncate" title={mtr.productName}>{mtr.productName || "N/A"}</div>
-                          <div className="col-span-2 font-semibold">{mtr.quantity || mtr.purchaseMTR || "N/A"}</div>
-                          <div className="col-span-2">{mtr.createdAt ? new Date(mtr.createdAt).toLocaleDateString() : "N/A"}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <button onClick={() => setCurrentStep(3)} disabled={selectedMTRs.length === 0} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                      Continue to Upload ({selectedMTRs.length} MTRs)
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-medium">Step 3: Upload PO</h3>
-                <button onClick={() => setCurrentStep(2)} className="text-blue-600 hover:text-blue-800 text-sm">← Back to MTR Selection</button>
-              </div>
-              <div className="bg-blue-50 p-4 rounded-md space-y-1 text-sm text-blue-800">
-                <p><span className="font-medium">Vendor:</span> {selectedVendor}</p>
-                <p><span className="font-medium">Selected MTRs:</span> {selectedMTRs.length} items</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PO Number <span className="text-red-500">*</span></label>
-                <input type="text" value={poNumber} onChange={(e) => setPONumber(e.target.value)} placeholder="Enter Purchase Order Number" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Upload Purchase Order File <span className="text-red-500">*</span></label>
-                <input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => setPOFile(e.target.files?.[0] || null)} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                {poFile && <p className="mt-1 text-sm text-green-600">Selected: {poFile.name}</p>}
-              </div>
-              <div className="flex justify-end gap-3">
-                <button onClick={reset} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50">Cancel</button>
-                <button onClick={handleUpload} disabled={!poFile || !poNumber.trim() || uploading} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
-                  {uploading ? "Uploading..." : "Upload PO"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ─── Main Page (PM version) ───────────────────────────────────────────────────
 const POManagementGrid = () => {
   const { user } = useAuth()
@@ -461,6 +49,12 @@ const POManagementGrid = () => {
   const [selectedPOForApproval, setSelectedPOForApproval] = useState(null)
   const [approvalStatus, setApprovalStatus] = useState("")
   const [approvalRemarks, setApprovalRemarks] = useState("")
+
+  // Gate: force at least one look at View Details before the approval popup opens, so PM
+  // isn't approving blind off the badge alone. Tracked in-memory per session.
+  const [viewedPOForApproval, setViewedPOForApproval] = useState(() => new Set())
+  const [showViewGate, setShowViewGate] = useState(false)
+  const [gatePO, setGatePO] = useState(null)
   const [submittingApproval, setSubmittingApproval] = useState(false)
 
   // Filters
@@ -477,6 +71,7 @@ const POManagementGrid = () => {
   const [showPIModal, setShowPIModal] = useState(false)
   const [showGRNModal, setShowGRNModal] = useState(false)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showEditPOModal, setShowEditPOModal] = useState(false)
   const [selectedPO, setSelectedPO] = useState(null)
 
   const showSuccess = (msg) => {
@@ -497,14 +92,35 @@ const POManagementGrid = () => {
         const key = po.poNumber
         const mtrCode = po.boqMtr?.mtrCode || ""
         const actualProject = po.projectName || po.boqMtr?.projectName || null
+        const poBasicContribution = (po.basicAmount || 0) + (po.miscellaneous || 0) - (po.discount || 0)
         if (!poMap.has(key)) {
-          poMap.set(key, { ...po, projectNames: actualProject ? [actualProject] : [], mtrCodes: mtrCode ? [mtrCode] : [], allMTRIds: [po.id], allMTRData: [po] })
+          poMap.set(key, {
+            ...po,
+            projectNames: actualProject ? [actualProject] : [],
+            mtrCodes: mtrCode ? [mtrCode] : [],
+            allMTRIds: [po.id],
+            allMTRData: [po],
+            poAmount: po.poAmount || 0,
+            poBasicAmount: poBasicContribution,
+            paidAmount: po.paidAmount || 0,
+            paymentBreakdown: po.paymentBreakdown || [],
+          })
         } else {
           const existing = poMap.get(key)
           const latest = po.id > existing.id ? po : existing
           const mergedProjects = [...new Set([...existing.projectNames, ...(actualProject ? [actualProject] : [])])]
           const mergedMTRCodes = [...new Set([...existing.mtrCodes, ...(mtrCode ? [mtrCode] : [])])]
-          poMap.set(key, { ...latest, projectNames: mergedProjects, mtrCodes: mergedMTRCodes, allMTRIds: [...existing.allMTRIds, po.id], allMTRData: [...existing.allMTRData, po] })
+          poMap.set(key, {
+            ...latest,
+            projectNames: mergedProjects,
+            mtrCodes: mergedMTRCodes,
+            allMTRIds: [...existing.allMTRIds, po.id],
+            allMTRData: [...existing.allMTRData, po],
+            poAmount: existing.poAmount + (po.poAmount || 0),
+            poBasicAmount: existing.poBasicAmount + poBasicContribution,
+            paidAmount: existing.paidAmount + (po.paidAmount || 0),
+            paymentBreakdown: [...existing.paymentBreakdown, ...(po.paymentBreakdown || [])],
+          })
         }
       })
 
@@ -619,7 +235,7 @@ const POManagementGrid = () => {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {["Vendor", "Project Name(s)", "PO Number / Copy", "PM Approval", "FM Approval", "PO Status", "Material Status", "Actions"].map((h) => (
+                    {["Vendor", "Project Name(s)", "PO Number / Copy", "Payment Status", "PM Approval", "FM Approval", "PO Status", "Material Status", "Actions"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -655,10 +271,33 @@ const POManagementGrid = () => {
                         <div className="space-y-1">
                           <div className="text-sm font-medium text-gray-900">{po.poNumber}</div>
                           <div className="text-xs text-gray-500">{formatDate(po.createdAt)}</div>
-                          {po.fileUrl && (
-                            <a href={po.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs underline">View PO</a>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {po.fileUrl && (
+                              <button onClick={() => { setSelectedPO(po); setShowDetailsModal(true); setViewedPOForApproval((s) => new Set(s).add(po.id)) }} className="text-blue-600 hover:text-blue-800 text-xs underline">View PO</button>
+                            )}
+                            {po.approvalStatus !== "APPROVED" && (
+                              <button
+                                onClick={() => { setSelectedPO(po); setShowEditPOModal(true) }}
+                                title="Edit PO"
+                                className="text-gray-500 hover:text-blue-600"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         </div>
+                      </td>
+
+                      {/* Payment Status */}
+                      <td className="px-4 py-4">
+                        <PaymentStatusCell
+                          poBasicAmount={po.poBasicAmount}
+                          poAmount={po.poAmount}
+                          paidAmount={po.paidAmount}
+                          breakdown={po.paymentBreakdown}
+                        />
                       </td>
 
                       {/* PM Approval — clickable */}
@@ -666,10 +305,15 @@ const POManagementGrid = () => {
                         <div className="space-y-1">
                           <button
                             onClick={() => {
-                              setSelectedPOForApproval(po)
-                              setApprovalStatus(po.approvalStatus || "PENDING")
-                              setApprovalRemarks(po.approvalRemarks || "")
-                              setShowApprovalModal(true)
+                              if (viewedPOForApproval.has(po.id)) {
+                                setSelectedPOForApproval(po)
+                                setApprovalStatus(po.approvalStatus || "PENDING")
+                                setApprovalRemarks(po.approvalRemarks || "")
+                                setShowApprovalModal(true)
+                              } else {
+                                setGatePO(po)
+                                setShowViewGate(true)
+                              }
                             }}
                             className="cursor-pointer hover:opacity-80 transition-opacity"
                           >
@@ -731,7 +375,7 @@ const POManagementGrid = () => {
                       <td className="px-4 py-4">
                         <div className="flex flex-col gap-2">
                           <button
-                            onClick={() => { setSelectedPO(po); setShowDetailsModal(true) }}
+                            onClick={() => { setSelectedPO(po); setShowDetailsModal(true); setViewedPOForApproval((s) => new Set(s).add(po.id)) }}
                             className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 font-medium flex items-center gap-1"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -742,7 +386,8 @@ const POManagementGrid = () => {
                           </button>
                           <button
                             onClick={() => { setSelectedPO(po); setShowPIModal(true) }}
-                            className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 font-medium"
+                            disabled={po.approvalStatus !== "APPROVED" || po.financeManagerApprovalStatus !== "APPROVED"}
+                            className="px-3 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
                           >
                             Upload PI
                           </button>
@@ -786,6 +431,7 @@ const POManagementGrid = () => {
         currentUserId={user?.userId}
         onRefresh={() => { showSuccess("Updated successfully!"); fetchPOs() }}
         isPM={true}
+        isPurchaser={true}
       />
 
       <PIUploadModal
@@ -801,6 +447,49 @@ const POManagementGrid = () => {
         po={selectedPO}
         onSuccess={(msg) => { showSuccess(msg); fetchPOs() }}
       />
+
+      <EditPOModal
+        isOpen={showEditPOModal}
+        onClose={() => { setShowEditPOModal(false); setSelectedPO(null) }}
+        po={selectedPO}
+        onSuccess={(msg) => { showSuccess(msg); fetchPOs() }}
+        user={user}
+      />
+
+      {/* View-before-approve gate */}
+      {showViewGate && gatePO && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg w-full max-w-sm">
+            <div className="p-6 text-center space-y-4">
+              <p className="text-sm font-medium text-gray-800">Please check the PO details before approving {gatePO.poNumber}.</p>
+              <button
+                onClick={() => {
+                  setViewedPOForApproval((s) => new Set(s).add(gatePO.id))
+                  setShowViewGate(false)
+                  setSelectedPO(gatePO)
+                  setShowDetailsModal(true)
+                }}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+              >
+                View Details
+              </button>
+              <button
+                onClick={() => {
+                  setViewedPOForApproval((s) => new Set(s).add(gatePO.id))
+                  setShowViewGate(false)
+                  setSelectedPOForApproval(gatePO)
+                  setApprovalStatus(gatePO.approvalStatus || "PENDING")
+                  setApprovalRemarks(gatePO.approvalRemarks || "")
+                  setShowApprovalModal(true)
+                }}
+                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1 mx-auto"
+              >
+                ✕ I've already seen it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PM Approval Modal */}
       {showApprovalModal && selectedPOForApproval && (

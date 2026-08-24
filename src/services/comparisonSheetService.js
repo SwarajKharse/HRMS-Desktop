@@ -82,14 +82,15 @@ export const comparisonSheetService = {
     }
   },
 
-  getMTRsByApprovedVendor: async ({ vendorName, assignedPurchaser }) => {
+  getMTRsByApprovedVendor: async ({ vendorName, assignedPurchaser, excludePoNumber }) => {
     try {
-      console.log("[v0] getMTRsByApprovedVendor called with:", { vendorName, assignedPurchaser })
+      console.log("[v0] getMTRsByApprovedVendor called with:", { vendorName, assignedPurchaser, excludePoNumber })
 
       const response = await axios.get(`${API_BASE_URL}/material-requisitions/purchasemanager-approved/vendor`, {
         params: {
           purchaserId: assignedPurchaser,
           vendorName: vendorName,
+          excludePoNumber: excludePoNumber || undefined,
         },
       })
 
