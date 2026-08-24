@@ -66,6 +66,8 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         make: detail?.make || mtr.make || "",
         uom: detail?.uom || mtr.uom || "",
         qty: mtr.purchaseMTR || 0,
+        actualQty: mtr.purchaseMTR || 0,
+        qtyChangeRemark: "",
       },
       { key: "misc", id: null, lineType: "MISC_EXPENSE", itemName: "Miscellaneous expense", qty: null },
       { key: "disc", id: null, lineType: "DISCOUNT", itemName: "Discount", qty: null },
@@ -95,6 +97,8 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         make: l.make || "",
         uom: l.uom || "",
         qty: l.qty,
+        actualQty: l.actualQty !== null && l.actualQty !== undefined ? l.actualQty : l.qty,
+        qtyChangeRemark: l.qtyChangeRemark || "",
       }))
     const loadedColumns = (full.vendorColumns || [])
       .slice()
@@ -184,6 +188,8 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         make: m.make || "",
         uom: m.uom || "",
         qty: m.purchaseMTR || 0,
+        actualQty: m.purchaseMTR || 0,
+        qtyChangeRemark: "",
       }
     })
     setLines((prev) => {
@@ -191,6 +197,10 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
       const otherLines = prev.filter((l) => l.lineType !== "ITEM")
       return [...itemLines, ...newLines, ...otherLines]
     })
+  }
+
+  const updateLineField = (lineKey, field, value) => {
+    setLines((prev) => prev.map((l) => (l.key === lineKey ? { ...l, [field]: value } : l)))
   }
 
   const removeLine = (lineKey) => {
@@ -207,7 +217,8 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
     const rate = Number.parseFloat(cell?.rate)
     if (Number.isNaN(rate)) return 0
     if (line.lineType === "ITEM") {
-      return (Number.parseFloat(line.qty) || 0) * rate
+      const effectiveQty = line.actualQty !== null && line.actualQty !== undefined && line.actualQty !== "" ? line.actualQty : line.qty
+      return (Number.parseFloat(effectiveQty) || 0) * rate
     }
     return rate // MISC_EXPENSE / DISCOUNT rate field is a direct amount
   }
@@ -252,6 +263,13 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
   const itemLines = lines.filter((l) => l.lineType === "ITEM")
   const fixedLines = lines.filter((l) => l.lineType !== "ITEM")
 
+  const isQtyChanged = (line) => {
+    const req = Number.parseFloat(line.qty)
+    const actual = Number.parseFloat(line.actualQty)
+    if (Number.isNaN(req) || Number.isNaN(actual)) return false
+    return Math.abs(actual - req) > 0.0001
+  }
+
   const handleSave = async () => {
     setError("")
     setSuccess("")
@@ -263,6 +281,11 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
     const validColumns = vendorColumns.filter((c) => c.vendorId)
     if (validColumns.length === 0) {
       setError("Please select at least one vendor.")
+      return
+    }
+    const missingRemark = itemLines.find((l) => isQtyChanged(l) && !l.qtyChangeRemark?.trim())
+    if (missingRemark) {
+      setError(`Please add a remark explaining the actual purchase qty change for "${missingRemark.itemName}".`)
       return
     }
 
@@ -278,6 +301,8 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         make: l.make,
         uom: l.uom,
         qty: l.qty !== null && l.qty !== undefined && l.qty !== "" ? Number.parseFloat(l.qty) : null,
+        actualQty: l.actualQty !== null && l.actualQty !== undefined && l.actualQty !== "" ? Number.parseFloat(l.actualQty) : null,
+        qtyChangeRemark: l.qtyChangeRemark || "",
         lineOrder: idx,
       }))
       const vendorColumnDTOs = validColumns.map((c, idx) => ({ key: c.key, vendorId: c.vendorId, columnOrder: idx }))
@@ -579,7 +604,10 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                                     UOM
                                   </th>
                                   <th rowSpan={2} className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r align-bottom">
-                                    Qty
+                                    Purchase Requisition Qty
+                                  </th>
+                                  <th rowSpan={2} className="px-3 py-2 text-left font-medium text-gray-700 border-b border-r align-bottom">
+                                    Actual Purchase Qty
                                   </th>
                                   {vendorColumns.map((col) => {
                                     const rank = rankByColumnKey[col.key]
@@ -629,13 +657,44 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                                 </tr>
                               </thead>
                               <tbody>
-                                {itemLines.map((line) => (
-                                  <tr key={line.key} className="border-b hover:bg-gray-50">
+                                {itemLines.map((line) => {
+                                  const qtyChanged = isQtyChanged(line)
+                                  return (
+                                  <tr key={line.key} className={`border-b hover:bg-gray-50 ${isManagerMode && qtyChanged ? "bg-amber-50" : ""}`}>
                                     <td className="px-3 py-2 border-r">{line.itemName}</td>
                                     <td className="px-3 py-2 border-r font-mono text-xs text-blue-700">{line.productCode || "—"}</td>
                                     <td className="px-3 py-2 border-r">{line.make || "—"}</td>
                                     <td className="px-3 py-2 border-r">{line.uom || "—"}</td>
                                     <td className="px-3 py-2 border-r">{line.qty ?? "—"}</td>
+                                    <td className="px-3 py-2 border-r">
+                                      {isManagerMode || isApproved ? (
+                                        <div>
+                                          <span className={qtyChanged ? "font-semibold text-amber-700" : ""}>{line.actualQty ?? line.qty ?? "—"}</span>
+                                          {qtyChanged && line.qtyChangeRemark && (
+                                            <p className="text-xs text-amber-700 italic mt-0.5 max-w-[10rem]">{line.qtyChangeRemark}</p>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-1">
+                                          <input
+                                            type="number"
+                                            step="0.01"
+                                            value={line.actualQty ?? ""}
+                                            onChange={(e) => updateLineField(line.key, "actualQty", e.target.value)}
+                                            className={`w-20 px-2 py-1 border rounded-md text-right focus:outline-none focus:ring-2 focus:ring-blue-500 ${qtyChanged ? "border-amber-400 bg-amber-50" : "border-gray-300"}`}
+                                          />
+                                          {qtyChanged && (
+                                            <input
+                                              type="text"
+                                              placeholder="Remark for qty change *"
+                                              value={line.qtyChangeRemark || ""}
+                                              onChange={(e) => updateLineField(line.key, "qtyChangeRemark", e.target.value)}
+                                              className="w-36 px-2 py-1 border border-amber-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                            />
+                                          )}
+                                        </div>
+                                      )}
+                                    </td>
                                     {vendorColumns.map((col) => {
                                       const cell = cells[line.key]?.[col.key] || emptyCell
                                       return (
@@ -676,11 +735,12 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                                       </td>
                                     )}
                                   </tr>
-                                ))}
+                                  )
+                                })}
 
                                 {fixedLines.map((line) => (
                                   <tr key={line.key} className="border-b bg-gray-50">
-                                    <td colSpan={5} className="px-3 py-2 border-r font-medium text-gray-600 italic">
+                                    <td colSpan={6} className="px-3 py-2 border-r font-medium text-gray-600 italic">
                                       {line.itemName}
                                     </td>
                                     {vendorColumns.map((col) => {
@@ -707,7 +767,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                                 ))}
 
                                 <tr className="bg-amber-50 font-semibold">
-                                  <td colSpan={5} className="px-3 py-2 border-r text-right">
+                                  <td colSpan={6} className="px-3 py-2 border-r text-right">
                                     Total
                                   </td>
                                   {vendorColumns.map((col) => {
@@ -775,6 +835,20 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                   )}
                 </AnimatePresence>
               </div>
+
+              {isManagerMode && comparisonSheetCreated && itemLines.some(isQtyChanged) && (
+                <div className="mx-4 mt-4 p-3 bg-amber-100 border border-amber-300 rounded-md">
+                  <p className="text-sm font-semibold text-amber-800 mb-1">⚠ Actual purchase qty differs from the requisitioned qty:</p>
+                  <ul className="text-sm text-amber-800 list-disc list-inside space-y-0.5">
+                    {itemLines.filter(isQtyChanged).map((l) => (
+                      <li key={l.key}>
+                        {l.itemName}: requisitioned {l.qty}, buying {l.actualQty}
+                        {l.qtyChangeRemark ? ` — "${l.qtyChangeRemark}"` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {isManagerMode && comparisonSheetCreated && (
                 <div className="p-4 border-t border-amber-200 bg-amber-50 space-y-3">

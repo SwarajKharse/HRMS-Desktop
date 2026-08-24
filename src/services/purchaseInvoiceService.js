@@ -42,6 +42,16 @@ export const purchaseInvoiceService = {
     }
   },
 
+  deletePurchaseInvoice: async (id) => {
+    try {
+      const response = await axios.delete(`${API_BASE_URL}/purchase-invoices/${id}`)
+      return response.data
+    } catch (error) {
+      console.error("Error deleting purchase invoice:", error)
+      throw error
+    }
+  },
+
   getProjectNames: async () => {
     try {
       const response = await axios.get(`${API_BASE_URL}/purchase-invoices/project-names`)

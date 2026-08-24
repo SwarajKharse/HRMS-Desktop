@@ -7,8 +7,11 @@ import Payable from "../components/Accounts/Payable"
 import Recievable from "../components/Accounts/Recievable"
 import AccountantRecievable from "../components/Accounts/Accountant/AccountantRecievable"
 import PayablePIComponent from "../components/Accounts/Accountant/PayablePIComponent"
+import AMPaymentCalendar from "../components/Accounts/AMPaymentCalendar"
+import AccountantPaymentCalendar from "../components/Accounts/Accountant/AccountantPaymentCalendar"
 import { RiMoneyRupeeCircleLine } from "react-icons/ri"
 import { FcMoneyTransfer } from "react-icons/fc"
+import { FiCalendar } from "react-icons/fi"
 import { useAuth } from "../contexts/AuthContext"
 
 function Accounts() {
@@ -25,6 +28,8 @@ function Accounts() {
     { id: "recievable", label: "Recievables", icon: RiMoneyRupeeCircleLine, component: Recievable },
     { id: "payable-pi-accountant", label: "My Payables", icon: FcMoneyTransfer, component: PayablePIComponent },
     { id: "recievable-pi-accountant", label: "My Recievables", icon: RiMoneyRupeeCircleLine, component: AccountantRecievable },
+    { id: "am-payment-calendar", label: "Payment Calendar", icon: FiCalendar, component: AMPaymentCalendar },
+    { id: "accountant-payment-calendar", label: "Payment Calendar", icon: FiCalendar, component: AccountantPaymentCalendar },
   ]
 
   const designation = employee?.designation?.name?.replace(/\s+/g, "-").toLowerCase() || ""
@@ -43,10 +48,10 @@ function Accounts() {
   const getAvailableTabs = () => {
     if (!employee) return []
     if (shouldShowMainTabs()) {
-      if (activeMainTab === "AccountsManager") return [allTabs[0], allTabs[1]]
-      if (activeMainTab === "Accountant") return [allTabs[2], allTabs[3]]
+      if (activeMainTab === "AccountsManager") return [allTabs[0], allTabs[1], allTabs[4]]
+      if (activeMainTab === "Accountant") return [allTabs[2], allTabs[3], allTabs[5]]
     }
-    if (isSubordinate()) return [allTabs[2], allTabs[3]]
+    if (isSubordinate()) return [allTabs[2], allTabs[3], allTabs[5]]
     return []
   }
 
@@ -56,8 +61,8 @@ function Accounts() {
 
   // Maps a tab id to the main tab group it lives under, for ?tab= deep links (e.g. from notifications).
   const getMainTabForTabId = (tabId) => {
-    if (allTabs[0].id === tabId || allTabs[1].id === tabId) return "AccountsManager"
-    if (allTabs[2].id === tabId || allTabs[3].id === tabId) return "Accountant"
+    if (allTabs[0].id === tabId || allTabs[1].id === tabId || allTabs[4].id === tabId) return "AccountsManager"
+    if (allTabs[2].id === tabId || allTabs[3].id === tabId || allTabs[5].id === tabId) return "Accountant"
     return null
   }
 

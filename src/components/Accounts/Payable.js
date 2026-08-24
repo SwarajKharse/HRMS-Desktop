@@ -6,6 +6,7 @@ import { purchaseInvoiceService } from "../../services/purchaseInvoiceService"
 import { useAuth } from "../../contexts/AuthContext"
 import PODetailsModal from "../Purchase/PurchaserComponents/PODetailsModal"
 import { employeeService } from "../../services/employeeService"
+import { PaymentStatusCell } from "../Purchase/PurchaserComponents/AmountBreakdownCell"
 
 const formatDate = (d) => {
   if (!d) return "N/A"
@@ -31,7 +32,10 @@ function AssignAccountantCell({ po, onAssigned }) {
   const [accountants, setAccountants] = useState([])
   const [selectedId, setSelectedId] = useState("")
   const [assigning, setAssigning] = useState(false)
-  const [assigned, setAssigned] = useState(false)
+  const [currentName, setCurrentName] = useState(null)
+  const [changing, setChanging] = useState(false)
+
+  const poIds = po.allMTRIds?.length ? po.allMTRIds : [po.id]
 
   useEffect(() => {
     employeeService.getAssignableList("Accountant")
@@ -39,23 +43,59 @@ function AssignAccountantCell({ po, onAssigned }) {
       .catch(() => setAccountants([]))
   }, [])
 
+  const loadCurrentAssignment = async () => {
+    try {
+      const pisByPO = await Promise.all(poIds.map((id) => purchaseInvoiceService.getPurchaseInvoicesByPO(id)))
+      const pis = pisByPO.flat()
+      const assignedPI = pis.find((pi) => pi.assignedAccountant)
+      if (assignedPI) {
+        setCurrentName(`${assignedPI.assignedAccountant.firstName} ${assignedPI.assignedAccountant.lastName}`)
+      } else {
+        setCurrentName(null)
+      }
+    } catch (e) {
+      console.error("Error loading current accountant assignment:", e)
+    }
+  }
+
+  useEffect(() => {
+    loadCurrentAssignment()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [po.poNumber])
+
   const handleAssign = async () => {
     if (!selectedId) return
     try {
       setAssigning(true)
-      // Get all PIs for this PO and assign accountant to each
-      const pis = await purchaseInvoiceService.getPurchaseInvoicesByPO(po.id)
+      // A grouped PO row can span multiple underlying PurchaseOrder ids (one per MTR
+      // line) — fetch PIs across all of them, not just the "latest" po.id, or PIs
+      // attached to sibling lines get silently skipped.
+      const pisByPO = await Promise.all(poIds.map((id) => purchaseInvoiceService.getPurchaseInvoicesByPO(id)))
+      const pis = pisByPO.flat()
+      if (pis.length === 0) {
+        console.error("No PIs found for this PO yet — nothing to assign.")
+        return
+      }
       await Promise.all(
        (pis || []).map((pi) => purchaseInvoiceService.assignAccountant(pi.id, Number(selectedId)))
       )
-      setAssigned(true)
-      setTimeout(() => setAssigned(false), 2000)
+      setChanging(false)
+      await loadCurrentAssignment()
       if (onAssigned) onAssigned()
     } catch (e) {
       console.error("Error assigning accountant:", e)
     } finally {
       setAssigning(false)
     }
+  }
+
+  if (currentName && !changing) {
+    return (
+      <div className="flex flex-col gap-1 min-w-[160px]">
+        <span className="text-xs text-green-700 font-medium">✓ {currentName}</span>
+        <button onClick={() => setChanging(true)} className="text-[11px] text-blue-600 hover:text-blue-800 underline text-left">Change</button>
+      </div>
+    )
   }
 
   return (
@@ -72,13 +112,18 @@ function AssignAccountantCell({ po, onAssigned }) {
           </option>
         ))}
       </select>
-      <button
-        onClick={handleAssign}
-        disabled={!selectedId || assigning}
-        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
-      >
-        {assigning ? "Assigning..." : assigned ? "✓ Assigned" : "Assign"}
-      </button>
+      <div className="flex gap-1">
+        <button
+          onClick={handleAssign}
+          disabled={!selectedId || assigning}
+          className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
+        >
+          {assigning ? "Assigning..." : "Assign"}
+        </button>
+        {currentName && (
+          <button onClick={() => setChanging(false)} className="px-2 py-1 border border-gray-300 rounded text-xs hover:bg-gray-50">Cancel</button>
+        )}
+      </div>
     </div>
   )
 }
@@ -116,21 +161,25 @@ const Payable = () => {
       const data = await financePayableService.getAllPayables(0, 100)
       const rawList = Array.isArray(data) ? data : (data.content || [])
 
-      // Only show POs where FM has approved
-      const fmApproved = rawList.filter(
-        (po) => po.financeManagerApprovalStatus === "APPROVED"
-      )
-
-      // Group by poNumber
+      // Group by poNumber FIRST — a multi-item PO has one underlying row per MTR line,
+      // and filtering rows individually before grouping would drop sibling lines out of
+      // the total (e.g. showing only one line's amount instead of the whole PO's).
       const poMap = new Map()
-      fmApproved.forEach((po) => {
+      rawList.forEach((po) => {
         const key = po.poNumber
+        const poBasicContribution = (po.basicAmount || 0) + (po.miscellaneous || 0) - (po.discount || 0)
+        const isFmApproved = po.financeManagerApprovalStatus === "APPROVED"
         if (!poMap.has(key)) {
           poMap.set(key, {
             ...po,
             projectNames: po.projectName ? [po.projectName] : [],
             allMTRIds: [po.id],
             allMTRData: [po],
+            poAmount: po.poAmount || 0,
+            poBasicAmount: poBasicContribution,
+            paidAmount: po.paidAmount || 0,
+            paymentBreakdown: po.paymentBreakdown || [],
+            anyFmApproved: isFmApproved,
           })
         } else {
           const existing = poMap.get(key)
@@ -141,11 +190,20 @@ const Payable = () => {
             projectNames: mergedProjects,
             allMTRIds: [...existing.allMTRIds, po.id],
             allMTRData: [...existing.allMTRData, po],
+            poAmount: existing.poAmount + (po.poAmount || 0),
+            poBasicAmount: existing.poBasicAmount + poBasicContribution,
+            paidAmount: existing.paidAmount + (po.paidAmount || 0),
+            paymentBreakdown: [...existing.paymentBreakdown, ...(po.paymentBreakdown || [])],
+            anyFmApproved: existing.anyFmApproved || isFmApproved,
           })
         }
       })
 
-      const grouped = Array.from(poMap.values()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      // Only show POs where FM has approved at least one line — once shown, the group's
+      // full amount (across all lines) is what's displayed.
+      const grouped = Array.from(poMap.values())
+        .filter((po) => po.anyFmApproved)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       const start = currentPage * pageSize
       setPOs(grouped.slice(start, start + pageSize))
       setTotalPages(Math.ceil(grouped.length / pageSize) || 1)
@@ -234,8 +292,8 @@ const Payable = () => {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {["Vendor", "Project Name(s)", "PO Number / Copy", "PM Approval", "FM Approval", "PO Status", "Material Status", "Assign Accountant", "Actions"].map((h) => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
+                    {["Vendor", "Project Name(s)", "PO Number / Copy", "Payment Status", "PM Approval", "FM Approval", "PO Status", "Material Status", "Assign Accountant", "Actions"].map((h) => (
+                      <th key={h} className={`px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider ${h === "Actions" ? "sticky right-0 bg-gray-50 shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]" : ""}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -261,8 +319,17 @@ const Payable = () => {
                         <div className="space-y-1">
                           <div className="text-sm font-medium text-gray-900">{po.poNumber}</div>
                           <div className="text-xs text-gray-500">{formatDate(po.createdAt)}</div>
-                          {po.fileUrl && <a href={po.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs underline">View PO</a>}
+                          {po.fileUrl && <button onClick={() => { setSelectedPO(po); setShowDetailsModal(true) }} className="text-blue-600 text-xs underline">View PO</button>}
                         </div>
+                      </td>
+                      {/* Payment Status */}
+                      <td className="px-4 py-4">
+                        <PaymentStatusCell
+                          poBasicAmount={po.poBasicAmount}
+                          poAmount={po.poAmount}
+                          paidAmount={po.paidAmount}
+                          breakdown={po.paymentBreakdown}
+                        />
                       </td>
                       {/* PM Approval — read only */}
                       <td className="px-4 py-4">
@@ -288,7 +355,7 @@ const Payable = () => {
                         />
                       </td>
                       {/* Actions */}
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 sticky right-0 bg-white shadow-[-4px_0_4px_-4px_rgba(0,0,0,0.15)]">
                         <button
                           onClick={() => { setSelectedPO(po); setShowDetailsModal(true) }}
                           className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 font-medium flex items-center gap-1"

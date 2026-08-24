@@ -6,7 +6,9 @@ import { motion, AnimatePresence } from "framer-motion"
 import FinancePayable from "../components/Finance/FinancePayable"
 //import PayablePI from "../components/Accounts/Accountant/PayablePI"
 import FinanceRecievable from "../components/Finance/FinanceRecievable"
+import FinancePaymentCalendar from "../components/Finance/FinancePaymentCalendar"
 import { GiReceiveMoney, GiPayMoney } from "react-icons/gi";
+import { FiCalendar } from "react-icons/fi";
 
 
 import { MdMoney } from "react-icons/md";
@@ -35,6 +37,12 @@ function Finance() {
         label: "Recievables",
         icon: GiReceiveMoney,
         component: FinanceRecievable,
+      },
+      {
+        id: "finance-payment-calendar",
+        label: "Payment Calendar",
+        icon: FiCalendar,
+        component: FinancePaymentCalendar,
       }
     ]
 
@@ -58,11 +66,11 @@ function Finance() {
     console.log("Designation ----  "+designation)
 
     if (designation.includes("account-officer")) {
-      return [allTabs[0], allTabs[1]] // BDM can see unassigned and BDM assigne
+      return [allTabs[0], allTabs[1], allTabs[2]] // BDM can see unassigned and BDM assigne
     } else if (designation.includes("accountant-assistant")) {
-      return [allTabs[0] , allTabs[1]]
+      return [allTabs[0] , allTabs[1], allTabs[2]]
     } else {
-      return [allTabs[0], allTabs[1]]
+      return [allTabs[0], allTabs[1], allTabs[2]]
     }
 
   }

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
 
-const VendorDropdownPOUpload = ({ value, onChange, placeholder = "Select a vendor..." }) => {
+const VendorDropdownPOUpload = ({ value, onChange, placeholder = "Select a vendor...", disabled = false }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [vendors, setVendors] = useState([])
@@ -57,8 +57,8 @@ const VendorDropdownPOUpload = ({ value, onChange, placeholder = "Select a vendo
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        disabled={loading}
+        className="w-full px-4 py-2 text-left bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+        disabled={loading || disabled}
       >
         {value || placeholder}
         <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">

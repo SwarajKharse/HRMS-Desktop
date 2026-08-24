@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { purchaseInvoiceService } from "../../../services/purchaseInvoiceService"
 import { useAuth } from "../../../contexts/AuthContext"
 import PODetailsModal from "../../Purchase/PurchaserComponents/PODetailsModal"
+import { PaymentStatusCell } from "../../Purchase/PurchaserComponents/AmountBreakdownCell"
 
 const formatDate = (d) => {
   if (!d) return "N/A"
@@ -68,6 +69,8 @@ const PayablePIComponent = () => {
 
         const projectName = pi.projectName || ""
 
+        const poBasicContribution = (po.basicAmount || 0) + (po.miscellaneous || 0) - (po.discount || 0)
+
         if (!poMap.has(key)) {
           poMap.set(key, {
             // Spread PO fields
@@ -82,6 +85,10 @@ const PayablePIComponent = () => {
             projectNames: projectName ? [projectName] : [],
             allMTRIds: [po.id],
             allMTRData: [{ ...po, projectName }],
+            poAmount: po.poAmount || 0,
+            poBasicAmount: poBasicContribution,
+            paidAmount: po.paidAmount || 0,
+            paymentBreakdown: po.paymentBreakdown || [],
           })
         } else {
           const existing = poMap.get(key)
@@ -91,6 +98,10 @@ const PayablePIComponent = () => {
             projectNames: mergedProjects,
             allMTRIds: [...existing.allMTRIds, po.id],
             allMTRData: [...existing.allMTRData, { ...po, projectName }],
+            poAmount: existing.poAmount + (po.poAmount || 0),
+            poBasicAmount: existing.poBasicAmount + poBasicContribution,
+            paidAmount: existing.paidAmount + (po.paidAmount || 0),
+            paymentBreakdown: [...existing.paymentBreakdown, ...(po.paymentBreakdown || [])],
           })
         }
       })
@@ -177,7 +188,7 @@ const PayablePIComponent = () => {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {["Vendor", "Project Name(s)", "PO Number / Copy", "PM Approval", "FM Approval", "PO Status", "Material Status", "Actions"].map((h) => (
+                    {["Vendor", "Project Name(s)", "PO Number / Copy", "Payment Status", "PM Approval", "FM Approval", "PO Status", "Material Status", "Actions"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{h}</th>
                     ))}
                   </tr>
@@ -204,8 +215,17 @@ const PayablePIComponent = () => {
                         <div className="space-y-1">
                           <div className="text-sm font-medium text-gray-900">{po.poNumber}</div>
                           <div className="text-xs text-gray-500">{formatDate(po.createdAt)}</div>
-                          {po.fileUrl && <a href={po.fileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs underline">View PO</a>}
+                          {po.fileUrl && <button onClick={() => { setSelectedPO(po); setShowDetailsModal(true) }} className="text-blue-600 text-xs underline">View PO</button>}
                         </div>
+                      </td>
+                      {/* Payment Status */}
+                      <td className="px-4 py-4">
+                        <PaymentStatusCell
+                          poBasicAmount={po.poBasicAmount}
+                          poAmount={po.poAmount}
+                          paidAmount={po.paidAmount}
+                          breakdown={po.paymentBreakdown}
+                        />
                       </td>
                       {/* PM Approval */}
                       <td className="px-4 py-4">
