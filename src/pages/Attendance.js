@@ -3,6 +3,8 @@ import { motion } from "framer-motion"
 import AttendanceCalendar from "../components/Attendance/AttendanceCalendar"
 import MissPunchForm from "../components/Attendance/MissPunchForm"
 import MissPunchList from "../components/Attendance/MissPunchList"
+import PunchAction from "../components/Attendance/PunchAction"
+import { useAuth } from "../contexts/AuthContext"
 import { FiCalendar, FiClock, FiPlus } from "react-icons/fi"
 
 // List of valid tabs for validation
@@ -19,6 +21,7 @@ function Attendance() {
   })
 
   const [showMissPunchForm, setShowMissPunchForm] = useState(false)
+  const { employee } = useAuth()
 
   // Update sessionStorage when activeTab changes
   useEffect(() => {
@@ -33,6 +36,13 @@ function Attendance() {
       transition={{ duration: 0.2 }}
       className="flex flex-col gap-6"
     >
+      {/* Check In / Check Out */}
+      {employee && (
+        <div className="bg-white rounded-lg shadow p-4 md:p-6">
+          <PunchAction employee={employee} />
+        </div>
+      )}
+
       {/* Header with Tabs */}
       <div className="flex justify-between items-center">
         <div className="flex space-x-1 rounded-lg bg-gray-100 p-1">

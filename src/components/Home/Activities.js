@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { FiCheckCircle, FiClock, FiCalendar } from "react-icons/fi";
-import { attendanceService } from "../../services/attendanceService";
+import PunchAction from "../Attendance/PunchAction";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -10,48 +10,9 @@ function getGreeting() {
   return "Good Evening";
 }
 
-async function capturePhoto() {
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-    const video = document.createElement("video");
-    video.srcObject = stream;
-    video.setAttribute("playsinline", "true");
-    await video.play();
-    await new Promise((resolve) => {
-      if (video.readyState >= 2) resolve();
-      else video.onloadedmetadata = () => resolve();
-    });
-
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-    canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    const blob = await new Promise((resolve, reject) => {
-      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Failed to capture photo"))), "image/jpeg", 0.9);
-    });
-    return blob;
-  } finally {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    }
-  }
-}
-
-function getPositionPromise(options) {
-  return new Promise((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject, options);
-  });
-}
-
 function Activities({ employee }) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [todaysAttendance, setTodaysAttendance] = useState({});
-  const [processing, setProcessing] = useState(false);
-  const [punchError, setPunchError] = useState(null);
-  const [locationAccuracy, setLocationAccuracy] = useState(null);
-  const bestPositionRef = useRef(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -60,19 +21,6 @@ function Activities({ employee }) {
 
     return () => clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    fetchTodaysAttendance();
-  }, [employee]);
-
-  const fetchTodaysAttendance = async () => {
-    try {
-      const response = await attendanceService.getTodayAttendance(employee.id);
-      setTodaysAttendance(response);
-    } catch (error) {
-      console.error("Failed to fetch today's attendance", error);
-    }
-  };
 
   const getValue = (value, defaultValue = "NA") => {
     if (value === null || value === undefined || value === "") {
@@ -106,103 +54,20 @@ function Activities({ employee }) {
     return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
   };
 
-  const updateBestPosition = (position) => {
-    if (!bestPositionRef.current || position.coords.accuracy < bestPositionRef.current.coords.accuracy) {
-      bestPositionRef.current = position;
-      setLocationAccuracy(position.coords.accuracy);
-    }
-  };
-
-  const acquireLocation = async () => {
-    const lowAccuracyPosition = await getPositionPromise({
-      enableHighAccuracy: false,
-      timeout: 10000,
-      maximumAge: 60000,
-    });
-    updateBestPosition(lowAccuracyPosition);
-
-    // Best-effort refinement; if it resolves before we submit, we use it.
-    getPositionPromise({ enableHighAccuracy: true, timeout: 30000 })
-      .then(updateBestPosition)
-      .catch(() => {});
-
-    return lowAccuracyPosition;
-  };
-
-  const handlePunch = async () => {
-    if (processing) return;
-    setProcessing(true);
-    setPunchError(null);
-    setLocationAccuracy(null);
-    bestPositionRef.current = null;
-
-    const action = todaysAttendance.checkIn ? "checkOut" : "checkIn";
-
-    let photoBlob;
-    try {
-      photoBlob = await capturePhoto();
-    } catch (error) {
-      setPunchError("Camera access was denied or unavailable. Please allow camera access and try again.");
-      setProcessing(false);
-      return;
-    }
-
-    try {
-      await acquireLocation();
-    } catch (error) {
-      setPunchError("Unable to get your location. Please enable location services and try again.");
-      setProcessing(false);
-      return;
-    }
-
-    try {
-      const { latitude, longitude } = bestPositionRef.current.coords;
-      const address = `${latitude}, ${longitude}`;
-      const timeStr = format(new Date(), "HH:mm:ss");
-
-      if (action === "checkIn") {
-        await attendanceService.checkIn(employee.id, timeStr, latitude, longitude, address);
-      } else {
-        await attendanceService.checkOut(employee.id, timeStr, latitude, longitude, address);
-      }
-
-      try {
-        await attendanceService.uploadAttendanceImage(
-          employee.id,
-          photoBlob,
-          action === "checkIn" ? "check-in" : "check-out"
-        );
-      } catch (uploadError) {
-        // Punch already succeeded; a failed photo upload is not a punch failure.
-        console.error("Attendance photo upload failed after successful punch", uploadError);
-      }
-
-      await fetchTodaysAttendance();
-    } catch (error) {
-      const status = error.status;
-      if (status === 403) {
-        setPunchError(error.message || "You are outside the allowed location.");
-      } else if (status === 409) {
-        setPunchError(action === "checkIn" ? "Already checked in for today." : "Already checked out for today.");
-        await fetchTodaysAttendance();
-      } else if (status === 404) {
-        setPunchError("No check-in found for today.");
-      } else {
-        setPunchError(error.message || "Something went wrong. Please try again.");
-      }
-    } finally {
-      setProcessing(false);
-    }
-  };
-
-  const attendanceComplete = Boolean(todaysAttendance.checkIn) && Boolean(todaysAttendance.checkOut);
-  const punchButtonLabel = todaysAttendance.checkIn ? "Check Out" : "Check In";
-
   return (
     <div className="flex flex-col gap-6">
-      {/* Greeting Card */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-center">
+      {/* Greeting Card - compact single row on mobile, full layout on desktop */}
+      <div className="bg-white rounded-lg shadow-md p-3 md:p-6">
+        {/* Mobile: compact single row */}
+        <div className="md:hidden flex justify-between items-center gap-2">
+          <span className="text-sm font-semibold text-gray-900 truncate">
+            {getGreeting()}, {getValue(employee?.firstName)}
+          </span>
+          <span className="text-lg font-bold text-gray-900 shrink-0">{format(currentTime, "HH:mm")}</span>
+        </div>
+
+        {/* Desktop: unchanged full layout */}
+        <div className="hidden md:flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
               {getGreeting()}, {getValue(employee?.firstName)}!
@@ -256,35 +121,9 @@ function Activities({ employee }) {
           </div>
         </div>
 
-        {attendanceComplete ? (
-          <div className="mt-6 text-center text-green-700 font-semibold bg-green-50 rounded-lg py-3">
-            Completed for today
-          </div>
-        ) : (
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={handlePunch}
-              disabled={processing}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-lg text-lg transition-colors"
-            >
-              {processing && (
-                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              )}
-              {processing ? "Processing..." : punchButtonLabel}
-            </button>
-            {processing && locationAccuracy != null && (
-              <div className="text-center text-sm text-gray-500 mt-2">
-                Location accuracy: ~{Math.round(locationAccuracy)}m
-              </div>
-            )}
-            {punchError && (
-              <div className="mt-3 text-center text-sm text-red-600 bg-red-50 rounded-lg py-2 px-3">
-                {punchError}
-              </div>
-            )}
-          </div>
-        )}
+        <div className="mt-6">
+          <PunchAction employee={employee} onAttendanceChange={setTodaysAttendance} />
+        </div>
       </div>
 
       {/* Attendance Status */}
