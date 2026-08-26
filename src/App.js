@@ -9,6 +9,7 @@ import PublicRoute from "./components/PublicRoute"
 import ProtectedPermissionRoute from "./components/ProtectedPermissionRoute"
 
 import Layout from "./components/Layout"
+import UpdateBanner from "./components/UpdateBanner"
 import Login from "./pages/Login"
 import Register from "./pages/Register"
 import Home from "./pages/Home"
@@ -346,6 +347,7 @@ function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Router>
+          <UpdateBanner />
         </PermissionsProvider>
       </NotificationsProvider>
     </AuthProvider>
