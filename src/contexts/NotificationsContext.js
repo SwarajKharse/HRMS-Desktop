@@ -20,7 +20,7 @@ export const NotificationsProvider = ({ children }) => {
         }, ...prev]);
 
         // Show browser notification
-        if (Notification.permission === 'granted') {
+        if (typeof Notification !== "undefined" && Notification.permission === 'granted') {
           new Notification(notification.title, {
             body: notification.body,
             icon: '/logo192.png' // Add your app icon path here
@@ -30,7 +30,7 @@ export const NotificationsProvider = ({ children }) => {
     });
 
     // Request notification permission if not granted
-    if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+    if (typeof Notification !== "undefined" && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
       Notification.requestPermission();
     }
 

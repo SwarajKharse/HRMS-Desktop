@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 
 const firebaseConfig = {
   apiKey: "AIzaSyC2FUKyQJkje46LAaz_t6kMDPlj_ccD8bQ",
@@ -13,28 +13,49 @@ const firebaseConfig = {
 const vapidKey = "BDGcUl97Ht-3mT09bS2bInQvvrj7Ulz36EX9ImzooM2eVghVRKkfrIFDx2NypCdaTlZucWntmx3dfIl_uq9mX6U";
 
 const app = initializeApp(firebaseConfig);
-const messaging = getMessaging(app);
+
+let messagingPromise = null;
+const getMessagingIfSupported = () => {
+  if (!messagingPromise) {
+    messagingPromise = (async () => {
+      try {
+        if (typeof Notification === "undefined") return null;
+        const supported = await isSupported();
+        return supported ? getMessaging(app) : null;
+      } catch (error) {
+        console.error("Error checking messaging support:", error);
+        return null;
+      }
+    })();
+  }
+  return messagingPromise;
+};
 
 export const requestFCMToken = async () => {
-  return Notification.requestPermission()
-  .then(permission => {
-    if (permission === "granted") {
-      return getToken(messaging, { vapidKey });
-    }
-    else {
-      throw new Error("Notification permission denied");
-    }
-  })
-  .catch(error => {
+  try {
+    const messaging = await getMessagingIfSupported();
+    if (!messaging) return null;
+
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") return null;
+
+    return await getToken(messaging, { vapidKey });
+  } catch (error) {
     console.error("Error requesting FCM token:", error);
-    throw error;
-  });
+    return null;
+  }
 };
 
 export const listenToNotifications = (onNotification) => {
-  onMessage(messaging, (payload) => {
-    if (onNotification) {
-      onNotification(payload.notification);
-    }
-  });
+  let unsubscribe = () => {};
+  (async () => {
+    const messaging = await getMessagingIfSupported();
+    if (!messaging) return;
+    unsubscribe = onMessage(messaging, (payload) => {
+      if (onNotification) {
+        onNotification(payload.notification);
+      }
+    });
+  })();
+  return () => unsubscribe();
 };

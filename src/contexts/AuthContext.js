@@ -35,9 +35,11 @@ export const AuthProvider = ({ children }) => {
     // Setup notification listener
     const unsubscribe = listenToNotifications((notification) => {
       if (notification) {
-        new Notification(notification.title, {
-          body: notification.body
-        });
+        if (typeof Notification !== "undefined") {
+          new Notification(notification.title, {
+            body: notification.body
+          });
+        }
       }
     });
 
