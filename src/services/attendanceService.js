@@ -59,6 +59,59 @@ export const attendanceService = {
     }
   },
 
+  checkIn: async (empId, checkIn, latitude, longitude, address) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/check-in`, null, {
+        params: { empId, checkIn, longitude, latitude, address }
+      });
+      return response.data;
+    } catch (error) {
+      const err = new Error(
+        (typeof error.response?.data === 'string' ? error.response.data : error.response?.data?.message)
+        || error.message
+      );
+      err.status = error.response?.status;
+      throw err;
+    }
+  },
+
+  checkOut: async (empId, checkOut, latitude, longitude, address) => {
+    try {
+      const response = await axios.post(`${BASE_URL}/check-out`, null, {
+        params: { empId, checkOut, longitude, latitude, address }
+      });
+      return response.data;
+    } catch (error) {
+      const err = new Error(
+        (typeof error.response?.data === 'string' ? error.response.data : error.response?.data?.message)
+        || error.message
+      );
+      err.status = error.response?.status;
+      throw err;
+    }
+  },
+
+  uploadAttendanceImage: async (empId, imageBlob, type) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', imageBlob, `${type}-${Date.now()}.jpg`);
+      formData.append('empId', empId);
+      formData.append('type', type);
+      formData.append('date', format(new Date(), 'yyyy-MM-dd'));
+      const response = await axios.post(`${BASE_URL}/upload-image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data;
+    } catch (error) {
+      const err = new Error(
+        (typeof error.response?.data === 'string' ? error.response.data : error.response?.data?.message)
+        || error.message
+      );
+      err.status = error.response?.status;
+      throw err;
+    }
+  },
+
   markKioskAttendance: async (selectedAction, body) => {
     try {
       const response = await axios.post(`${BASE_URL}/kiosk/${selectedAction}`, body, {
