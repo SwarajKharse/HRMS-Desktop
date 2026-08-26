@@ -15,7 +15,7 @@ import {
   getMonth,
   getYear,
 } from "date-fns"
-import { FiChevronLeft, FiChevronRight, FiX, FiCheck, FiAlertCircle, FiCalendar } from "react-icons/fi"
+import { FiChevronLeft, FiChevronRight, FiX, FiCheck, FiAlertCircle, FiCalendar, FiImage } from "react-icons/fi"
 import { attendanceService } from "../../services/attendanceService"
 import { holidayService } from "../../services/holidayService"
 import { authService } from "../../services/authService"
@@ -125,7 +125,57 @@ const mapToDisplayStatus = (originalStatus) => {
   return originalStatus
 }
 
+// Matches "lat, lng" style coordinate strings (raw GPS captures). Older rows
+// from the retired Flutter app store a reverse-geocoded address instead -
+// those must never be treated as coordinates or linked to a map.
+const COORDINATE_PATTERN = /^-?\d{1,3}(?:\.\d+)?\s*,\s*-?\d{1,3}(?:\.\d+)?$/
+
+function LocationDisplay({ location }) {
+  if (!location || !location.trim()) {
+    return <span className="text-gray-400">-</span>
+  }
+
+  const trimmed = location.trim()
+
+  if (COORDINATE_PATTERN.test(trimmed)) {
+    const [lat, lng] = trimmed.split(",").map((part) => part.trim())
+    return (
+      <a
+        href={`https://www.google.com/maps?q=${lat},${lng}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:underline break-all"
+      >
+        {trimmed}
+      </a>
+    )
+  }
+
+  return <span className="text-gray-700 break-words">{trimmed}</span>
+}
+
+function PhotoThumbnail({ url, alt, onClick }) {
+  if (!url) {
+    return (
+      <div className="w-16 h-16 shrink-0 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400">
+        <FiImage className="w-6 h-6" />
+      </div>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    >
+      <img src={url} alt={alt} className="w-full h-full object-cover" />
+    </button>
+  )
+}
+
 function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdate }) {
+  const [lightboxUrl, setLightboxUrl] = useState(null)
   const [checkIn, setCheckIn] = useState(attendance?.checkIn || "")
   const [checkOut, setCheckOut] = useState(attendance?.checkOut || "")
   const [attendanceType, setAttendanceType] = useState(
@@ -406,6 +456,45 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
             </div>
           )}
 
+          {/* Captured punch photo + location - historical fact, shown regardless of the edit selection above */}
+          {attendance &&
+            (attendance.checkInPhotoUrl ||
+              attendance.checkInLocation ||
+              attendance.checkOutPhotoUrl ||
+              attendance.checkOutLocation) && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Punch Details</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Check-In</div>
+                    <div className="flex items-start gap-3">
+                      <PhotoThumbnail
+                        url={attendance.checkInPhotoUrl}
+                        alt="Check-in photo"
+                        onClick={() => setLightboxUrl(attendance.checkInPhotoUrl)}
+                      />
+                      <div className="text-sm min-w-0">
+                        <LocationDisplay location={attendance.checkInLocation} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Check-Out</div>
+                    <div className="flex items-start gap-3">
+                      <PhotoThumbnail
+                        url={attendance.checkOutPhotoUrl}
+                        alt="Check-out photo"
+                        onClick={() => setLightboxUrl(attendance.checkOutPhotoUrl)}
+                      />
+                      <div className="text-sm min-w-0">
+                        <LocationDisplay location={attendance.checkOutLocation} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           {/* Leave Type Selection */}
           {(attendanceType === "leave" || attendanceType === "halfDay") && (
             <div>
@@ -500,6 +589,38 @@ function AttendanceDetailsModal({ date, attendance, onClose, employeeId, onUpdat
           </div>
         </div>
       </motion.div>
+
+      {/* Photo lightbox - full-size view of a check-in/check-out photo */}
+      <AnimatePresence>
+        {lightboxUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4"
+            onClick={(e) => {
+              // Stop here - this modal is nested inside the details modal's own
+              // backdrop, and a single click must not close both at once.
+              e.stopPropagation()
+              setLightboxUrl(null)
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="max-w-2xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={lightboxUrl}
+                alt="Attendance punch photo"
+                className="max-w-full max-h-[85vh] w-full rounded-lg object-contain bg-black"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
