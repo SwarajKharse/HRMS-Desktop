@@ -18,8 +18,12 @@ export const authService = {
       const token = response.data;
       const payload = JSON.parse(atob(token.split('.')[1]));
       
-      localStorage.setItem('jwtToken', token);
-      localStorage.setItem('deviceId', payload.deviceId);
+        localStorage.setItem('jwtToken', token);
+      if (payload.deviceId != null) {
+        localStorage.setItem('deviceId', payload.deviceId);
+      } else {
+        localStorage.removeItem('deviceId');
+      }
       localStorage.setItem('user', JSON.stringify(payload));
 
       return { token, deviceId: payload.deviceId, user: payload };
@@ -39,25 +43,29 @@ export const authService = {
     }
   },
 
-  logout: async () => {
+    logout: async () => {
+    const token = localStorage.getItem('jwtToken');
+    const rawDeviceId = localStorage.getItem('deviceId');
+    // getItem returns the STRING "undefined"/"null" if a non-value was stored
+    const deviceId =
+      rawDeviceId && rawDeviceId !== 'undefined' && rawDeviceId !== 'null'
+        ? rawDeviceId
+        : null;
+
     try {
-      const token = localStorage.getItem('jwtToken');
-      const deviceId = localStorage.getItem('deviceId');
-
       await axios.post(`${BASE_URL}/logout`, null, {
-        params: { deviceId },
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        params: deviceId ? { deviceId } : {},
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-
+    } catch (error) {
+      // Server-side device unregister failed. Not a reason to keep the user
+      // signed in — always clear the local session.
+      console.error('Logout API call failed, clearing session anyway:', error);
+    } finally {
       localStorage.removeItem('jwtToken');
       localStorage.removeItem('deviceId');
       localStorage.removeItem('user');
-
       window.location.reload();
-    } catch (error) {
-      throw new Error(error.response?.data || 'Logout failed');
     }
   },
 
