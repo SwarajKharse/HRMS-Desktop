@@ -73,7 +73,7 @@ function Login() {
         className="max-w-md w-full space-y-8 bg-white p-6 sm:p-8 rounded-xl shadow-2xl"
       >
         <div className="text-center">
-          <img src="/logo.jpg" alt="HRMS Logo" className="mx-auto w-32" />
+          <img src="/logo-full.png" alt="Safety Saarthi logo" className="mx-auto h-32 w-auto" />
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900 leading-9">Welcome to HRMS</h2>
           <p className="mt-2 text-sm text-gray-600">Please sign in to your account</p>
         </div>

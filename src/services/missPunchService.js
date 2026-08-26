@@ -21,9 +21,27 @@ export const missPunchService = {
     }
   },
 
+  getPendingRequestsByOrgAndMonth: async (orgId, month, year) => {
+    try{
+      const response = await axios.get(`${BASE_URL}/pending/org/${orgId}/month/${month + 1}/year/${year}`)
+      return response.data;
+    }catch(error){
+      throw error.response?.data || error.message;
+    }
+  },
+
   getEmployeeRequests: async (empId) => {
     try{
       const response = await axios.get(`${BASE_URL}/emp/${empId}`)
+      return response.data;
+    }catch(error){
+      throw error.response?.data || error.message;
+    }
+  },
+
+  getEmployeeRequestsByMonth: async (empId, month, year) => {
+    try{
+      const response = await axios.get(`${BASE_URL}/emp/${empId}/month/${month + 1}/year/${year}`)
       return response.data;
     }catch(error){
       throw error.response?.data || error.message;

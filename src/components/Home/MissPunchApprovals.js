@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { missPunchService } from "../../services/missPunchService"
-import { format } from "date-fns"
-import { FiCheck, FiX, FiMessageSquare, FiLoader } from "react-icons/fi"
+import { format, getMonth, getYear, subMonths, addMonths } from "date-fns"
+import { FiCheck, FiX, FiMessageSquare, FiLoader, FiChevronLeft, FiChevronRight } from "react-icons/fi"
 import { useAuth } from "../../contexts/AuthContext"
 import { getErrorMessage } from "../../utils/errorUtils"
 
 function MissPunchApprovals() {
+  const [currentDate, setCurrentDate] = useState(new Date())
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -15,21 +16,35 @@ function MissPunchApprovals() {
   const [comments, setComments] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
   const [actionType, setActionType] = useState(null) // 'approve' or 'reject'
-  const { user } = useAuth()
+  const { user, employee } = useAuth()
+  const orgId = employee?.org?.id
 
   useEffect(() => {
-    fetchPendingRequests()
-  }, [])
+    if (orgId) {
+      fetchPendingRequests(currentDate)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDate, orgId])
 
-  const fetchPendingRequests = async () => {
+  const fetchPendingRequests = async (date) => {
+    setLoading(true)
     try {
-      const data = await missPunchService.getPendingRequests()
+      const data = await missPunchService.getPendingRequestsByOrgAndMonth(orgId, getMonth(date), getYear(date))
       setRequests(data)
+      setError(null)
     } catch (err) {
       setError(getErrorMessage(err, "Failed to fetch miss punch requests"))
     } finally {
       setLoading(false)
     }
+  }
+
+  const handlePreviousMonth = () => {
+    setCurrentDate((prev) => subMonths(prev, 1))
+  }
+
+  const handleNextMonth = () => {
+    setCurrentDate((prev) => addMonths(prev, 1))
   }
 
   const handleAction = (request, type) => {
@@ -48,7 +63,7 @@ function MissPunchApprovals() {
         await missPunchService.reject(selectedRequest.id, comments)
       }
       // Refresh the list after action
-      await fetchPendingRequests()
+      await fetchPendingRequests(currentDate)
       setShowCommentsDialog(false)
     } catch (err) {
       setError(getErrorMessage(err, "Failed to submit action"))
@@ -57,24 +72,28 @@ function MissPunchApprovals() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return <div className="bg-red-50 text-red-500 p-4 rounded-lg">Error: {error}</div>
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-2xl font-bold text-gray-900">Pending Miss Punch Requests</h2>
 
-      {requests.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">No pending requests found</div>
+      <div className="flex items-center justify-between">
+        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={handlePreviousMonth}>
+          <FiChevronLeft className="w-5 h-5" />
+        </button>
+        <h3 className="text-lg font-semibold">{format(currentDate, "MMMM yyyy")}</h3>
+        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={handleNextMonth}>
+          <FiChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 text-red-500 p-4 rounded-lg">Error: {error}</div>
+      ) : requests.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">No pending requests found for this month</div>
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
@@ -119,12 +138,12 @@ function MissPunchApprovals() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {requests.map((request, index) => (
+              {requests.map((request) => (
                 <motion.tr
                   key={request.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ duration: 0.2 }}
                   className="hover:bg-gray-50"
                 >
                   <td className="px-6 py-4 whitespace-nowrap">

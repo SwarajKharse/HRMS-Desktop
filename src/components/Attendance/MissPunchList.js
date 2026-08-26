@@ -1,24 +1,32 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { missPunchService } from "../../services/missPunchService"
-import { format } from "date-fns"
-import { FiClock, FiCheck, FiX, FiAlertCircle } from "react-icons/fi";
+import { format, getMonth, getYear, subMonths, addMonths } from "date-fns"
+import { FiClock, FiCheck, FiX, FiAlertCircle, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { authService } from "../../services/authService";
 import { getErrorMessage } from "../../utils/errorUtils"
 
 function MissPunchList() {
+  const [currentDate, setCurrentDate] = useState(new Date())
   const [requests, setRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    fetchRequests()
-  }, [])
+    fetchRequests(currentDate)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDate])
 
-  const fetchRequests = async () => {
+  const fetchRequests = async (date) => {
+    setLoading(true)
     try {
-      const data = await missPunchService.getEmployeeRequests(authService.getUser().sub) // Replace with actual employee ID
+      const data = await missPunchService.getEmployeeRequestsByMonth(
+        authService.getUser().sub, // Replace with actual employee ID
+        getMonth(date),
+        getYear(date)
+      )
       setRequests(data)
+      setError(null)
     } catch (err) {
       setError(getErrorMessage(err, "Failed to fetch miss punch requests"))
     } finally {
@@ -26,21 +34,12 @@ function MissPunchList() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
-      </div>
-    )
+  const handlePreviousMonth = () => {
+    setCurrentDate((prev) => subMonths(prev, 1))
   }
 
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-500">
-        <FiAlertCircle className="w-5 h-5 mr-2" />
-        {error}
-      </div>
-    )
+  const handleNextMonth = () => {
+    setCurrentDate((prev) => addMonths(prev, 1))
   }
 
   const getStatusBadge = (status) => {
@@ -68,8 +67,27 @@ function MissPunchList() {
 
   return (
     <div className="flex flex-col gap-6">
-      {requests.length === 0 ? (
-        <div className="text-center text-gray-500 py-12">No miss punch requests found</div>
+      <div className="flex items-center justify-between px-6 pt-6">
+        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={handlePreviousMonth}>
+          <FiChevronLeft className="w-5 h-5" />
+        </button>
+        <h2 className="text-lg font-semibold">{format(currentDate, "MMMM yyyy")}</h2>
+        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors" onClick={handleNextMonth}>
+          <FiChevronRight className="w-5 h-5" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-900"></div>
+        </div>
+      ) : error ? (
+        <div className="flex items-center justify-center h-64 text-red-500">
+          <FiAlertCircle className="w-5 h-5 mr-2" />
+          {error}
+        </div>
+      ) : requests.length === 0 ? (
+        <div className="text-center text-gray-500 py-12">No miss punch requests found for this month</div>
       ) : (
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -107,12 +125,12 @@ function MissPunchList() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {requests.map((request, index) => (
+            {requests.map((request) => (
               <motion.tr
                 key={request.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+                transition={{ duration: 0.2 }}
                 className="hover:bg-gray-50"
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
