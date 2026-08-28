@@ -3,16 +3,12 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HelpCircle } from 'lucide-react';
 import { FiBell, FiSettings, FiLogOut } from 'react-icons/fi';
-import { HiHome, HiChartPie, HiArchive, HiCalendar, HiCash, HiDocumentAdd, HiViewList  } from 'react-icons/hi';
-import { FaUsers } from 'react-icons/fa';
-import { HiOutlineBuildingStorefront, HiMiniShoppingBag } from "react-icons/hi2";
-import { GrProjects } from "react-icons/gr";
-import { RiProductHuntLine, RiMoneyRupeeCircleLine } from "react-icons/ri";
-import { MdOutlineAccountBalance } from "react-icons/md";
+import { HiHome } from 'react-icons/hi';
 import { authService } from '../services/authService';
 import { useNotifications } from '../contexts/NotificationsContext';
 import { format } from 'date-fns';
 import { usePermissions } from '../contexts/PermissionsContext';
+import { getNavItems } from '../config/navItems';
 import NotificationBell from './NotificationBell';
 
 function NotificationsPanel({ setActiveDropdown }) {
@@ -165,50 +161,7 @@ function Navbar({userData}) {
   };
 
   useEffect(() => {
-      const updatedNavItems = [
-        { icon: HiHome, label: 'Home', path: '/' }
-      ];
-      if (permissions?.webReports) {
-        updatedNavItems.push({ icon: HiChartPie, label: 'Reports', path: '/reports' });
-      }
-      if (permissions?.webOnboarding) {
-        updatedNavItems.push({ icon: FaUsers, label: 'Onboarding', path: '/onboarding' });
-      }      
-      if (permissions?.webLeave) {
-        updatedNavItems.push({ icon: HiArchive, label: 'Leave Tracker', path: '/leave-tracker' });
-      }
-      if (permissions?.webAttendance) {
-        updatedNavItems.push({ icon: HiCalendar, label: 'Attendance', path: '/attendance' });
-      }
-      if (permissions?.webPayroll) {
-        updatedNavItems.push({ icon: HiCash, label: 'Payroll', path: '/payroll' });
-      }
-          if (permissions?.webAddLeads) {
-        updatedNavItems.push({ icon: HiDocumentAdd, label: 'Add New Lead', path: '/add-lead' });
-      }
-          if (permissions?.webLeadsListing) {
-        updatedNavItems.push({ icon: HiViewList, label: 'Leads', path: '/leads' });
-      }
-      if (permissions?.webProject) {
-        updatedNavItems.push({ icon: GrProjects, label: 'Projects', path: '/projects' });
-      }
-      if (permissions?.webStore) {
-        updatedNavItems.push({ icon: HiOutlineBuildingStorefront, label: 'Store', path: '/store' });
-      }
-      if (permissions?.webPurchase) {
-        updatedNavItems.push({ icon: HiMiniShoppingBag, label: 'Purchase', path: '/purchase' });
-      }
-      if (permissions?.webProductManagement) {
-        updatedNavItems.push({ icon: RiProductHuntLine, label: 'Product Management', path: '/product-management' });
-      }
-      if (permissions?.webAccounts) {
-        updatedNavItems.push({ icon: MdOutlineAccountBalance, label: 'Accounts', path: '/accounts' });
-      }
-      if (permissions?.webFinance) {
-        updatedNavItems.push({ icon: RiMoneyRupeeCircleLine, label: 'Finance', path: '/finance' });
-      }
-
-      setNavItems(updatedNavItems);
+      setNavItems(getNavItems(permissions));
     }, [permissions]);
 
   return (

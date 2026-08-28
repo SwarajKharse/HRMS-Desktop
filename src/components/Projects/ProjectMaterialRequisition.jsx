@@ -4,6 +4,9 @@ import { projectService } from "../../services/projectService"
 import CreateRequisition from "./CreateRequisition"
 import { useAuth } from "../../contexts/AuthContext"
 import { getErrorMessage } from "../../utils/errorUtils"
+import { useProgressLock } from "../../hooks/useProgressLock"
+import ProgressLockPopup from "./ProgressLockPopup"
+import ProjectProgressModal from "./ProjectProgressModal"
 
 const formatDate = (dateString) => {
   if (!dateString) return ""
@@ -47,6 +50,10 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
   const [remarkQuery, setRemarkQuery] = useState("")
   const [expanded, setExpanded] = useState({})
   const [editingReq, setEditingReq] = useState(null)
+  // PM approve/reject is gated on the project's progress backlog — same lock as the BOQ
+  // "Requisitions" button.
+  const { lockStatusMap, lockPopup, setLockPopup, guardLock } = useProgressLock(user?.userId)
+  const [progressModalProject, setProgressModalProject] = useState(null) // { id, name }
 
   const fetchRequisitions = useCallback(async () => {
     setLoading(true)
@@ -244,11 +251,11 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
                           <>
                             {mode === "pm" && (
                               <>
-                                <button onClick={() => handleApproval(req, "APPROVED")}
+                                <button onClick={guardLock({ id: req.projectId, project_name: req.projectName }, () => handleApproval(req, "APPROVED"))}
                                   className="px-2.5 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 transition-colors">
                                   Approve
                                 </button>
-                                <button onClick={() => handleApproval(req, "REJECTED")}
+                                <button onClick={guardLock({ id: req.projectId, project_name: req.projectName }, () => handleApproval(req, "REJECTED"))}
                                   className="px-2.5 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700 transition-colors">
                                   Reject
                                 </button>
@@ -359,6 +366,23 @@ export default function ProjectMaterialRequisition({ mode = "pm", assignedProjec
           isOpen={true}
           onClose={() => { setEditingReq(null); fetchRequisitions() }}
           onSaved={() => fetchRequisitions()}
+        />
+      )}
+      <ProgressLockPopup
+        lockPopup={lockPopup}
+        onClose={() => setLockPopup(null)}
+        onFillNow={() => {
+          const project = lockPopup.project
+          setLockPopup(null)
+          setProgressModalProject(project)
+        }}
+      />
+      {progressModalProject && (
+        <ProjectProgressModal
+          projectId={progressModalProject.id}
+          projectName={progressModalProject.project_name}
+          isOpen={true}
+          onClose={() => { setProgressModalProject(null); fetchRequisitions() }}
         />
       )}
     </div>

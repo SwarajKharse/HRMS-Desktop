@@ -428,7 +428,14 @@ export default function ComparisionSheetPurchaser() {
                       >
                         <td className="p-4 align-middle text-gray-700 font-medium">{req.mtrCode || "N/A"}</td>
                         <td className="p-4 align-middle text-gray-700">{req.projectName || "N/A"}</td>
-                        <td className="p-4 align-middle text-gray-700">{req.productName || "N/A"}</td>
+                        <td className="p-4 align-middle text-gray-700">
+                          {req.productName || "N/A"}
+                          {req.workOrderType === "LABOUR" && (
+                            <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                              Labour
+                            </span>
+                          )}
+                        </td>
                         <td className="p-4 align-middle text-gray-700">
                           {editingMtrId === req.id ? (
                             <input

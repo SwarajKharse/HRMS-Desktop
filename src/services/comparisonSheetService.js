@@ -483,6 +483,28 @@ export const comparisonSheetService = {
     }
   },
 
+  // Labour Work Order — project BOQ items for the "Add Item" picker
+  getLabourBoqItems: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/labour-boq-items/${projectId}`)
+      return response.data || []
+    } catch (error) {
+      console.error("Error fetching labour BOQ items:", error)
+      throw error
+    }
+  },
+
+  // Labour Work Order — history list for a project
+  getLabourWorkOrders: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/material-requisitions/labour-work-orders/${projectId}`)
+      return response.data || []
+    } catch (error) {
+      console.error("Error fetching labour work orders:", error)
+      throw error
+    }
+  },
+
   // Combined (multi-item) comparison sheet
   saveCombinedComparisonSheet: async (payload) => {
     try {

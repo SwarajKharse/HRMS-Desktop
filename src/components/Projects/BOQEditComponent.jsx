@@ -34,6 +34,8 @@ function BOQEditComponent({
   project,
   onBOQUpdate,
   readOnly = false,
+  progressLockStatus, // { locked, needsApproval, ... } for this project, if progress backlog is blocking requisitions
+  onProgressLocked, // called instead of opening the requisition modal when locked
 }) {
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [showRequisitionModal, setShowRequisitionModal] = useState(false)
@@ -2011,7 +2013,13 @@ function BOQEditComponent({
           <div className="mb-3 md:mb-6 flex justify-end gap-2">
             {!readOnly && (
               <button
-                onClick={() => setShowRequisitionModal(true)}
+                onClick={() => {
+                  if (progressLockStatus?.locked) {
+                    onProgressLocked?.()
+                    return
+                  }
+                  setShowRequisitionModal(true)
+                }}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <FiPlus size={14} />

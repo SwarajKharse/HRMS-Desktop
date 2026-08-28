@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FiX } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import { employeeService } from '../services/employeeService';
 import { authService } from '../services/authService';
 import { departmentService } from '../services/departmentService';
 import { designationService } from '../services/designationService';
 import ImageUploader from "./ImageUploader";
+import { encryptId } from "../utils/crypto";
+
+const INACTIVE_STATUSES = ["Terminated", "Resigned", "Deactivated"];
 
 function EmployeeForm({ employee, onClose, onSubmit }) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -64,6 +69,7 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [managerslist, setManagerslist] = useState([]);
+  const [phoneMatch, setPhoneMatch] = useState(null); // past employee sharing this phone
 
   // Initialize form data when employee prop changes
   useEffect(() => {
@@ -138,7 +144,35 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
     }
 
     if (error) setError("")
+    if (phoneMatch) setPhoneMatch(null)
   }
+
+  // On create only: warn if the entered personal phone already belongs to a past employee.
+  const handlePhoneBlur = async () => {
+    if (employee) return; // edit mode — not applicable
+    const phone = formData.personalPhone?.trim();
+    if (!phone) return;
+    try {
+      const match = await employeeService.getEmployeeByPhone(phone);
+      if (match && INACTIVE_STATUSES.includes(match.empStatus)) {
+        setPhoneMatch(match);
+      } else {
+        setPhoneMatch(null);
+      }
+    } catch {
+      /* non-blocking: create still validates server-side */
+    }
+  };
+
+  const handleReactivateExisting = async () => {
+    try {
+      await employeeService.activateEmployee(phoneMatch.id);
+      onClose();
+      navigate(`/onboarding/employee/${encryptId(phoneMatch.id)}`);
+    } catch (err) {
+      setError(err?.message || "Failed to reactivate employee");
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -338,9 +372,35 @@ function EmployeeForm({ employee, onClose, onSubmit }) {
                   name="personalPhone"
                   value={formData.personalPhone}
                   onChange={handleChange}
+                  onBlur={handlePhoneBlur}
                   required
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
                 />
+                {phoneMatch && (
+                  <div className="mt-2 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm">
+                    <p className="text-amber-800">
+                      This number belongs to past employee{" "}
+                      <strong>{phoneMatch.firstName} {phoneMatch.lastName}</strong>
+                      {phoneMatch.dateOfLeaving ? ` (left ${phoneMatch.dateOfLeaving})` : ""}.
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleReactivateExisting}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700"
+                      >
+                        Same person returning — reactivate their record
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPhoneMatch(null)}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md border border-amber-300 text-amber-800 hover:bg-amber-100"
+                      >
+                        Different person — continue with new record
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">

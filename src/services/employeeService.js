@@ -136,11 +136,22 @@ export const employeeService = {
     }
   },
 
-  deactivateEmployee: async (id) => {
+  // payload: { dateOfLeaving: "yyyy-MM-dd", reason?: string }
+  deactivateEmployee: async (id, payload) => {
     try {
-      const response = await axios.put(`${BASE_URL}/deactivate/${id}`, getAuthHeaders());
+      const response = await axios.put(`${BASE_URL}/deactivate/${id}`, payload, getAuthHeaders());
       return response.data;
     } catch (error) {
+      throw error.response?.data || error.message;
+    }
+  },
+
+  getEmployeeByPhone: async (phone) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/by-phone/${encodeURIComponent(phone)}`, getAuthHeaders());
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) return null;
       throw error.response?.data || error.message;
     }
   },

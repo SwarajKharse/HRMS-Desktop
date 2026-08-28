@@ -5,6 +5,7 @@ import { FiX, FiChevronDown, FiChevronUp, FiPlus, FiTrash2, FiCheck, FiXCircle, 
 import { motion, AnimatePresence } from "framer-motion"
 import VendorDropdown from "./VendorDropdown"
 import AddComparisonItemsModal from "./AddComparisonItemsModal"
+import AddBoqItemsModal from "./AddBoqItemsModal"
 import { comparisonSheetService } from "../../../services/comparisonSheetService"
 import { getErrorMessage } from "../../../utils/errorUtils"
 
@@ -22,15 +23,17 @@ const emptyCell = { rate: "", leadTime: "" }
 // BOQCategoryMTR id as boqMtrId, which the backend then can't find.
 const normalizeItemKind = (kind) => ((kind || "BILLABLE").toUpperCase() === "BILLABLE" ? "BILLABLE" : "CATEGORY")
 
-export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "purchaser" }) {
+export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "purchaser", labourContext = null }) {
   const isManagerMode = mode === "manager"
+  const isLabour = !!labourContext
   const itemKind = normalizeItemKind(mtr?.itemKind || mtr?.type)
+  const [sheetStatus, setSheetStatus] = useState("DRAFT")
 
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false)
   const [isComparisonExpanded, setIsComparisonExpanded] = useState(true)
 
-  const [comparisonSheetId, setComparisonSheetId] = useState(null)
-  const [comparisonSheetCreated, setComparisonSheetCreated] = useState(false)
+  const [comparisonSheetId, setComparisonSheetId] = useState(labourContext?.comparisonSheetId || null)
+  const [comparisonSheetCreated, setComparisonSheetCreated] = useState(!!labourContext?.comparisonSheetId)
   const [lines, setLines] = useState([])
   const [vendorColumns, setVendorColumns] = useState([])
   const [cells, setCells] = useState({})
@@ -81,6 +84,21 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
     setSelectedVendorColumnKey("")
   }
 
+  const seedLabourSheet = () => {
+    setLines([
+      { key: "misc", id: null, lineType: "MISC_EXPENSE", itemName: "Miscellaneous expense", qty: null },
+      { key: "disc", id: null, lineType: "DISCOUNT", itemName: "Discount", qty: null },
+    ])
+    setVendorColumns([
+      { key: nextKey("col"), id: null, vendorId: null, vendorName: "" },
+      { key: nextKey("col"), id: null, vendorId: null, vendorName: "" },
+      { key: nextKey("col"), id: null, vendorId: null, vendorName: "" },
+    ])
+    setCells({})
+    setSelectedVendorColumnKey("")
+    setSheetStatus("DRAFT")
+  }
+
   const hydrateFromFullSheet = (full) => {
     const loadedLines = (full.lines || [])
       .slice()
@@ -120,13 +138,34 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
       const col = loadedColumns.find((c) => c.vendorId === full.selectedVendorId)
       if (col) setSelectedVendorColumnKey(col.key)
     }
-    setPmApprovalStatus(mtr?.boqMtr?.purchaseManagerApprovalStatus || "PENDING")
+    setSheetStatus(full.status || "DRAFT")
+    setPmApprovalStatus(mtr?.boqMtr?.purchaseManagerApprovalStatus || full.status || "PENDING")
     setPmApprovalRemarks(mtr?.boqMtr?.purchaseManagerApprovalRemarks || "")
     setHasPurchaseOrder(!!full.hasPurchaseOrder)
   }
 
   useEffect(() => {
     const load = async () => {
+      if (isLabour) {
+        setIsLoadingData(true)
+        try {
+          if (labourContext.comparisonSheetId) {
+            setComparisonSheetCreated(true)
+            setComparisonSheetId(labourContext.comparisonSheetId)
+            const full = await comparisonSheetService.getFullComparisonSheet(labourContext.comparisonSheetId)
+            hydrateFromFullSheet(full)
+          } else {
+            seedLabourSheet()
+          }
+        } catch (err) {
+          console.error("Error loading labour work order:", err)
+          setError(getErrorMessage(err, "Error loading labour work order"))
+          seedLabourSheet()
+        } finally {
+          setIsLoadingData(false)
+        }
+        return
+      }
       if (!mtr?.id) return
       setIsLoadingData(true)
       try {
@@ -189,6 +228,36 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         uom: m.uom || "",
         qty: m.purchaseMTR || 0,
         actualQty: m.purchaseMTR || 0,
+        qtyChangeRemark: "",
+      }
+    })
+    setLines((prev) => {
+      const itemLines = prev.filter((l) => l.lineType === "ITEM")
+      const otherLines = prev.filter((l) => l.lineType !== "ITEM")
+      return [...itemLines, ...newLines, ...otherLines]
+    })
+  }
+
+  // Labour Work Order: rows picked from the project BOQ carry boqItemId /
+  // boqCategoryItemId refs — the backend mints a LABOUR requisition row per ref on save.
+  const handleAddBoqItems = (pickerRows) => {
+    const newLines = pickerRows.map((r) => {
+      const kind = r.refType === "CATEGORY" ? "CATEGORY" : "BILLABLE"
+      return {
+        key: nextKey("line"),
+        id: null,
+        lineType: "ITEM",
+        itemKind: kind,
+        boqMtrId: null,
+        boqCategoryMtrId: null,
+        boqItemId: kind === "BILLABLE" ? r.refId : null,
+        boqCategoryItemId: kind === "CATEGORY" ? r.refId : null,
+        itemName: r.itemName,
+        productCode: r.productCode || "",
+        make: r.make || "",
+        uom: r.uom || "",
+        qty: r.qty || 0,
+        actualQty: r.qty || 0,
         qtyChangeRemark: "",
       }
     })
@@ -297,6 +366,8 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         itemKind: l.itemKind,
         boqMtrId: l.boqMtrId,
         boqCategoryMtrId: l.boqCategoryMtrId,
+        boqItemId: l.boqItemId,
+        boqCategoryItemId: l.boqCategoryItemId,
         itemName: l.itemName,
         make: l.make,
         uom: l.uom,
@@ -330,6 +401,11 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         vendorColumns: vendorColumnDTOs,
         cells: cellDTOs,
         selectedVendorId: selectedColumn ? selectedColumn.vendorId : null,
+        ...(isLabour && {
+          sheetType: "LABOUR",
+          projectId: labourContext.projectId,
+          assignedPurchaser: labourContext.assignedPurchaser || null,
+        }),
       }
 
       const saved = await comparisonSheetService.saveCombinedComparisonSheet(payload)
@@ -396,9 +472,11 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
     }
   }
 
-  if (!mtr) return null
+  if (!mtr && !isLabour) return null
 
-  const isApproved = mtr.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"
+  const isApproved = isLabour
+    ? sheetStatus === "APPROVED"
+    : mtr?.boqMtr?.purchaseManagerApprovalStatus === "APPROVED"
 
   return (
     <motion.div
@@ -417,7 +495,8 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
       >
         <div className="flex items-center justify-between p-4 border-b bg-blue-50">
           <h3 className="text-lg font-bold text-blue-700">
-            Comparison Sheet - Material Requisition
+            {isLabour ? "Labour Work Order - Vendor Comparison" : "Comparison Sheet - Material Requisition"}
+            {isLabour && labourContext.projectName ? ` — ${labourContext.projectName}` : ""}
             {isLoadingData && <span className="ml-2 text-sm text-blue-500">(Loading...)</span>}
           </h3>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
@@ -441,6 +520,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         ) : (
           <div className="flex-1 overflow-y-auto">
             <div className="min-h-0">
+              {!isLabour && (
               <div className="border-b border-blue-200">
                 <button
                   onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}
@@ -531,6 +611,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                   )}
                 </AnimatePresence>
               </div>
+              )}
 
               <div className="border-b border-amber-200">
                 <button
@@ -574,7 +655,7 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
                                   className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                                 >
                                   <FiPlus className="w-4 h-4" />
-                                  Add Another Item
+                                  {isLabour ? "Add BOQ Item" : "Add Another Item"}
                                 </button>
                                 <button
                                   onClick={addVendorColumn}
@@ -908,7 +989,17 @@ export default function ComparisionSheetModal({ mtr, onClose, onSave, mode = "pu
         </div>
       </motion.div>
 
-      {showAddItemModal && (
+      {showAddItemModal && isLabour && (
+        <AddBoqItemsModal
+          projectId={labourContext.projectId}
+          excludeRefKeys={itemLines
+            .map((l) => (l.boqItemId ? `BILLABLE:${l.boqItemId}` : l.boqCategoryItemId ? `CATEGORY:${l.boqCategoryItemId}` : null))
+            .filter(Boolean)}
+          onClose={() => setShowAddItemModal(false)}
+          onAdd={handleAddBoqItems}
+        />
+      )}
+      {showAddItemModal && !isLabour && (
         <AddComparisonItemsModal
           excludeMtrIds={itemLines.map((l) => l.boqCategoryMtrId ?? l.boqMtrId)}
           onClose={() => setShowAddItemModal(false)}
