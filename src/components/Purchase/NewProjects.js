@@ -12,9 +12,10 @@ import BOQEditComponent from "../Projects/BOQEditComponent"
 import ProjectProcurement from "./ProjectProcurement" // Changed from ProjectInitiationIntegration
 import ProjectSummary from "./ProjectSummary"
 import AssignPurchaserModal from "./AssignPurchaserModal"
+import LabourWorkOrderList from "./PurchaserComponents/LabourWorkOrderList"
 import { getErrorMessage } from "../../utils/errorUtils"
 
-function NewProjects() {
+function NewProjects({ assignedOnly = false }) {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -76,11 +77,35 @@ function NewProjects() {
   const [showAssignPurchaser, setShowAssignPurchaser] = useState(false)
   const [selectedProjectForPurchaser, setSelectedProjectForPurchaser] = useState(null)
 
+  // Labour Work Order modal
+  const [showLabourWO, setShowLabourWO] = useState(false)
+  const [labourWOProject, setLabourWOProject] = useState(null)
+
+  const handleLabourWorkOrder = (e, project) => {
+    e.stopPropagation()
+    setLabourWOProject(project)
+    setShowLabourWO(true)
+  }
+
+  const labourAssignedPurchaser = (project) => {
+    if (assignedOnly && userId) return userId
+    return project?.purchaser?.id || (project?.purchasers && project.purchasers[0]?.id) || null
+  }
+
   const fetchLeads = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
       const page = currentPage - 1
+      if (assignedOnly) {
+        const assigned = await projectService.getPurchaserAssignedProjects(userId, page, leadsPerPage)
+        const list = Array.isArray(assigned) ? assigned : (assigned?.results || assigned?.content || [])
+        setLeads(list)
+        setTotalPages(assigned?.totalPages || 1)
+        setTotalResults(assigned?.totalResults || list.length)
+        setLoading(false)
+        return
+      }
       const projectData = await projectService.getNewProjects(page, leadsPerPage)
       setLeads(projectData.content || [])
       setTotalPages(projectData.totalPages || 1)
@@ -91,7 +116,7 @@ function NewProjects() {
       setError(getErrorMessage(error, "Failed to fetch projects"))
       setLoading(false)
     }
-  }, [currentPage, leadsPerPage, user?.orgId, userId]) // Removed unassignedleads from dependencies
+  }, [currentPage, leadsPerPage, user?.orgId, userId, assignedOnly]) // Removed unassignedleads from dependencies
 
   // Effect to fetch leads
   useEffect(() => {
@@ -364,7 +389,7 @@ function NewProjects() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Project ID", "Project Name", "Project Initiation", "Scope of Work", "Summary", "Assign Purchaser"]
+                    {["Project ID", "Project Name", "Project Initiation", "Scope of Work", "Summary", "Labour Work Orders", "Assign Purchaser"]
                       .filter(Boolean)
                       .map((header) => (
                         <th
@@ -433,6 +458,16 @@ function NewProjects() {
                               title="View Summary"
                             >
                               Summary
+                            </button>
+                          </td>
+
+                        <td className="px-6 py-4">
+                            <button
+                              className="px-3 py-1 bg-amber-100 text-amber-800 rounded-md hover:bg-amber-200 transition-colors text-sm font-medium"
+                              onClick={(e) => handleLabourWorkOrder(e, project)}
+                              title="Labour Work Orders"
+                            >
+                              Labour Work Orders
                             </button>
                           </td>
 
@@ -527,6 +562,12 @@ function NewProjects() {
                       <div className="grid grid-cols-1 gap-y-2 text-xs">
                         <div className="font-medium text-gray-900">{project.project_name}</div>
                       </div>
+                      <button
+                        className="mt-2 px-2 py-1 bg-amber-100 text-amber-800 rounded text-xs font-medium"
+                        onClick={(e) => handleLabourWorkOrder(e, project)}
+                      >
+                        Labour Work Orders
+                      </button>
                       {/* Expand/collapse indicator */}
                       <div className="flex justify-center mt-2">
                         <FiChevronRight
@@ -667,6 +708,18 @@ function NewProjects() {
                 setSelectedProjectForPurchaser(null)
               }}
               onSave={fetchLeads}
+            />
+          )}
+          {showLabourWO && labourWOProject && (
+            <LabourWorkOrderList
+              projectId={labourWOProject.id}
+              projectName={labourWOProject.project_name}
+              assignedPurchaser={labourAssignedPurchaser(labourWOProject)}
+              mode={assignedOnly ? "purchaser" : "manager"}
+              onClose={() => {
+                setShowLabourWO(false)
+                setLabourWOProject(null)
+              }}
             />
           )}
         </AnimatePresence>

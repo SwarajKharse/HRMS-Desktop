@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { FiCheckCircle, FiClock, FiCalendar } from "react-icons/fi";
 import PunchAction from "../Attendance/PunchAction";
+import { usePermissions } from "../../contexts/PermissionsContext";
+import { getNavItems } from "../../config/navItems";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -13,6 +16,11 @@ function getGreeting() {
 function Activities({ employee }) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [todaysAttendance, setTodaysAttendance] = useState({});
+  const { permissions } = usePermissions();
+
+  // Same permission-gated module list the sidebar/navbar already use -
+  // mobile-only shortcut tiles, not a second source of truth.
+  const moduleTiles = getNavItems(permissions).filter((item) => item.path !== "/");
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -136,6 +144,25 @@ function Activities({ employee }) {
           </div>
         </div>
       </div>
+
+      {/* Module shortcuts - mobile only. Desktop already has the sidebar. */}
+      {moduleTiles.length > 0 && (
+        <div className="md:hidden bg-white rounded-lg shadow-md p-4">
+          <h3 className="text-sm font-semibold text-gray-500 mb-3">Modules</h3>
+          <div className="grid grid-cols-3 gap-3">
+            {moduleTiles.map((item) => (
+              <Link
+                key={item.path}
+                to={item.path}
+                className="flex flex-col items-center justify-center gap-1.5 min-h-[64px] rounded-lg bg-gray-50 active:bg-gray-100 p-2 text-center"
+              >
+                <item.icon className="w-6 h-6 text-gray-700" />
+                <span className="text-xs font-medium text-gray-700 leading-tight">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

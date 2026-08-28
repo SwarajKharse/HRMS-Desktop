@@ -715,6 +715,46 @@ uploadNocFile: async (projectId, file) => {
     }
   },
 
+  getProjectLockStatus: async (projectId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/${projectId}/progress/lock-status`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  getProgressLockStatus: async (employeeId) => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/progress/lock-status/${employeeId}`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  approveProgressFill: async (projectId, approverId) => {
+    try {
+      const response = await axios.post(
+        `${API_URL}/projects/${projectId}/progress/approve-fill`,
+        { approverId },
+        getAuthHeaders()
+      )
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
+  getProjectsNeedingProgressApproval: async () => {
+    try {
+      const response = await axios.get(`${API_URL}/projects/progress/needs-approval`, getAuthHeaders())
+      return response.data
+    } catch (error) {
+      throw error
+    }
+  },
+
   saveProjectProgress: async (projectId, payload) => {
     try {
       const response = await axios.post(`${API_URL}/projects/${projectId}/progress`, payload, getAuthHeaders())

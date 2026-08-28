@@ -14,6 +14,8 @@ import ProjectSummary from "./ProjectSummary"
 import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
 import { getErrorMessage } from "../../utils/errorUtils"
 import { useHighlightTarget } from "../../hooks/useHighlightTarget"
+import { useProgressLock } from "../../hooks/useProgressLock"
+import ProgressLockPopup from "./ProgressLockPopup"
 
 function SiteEngineerProjects() {
   const navigate = useNavigate()
@@ -42,6 +44,26 @@ function SiteEngineerProjects() {
     userId = user.userId
   }
   const [unfilledProgressProjectIds, setUnfilledProgressProjectIds] = useState(() => new Set())
+  // SE's progress lock — only requisition creation (behind the BOQ button) is gated; DC
+  // History/Summary/Edit stay open since they're otherwise just view pages.
+  const { lockStatusMap, lockPopup, setLockPopup, openLockPopup } = useProgressLock(userId)
+
+  // Once-a-day, unprompted reminder on app open: which projects had no progress logged
+  // yesterday. Independent of the click-triggered lockPopup above.
+  const [dailyReminder, setDailyReminder] = useState(null) // { projectNames: string[] }
+  useEffect(() => {
+    if (!userId || lockStatusMap.size === 0 || unassignedleads.length === 0) return
+    const todayKey = `progressReminderShown_${userId}_${new Date().toISOString().slice(0, 10)}`
+    if (localStorage.getItem(todayKey)) return
+    const lockedNames = unassignedleads
+      .filter((p) => lockStatusMap.get(p.id)?.locked)
+      .map((p) => p.project_name)
+    if (lockedNames.length > 0) {
+      setDailyReminder({ projectNames: lockedNames })
+      localStorage.setItem(todayKey, "1")
+    }
+  }, [lockStatusMap, unassignedleads, userId])
+
   const [showMigrateDialog, setShowMigrateDialog] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
   const [isExporting, setIsExporting] = useState(false)
@@ -380,12 +402,18 @@ function SiteEngineerProjects() {
                             </button>
                             <button
                               className={`px-3 py-1 rounded-md transition-colors text-sm font-medium ${
-                                unfilledProgressProjectIds.has(project.id)
+                                lockStatusMap.get(project.id)?.locked
+                                  ? "bg-red-100 text-red-800 hover:bg-red-200 pending-blink"
+                                  : unfilledProgressProjectIds.has(project.id)
                                   ? "bg-amber-100 text-amber-800 hover:bg-amber-200 pending-blink"
                                   : "bg-green-100 text-green-700 hover:bg-green-200"
                               }`}
                               onClick={() => { setProgressProject(project); setShowProgress(true) }}
-                              title={unfilledProgressProjectIds.has(project.id) ? "Today's progress not yet logged" : "Progress"}
+                              title={
+                                lockStatusMap.get(project.id)?.locked
+                                  ? "Progress backlog — fill to unlock this project"
+                                  : unfilledProgressProjectIds.has(project.id) ? "Today's progress not yet logged" : "Progress"
+                              }
                             >
                               Progress
                             </button>
@@ -453,7 +481,7 @@ function SiteEngineerProjects() {
                         </div>
                         <button
                           className="flex flex-col items-center justify-center gap-0.5 py-2 bg-blue-50 text-blue-700 rounded-lg active:bg-blue-100"
-                          onClick={(e) => handleBOQEdit(e, project)}
+                          onClick={(e) => { e.stopPropagation(); handleBOQEdit(e, project) }}
                         >
                           <FiFileText size={16} />
                           <span className="text-[10px] font-medium">BOQ</span>
@@ -467,7 +495,9 @@ function SiteEngineerProjects() {
                         </button>
                         <button
                           className={`flex flex-col items-center justify-center gap-0.5 py-2 rounded-lg ${
-                            unfilledProgressProjectIds.has(project.id)
+                            lockStatusMap.get(project.id)?.locked
+                              ? "bg-red-50 text-red-800 active:bg-red-100 pending-blink"
+                              : unfilledProgressProjectIds.has(project.id)
                               ? "bg-amber-50 text-amber-800 active:bg-amber-100 pending-blink"
                               : "bg-green-50 text-green-700 active:bg-green-100"
                           }`}
@@ -582,6 +612,37 @@ function SiteEngineerProjects() {
             onClose={() => { setShowProgress(false); setProgressProject(null) }}
           />
         )}
+        <ProgressLockPopup
+          lockPopup={lockPopup}
+          onClose={() => setLockPopup(null)}
+          onFillNow={() => {
+            const project = lockPopup.project
+            setLockPopup(null)
+            setProgressProject(project)
+            setShowProgress(true)
+          }}
+        />
+        {dailyReminder && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDailyReminder(null)}>
+            <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-5" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Progress Reminder</h3>
+              <p className="text-sm text-gray-600 mb-2">Progress wasn't filled for yesterday on:</p>
+              <ul className="text-sm text-gray-800 list-disc list-inside mb-4 space-y-1">
+                {dailyReminder.projectNames.map((name, i) => (
+                  <li key={i}>{name}</li>
+                ))}
+              </ul>
+              <div className="flex justify-end">
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                  onClick={() => setDailyReminder(null)}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {showBOQEdit && selectedProject && (
           <BOQEditComponent
             projectId={selectedProject.id}
@@ -594,6 +655,8 @@ function SiteEngineerProjects() {
               setShowBOQEdit(false)
               setSelectedProject(null)
             }}
+            progressLockStatus={lockStatusMap.get(selectedProject.id)}
+            onProgressLocked={() => openLockPopup(selectedProject)}
           />
         )}
         {showDCHistory && dcHistoryProject && (

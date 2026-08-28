@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import { useSearchParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
 import NewProjects from "../components/Purchase/NewProjects"
+import MyAssignedProjects from "../components/Purchase/PurchaserComponents/MyAssignedProjects"
 import MaterialRequisitionPurchase from "../components/Purchase/MaterialRequisitionPurchase"
 import ComparisionSheetPurchaser from "../components/Purchase/PurchaserComponents/ComparisionSheetPurchaser"
 import MyAssignedMaterialRequisitions from "../components/Purchase/PurchaserComponents/MyAssignedMaterialRequisitions"
@@ -34,6 +35,7 @@ function Projects() {
     { id: "po-upload-purchaser", label: "PO Upload", icon: GrWorkshop, component: POUploadPurchaser },
     { id: "pi-upload-purchaser", label: "PI Upload", icon: GrWorkshop, component: PIUploadPurchaser },
     { id: "vendor-management", label: "Vendor Management", icon: MdStorefront, component: VendorList },
+    { id: "my-assigned-projects", label: "Projects", icon: GrWorkshop, component: MyAssignedProjects },
   ]
 
   const designation = employee?.designation?.name?.replace(/\s+/g, "-").toLowerCase() || ""
@@ -53,9 +55,9 @@ function Projects() {
     if (!employee) return []
     if (shouldShowMainTabs()) {
       if (activeMainTab === "PurchaseManager") return [allTabs[0], allTabs[1], allTabs[2], allTabs[7]]
-      if (activeMainTab === "Purchaser") return [allTabs[3], allTabs[5], allTabs[7]]
+      if (activeMainTab === "Purchaser") return [allTabs[8], allTabs[3], allTabs[5], allTabs[7]]
     }
-    if (isSubordinate()) return [allTabs[3], allTabs[5], allTabs[7]]
+    if (isSubordinate()) return [allTabs[8], allTabs[3], allTabs[5], allTabs[7]]
     return []
   }
 
@@ -66,7 +68,7 @@ function Projects() {
   // Maps a tab id to the main tab group it lives under, for ?tab= deep links (e.g. from notifications).
   const getMainTabForTabId = (tabId) => {
     if (allTabs[0].id === tabId || allTabs[1].id === tabId || allTabs[2].id === tabId) return "PurchaseManager"
-    if (allTabs[3].id === tabId || allTabs[5].id === tabId) return "Purchaser"
+    if (allTabs[8].id === tabId || allTabs[3].id === tabId || allTabs[5].id === tabId) return "Purchaser"
     if (allTabs[7].id === tabId) {
       // Vendor Management tab is shared by both main tabs — land on whichever this user has.
       if (isManager() || isManagement()) return "PurchaseManager"

@@ -13,7 +13,9 @@ import DCHistoryModal from "./DCHistoryModal"
 import ProjectInitiationIntegration from "./ProjectInitiationIntegration"
 import ProjectSummary from "./ProjectSummary"
 import ProjectProgressModal from "./ProjectProgressModal"
+import ProgressLockPopup from "./ProgressLockPopup"
 import { useHighlightTarget } from "../../hooks/useHighlightTarget"
+import { useProgressLock } from "../../hooks/useProgressLock"
 import { getErrorMessage } from "../../utils/errorUtils"
 
 function NewProjects() {
@@ -41,12 +43,37 @@ function NewProjects() {
   const [showAssignmentWarning, setShowAssignmentWarning] = useState(false)
   const [pendingRequisitionProjectIds, setPendingRequisitionProjectIds] = useState(() => new Set())
   const [unfilledProgressProjectIds, setUnfilledProgressProjectIds] = useState(() => new Set())
-  const { user } = useAuth()
+  const [progressApprovalMap, setProgressApprovalMap] = useState(() => new Map())
+  const { user, employee } = useAuth()
+  const isManagement = () => {
+    const designation = employee?.designation?.name?.toLowerCase() || ""
+    return designation.includes("managing director") || designation.includes("vice president")
+  }
   var userId = ""
 
   if (user) {
     userId = user.userId
   }
+
+  // PM's progress lock — only requisition create/approve/reject are gated (see BOQEditComponent
+  // and ProjectMaterialRequisition); BOQ viewing/DC History/Summary stay open regardless.
+  const { lockStatusMap, lockPopup, setLockPopup, openLockPopup } = useProgressLock(userId)
+
+  // Once-a-day, unprompted reminder on app open: which projects had no progress logged
+  // yesterday. Independent of the click-triggered lockPopup above.
+  const [dailyReminder, setDailyReminder] = useState(null) // { projectNames: string[] }
+  useEffect(() => {
+    if (!userId || lockStatusMap.size === 0 || unassignedleads.length === 0) return
+    const todayKey = `progressReminderShown_${userId}_${new Date().toISOString().slice(0, 10)}`
+    if (localStorage.getItem(todayKey)) return
+    const lockedNames = unassignedleads
+      .filter((p) => lockStatusMap.get(p.id)?.locked)
+      .map((p) => p.project_name)
+    if (lockedNames.length > 0) {
+      setDailyReminder({ projectNames: lockedNames })
+      localStorage.setItem(todayKey, "1")
+    }
+  }, [lockStatusMap, unassignedleads, userId])
 
   const [showMigrateDialog, setShowMigrateDialog] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
@@ -156,6 +183,48 @@ function NewProjects() {
     const interval = setInterval(fetchUnfilledProgress, 60000)
     return () => clearInterval(interval)
   }, [user?.userId])
+
+  // Management-only: projects whose SE progress backlog needs an approval to unlock.
+  useEffect(() => {
+    if (!isManagement()) return
+    const fetchNeedingApproval = () => {
+      projectService.getProjectsNeedingProgressApproval()
+        .then((statuses) => {
+          const map = new Map()
+          ;(Array.isArray(statuses) ? statuses : []).forEach((s) => map.set(s.projectId, s))
+          setProgressApprovalMap(map)
+        })
+        .catch((err) => console.error("Failed to load progress approval requests:", err))
+    }
+    fetchNeedingApproval()
+    const interval = setInterval(fetchNeedingApproval, 60000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee?.designation?.name])
+
+  const [approvePrompt, setApprovePrompt] = useState(null) // { projectId, projectName } — pre-action confirm, has Cancel
+  const [approvalConfirmation, setApprovalConfirmation] = useState(null) // { projectName } — post-action reassurance
+  const [approving, setApproving] = useState(false)
+
+  const confirmApproveProgressFill = async () => {
+    if (!approvePrompt) return
+    const { projectId, projectName } = approvePrompt
+    try {
+      setApproving(true)
+      await projectService.approveProgressFill(projectId, user?.userId)
+      setProgressApprovalMap((prev) => {
+        const next = new Map(prev)
+        next.delete(projectId)
+        return next
+      })
+      setApprovePrompt(null)
+      setApprovalConfirmation({ projectName })
+    } catch (err) {
+      alert(getErrorMessage(err, "Failed to approve progress fill"))
+    } finally {
+      setApproving(false)
+    }
+  }
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -517,6 +586,15 @@ function NewProjects() {
                             >
                               <FiTrendingUp size={14} /> Progress: {Math.round(progressMap[project.id] || 0)}%
                             </button>
+                            {progressApprovalMap.has(project.id) && (
+                              <button
+                                className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-red-100 text-red-800 hover:bg-red-200 transition-colors text-sm font-medium"
+                                onClick={() => setApprovePrompt({ projectId: project.id, projectName: project.project_name })}
+                                title={`Progress not filled since ${progressApprovalMap.get(project.id)?.oldestUnfilledDate} — approve to let the SE fill it`}
+                              >
+                                Approve Progress Fill
+                              </button>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -612,6 +690,15 @@ function NewProjects() {
                               <FiTrendingUp size={16} />
                               <span className="text-[10px] font-medium">Progress</span>
                             </button>
+                            {progressApprovalMap.has(project.id) && (
+                              <button
+                                className="flex flex-col items-center justify-center gap-0.5 py-2 bg-red-50 text-red-800 rounded-lg active:bg-red-100"
+                                onClick={() => setApprovePrompt({ projectId: project.id, projectName: project.project_name })}
+                              >
+                                <FiTrendingUp size={16} />
+                                <span className="text-[10px] font-medium">Approve</span>
+                              </button>
+                            )}
                             <button
                               className="flex flex-col items-center justify-center gap-0.5 py-2 bg-indigo-50 text-indigo-700 rounded-lg active:bg-indigo-100"
                               onClick={(e) => guardAssignedAction(e, project, () => { setSummaryProjectId(project.id); setShowSummary(true) })}
@@ -728,6 +815,8 @@ function NewProjects() {
               setShowBOQEdit(false)
               setSelectedProject(null)
             }}
+            progressLockStatus={lockStatusMap.get(selectedProject.id)}
+            onProgressLocked={() => openLockPopup(selectedProject)}
           />
         )}
         {showDCHistory && dcHistoryProject && (
@@ -746,6 +835,83 @@ function NewProjects() {
             isOpen={showProgress}
             onClose={() => setShowProgress(false)}
           />
+        )}
+        <ProgressLockPopup
+          lockPopup={lockPopup}
+          onClose={() => setLockPopup(null)}
+          onFillNow={() => {
+            const project = lockPopup.project
+            setLockPopup(null)
+            setProgressProject(project)
+            setShowProgress(true)
+          }}
+        />
+        {approvePrompt && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => !approving && setApprovePrompt(null)}>
+            <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-5" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Approve Progress Fill?</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                This lets the Site Engineer for {approvePrompt.projectName || "this project"} fill in progress for
+                the pending backlog days. Requisitions stay locked until they've actually caught up.
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 text-sm font-medium disabled:opacity-50"
+                  onClick={() => setApprovePrompt(null)}
+                  disabled={approving}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium disabled:opacity-50"
+                  onClick={confirmApproveProgressFill}
+                  disabled={approving}
+                >
+                  {approving ? "Approving..." : "Approve"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {approvalConfirmation && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setApprovalConfirmation(null)}>
+            <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-5" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Approved</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                The Site Engineer for {approvalConfirmation.projectName || "this project"} can now fill in progress
+                for the pending backlog days. Requisitions stay locked until they've caught up.
+              </p>
+              <div className="flex justify-end">
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                  onClick={() => setApprovalConfirmation(null)}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {dailyReminder && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[70] p-4" onClick={() => setDailyReminder(null)}>
+            <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-5" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-base font-semibold text-gray-900 mb-2">Progress Reminder</h3>
+              <p className="text-sm text-gray-600 mb-2">Progress wasn't filled for yesterday on:</p>
+              <ul className="text-sm text-gray-800 list-disc list-inside mb-4 space-y-1">
+                {dailyReminder.projectNames.map((name, i) => (
+                  <li key={i}>{name}</li>
+                ))}
+              </ul>
+              <div className="flex justify-end">
+                <button
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                  onClick={() => setDailyReminder(null)}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          </div>
         )}
         {showSummary && summaryProjectId && (
           <ProjectSummary

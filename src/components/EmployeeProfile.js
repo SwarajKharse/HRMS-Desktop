@@ -32,6 +32,13 @@ function EmployeeProfile() {
   const [showWarningForm, setShowWarningForm] = useState(false)
   const [showTerminationForm, setShowTerminationForm] = useState(false)
   const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false)
+  const [showDeactivateDialog, setShowDeactivateDialog] = useState(false)
+  const [deactivateForm, setDeactivateForm] = useState({
+    dateOfLeaving: new Date().toISOString().split("T")[0], // today, editable
+    reason: "",
+  })
+  const [affectedReports, setAffectedReports] = useState(null)
+  const [deactivating, setDeactivating] = useState(false)
 
   useEffect(() => {
     fetchEmployee()
@@ -62,15 +69,34 @@ function EmployeeProfile() {
           setError("Failed to activate employee")
         }
       }
-    } else {
-      if (window.confirm("Are you sure you want to deactivate this employee?")) {
-        try {
-          await employeeService.deactivateEmployee(employee.id)
-          fetchEmployee()
-        } catch (err) {
-          setError("Failed to deactivate employee")
-        }
+      return
+    }
+    setAffectedReports(null)
+    setError(null)
+    setDeactivateForm({ dateOfLeaving: new Date().toISOString().split("T")[0], reason: "" })
+    setShowDeactivateDialog(true)
+  }
+
+  const handleConfirmDeactivate = async () => {
+    setDeactivating(true)
+    setError(null)
+    setAffectedReports(null)
+    try {
+      await employeeService.deactivateEmployee(employee.id, {
+        dateOfLeaving: deactivateForm.dateOfLeaving,
+        reason: deactivateForm.reason || undefined,
+      })
+      setShowDeactivateDialog(false)
+      fetchEmployee()
+    } catch (err) {
+      // 409 from the manager check carries { message, reports: [...] }
+      if (err && Array.isArray(err.reports)) {
+        setAffectedReports(err.reports)
+      } else {
+        setError(err?.message || "Failed to deactivate employee")
       }
+    } finally {
+      setDeactivating(false)
     }
   }
 
@@ -178,11 +204,27 @@ function EmployeeProfile() {
         textColor: "text-gray-800",
         borderColor: "border-gray-200",
       },
+      Unknown: {
+        bgColor: "bg-slate-100",
+        textColor: "text-slate-600",
+        borderColor: "border-slate-200",
+      },
     }
-    return configs[status] || configs.Active
+    // Null / unrecognised status: neutral "Unknown" — never masquerade as Active,
+    // and don't mislabel it as Deactivated either.
+    return configs[status] || configs.Unknown
   }
 
-  const isActionable = !employee.dateOfLeaving && (employee.empStatus !== "Termination Notice Period" || employee.empStatus !== "Resignation Notice Period")
+  // Driven off empStatus, not dateOfLeaving: a reactivated employee keeps their
+  // previous leaving date (see activateEmployee) but is a full active employee again.
+  const NON_ACTIONABLE_STATUSES = [
+    "Terminated",
+    "Resigned",
+    "Deactivated",
+    "Termination Notice Period",
+    "Resignation Notice Period",
+  ]
+  const isActionable = !NON_ACTIONABLE_STATUSES.includes(employee.empStatus)
   const statusConfig = getStatusConfig(employee.empStatus)
 
   return (
@@ -371,6 +413,84 @@ function EmployeeProfile() {
               window.location.reload()
             }}
           />
+        )}
+        {showDeactivateDialog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+            onClick={() => !deactivating && setShowDeactivateDialog(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-white rounded-xl shadow-xl p-6 w-[480px] max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
+                Deactivate {employee.firstName} {employee.lastName}
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                This disables their login and stops app notifications.{" "}
+                <strong>All records are retained</strong> — attendance, payroll, payslips, leave,
+                documents and history stay exactly as they are and remain viewable under the{" "}
+                <strong>Past Employees</strong> tab. You can reactivate this employee later.
+              </p>
+
+              <label className="block text-sm font-medium text-gray-700">
+                Date of leaving <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                value={deactivateForm.dateOfLeaving}
+                max={new Date().toISOString().split("T")[0]}
+                onChange={(e) => setDeactivateForm((p) => ({ ...p, dateOfLeaving: e.target.value }))}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+              />
+              <p className="text-xs text-gray-500 mt-1 mb-3">
+                Defaults to today. Set an earlier date if they actually left earlier.
+              </p>
+
+              <label className="block text-sm font-medium text-gray-700">Reason (optional)</label>
+              <textarea
+                rows={2}
+                value={deactivateForm.reason}
+                onChange={(e) => setDeactivateForm((p) => ({ ...p, reason: e.target.value }))}
+                className="mt-1 mb-4 block w-full rounded-md border border-gray-300 px-3 py-2"
+              />
+
+              {affectedReports && (
+                <div className="mb-4 rounded-lg bg-red-50 border border-red-100 p-3 text-sm text-red-700">
+                  <p className="font-medium mb-1">Cannot deactivate yet — this person still manages:</p>
+                  <ul className="list-disc pl-5">
+                    {affectedReports.map((n, i) => (
+                      <li key={i}>{n}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-2">Reassign their reporting manager first, then try again.</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowDeactivateDialog(false)}
+                  disabled={deactivating}
+                  className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDeactivate}
+                  disabled={deactivating || !deactivateForm.dateOfLeaving}
+                  className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deactivating ? "Deactivating…" : "Deactivate"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

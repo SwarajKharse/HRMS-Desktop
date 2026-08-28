@@ -27,6 +27,10 @@ export default function ProjectProgressModal({ projectId, projectName, isOpen, o
   const [editDate, setEditDate] = useState("")
   const [editError, setEditError] = useState("")
 
+  // Which dates this SE may pick without Management approval — mirrors the backend's
+  // self-serve window (today + 2 non-Sunday days back), unless a same-day override is active.
+  const [lockStatus, setLockStatus] = useState(null)
+
   const fetchProgress = () => {
     if (!projectId) return
     setLoading(true)
@@ -37,9 +41,17 @@ export default function ProjectProgressModal({ projectId, projectName, isOpen, o
       .finally(() => setLoading(false))
   }
 
+  const fetchLockStatus = () => {
+    if (!projectId) return
+    projectService.getProjectLockStatus(projectId)
+      .then((status) => setLockStatus(status))
+      .catch((err) => console.error("Failed to load progress lock status:", err))
+  }
+
   useEffect(() => {
     if (!isOpen || !projectId) return
     fetchProgress()
+    fetchLockStatus()
     resetForm()
   }, [isOpen, projectId])
 
@@ -173,6 +185,9 @@ export default function ProjectProgressModal({ projectId, projectName, isOpen, o
   }
 
   const todayStr = new Date().toISOString().slice(0, 10)
+  // Without an active Management override, the date picker can't go earlier than the
+  // self-serve floor (today minus 2 non-Sunday days) — matches the backend's own check.
+  const minEntryDateStr = lockStatus && !lockStatus.overrideActive ? lockStatus.selfServeFloorDate : undefined
 
   const startEdit = (log) => {
     setEditingLogId(log.id)
@@ -299,9 +314,17 @@ export default function ProjectProgressModal({ projectId, projectName, isOpen, o
                     value={entryDate}
                     onChange={(e) => setEntryDate(e.target.value)}
                     max={todayStr}
+                    min={minEntryDateStr}
                     className="w-full sm:w-40 px-3 py-3 border border-gray-300 rounded-md text-sm"
                   />
                 </div>
+
+                {minEntryDateStr && (
+                  <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3">
+                    You can only fill progress for today and the 2 previous days (Sundays don't count). To log anything
+                    older than {minEntryDateStr}, contact Aditya sir to get it unlocked.
+                  </div>
+                )}
 
                 {selectedItem && (
                   <>
