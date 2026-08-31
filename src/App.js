@@ -39,8 +39,9 @@ import Purchase from './pages/Purchase';
 import Accounts from './pages/Accounts';
 import ProductManagement from './pages/ProductManagement';
 import Finance from './pages/Finance';
-
+import MigrationNotice from "./pages/MigrationNotice";
 function App() {
+  return <MigrationNotice />;
   return (
     <AuthProvider>
       <NotificationsProvider>
